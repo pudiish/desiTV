@@ -15,6 +15,9 @@ export default function Home() {
 	const [staticActive, setStaticActive] = useState(false)
 	const [statusMessage, setStatusMessage] = useState('WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY.')
 	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
+	const originalChannelRef = useRef(null) // Track original channel when playing ads
+	const originalIndexRef = useRef(null) // Track original video index when playing ads
+	const isPlayingAdRef = useRef(false) // Track if currently playing an ad
 
 	const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
 
@@ -73,7 +76,17 @@ export default function Home() {
 		filterChannelsBySelection(channels, selectedChannels)
 	}, [selectedChannels, channels])
 
-	const activeChannel = filteredChannels[activeChannelIndex] || null
+	// Find Ads channel
+	const adsChannel = channels.find(ch => 
+		ch.name && (ch.name.toLowerCase() === 'ads' || ch.name.toLowerCase() === 'ad' || ch.name.toLowerCase() === 'advertisements')
+	)
+
+	// State for ad channel and playing status
+	const [adChannel, setAdChannel] = useState(null)
+	const [isPlayingAd, setIsPlayingAd] = useState(false)
+
+	// Get active channel - if playing ad, use ad channel, otherwise use filtered channel
+	const activeChannel = isPlayingAd && adChannel ? adChannel : (filteredChannels[activeChannelIndex] || null)
 
 	function handlePowerToggle() {
 		const newPower = !power
@@ -86,6 +99,12 @@ export default function Home() {
 
 	function handleChannelUp() {
 		if (!power || filteredChannels.length === 0) return
+		// Reset ad state when manually changing channels
+		setIsPlayingAd(false)
+		setAdChannel(null)
+		originalChannelRef.current = null
+		originalIndexRef.current = null
+		
 		setActiveChannelIndex(prevIndex => {
 			const nextIndex = (prevIndex + 1) % filteredChannels.length
 			triggerStatic()
@@ -96,6 +115,12 @@ export default function Home() {
 
 	function handleChannelDown() {
 		if (!power || filteredChannels.length === 0) return
+		// Reset ad state when manually changing channels
+		setIsPlayingAd(false)
+		setAdChannel(null)
+		originalChannelRef.current = null
+		originalIndexRef.current = null
+		
 		setActiveChannelIndex(prevIndex => {
 			const newIndex = prevIndex === 0 
 				? filteredChannels.length - 1 
@@ -122,8 +147,58 @@ export default function Home() {
 	}
 
 	function handleVideoEnd() {
-		// Video ended, will auto-play next in playlist via Player component
 		triggerStatic()
+		
+		// If we just finished an ad, return to original channel
+		if (isPlayingAd) {
+			setIsPlayingAd(false)
+			setAdChannel(null)
+			
+			if (originalChannelRef.current !== null) {
+				// Find the original channel in filteredChannels
+				const originalChannelName = originalChannelRef.current.name
+				const channelIndex = filteredChannels.findIndex(ch => ch.name === originalChannelName)
+				if (channelIndex >= 0) {
+					setActiveChannelIndex(channelIndex)
+					setStatusMessage(`RETURNING TO ${originalChannelName.toUpperCase()}`)
+				}
+				originalChannelRef.current = null
+				originalIndexRef.current = null
+			}
+			return
+		}
+
+		// If we finished a regular video (not an ad), play an ad if available
+		// Only play ads if we have an ads channel and it's not already the active channel
+		if (adsChannel && adsChannel.items && adsChannel.items.length > 0 && activeChannel) {
+			const isCurrentAd = activeChannel.name && (
+				activeChannel.name.toLowerCase() === 'ads' || 
+				activeChannel.name.toLowerCase() === 'ad' || 
+				activeChannel.name.toLowerCase() === 'advertisements'
+			)
+			
+			if (!isCurrentAd) {
+				// Store original channel info
+				originalChannelRef.current = activeChannel
+				originalIndexRef.current = activeChannelIndex
+				
+				// Get random ad
+				const adItems = adsChannel.items
+				const randomAd = adItems[Math.floor(Math.random() * adItems.length)]
+				
+				// Create temporary ad channel
+				const tempAdChannel = {
+					...adsChannel,
+					items: [randomAd],
+					_id: `ad-${Date.now()}`,
+					name: 'Ads'
+				}
+				
+				setIsPlayingAd(true)
+				setAdChannel(tempAdChannel)
+				setStatusMessage('COMMERCIAL BREAK')
+			}
+		}
 	}
 
 	function handleChannelChange() {
@@ -161,6 +236,7 @@ export default function Home() {
 					volume={volume}
 					staticActive={staticActive}
 					uiLoadTime={uiLoadTimeRef.current}
+					allChannels={channels}
 				/>
 
 				{/* Right Side - Controls and Categories */}

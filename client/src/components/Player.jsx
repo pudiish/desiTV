@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react'
 import YouTube from 'react-youtube'
 import { getPseudoLiveItem } from '../utils/pseudoLive'
 
-export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime }){
+export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [] }){
 	const [currentIndex, setCurrentIndex] = useState(0)
 	const [manualIndex, setManualIndex] = useState(null)
 	const [channelChanged, setChannelChanged] = useState(false)
@@ -23,6 +23,15 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	// safe normalized items even if channel is null
 	const items = Array.isArray(channel?.items) ? channel.items : []
 	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10) // Maximum consecutive skips before giving up
+
+	// Check if current channel is Ads channel
+	const isAdsChannel = useMemo(() => {
+		return channel?.name && (
+			channel.name.toLowerCase() === 'ads' || 
+			channel.name.toLowerCase() === 'ad' || 
+			channel.name.toLowerCase() === 'advertisements'
+		)
+	}, [channel?.name])
 
 	// reset when channel changes
 	useEffect(() => {
@@ -167,6 +176,13 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	function switchToNextVideo(skipFailed = false) {
 		if (isTransitioningRef.current) return // Prevent multiple transitions
 
+		// If we're playing an ad channel, notify parent to return to original channel
+		// Don't try to switch to next video in ad channel
+		if (isAdsChannel) {
+			if (onVideoEnd) onVideoEnd()
+			return
+		}
+
 		isTransitioningRef.current = true
 		setIsTransitioning(true)
 		
@@ -183,39 +199,50 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			} catch(err) {}
 		}
 
-		// Trigger static effect
+		// Notify parent (Home will handle ad insertion before next video)
 		if (onVideoEnd) onVideoEnd()
 
-		// Small delay for smooth transition (300ms for better visual effect)
+		// Note: Home component will switch to ad channel if available
+		// If no ads, Home won't change the channel and we'll continue here
+		// We need to wait a bit to see if channel changes (ad inserted)
+		// If channel doesn't change after delay, continue with next video
 		transitionTimeoutRef.current = setTimeout(() => {
-			setCurrentIndex(prevIndex => {
-				let nextIndex
-				let attempts = 0
-				const maxAttempts = items.length || 10
-				
-				// Find next available video (skip failed ones)
-				do {
-					if (items.length === 1) {
-						nextIndex = 0
-						break
-					}
-					nextIndex = (prevIndex + 1) % items.length
-					attempts++
+			// Check if channel changed (ad was inserted)
+			// If channel ID is still the same, continue with next video
+			if (channelIdRef.current === channel?._id && !isAdsChannel) {
+				setCurrentIndex(prevIndex => {
+					let nextIndex
+					let attempts = 0
+					const maxAttempts = items.length || 10
 					
-					// If we've tried all videos and they're all failed, reset failed list
-					if (attempts >= maxAttempts && failedVideosRef.current.size >= items.length) {
-						failedVideosRef.current.clear()
-						skipAttemptsRef.current = 0
-						break
-					}
-				} while (skipFailed && failedVideosRef.current.has(items[nextIndex]?.youtubeId) && attempts < maxAttempts)
-				
-				setManualIndex(nextIndex)
+					// Find next available video (skip failed ones)
+					do {
+						if (items.length === 1) {
+							nextIndex = 0
+							break
+						}
+						nextIndex = (prevIndex + 1) % items.length
+						attempts++
+						
+						// If we've tried all videos and they're all failed, reset failed list
+						if (attempts >= maxAttempts && failedVideosRef.current.size >= items.length) {
+							failedVideosRef.current.clear()
+							skipAttemptsRef.current = 0
+							break
+						}
+					} while (skipFailed && failedVideosRef.current.has(items[nextIndex]?.youtubeId) && attempts < maxAttempts)
+					
+					setManualIndex(nextIndex)
+					isTransitioningRef.current = false
+					setIsTransitioning(false)
+					return nextIndex
+				})
+			} else {
+				// Channel changed (ad was inserted), just reset transition state
 				isTransitioningRef.current = false
 				setIsTransitioning(false)
-				return nextIndex
-			})
-		}, 300)
+			}
+		}, 500) // Longer delay to allow Home to switch to ad channel
 	}
 
 	function handleVideoError(error) {
@@ -262,7 +289,12 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		
 		if (state === 0) { // Video ended (fallback - should rarely happen due to early switching)
 			if (!isTransitioningRef.current) {
-				switchToNextVideo()
+				// If it's an ad channel, notify parent to return to original channel
+				if (isAdsChannel) {
+					if (onVideoEnd) onVideoEnd()
+				} else {
+					switchToNextVideo()
+				}
 			}
 		} else if (state === 3) { // Buffering
 			// Show static effect during buffering

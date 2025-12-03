@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react'
 import Player from './Player'
 import StaticEffect from './StaticEffect'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, uiLoadTime }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, uiLoadTime, allChannels }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -105,6 +105,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									onChannelChange={onStaticTrigger}
 									volume={volume}
 									uiLoadTime={uiLoadTime}
+									allChannels={allChannels}
 								/>
 							) : (
 								<div className="tv-off-screen">
