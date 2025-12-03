@@ -4,6 +4,7 @@ import TVFrame from '../components/TVFrame'
 import ControlPanel from '../components/ControlPanel'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
+import bufferCache from '../utils/bufferCache'
 
 export default function Home() {
 	const [channels, setChannels] = useState([])
@@ -14,6 +15,8 @@ export default function Home() {
 	const [volume, setVolume] = useState(0.5)
 	const [staticActive, setStaticActive] = useState(false)
 	const [statusMessage, setStatusMessage] = useState('WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY.')
+	const [debugMode, setDebugMode] = useState(false) // Debug mode for cache stats
+	const [cacheStats, setCacheStats] = useState(null) // Cache statistics
 	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
 	const originalChannelRef = useRef(null) // Track original channel when playing ads
 	const originalIndexRef = useRef(null) // Track original video index when playing ads
@@ -25,6 +28,34 @@ export default function Home() {
 	// Track UI load time for pseudo-live playback
 	useEffect(() => {
 		uiLoadTimeRef.current = Date.now()
+	}, [])
+
+	// Update cache stats periodically for debug mode
+	useEffect(() => {
+		const interval = setInterval(() => {
+			if (debugMode) {
+				setCacheStats(bufferCache.getStats())
+			}
+		}, 1000)
+		return () => clearInterval(interval)
+	}, [debugMode])
+
+	// Toggle debug mode with keyboard shortcut (Ctrl+Shift+D)
+	useEffect(() => {
+		const handleKeyPress = (e) => {
+			if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+				setDebugMode(prev => {
+					const newMode = !prev
+					console.log(`[Debug Mode] ${newMode ? 'ENABLED' : 'DISABLED'}`)
+					if (newMode) {
+						bufferCache.printStats()
+					}
+					return newMode
+				})
+			}
+		}
+		window.addEventListener('keydown', handleKeyPress)
+		return () => window.removeEventListener('keydown', handleKeyPress)
 	}, [])
 
 	function filterChannelsBySelection(channelList, selectedChannelNames) {
@@ -275,6 +306,36 @@ export default function Home() {
 					{statusMessage}
 				</div>
 			</div>
+
+			{/* Debug Cache Stats Panel */}
+			{debugMode && cacheStats && (
+				<div style={{
+					position: 'fixed',
+					bottom: '20px',
+					right: '20px',
+					background: 'rgba(0, 0, 0, 0.9)',
+					border: '2px solid #00d4ff',
+					borderRadius: '8px',
+					padding: '15px',
+					color: '#00f5a0',
+					fontSize: '12px',
+					fontFamily: 'monospace',
+					maxWidth: '300px',
+					zIndex: 999,
+					boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)'
+				}}>
+					<div style={{fontWeight: 'bold', marginBottom: '10px', color: '#00d4ff'}}>📊 BUFFER CACHE STATS</div>
+					<div>Cache Size: {cacheStats.size}/{cacheStats.maxSize}</div>
+					<div>Hits: {cacheStats.hits}</div>
+					<div>Misses: {cacheStats.misses}</div>
+					<div>Hit Rate: {cacheStats.hitRate}</div>
+					<div>Evictions: {cacheStats.evictions}</div>
+					<div>Est. Memory: {cacheStats.memoryEstimate}</div>
+					<div style={{marginTop: '10px', color: '#ffaa00', fontSize: '10px'}}>
+						Press Ctrl+Shift+D to toggle debug mode
+					</div>
+				</div>
+			)}
 
 		</div>
 	)

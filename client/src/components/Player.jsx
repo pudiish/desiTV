@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import YouTube from 'react-youtube'
 import { getPseudoLiveItem } from '../utils/pseudoLive'
+import bufferCache from '../utils/bufferCache'
 
 export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [], shouldAdvanceVideo = false }){
 	const [currentIndex, setCurrentIndex] = useState(0)
@@ -36,9 +37,16 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	// reset when channel changes
 	useEffect(() => {
 		if (channel?._id !== channelIdRef.current) {
+			console.log('Channel changed from', channelIdRef.current, 'to', channel?._id, 'with', items.length, 'items')
 			const wasChannelChange = channelIdRef.current !== null
 			channelIdRef.current = channel?._id
 			channelChangeCounterRef.current += 1 // Increment counter to force key change
+			
+			// Cache the playlist for this channel
+			if (channel?._id && items.length > 0) {
+				bufferCache.cachePlaylist(channel._id, items)
+				bufferCache.warmUp(channel._id, items)
+			}
 			
 			// Stop progress monitoring
 			if (progressIntervalRef.current) {
@@ -61,7 +69,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				setTimeout(() => setChannelChanged(false), 100)
 			}
 		}
-	}, [channel?._id, onChannelChange])
+	}, [channel?._id, onChannelChange, items])
 
 	// Compute pseudo-live item using UI load time if available, otherwise use channel's playlistStartEpoch
 	// This ensures consistent timing across page loads
@@ -110,9 +118,18 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	}, [shouldAdvanceVideo, isAdsChannel, items.length])
 
 	// if no channel or no items, render a placeholder (hooks already declared above)
-	if (!channel) return null
-	if (!items.length) return null
-	if (!current) return null
+	if (!channel) {
+		console.warn('[Player] No channel provided')
+		return null
+	}
+	if (!items.length) {
+		console.warn('[Player] No items in channel:', channel?.name)
+		return null
+	}
+	if (!current) {
+		console.warn('[Player] Current video is null at index', currIndex, 'out of', items.length)
+		return null
+	}
 
 	// When switching channels, always start from beginning (offset 0)
 	// Only use pseudo-live offset when continuing in the same channel (not just changed)
@@ -135,8 +152,12 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				// Quality setting not available, ignore
 			}
 			
-			if(offset) e.target.seekTo(offset, true)
+			if(offset) {
+				console.log('[Player] Seeking to offset:', offset)
+				e.target.seekTo(offset, true)
+			}
 			e.target.playVideo()
+			console.log('[Player] Playing video:', current?.youtubeId, 'at index:', currIndex)
 			
 			// Unmute after short delay if volume > 0
 			setTimeout(() => {
@@ -149,7 +170,9 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 
 			// Start monitoring video progress for early switching
 			startProgressMonitoring()
-		}catch{}
+		}catch(err){
+			console.error('[Player] onReady error:', err)
+		}
 	}
 
 	function startProgressMonitoring() {
@@ -298,8 +321,11 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	function onStateChange(event) {
 		// YouTube player state: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
 		const state = event.data
+		const stateNames = { '-1': 'unstarted', '0': 'ended', '1': 'playing', '2': 'paused', '3': 'buffering', '5': 'cued' }
+		console.log('[Player] State changed to:', stateNames[state] || 'unknown')
 		
 		if (state === 0) { // Video ended (fallback - should rarely happen due to early switching)
+			console.log('[Player] Video ended, transitioning...')
 			if (!isTransitioningRef.current) {
 				// If it's an ad channel, notify parent to return to original channel
 				if (isAdsChannel) {
@@ -309,6 +335,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				}
 			}
 		} else if (state === 3) { // Buffering
+			console.log('[Player] Buffering started')
 			// Show static effect during buffering
 			setIsBuffering(true)
 			// Clear any existing timeout
@@ -316,6 +343,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				clearTimeout(bufferTimeoutRef.current)
 			}
 		} else if (state === 1) { // Playing
+			console.log('[Player] Video playing:', current?.youtubeId)
 			// Hide static effect when playing starts
 			if (bufferTimeoutRef.current) {
 				clearTimeout(bufferTimeoutRef.current)
@@ -330,6 +358,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				startProgressMonitoring()
 			}
 		} else if (state === 5) { // Video cued
+			console.log('[Player] Video cued:', current?.youtubeId)
 			// Restart progress monitoring when video is cued
 			if (!progressIntervalRef.current && !isTransitioningRef.current) {
 				setTimeout(() => startProgressMonitoring(), 1000)
@@ -346,7 +375,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			disablekb: 1, 
 			modestbranding: 1, 
 			rel: 0, 
-			start: offset,
+			start: Math.floor(offset) || 0, // Ensure start is a valid number
 			iv_load_policy: 3, // Hide annotations
 			showinfo: 0,
 			fs: 0, // Disable fullscreen button
@@ -386,6 +415,16 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
 			
+			// Cache current video metadata
+			if (channel?._id && current._id) {
+				bufferCache.cacheVideoMetadata(channel._id, current._id, {
+					title: current.title,
+					youtubeId: current.youtubeId,
+					duration: current.duration,
+					tags: current.tags
+				})
+			}
+			
 			// Reset skip attempts when successfully playing a new video
 			if (!failedVideosRef.current.has(current.youtubeId)) {
 				skipAttemptsRef.current = 0
@@ -396,7 +435,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				setTimeout(() => startProgressMonitoring(), 1000)
 			}
 		}
-	}, [current?.youtubeId])
+	}, [current?.youtubeId, channel?._id])
 
 	return (
 		<div className="player-wrapper">
