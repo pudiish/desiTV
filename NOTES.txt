@@ -1,0 +1,3 @@
+- This export is intentionally concise; you'll likely want to improve styling, error handling, and security for production.
+- Important: DO NOT upload copyrighted videos you do not own. Prefer embedding official YouTube uploads or getting licenses.
+- For production, configure CORS whitelist, strong admin auth, and HTTPS reverse proxies.
