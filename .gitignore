@@ -8,3 +8,5 @@ server/dist/
 client/node_modules/
 client/dist/
 *.log
+retro-tv.channels.json
+music_playlist.json
