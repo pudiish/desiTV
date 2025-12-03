@@ -7,7 +7,7 @@ const VideoSchema = new mongoose.Schema({
   year: Number,
   tags: [String],
   category: { type: String }
-});
+}, { _id: true }); // Ensure each video has an _id
 
 // Channel represents a single broadcast channel (category) containing a playlist
 const ChannelSchema = new mongoose.Schema({

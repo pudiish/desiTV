@@ -18,6 +18,7 @@ export default function Home() {
 	const originalChannelRef = useRef(null) // Track original channel when playing ads
 	const originalIndexRef = useRef(null) // Track original video index when playing ads
 	const isPlayingAdRef = useRef(false) // Track if currently playing an ad
+	const [shouldAdvanceVideo, setShouldAdvanceVideo] = useState(false) // Signal to advance video after ad
 
 	const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
 
@@ -149,7 +150,7 @@ export default function Home() {
 	function handleVideoEnd() {
 		triggerStatic()
 		
-		// If we just finished an ad, return to original channel
+		// If we just finished an ad, return to original channel and advance video
 		if (isPlayingAd) {
 			setIsPlayingAd(false)
 			setAdChannel(null)
@@ -165,28 +166,33 @@ export default function Home() {
 				originalChannelRef.current = null
 				originalIndexRef.current = null
 			}
+			
+			// Signal to advance to next video after ad
+			setShouldAdvanceVideo(true)
+			setTimeout(() => setShouldAdvanceVideo(false), 100)
 			return
 		}
 
 		// If we finished a regular video (not an ad), play an ad if available
 		// Only play ads if we have an ads channel and it's not already the active channel
-		if (adsChannel && adsChannel.items && adsChannel.items.length > 0 && activeChannel) {
-			const isCurrentAd = activeChannel.name && (
+		if (adsChannel && adsChannel.items && adsChannel.items.length > 0) {
+			const isCurrentAd = activeChannel && activeChannel.name && (
 				activeChannel.name.toLowerCase() === 'ads' || 
 				activeChannel.name.toLowerCase() === 'ad' || 
 				activeChannel.name.toLowerCase() === 'advertisements'
 			)
 			
 			if (!isCurrentAd) {
-				// Store original channel info
+				// Store original channel info before switching to ad
 				originalChannelRef.current = activeChannel
 				originalIndexRef.current = activeChannelIndex
+				isPlayingAdRef.current = true
 				
-				// Get random ad
+				// Get random ad from the ads channel
 				const adItems = adsChannel.items
 				const randomAd = adItems[Math.floor(Math.random() * adItems.length)]
 				
-				// Create temporary ad channel
+				// Create temporary ad channel with just one random ad
 				const tempAdChannel = {
 					...adsChannel,
 					items: [randomAd],
@@ -237,6 +243,8 @@ export default function Home() {
 					staticActive={staticActive}
 					uiLoadTime={uiLoadTimeRef.current}
 					allChannels={channels}
+					onVideoEnd={handleVideoEnd}
+					shouldAdvanceVideo={shouldAdvanceVideo}
 				/>
 
 				{/* Right Side - Controls and Categories */}

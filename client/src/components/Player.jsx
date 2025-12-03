@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react'
 import YouTube from 'react-youtube'
 import { getPseudoLiveItem } from '../utils/pseudoLive'
 
-export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [] }){
+export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [], shouldAdvanceVideo = false }){
 	const [currentIndex, setCurrentIndex] = useState(0)
 	const [manualIndex, setManualIndex] = useState(null)
 	const [channelChanged, setChannelChanged] = useState(false)
@@ -96,6 +96,18 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			} catch(err) {}
 		}
 	}, [volume])
+
+	// Handle advancing to next video after ad completes
+	useEffect(() => {
+		if (shouldAdvanceVideo && !isAdsChannel && !isTransitioningRef.current) {
+			console.log('Advancing to next video after ad...')
+			setCurrentIndex(prevIndex => {
+				let nextIndex = (prevIndex + 1) % items.length
+				setManualIndex(nextIndex)
+				return nextIndex
+			})
+		}
+	}, [shouldAdvanceVideo, isAdsChannel, items.length])
 
 	// if no channel or no items, render a placeholder (hooks already declared above)
 	if (!channel) return null

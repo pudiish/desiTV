@@ -91,16 +91,63 @@ router.post('/:channelId/videos', async (req, res) => {
 router.delete('/:channelId/videos/:videoId', async (req, res) => {
   try {
     const { channelId, videoId } = req.params;
+    console.log('Deleting video:', videoId, 'from channel:', channelId);
+    
+    if (!videoId) {
+      return res.status(400).json({ message: 'Video ID is required' });
+    }
+    
     const ch = await Channel.findById(channelId);
-    if (!ch) return res.status(404).json({ message: 'Channel not found' });
-    const item = ch.items.id(videoId);
-    if (!item) return res.status(404).json({ message: 'Video not found' });
-    item.remove();
-    await ch.save();
-    res.json(ch);
+    if (!ch) {
+      console.warn('Channel not found:', channelId);
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    
+    // Try to delete by _id first, then by youtubeId if _id fails
+    let updatedChannel = await Channel.findByIdAndUpdate(
+      channelId,
+      { $pull: { items: { _id: videoId } } },
+      { new: true }
+    );
+    
+    // If no items were removed, try by youtubeId
+    if (!updatedChannel || updatedChannel.items.length === ch.items.length) {
+      console.log('Video not found by _id, trying by youtubeId:', videoId);
+      updatedChannel = await Channel.findByIdAndUpdate(
+        channelId,
+        { $pull: { items: { youtubeId: videoId } } },
+        { new: true }
+      );
+    }
+    
+    if (!updatedChannel) {
+      console.warn('Failed to update channel:', channelId);
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    
+    console.log('Video deleted successfully:', videoId);
+    res.json(updatedChannel);
   } catch (err) {
-    console.error('DELETE /api/channels/:id/videos/:videoId error', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('DELETE /api/channels/:channelId/videos/:videoId error:', err.message, err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+// Delete channel
+router.delete('/:channelId', async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    console.log('Attempting to delete channel:', channelId);
+    const ch = await Channel.findByIdAndDelete(channelId);
+    if (!ch) {
+      console.warn('Channel not found:', channelId);
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    console.log('Channel deleted successfully:', channelId);
+    res.json({ message: 'Channel deleted successfully', channel: ch });
+  } catch (err) {
+    console.error('DELETE /api/channels/:channelId error:', err.message, err);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 });
 
