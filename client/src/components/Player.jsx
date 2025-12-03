@@ -14,11 +14,15 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	const bufferTimeoutRef = useRef(null)
 	const progressIntervalRef = useRef(null)
 	const transitionTimeoutRef = useRef(null)
+	const errorTimeoutRef = useRef(null)
 	const isTransitioningRef = useRef(false) // Ref to track transition state for interval checks
+	const failedVideosRef = useRef(new Set()) // Track failed videos to avoid infinite loops
+	const skipAttemptsRef = useRef(0) // Track consecutive skip attempts
 	const SWITCH_BEFORE_END = 3 // Switch 3 seconds before video ends
 
 	// safe normalized items even if channel is null
 	const items = Array.isArray(channel?.items) ? channel.items : []
+	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10) // Maximum consecutive skips before giving up
 
 	// reset when channel changes
 	useEffect(() => {
@@ -32,6 +36,10 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				clearInterval(progressIntervalRef.current)
 				progressIntervalRef.current = null
 			}
+			
+			// Reset error tracking for new channel
+			failedVideosRef.current.clear()
+			skipAttemptsRef.current = 0
 			
 			setManualIndex(null)
 			setCurrentIndex(0)
@@ -156,7 +164,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		}, 500)
 	}
 
-	function switchToNextVideo() {
+	function switchToNextVideo(skipFailed = false) {
 		if (isTransitioningRef.current) return // Prevent multiple transitions
 
 		isTransitioningRef.current = true
@@ -181,14 +189,71 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		// Small delay for smooth transition (300ms for better visual effect)
 		transitionTimeoutRef.current = setTimeout(() => {
 			setCurrentIndex(prevIndex => {
-				// If only one video, restart it (loop)
-				const nextIndex = items.length === 1 ? 0 : (prevIndex + 1) % items.length
+				let nextIndex
+				let attempts = 0
+				const maxAttempts = items.length || 10
+				
+				// Find next available video (skip failed ones)
+				do {
+					if (items.length === 1) {
+						nextIndex = 0
+						break
+					}
+					nextIndex = (prevIndex + 1) % items.length
+					attempts++
+					
+					// If we've tried all videos and they're all failed, reset failed list
+					if (attempts >= maxAttempts && failedVideosRef.current.size >= items.length) {
+						failedVideosRef.current.clear()
+						skipAttemptsRef.current = 0
+						break
+					}
+				} while (skipFailed && failedVideosRef.current.has(items[nextIndex]?.youtubeId) && attempts < maxAttempts)
+				
 				setManualIndex(nextIndex)
 				isTransitioningRef.current = false
 				setIsTransitioning(false)
 				return nextIndex
 			})
 		}, 300)
+	}
+
+	function handleVideoError(error) {
+		const errorCode = error?.data
+		// YouTube error codes: 2=invalid, 5=HTML5 error, 100=not found, 101/150=not embeddable
+		const isUnavailable = errorCode === 100 || errorCode === 101 || errorCode === 150 || errorCode === 2
+		
+		if (isUnavailable && current?.youtubeId) {
+			console.warn(`Video ${current.youtubeId} is unavailable (error ${errorCode}), skipping to next...`)
+			
+			// Mark this video as failed
+			failedVideosRef.current.add(current.youtubeId)
+			skipAttemptsRef.current++
+			
+			// Skip to next video if we haven't exceeded max attempts
+			if (skipAttemptsRef.current < MAX_SKIP_ATTEMPTS) {
+				// Clear any existing error timeout
+				if (errorTimeoutRef.current) {
+					clearTimeout(errorTimeoutRef.current)
+				}
+				
+				// Delay before skipping to avoid rapid skipping
+				errorTimeoutRef.current = setTimeout(() => {
+					switchToNextVideo(true) // Skip failed videos
+				}, 1000)
+			} else {
+				console.error('Too many consecutive video errors, stopping auto-skip')
+				setIsBuffering(false)
+				skipAttemptsRef.current = 0 // Reset after delay
+				setTimeout(() => {
+					skipAttemptsRef.current = 0
+				}, 5000)
+			}
+		} else {
+			// For other errors, just log and continue
+			console.error('YouTube player error:', error)
+			setIsBuffering(false)
+		}
 	}
 
 	function onStateChange(event) {
@@ -265,6 +330,9 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			if (transitionTimeoutRef.current) {
 				clearTimeout(transitionTimeoutRef.current)
 			}
+			if (errorTimeoutRef.current) {
+				clearTimeout(errorTimeoutRef.current)
+			}
 		}
 	}, [currIndex]) // Re-run cleanup when video index changes
 
@@ -273,6 +341,12 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		if (current) {
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
+			
+			// Reset skip attempts when successfully playing a new video
+			if (!failedVideosRef.current.has(current.youtubeId)) {
+				skipAttemptsRef.current = 0
+			}
+			
 			// Restart progress monitoring for new video
 			if (playerRef.current && !progressIntervalRef.current) {
 				setTimeout(() => startProgressMonitoring(), 1000)
@@ -288,10 +362,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				opts={opts} 
 				onReady={onReady}
 				onStateChange={onStateChange}
-				onError={(e) => {
-					console.error('YouTube player error:', e)
-					setIsBuffering(false)
-				}}
+				onError={handleVideoError}
 				className="youtube-player-container"
 				iframeClassName="youtube-iframe"
 			/>
