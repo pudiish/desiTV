@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import YouTube from 'react-youtube'
-import { getPseudoLiveItem } from '../utils/pseudoLive'
+import { getPseudoLiveItem, getNextVideoInSequence } from '../utils/pseudoLive'
 
 export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [], shouldAdvanceVideo = false, onBufferingChange = null }){
 	const [currentIndex, setCurrentIndex] = useState(0)
@@ -50,8 +50,9 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			failedVideosRef.current.clear()
 			skipAttemptsRef.current = 0
 			
-			setManualIndex(null)
-			setCurrentIndex(0)
+			// On channel change, DON'T reset to index 0
+			// Instead, recalculate based on the live timeline
+			// manualIndex will be null so we use liveIndex from the memoized calculation
 			setChannelChanged(wasChannelChange)
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
@@ -64,7 +65,8 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	}, [channel?._id, onChannelChange])
 
 	// Compute pseudo-live item using UI load time if available, otherwise use channel's playlistStartEpoch
-	// This ensures consistent timing across page loads
+	// This ensures consistent timing across page loads and channel changes
+	// The timeline NEVER resets - it keeps moving forward like a real TV broadcast
 	const effectiveStartEpoch = useMemo(() => {
 		if (uiLoadTime && channel?.playlistStartEpoch) {
 			// Use UI load time as the reference point for pseudo-live playback
@@ -76,11 +78,12 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	
 	const live = useMemo(() => getPseudoLiveItem(items, effectiveStartEpoch), [items, effectiveStartEpoch])
 
-	const liveIndex = items.findIndex(i => i.youtubeId === (live?.item?.youtubeId))
-	// When channel just changed, always start at index 0, otherwise use manualIndex or currentIndex or liveIndex
+	const liveIndex = live?.videoIndex ?? 0
+	// When channel just changed and we haven't manually set an index, use liveIndex to resume where the timeline is
+	// Otherwise use manualIndex or currentIndex
 	const currIndex = channelChanged 
-		? 0
-		: (manualIndex ?? (currentIndex >= 0 ? currentIndex : (liveIndex >= 0 ? liveIndex : 0)))
+		? liveIndex  // Use timeline-based index when switching channels
+		: (manualIndex !== null ? manualIndex : (currentIndex >= 0 ? currentIndex : liveIndex))
 	const current = items[currIndex]
 
 	// Sync volume with player
@@ -114,9 +117,11 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	if (!items.length) return null
 	if (!current) return null
 
-	// When switching channels, always start from beginning (offset 0)
-	// Only use pseudo-live offset when continuing in the same channel (not just changed)
-	const offset = (channelChanged || manualIndex !== null) ? 0 : Math.floor(live?.offset || 0)
+	// When switching channels, always start from the live offset (where the timeline is)
+	// Only use manual offset when manually seeking
+	const offset = (channelChanged || manualIndex !== null) 
+		? (live?.offset || 0)
+		: (live?.offset || 0)
 	// Key must change when channel changes to force YouTube component remount
 	// Use channelChangeCounterRef to ensure key changes on channel switch
 	const playerKey = `${channel?._id}-${current.youtubeId}-${currIndex}-${channelChangeCounterRef.current}`
@@ -213,6 +218,10 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 
 		// Notify parent (Home will handle ad insertion before next video)
 		if (onVideoEnd) onVideoEnd()
+
+		// Get the next video based on timeline, not manual sequence
+		// The nextIndex from getNextVideoInSequence gives us what should play naturally
+		const next = getNextVideoInSequence(items, currIndex, live?.cyclePosition || 0)
 
 		// Note: Home component will switch to ad channel if available
 		// If no ads, Home won't change the channel and we'll continue here
