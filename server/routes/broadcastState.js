@@ -10,11 +10,11 @@ const router = express.Router()
 const BroadcastState = require('../models/BroadcastState')
 
 /**
- * GET /api/channels/:channelId/broadcast-state
+ * GET /api/broadcast-state/:channelId
  * Retrieve current broadcast state for a channel
  * Calculates virtual position based on elapsed time since last session
  */
-router.get('/channels/:channelId/broadcast-state', async (req, res) => {
+router.get('/broadcast-state/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 
@@ -74,11 +74,11 @@ router.get('/channels/:channelId/broadcast-state', async (req, res) => {
 })
 
 /**
- * POST /api/channels/:channelId/broadcast-state
+ * POST /api/broadcast-state/:channelId
  * Save or update broadcast state for a channel
  * Called periodically during playback to persist state
  */
-router.post('/channels/:channelId/broadcast-state', async (req, res) => {
+router.post('/broadcast-state/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 		const stateData = req.body
@@ -123,11 +123,11 @@ router.post('/channels/:channelId/broadcast-state', async (req, res) => {
 })
 
 /**
- * GET /api/channels/:channelId/broadcast-state/timeline
+ * GET /api/broadcast-state/:channelId/timeline
  * Calculate where we should be in the timeline right now
  * Accounts for time passed since last session ended
  */
-router.get('/channels/:channelId/broadcast-state/timeline', async (req, res) => {
+router.get('/broadcast-state/:channelId/timeline', async (req, res) => {
 	try {
 		const { channelId } = req.params
 		const state = await BroadcastState.findOne({ channelId })
@@ -172,10 +172,10 @@ router.get('/channels/:channelId/broadcast-state/timeline', async (req, res) => 
 })
 
 /**
- * DELETE /api/channels/:channelId/broadcast-state
+ * DELETE /api/broadcast-state/:channelId
  * Clear broadcast state for a channel
  */
-router.delete('/channels/:channelId/broadcast-state', async (req, res) => {
+router.delete('/broadcast-state/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 

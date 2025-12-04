@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import TVFrame from '../components/TVFrame'
-import ControlPanel from '../components/ControlPanel'
+import TVRemote from '../components/TVRemote'
+import TVMenu from '../components/TVMenu'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
 
@@ -12,17 +13,26 @@ export default function Home() {
 	const [activeChannelIndex, setActiveChannelIndex] = useState(0)
 	const [power, setPower] = useState(false)
 	const [volume, setVolume] = useState(0.5)
+	const [prevVolume, setPrevVolume] = useState(0.5) // For mute toggle
 	const [staticActive, setStaticActive] = useState(false)
 	const [statusMessage, setStatusMessage] = useState('WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY.')
 	const [isBuffering, setIsBuffering] = useState(false)
 	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
+	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
 	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
 	const originalChannelRef = useRef(null) // Track original channel when playing ads
 	const originalIndexRef = useRef(null) // Track original video index when playing ads
 	const isPlayingAdRef = useRef(false) // Track if currently playing an ad
 	const [shouldAdvanceVideo, setShouldAdvanceVideo] = useState(false) // Signal to advance video after ad
+	const shutdownSoundRef = useRef(null) // Shutdown sound
 
 	const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
+
+	// Initialize shutdown sound
+	useEffect(() => {
+		shutdownSoundRef.current = new Audio('/sounds/tv-shutdown-386167.mp3')
+		shutdownSoundRef.current.volume = 0.5
+	}, [])
 
 	// Track UI load time for pseudo-live playback
 	useEffect(() => {
@@ -93,6 +103,13 @@ export default function Home() {
 
 	function handlePowerToggle() {
 		const newPower = !power
+		
+		// Play shutdown sound when turning off
+		if (!newPower && shutdownSoundRef.current) {
+			shutdownSoundRef.current.currentTime = 0
+			shutdownSoundRef.current.play().catch(() => {})
+		}
+		
 		setPower(newPower)
 		
 		if (newPower) {
@@ -108,6 +125,7 @@ export default function Home() {
 			setStatusMessage('TV OFF. CLICK POWER TO START.')
 			setIsBuffering(false)
 			setBufferErrorMessage('')
+			setMenuOpen(false) // Close menu when TV turns off
 		}
 	}
 
@@ -148,13 +166,53 @@ export default function Home() {
 	}
 
 	function handleVolumeUp() {
-		setVolume(prev => Math.min(1, prev + 0.1))
-		setStatusMessage(`VOLUME: ${Math.round((volume + 0.1) * 100)}%`)
+		setVolume(prev => {
+			const newVol = Math.min(1, prev + 0.1)
+			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
+			return newVol
+		})
 	}
 
 	function handleVolumeDown() {
-		setVolume(prev => Math.max(0, prev - 0.1))
-		setStatusMessage(`VOLUME: ${Math.round((volume - 0.1) * 100)}%`)
+		setVolume(prev => {
+			const newVol = Math.max(0, prev - 0.1)
+			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
+			return newVol
+		})
+	}
+
+	function handleMute() {
+		if (volume > 0) {
+			setPrevVolume(volume)
+			setVolume(0)
+			setStatusMessage('MUTED')
+		} else {
+			setVolume(prevVolume || 0.5)
+			setStatusMessage(`VOLUME: ${Math.round((prevVolume || 0.5) * 100)}%`)
+		}
+	}
+
+	function handleChannelDirect(index) {
+		if (!power || filteredChannels.length === 0) return
+		if (index < 0 || index >= filteredChannels.length) {
+			setStatusMessage(`CHANNEL ${index + 1} NOT AVAILABLE`)
+			return
+		}
+		
+		// Reset ad state
+		setIsPlayingAd(false)
+		setAdChannel(null)
+		originalChannelRef.current = null
+		originalIndexRef.current = null
+		
+		triggerStatic()
+		triggerBuffering(`SWITCHING TO ${filteredChannels[index]?.name || 'UNKNOWN'}...`)
+		setActiveChannelIndex(index)
+		setStatusMessage(`CHANNEL ${index + 1}: ${filteredChannels[index]?.name || 'UNKNOWN'}`)
+	}
+
+	function handleMenuToggle() {
+		setMenuOpen(prev => !prev)
 	}
 
 	function triggerStatic() {
@@ -284,16 +342,21 @@ export default function Home() {
 					}}
 				/>
 
-				{/* Right Side - Controls and Categories */}
+				{/* Right Side - Remote Control and Categories */}
 				<div className="right-panel">
-					<ControlPanel
+					<TVRemote
 						power={power}
 						onPowerToggle={handlePowerToggle}
 						onChannelUp={handleChannelUp}
 						onChannelDown={handleChannelDown}
+						onChannelDirect={handleChannelDirect}
 						volume={volume}
 						onVolumeUp={handleVolumeUp}
 						onVolumeDown={handleVolumeDown}
+						onMute={handleMute}
+						onMenuToggle={handleMenuToggle}
+						activeChannelIndex={activeChannelIndex}
+						totalChannels={filteredChannels.length}
 					/>
 
 					<CategoryList
@@ -305,6 +368,16 @@ export default function Home() {
 					/>
 				</div>
 			</div>
+
+			{/* TV Menu Overlay */}
+			<TVMenu
+				isOpen={menuOpen}
+				onClose={() => setMenuOpen(false)}
+				channels={filteredChannels}
+				activeChannelIndex={activeChannelIndex}
+				onChannelSelect={handleChannelDirect}
+				power={power}
+			/>
 
 			{/* Footer / Status Text */}
 			<div className="footer-status">

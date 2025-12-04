@@ -43,8 +43,8 @@ class BroadcastStateManager {
 		try {
 			console.log(`[BSM] Pre-loading state for channel: ${channelId}`)
 
-			// Fetch saved state from MongoDB
-			const response = await fetch(`/api/channels/${channelId}/broadcast-state`)
+			// Fetch saved state from MongoDB - using new route path
+			const response = await fetch(`/api/broadcast-state/${channelId}`)
 
 			if (response.ok) {
 				const savedState = await response.json()
@@ -333,7 +333,7 @@ class BroadcastStateManager {
 				return false
 			}
 
-			const response = await fetch(`/api/channels/${channelId}/broadcast-state`, {
+			const response = await fetch(`/api/broadcast-state/${channelId}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(dataToSave),

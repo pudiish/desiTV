@@ -2,11 +2,13 @@ import React, { useRef, useEffect, useState } from 'react'
 import Player from './Player'
 import StaticEffect from './StaticEffect'
 import BufferingOverlay from './BufferingOverlay'
+import WhatsNextPreview from './WhatsNextPreview'
 
 export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, uiLoadTime, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
+	const [showPreview, setShowPreview] = useState(false)
 
 	// Handle fullscreen change events
 	useEffect(() => {
@@ -80,12 +82,12 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			className="tv-frame-container" 
 			ref={tvFrameRef} 
 			onDoubleClick={toggleFullscreen}
-			onMouseEnter={() => setShowFullscreenHint(true)}
-			onMouseLeave={() => setShowFullscreenHint(false)}
+			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
+			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
-			{showFullscreenHint && !isFullscreen && (
+			{showFullscreenHint && !isFullscreen && power && (
 				<div className="fullscreen-hint-overlay">
-					DOUBLE CLICK FOR FULLSCREEN
+					DOUBLE CLICK FOR FULLSCREEN | ESC FOR MENU
 				</div>
 			)}
 			<div className="tv-frame">
@@ -127,6 +129,11 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 								duration={2000}
 								videoPath="/sounds/alb_tvn0411_1080p.mp4"
 								errorMessage={bufferErrorMessage}
+							/>
+							{/* What's Next Preview on hover */}
+							<WhatsNextPreview 
+								channel={activeChannel}
+								isVisible={showPreview && !isBuffering && !staticActive}
 							/>
 						</div>
 					)}

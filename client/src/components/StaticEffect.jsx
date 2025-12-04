@@ -39,9 +39,11 @@ export default function StaticEffect({ active, onComplete }) {
 			<audio 
 				ref={audioRef} 
 				preload="auto"
-				src="/sounds/tv-static.mp3"
+				src="/sounds/tv-static-noise-291374.mp3"
+				loop
 				onError={() => {
 					// Silently handle missing sound file
+					console.warn('[StaticEffect] Could not load static sound')
 				}}
 			/>
 			{active && (

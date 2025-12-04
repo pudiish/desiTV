@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react'
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import YouTube from 'react-youtube'
 import { getPseudoLiveItem, getNextVideoInSequence } from '../utils/pseudoLive'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
@@ -17,14 +17,18 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	const progressIntervalRef = useRef(null)
 	const transitionTimeoutRef = useRef(null)
 	const errorTimeoutRef = useRef(null)
-	const isTransitioningRef = useRef(false) // Ref to track transition state for interval checks
-	const failedVideosRef = useRef(new Set()) // Track failed videos to avoid infinite loops
-	const skipAttemptsRef = useRef(0) // Track consecutive skip attempts
-	const SWITCH_BEFORE_END = 3 // Switch 3 seconds before video ends
+	const isTransitioningRef = useRef(false)
+	const failedVideosRef = useRef(new Set())
+	const skipAttemptsRef = useRef(0)
+	const staticAudioRef = useRef(null)
+	const SWITCH_BEFORE_END = 3
 
-	// safe normalized items even if channel is null
-	const items = Array.isArray(channel?.items) ? channel.items : []
-	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10) // Maximum consecutive skips before giving up
+	// Safe normalized items - ALWAYS compute this first
+	const items = useMemo(() => {
+		return Array.isArray(channel?.items) ? channel.items : []
+	}, [channel?.items])
+	
+	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10)
 
 	// Check if current channel is Ads channel
 	const isAdsChannel = useMemo(() => {
@@ -35,56 +39,108 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		)
 	}, [channel?.name])
 
-	// reset when channel changes
+	// Compute pseudo-live item
+	const effectiveStartEpoch = useMemo(() => {
+		if (uiLoadTime && channel?.playlistStartEpoch) {
+			return new Date(uiLoadTime)
+		}
+		return channel?.playlistStartEpoch || new Date('2020-01-01T00:00:00Z')
+	}, [uiLoadTime, channel?.playlistStartEpoch])
+	
+	const live = useMemo(() => {
+		if (items.length === 0) return null
+		return getPseudoLiveItem(items, effectiveStartEpoch)
+	}, [items, effectiveStartEpoch])
+
+	const liveIndex = live?.videoIndex ?? 0
+	
+	// Calculate current index - must be computed before any conditional returns
+	const currIndex = useMemo(() => {
+		if (items.length === 0) return 0
+		if (channelChanged) return liveIndex
+		if (manualIndex !== null) return manualIndex
+		if (currentIndex >= 0 && currentIndex < items.length) return currentIndex
+		return liveIndex
+	}, [channelChanged, liveIndex, manualIndex, currentIndex, items.length])
+
+	// Get current video - safely handle empty items
+	const current = items[currIndex] || null
+
+	// Calculate offset
+	const offset = useMemo(() => {
+		return live?.offset || 0
+	}, [live?.offset])
+
+	// Player key for forcing remount
+	const playerKey = useMemo(() => {
+		if (!channel?._id || !current?.youtubeId) return 'no-video'
+		return `${channel._id}-${current.youtubeId}-${currIndex}-${channelChangeCounterRef.current}`
+	}, [channel?._id, current?.youtubeId, currIndex])
+
+	// YouTube player options
+	const opts = useMemo(() => ({
+		width: '100%',
+		height: '100%',
+		playerVars: { 
+			autoplay: 1, 
+			controls: 0, 
+			disablekb: 1, 
+			modestbranding: 1, 
+			rel: 0, 
+			start: Math.floor(offset),
+			iv_load_policy: 3,
+			showinfo: 0,
+			fs: 0,
+			cc_load_policy: 0,
+			playsinline: 1,
+			enablejsapi: 1,
+			origin: window.location.origin,
+			widget_referrer: window.location.origin,
+			autohide: 1,
+			loop: 0,
+		}
+	}), [offset])
+
+	// ===== ALL EFFECTS MUST BE DECLARED HERE, BEFORE ANY CONDITIONAL RETURNS =====
+
+	// Effect: Reset when channel changes
 	useEffect(() => {
 		if (channel?._id !== channelIdRef.current) {
 			const wasChannelChange = channelIdRef.current !== null
 			channelIdRef.current = channel?._id
-			channelChangeCounterRef.current += 1 // Increment counter to force key change
+			channelChangeCounterRef.current += 1
 			
-			// Stop progress monitoring
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current)
 				progressIntervalRef.current = null
 			}
 			
-			// Reset error tracking for new channel
 			failedVideosRef.current.clear()
 			skipAttemptsRef.current = 0
 			
-			// On channel change, DON'T reset to index 0
-			// Instead, recalculate based on the live timeline
-			// manualIndex will be null so we use liveIndex from the memoized calculation
 			setChannelChanged(wasChannelChange)
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
+			setManualIndex(null) // Reset manual index on channel change
+			
 			if (onChannelChange) onChannelChange()
-			// Reset channelChanged flag after a brief moment
+			
 			if (wasChannelChange) {
 				setTimeout(() => setChannelChanged(false), 100)
 			}
 		}
 	}, [channel?._id, onChannelChange])
 
-	// CRITICAL: Load and restore saved state from database when channel changes
-	// Must happen BEFORE player initializes to use correct position
+	// Effect: Load and restore saved state from database
 	useEffect(() => {
-		if (!channel?._id) return
+		if (!channel?._id || items.length === 0) return
 
 		const loadAndRestoreState = async () => {
 			try {
 				console.log(`[Player] Loading state for channel ${channel._id}...`)
 				
-				// PRE-LOAD state from MongoDB BEFORE playback
-				const preloadedState = await BroadcastStateManager.preloadStateForChannel(
-					channel._id
-				)
-
-				// Calculate current position using the loaded state
-				const position = BroadcastStateManager.calculateCurrentPosition(
-					channel,
-					preloadedState
-				)
+				const preloadedState = await BroadcastStateManager.preloadStateForChannel(channel._id)
+				const position = BroadcastStateManager.calculateCurrentPosition(channel, preloadedState)
 
 				console.log(`[Player] Calculated position:`, {
 					videoIndex: position.videoIndex,
@@ -92,39 +148,33 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 					totalElapsed: position.totalElapsedSec?.toFixed(1),
 				})
 
-				// Initialize BroadcastStateManager with preloaded state
 				await BroadcastStateManager.initializeChannel(channel, preloadedState)
 
-				// SET PLAYER STATE TO CALCULATED POSITION
-				// This ensures player starts from correct video and offset
-				setCurrentIndex(position.videoIndex)
-				setManualIndex(null)
-
-				// Store offset for player to use
-				if (playerRef.current) {
-					playerRef.current.targetOffset = position.offset
+				// Only update if position is valid
+				if (position.videoIndex >= 0 && position.videoIndex < items.length) {
+					setCurrentIndex(position.videoIndex)
+					if (playerRef.current) {
+						playerRef.current.targetOffset = position.offset
+					}
 				}
 			} catch (err) {
 				console.error('[Player] Error loading state:', err)
-				// Fall back to default initialization
 				await BroadcastStateManager.initializeChannel(channel)
 			}
 		}
 
 		loadAndRestoreState()
-	}, [channel?._id])
+	}, [channel?._id, items.length])
 
-	// Save state before page unload
+	// Effect: Save state before page unload
 	useEffect(() => {
-		const handleBeforeUnload = (e) => {
-			// Save current state to MongoDB before leaving
+		const handleBeforeUnload = () => {
 			if (channel?._id) {
-				// Use sendBeacon for reliable delivery even if page is unloading
 				const stateData = BroadcastStateManager.getChannelState(channel._id)
 				if (stateData) {
 					try {
 						navigator.sendBeacon(
-							`/api/channels/${channel._id}/broadcast-state`,
+							`/api/broadcast-state/${channel._id}`,
 							JSON.stringify(stateData)
 						)
 						console.log('[Player] State saved via sendBeacon')
@@ -139,29 +189,7 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		return () => window.removeEventListener('beforeunload', handleBeforeUnload)
 	}, [channel?._id])
 
-	// Compute pseudo-live item using UI load time if available, otherwise use channel's playlistStartEpoch
-	// This ensures consistent timing across page loads and channel changes
-	// The timeline NEVER resets - it keeps moving forward like a real TV broadcast
-	const effectiveStartEpoch = useMemo(() => {
-		if (uiLoadTime && channel?.playlistStartEpoch) {
-			// Use UI load time as the reference point for pseudo-live playback
-			// This makes it feel like a real TV channel that's always "on air"
-			return new Date(uiLoadTime)
-		}
-		return channel?.playlistStartEpoch || new Date('2020-01-01T00:00:00Z')
-	}, [uiLoadTime, channel?.playlistStartEpoch])
-	
-	const live = useMemo(() => getPseudoLiveItem(items, effectiveStartEpoch), [items, effectiveStartEpoch])
-
-	const liveIndex = live?.videoIndex ?? 0
-	// When channel just changed and we haven't manually set an index, use liveIndex to resume where the timeline is
-	// Otherwise use manualIndex or currentIndex
-	const currIndex = channelChanged 
-		? liveIndex  // Use timeline-based index when switching channels
-		: (manualIndex !== null ? manualIndex : (currentIndex >= 0 ? currentIndex : liveIndex))
-	const current = items[currIndex]
-
-	// Sync volume with player
+	// Effect: Sync volume with player
 	useEffect(() => {
 		if (playerRef.current) {
 			try {
@@ -171,102 +199,63 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				} else {
 					playerRef.current.mute()
 				}
-			} catch(err) {}
+			} catch(err) {
+				// Player not ready, ignore
+			}
 		}
 	}, [volume])
 
-	// Handle advancing to next video after ad completes
+	// Effect: Handle advancing to next video after ad completes
 	useEffect(() => {
-		if (shouldAdvanceVideo && !isAdsChannel && !isTransitioningRef.current) {
+		if (shouldAdvanceVideo && !isAdsChannel && !isTransitioningRef.current && items.length > 0) {
 			console.log('Advancing to next video after ad...')
 			setCurrentIndex(prevIndex => {
-				let nextIndex = (prevIndex + 1) % items.length
+				const nextIndex = (prevIndex + 1) % items.length
 				setManualIndex(nextIndex)
 				return nextIndex
 			})
 		}
 	}, [shouldAdvanceVideo, isAdsChannel, items.length])
 
-	// if no channel or no items, render a placeholder (hooks already declared above)
-	if (!channel) return null
-	if (!items.length) return null
-	if (!current) return null
-
-	// When switching channels, always start from the live offset (where the timeline is)
-	// Only use manual offset when manually seeking
-	const offset = (channelChanged || manualIndex !== null) 
-		? (live?.offset || 0)
-		: (live?.offset || 0)
-	// Key must change when channel changes to force YouTube component remount
-	// Use channelChangeCounterRef to ensure key changes on channel switch
-	const playerKey = `${channel?._id}-${current.youtubeId}-${currIndex}-${channelChangeCounterRef.current}`
-
-
-	function onReady(e){
-		playerRef.current = e.target
-		try{
-			// Start muted for autoplay, then unmute if volume > 0
-			e.target.mute()
-			e.target.setVolume(volume * 100)
-			
-			// Set playback quality for better buffering
-			try {
-				e.target.setPlaybackQuality('medium')
-			} catch(err) {
-				// Quality setting not available, ignore
+	// Effect: Cleanup intervals and timeouts
+	useEffect(() => {
+		return () => {
+			if (progressIntervalRef.current) {
+				clearInterval(progressIntervalRef.current)
+				progressIntervalRef.current = null
 			}
-			
-			// USE CALCULATED OFFSET FROM BROADCAST STATE
-			// This is crucial for resuming at correct position after reload
-			const positionToSeek = playerRef.current?.targetOffset || offset || 0
-			console.log(`[Player] Seeking to offset: ${positionToSeek.toFixed(1)}s`)
-			
-			if(positionToSeek) e.target.seekTo(positionToSeek, true)
-			e.target.playVideo()
-			
-			// Remove YouTube UI elements using the utility
-			YouTubeUIRemover.init()
-			
-			// Initialize broadcast state manager
-			if (channel?._id) {
-				BroadcastStateManager.updateChannelState(channel._id, {
-					channelName: channel.name,
-					currentVideoIndex: currIndex,
-					currentTime: positionToSeek || 0,
-					playlistStartEpoch: new Date(channel.playlistStartEpoch),
-					videoDurations: items.map(v => v.duration || 300),
-					playlistTotalDuration: items.reduce((sum, v) => sum + (v.duration || 300), 0),
-				})
-				
-				// Start auto-syncing state to database
-				BroadcastStateManager.startAutoSync((channelId, state) => {
-					console.log(`[Player] Auto-synced state for ${channelId}`)
-				})
+			if (bufferTimeoutRef.current) {
+				clearTimeout(bufferTimeoutRef.current)
 			}
-			
-			// Unmute after short delay if volume > 0
-			setTimeout(() => {
-				if (playerRef.current && volume > 0) {
-					try {
-						playerRef.current.unMute()
-					} catch(err) {}
-				}
-			}, 500)
-
-			// Start monitoring video progress for early switching
-			startProgressMonitoring()
-		}catch(err) {
-			console.error('[Player] Error in onReady:', err)
+			if (transitionTimeoutRef.current) {
+				clearTimeout(transitionTimeoutRef.current)
+			}
+			if (errorTimeoutRef.current) {
+				clearTimeout(errorTimeoutRef.current)
+			}
+			BroadcastStateManager.stopAutoSync()
 		}
-	}
+	}, [])
 
-	function startProgressMonitoring() {
-		// Clear any existing interval
+	// Effect: Reset transition state when video changes
+	useEffect(() => {
+		if (current) {
+			setIsTransitioning(false)
+			isTransitioningRef.current = false
+			
+			if (!failedVideosRef.current.has(current.youtubeId)) {
+				skipAttemptsRef.current = 0
+			}
+		}
+	}, [current?.youtubeId])
+
+	// ===== CALLBACKS (defined with useCallback for stability) =====
+
+	const startProgressMonitoring = useCallback(() => {
 		if (progressIntervalRef.current) {
 			clearInterval(progressIntervalRef.current)
 		}
 
-		// Check progress every 500ms
 		progressIntervalRef.current = setInterval(() => {
 			if (!playerRef.current || isTransitioningRef.current) return
 
@@ -277,27 +266,21 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				]).then(([currentTime, duration]) => {
 					if (duration && currentTime && duration > 0) {
 						const timeRemaining = duration - currentTime
-						
-						// Switch to next video a few seconds before end
-						// Only switch if we're not already transitioning
 						if (timeRemaining <= SWITCH_BEFORE_END && timeRemaining > 0 && !isTransitioningRef.current) {
-							switchToNextVideo()
+							switchToNextVideoRef.current()
 						}
 					}
-				}).catch(() => {
-					// Duration or current time not available yet, ignore
-				})
-			} catch(err) {
-				// Player not ready, ignore
-			}
+				}).catch(() => {})
+			} catch(err) {}
 		}, 500)
-	}
+	}, [])
 
-	function switchToNextVideo(skipFailed = false) {
-		if (isTransitioningRef.current) return // Prevent multiple transitions
+	// Use ref to avoid stale closure in interval
+	const switchToNextVideoRef = useRef(null)
+	
+	const switchToNextVideo = useCallback((skipFailed = false) => {
+		if (isTransitioningRef.current) return
 
-		// If we're playing an ad channel, notify parent to return to original channel
-		// Don't try to switch to next video in ad channel
 		if (isAdsChannel) {
 			if (onVideoEnd) onVideoEnd()
 			return
@@ -306,49 +289,34 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		isTransitioningRef.current = true
 		setIsTransitioning(true)
 		
-		// Clear progress monitoring
 		if (progressIntervalRef.current) {
 			clearInterval(progressIntervalRef.current)
 			progressIntervalRef.current = null
 		}
 
-		// Pause current video to reduce buffering on next
 		if (playerRef.current) {
 			try {
 				playerRef.current.pauseVideo()
 			} catch(err) {}
 		}
 
-		// Notify parent (Home will handle ad insertion before next video)
 		if (onVideoEnd) onVideoEnd()
 
-		// Get the next video based on timeline, not manual sequence
-		// The nextIndex from getNextVideoInSequence gives us what should play naturally
-		const next = getNextVideoInSequence(items, currIndex, live?.cyclePosition || 0)
-
-		// Note: Home component will switch to ad channel if available
-		// If no ads, Home won't change the channel and we'll continue here
-		// We need to wait a bit to see if channel changes (ad inserted)
-		// If channel doesn't change after delay, continue with next video
 		transitionTimeoutRef.current = setTimeout(() => {
-			// Check if channel changed (ad was inserted)
-			// If channel ID is still the same, continue with next video
 			if (channelIdRef.current === channel?._id && !isAdsChannel) {
 				setCurrentIndex(prevIndex => {
 					let nextIndex
 					let attempts = 0
 					const maxAttempts = items.length || 10
 					
-					// Find next available video (skip failed ones)
 					do {
-						if (items.length === 1) {
+						if (items.length <= 1) {
 							nextIndex = 0
 							break
 						}
 						nextIndex = (prevIndex + 1) % items.length
 						attempts++
 						
-						// If we've tried all videos and they're all failed, reset failed list
 						if (attempts >= maxAttempts && failedVideosRef.current.size >= items.length) {
 							failedVideosRef.current.clear()
 							skipAttemptsRef.current = 0
@@ -362,22 +330,22 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 					return nextIndex
 				})
 			} else {
-				// Channel changed (ad was inserted), just reset transition state
 				isTransitioningRef.current = false
 				setIsTransitioning(false)
 			}
-		}, 500) // Longer delay to allow Home to switch to ad channel
-	}
+		}, 500)
+	}, [channel?._id, isAdsChannel, items, onVideoEnd])
 
-	function handleVideoError(error) {
+	// Keep ref updated
+	switchToNextVideoRef.current = switchToNextVideo
+
+	const handleVideoError = useCallback((error) => {
 		const errorCode = error?.data
-		// YouTube error codes: 2=invalid, 5=HTML5 error, 100=not found, 101/150=not embeddable
 		const isUnavailable = errorCode === 100 || errorCode === 101 || errorCode === 150 || errorCode === 2
 		
 		if (isUnavailable && current?.youtubeId) {
 			console.warn(`Video ${current.youtubeId} is unavailable (error ${errorCode}), skipping to next...`)
 			
-			// Trigger buffering overlay with error message
 			if (onBufferingChange) {
 				const errorMessages = {
 					100: 'VIDEO NOT FOUND',
@@ -388,145 +356,154 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				onBufferingChange(true, errorMessages[errorCode] || `ERROR ${errorCode}`)
 			}
 			
-			// Mark this video as failed
 			failedVideosRef.current.add(current.youtubeId)
 			skipAttemptsRef.current++
 			
-			// Skip to next video if we haven't exceeded max attempts
 			if (skipAttemptsRef.current < MAX_SKIP_ATTEMPTS) {
-				// Clear any existing error timeout
 				if (errorTimeoutRef.current) {
 					clearTimeout(errorTimeoutRef.current)
 				}
 				
-				// Delay before skipping to avoid rapid skipping
 				errorTimeoutRef.current = setTimeout(() => {
-					switchToNextVideo(true) // Skip failed videos
+					switchToNextVideo(true)
 				}, 1000)
 			} else {
 				console.error('Too many consecutive video errors, stopping auto-skip')
 				setIsBuffering(false)
-				skipAttemptsRef.current = 0 // Reset after delay
 				setTimeout(() => {
 					skipAttemptsRef.current = 0
 				}, 5000)
 			}
 		} else {
-			// For other errors, just log and continue
 			console.error('YouTube player error:', error)
 			setIsBuffering(false)
 		}
-	}
+	}, [current?.youtubeId, onBufferingChange, MAX_SKIP_ATTEMPTS, switchToNextVideo])
 
-	function onStateChange(event) {
-		// YouTube player state: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
+	const onStateChange = useCallback((event) => {
 		const state = event.data
 		
-		if (state === 0) { // Video ended (fallback - should rarely happen due to early switching)
+		if (state === 0) {
 			if (!isTransitioningRef.current) {
-				// If it's an ad channel, notify parent to return to original channel
 				if (isAdsChannel) {
 					if (onVideoEnd) onVideoEnd()
 				} else {
 					switchToNextVideo()
 				}
 			}
-		} else if (state === 3) { // Buffering
-			// Show static effect during buffering
+		} else if (state === 3) {
 			setIsBuffering(true)
-			// Clear any existing timeout
+			if (staticAudioRef.current) {
+				staticAudioRef.current.currentTime = 0
+				staticAudioRef.current.play().catch(() => {})
+			}
 			if (bufferTimeoutRef.current) {
 				clearTimeout(bufferTimeoutRef.current)
 			}
-		} else if (state === 1) { // Playing
-			// Hide static effect when playing starts
+		} else if (state === 1) {
 			if (bufferTimeoutRef.current) {
 				clearTimeout(bufferTimeoutRef.current)
 			}
-			// Small delay to ensure smooth transition
 			bufferTimeoutRef.current = setTimeout(() => {
 				setIsBuffering(false)
+				if (staticAudioRef.current) {
+					staticAudioRef.current.pause()
+					staticAudioRef.current.currentTime = 0
+				}
 			}, 200)
 
-			// Restart progress monitoring when video starts playing
 			if (!progressIntervalRef.current && !isTransitioningRef.current) {
 				startProgressMonitoring()
 			}
-		} else if (state === 5) { // Video cued
-			// Restart progress monitoring when video is cued
+		} else if (state === 5) {
 			if (!progressIntervalRef.current && !isTransitioningRef.current) {
 				setTimeout(() => startProgressMonitoring(), 1000)
 			}
 		}
-	}
+	}, [isAdsChannel, onVideoEnd, switchToNextVideo, startProgressMonitoring])
 
-	const opts = {
-		width: '100%',
-		height: '100%',
-		playerVars: { 
-			autoplay: 1, 
-			controls: 0, 
-			disablekb: 1, 
-			modestbranding: 1, 
-			rel: 0, 
-			start: offset,
-			iv_load_policy: 3, // Hide annotations
-			showinfo: 0,
-			fs: 0, // Disable fullscreen button
-			cc_load_policy: 0, // Hide captions
-			playsinline: 1,
-			enablejsapi: 1, // Enable JS API for better control
-			origin: window.location.origin, // Set origin for security
-			widget_referrer: window.location.origin, // Referrer for analytics
-			// Optimize for better buffering
-			quality: 'medium', // Use medium quality for better buffering
-			autohide: 1, // Auto-hide controls
-			loop: 0, // Don't loop individual videos (we handle looping)
-			fs: 0, // Disable fullscreen
-			pp: 0, // Disable pause overlay/branding
-		}
-	}
-
-	// Cleanup intervals and timeouts on unmount or when video changes
-	useEffect(() => {
-		return () => {
-			if (progressIntervalRef.current) {
-				clearInterval(progressIntervalRef.current)
-			}
-			if (bufferTimeoutRef.current) {
-				clearTimeout(bufferTimeoutRef.current)
-			}
-			if (transitionTimeoutRef.current) {
-				clearTimeout(transitionTimeoutRef.current)
-			}
-			if (errorTimeoutRef.current) {
-				clearTimeout(errorTimeoutRef.current)
-			}
-			// Stop broadcast state auto-sync on unmount
-			BroadcastStateManager.stopAutoSync()
-		}
-	}, [currIndex]) // Re-run cleanup when video index changes
-
-	// Reset transition state when video actually changes
-	useEffect(() => {
-		if (current) {
-			setIsTransitioning(false)
-			isTransitioningRef.current = false
+	const onReady = useCallback((e) => {
+		playerRef.current = e.target
+		try {
+			e.target.mute()
+			e.target.setVolume(volume * 100)
 			
-			// Reset skip attempts when successfully playing a new video
-			if (!failedVideosRef.current.has(current.youtubeId)) {
-				skipAttemptsRef.current = 0
+			try {
+				e.target.setPlaybackQuality('medium')
+			} catch(err) {}
+			
+			const positionToSeek = playerRef.current?.targetOffset || offset || 0
+			console.log(`[Player] Seeking to offset: ${positionToSeek.toFixed(1)}s`)
+			
+			if (positionToSeek > 0) e.target.seekTo(positionToSeek, true)
+			e.target.playVideo()
+			
+			YouTubeUIRemover.init()
+			
+			if (channel?._id) {
+				BroadcastStateManager.updateChannelState(channel._id, {
+					channelName: channel.name,
+					currentVideoIndex: currIndex,
+					currentTime: positionToSeek || 0,
+					playlistStartEpoch: new Date(channel.playlistStartEpoch),
+					videoDurations: items.map(v => v.duration || 300),
+					playlistTotalDuration: items.reduce((sum, v) => sum + (v.duration || 300), 0),
+				})
+				
+				BroadcastStateManager.startAutoSync((channelId, state) => {
+					console.log(`[Player] Auto-synced state for ${channelId}`)
+				})
 			}
 			
-			// Restart progress monitoring for new video
-			if (playerRef.current && !progressIntervalRef.current) {
-				setTimeout(() => startProgressMonitoring(), 1000)
-			}
+			setTimeout(() => {
+				if (playerRef.current && volume > 0) {
+					try {
+						playerRef.current.unMute()
+					} catch(err) {}
+				}
+			}, 500)
+
+			startProgressMonitoring()
+		} catch(err) {
+			console.error('[Player] Error in onReady:', err)
 		}
-	}, [current?.youtubeId])
+	}, [volume, offset, channel, currIndex, items, startProgressMonitoring])
+
+	// ===== CONDITIONAL RENDERS - ONLY AFTER ALL HOOKS =====
+
+	// Return null if no valid data, but ALL hooks have already been called
+	if (!channel) {
+		return (
+			<div className="player-wrapper player-loading">
+				<div className="tv-off-message">NO CHANNEL</div>
+			</div>
+		)
+	}
+
+	if (items.length === 0) {
+		return (
+			<div className="player-wrapper player-loading">
+				<div className="tv-off-message">NO VIDEOS IN CHANNEL</div>
+			</div>
+		)
+	}
+
+	if (!current) {
+		return (
+			<div className="player-wrapper player-loading">
+				<div className="tv-off-message">LOADING VIDEO...</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className="player-wrapper">
+			<audio
+				ref={staticAudioRef}
+				src="/sounds/tv-static-noise-291374.mp3"
+				preload="auto"
+				loop
+			/>
 			<YouTube 
 				key={playerKey} 
 				videoId={current.youtubeId} 
@@ -537,7 +514,6 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				className="youtube-player-container"
 				iframeClassName="youtube-iframe"
 			/>
-			{/* Show static effect during buffering or transitioning */}
 			{(isBuffering || isTransitioning) && (
 				<div className="static-effect-tv">
 					<div className="static-noise-overlay" />
