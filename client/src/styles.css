@@ -40,75 +40,10 @@ body {
 	cursor: pointer;
 	transition: transform 0.2s ease;
 	position: relative;
-	overflow: visible;
-	z-index: 1;
 }
 
 .tv-frame-container:hover {
 	transform: scale(1.01);
-}
-
-/* ==========================================
-   AMBIENT GLOW - CRT BACKLIGHT EFFECT
-   ========================================== */
-
-.ambient-glow-wrapper {
-	pointer-events: none;
-}
-
-.ambient-glow-layer {
-	border-radius: 50%;
-}
-
-/* CRT pulse animation for ambient glow */
-@keyframes crt-pulse {
-	0%, 100% {
-		opacity: 0.3;
-		transform: scale(1);
-	}
-	50% {
-		opacity: 0.5;
-		transform: scale(1.02);
-	}
-}
-
-/* Static/noise effect for buffering glow */
-@keyframes glow-static {
-	0%, 100% {
-		filter: blur(60px) brightness(1);
-	}
-	25% {
-		filter: blur(55px) brightness(1.1);
-	}
-	50% {
-		filter: blur(65px) brightness(0.9);
-	}
-	75% {
-		filter: blur(58px) brightness(1.05);
-	}
-}
-
-/* Ambient glow color shift for dynamic effect */
-@keyframes ambient-color-shift {
-	0% {
-		filter: blur(60px) hue-rotate(0deg);
-	}
-	100% {
-		filter: blur(60px) hue-rotate(360deg);
-	}
-}
-
-/* Enhanced glow when TV is on */
-.tv-frame-container.tv-on .ambient-glow-container {
-	opacity: 1;
-}
-
-/* Fullscreen ambient glow adjustments */
-.tv-frame-container:fullscreen .ambient-glow-container,
-.tv-frame-container:-webkit-full-screen .ambient-glow-container,
-.tv-frame-container:-moz-full-screen .ambient-glow-container,
-.tv-frame-container:-ms-fullscreen .ambient-glow-container {
-	inset: -150px;
 }
 
 /* Fullscreen hint overlay */
@@ -168,7 +103,6 @@ body {
 		inset 0 0 30px rgba(255, 255, 255, 0.1),
 		0 20px 60px rgba(0, 0, 0, 0.9);
 	position: relative;
-	z-index: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -669,8 +603,6 @@ body {
 		0 0 20px #4a9eff;
 	animation: pulse-glow 2s ease-in-out infinite;
 	letter-spacing: 1px;
-	position: relative;
-	z-index: 1;
 }
 
 /* ==========================================

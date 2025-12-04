@@ -157,6 +157,42 @@ router.delete('/:sessionId', async (req, res) => {
 })
 
 /**
+ * DELETE /api/session/clear-all
+ * Clear all session data (admin only)
+ */
+router.delete('/clear-all', async (req, res) => {
+	try {
+		const result = await UserSession.deleteMany({})
+		
+		res.json({ 
+			success: true, 
+			message: `Cleared ${result.deletedCount} sessions`,
+			deletedCount: result.deletedCount
+		})
+	} catch (err) {
+		console.error('[Session] Clear all error:', err)
+		res.status(500).json({ error: 'Failed to clear all sessions', details: err.message })
+	}
+})
+
+/**
+ * GET /api/session/health
+ * Health check endpoint
+ */
+router.get('/health', async (req, res) => {
+	try {
+		const count = await UserSession.countDocuments()
+		res.json({ 
+			status: 'ok', 
+			sessionCount: count,
+			timestamp: new Date().toISOString()
+		})
+	} catch (err) {
+		res.status(500).json({ status: 'error', error: err.message })
+	}
+})
+
+/**
  * GET /api/session/active/all
  * Get all active sessions (admin diagnostic)
  */

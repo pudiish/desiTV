@@ -1,12 +1,28 @@
-# Retro TV (desiTV)
+# DesiTV™ 📺
+### *Relive the 2000s. One Channel at a Time.*
 
-Retro TV is a simple MERN demo that mimics a retro television experience by streaming curated YouTube clips on themed channels. This repository includes a Vite + React client and an Express + MongoDB backend.
+[![Created by PudiIsh](https://img.shields.io/badge/Created%20by-PudiIsh-blue)](https://pudiish.github.io/pudi/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5)](https://www.linkedin.com/in/swarnapudi-ishwar-baa1411b0/)
+[![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4%EF%B8%8F-red)](mailto:swarnapudiishwar@gmail.com)
 
-## Key Features
-- Lightweight React + Vite frontend with simple TV UI components.
-- Express API for channels, categories and auth.
-- MongoDB-backed content model with a seeding script for example data.
-- Dev-friendly setup with live-reload for server (`nodemon`) and client (`vite`).
+---
+
+> *"Woh 9XM pe gaane dekhna, SAB TV pe hasna, aur Emraan Hashmi ka latest song wait karna... those were the days."*
+
+**DesiTV™** is a nostalgic retro TV streaming platform that recreates the golden era of Indian television - the 2000s when **9XM**, **SAB TV**, **MTV**, and **Channel V** ruled our screens. Built for **Millennials** and **Hybrid Gen-Z** who miss the simpler times.
+
+## 🎬 What is DesiTV™?
+
+DesiTV™ creates a **pseudo-live broadcast experience** where all users watching the same channel see the same content at the same time - just like real TV. No choosing, no seeking, no decision fatigue. Just sit back and vibe.
+
+## ✨ Key Features
+- 📺 **Retro TV UI** - CRT effects, scanlines, static noise, authentic TV sounds
+- 📡 **Pseudo-Live Broadcast** - Synchronized viewing, everyone sees the same thing
+- 🎵 **2000s Music Vibes** - Emraan Hashmi era, 9XM nostalgia, Atif Aslam classics
+- 😂 **SAB TV Comedy** - Taarak Mehta, Sarabhai, Office Office
+- 📱 **Session Recovery** - Resume where you left off
+- ⚙️ **Admin Dashboard** - Full control over channels and content
+- 🌙 **Late Night Mode** - Perfect for 2 AM vibes
 
 ## Quick links
 - Project root: `./`
@@ -123,10 +139,41 @@ Check the `server/routes` folder for full route details.
 - Open an issue or pull request with a clear description and steps to reproduce.
 - Keep changes focused and add/update tests or a brief manual verification checklist where appropriate.
 
-## Next steps you might want me to help with
-- Add a short CONTRIBUTING.md and CODE_OF_CONDUCT
-- Add GitHub Actions for linting/testing and a deploy workflow
-- Add a small README snippet inside `client/` explaining Vite env variables
+---
+
+## 👨‍💻 Created By
+
+**Swarnapudi Ishwar** (PudiIsh)
+
+| | |
+|---|---|
+| 💼 LinkedIn | [linkedin.com/in/swarnapudi-ishwar-baa1411b0](https://www.linkedin.com/in/swarnapudi-ishwar-baa1411b0/) |
+| 🌐 Portfolio | [pudiish.github.io/pudi](https://pudiish.github.io/pudi/) |
+| 📧 Email | [swarnapudiishwar@gmail.com](mailto:swarnapudiishwar@gmail.com) |
+| 🐙 GitHub | [github.com/pudiish](https://github.com/pudiish) |
+
+### Why I Built This
+
+> *"I missed the 9XM days, Emraan Hashmi era songs, SAB TV laughs. Built DesiTV™ to chill like we used to - when TV was simple and everyone watched together."*
 
 ---
-If you'd like, I can also add a minimal `CONTRIBUTING.md` or update `README.md` with screenshots and more API examples. What would you like next?
+
+## 📄 License
+
+**DesiTV™** is a trademark of Swarnapudi Ishwar (PudiIsh).  
+This project is open source under the MIT License.
+
+```
+Copyright © 2025 Swarnapudi Ishwar (PudiIsh)
+All rights reserved.
+
+DesiTV™ - Relive the 2000s. One Channel at a Time.
+```
+
+---
+
+<p align="center">
+  <b>DesiTV™</b> - Made with ❤️ for the 2000s generation
+  <br>
+  <i>"Chill karo. TV pe kuch chal raha hai."</i>
+</p>

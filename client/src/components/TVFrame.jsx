@@ -3,7 +3,6 @@ import Player from './Player'
 import StaticEffect from './StaticEffect'
 import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
-import AmbientGlow from './AmbientGlow'
 
 export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null }) {
 	const tvFrameRef = useRef(null)
@@ -86,12 +85,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
 			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
-			{/* Dynamic ambient glow behind TV */}
-			<AmbientGlow 
-				power={power} 
-				isBuffering={isBuffering} 
-				staticActive={staticActive} 
-			/>
 			{showFullscreenHint && !isFullscreen && power && (
 				<div className="fullscreen-hint-overlay">
 					DOUBLE CLICK FOR FULLSCREEN | ESC FOR MENU

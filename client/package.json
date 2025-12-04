@@ -1,6 +1,8 @@
 {
-  "name": "retro-tv-client",
+  "name": "desitv-client",
   "version": "1.0.0",
+  "description": "DesiTV™ - React frontend for nostalgic retro TV experience",
+  "author": "Swarnapudi Ishwar <swarnapudiishwar@gmail.com>",
   "private": true,
   "scripts": {
     "dev": "vite --port $VITE_CLIENT_PORT",

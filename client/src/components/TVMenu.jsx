@@ -128,7 +128,7 @@ export default function TVMenu({
 				{/* Menu Header */}
 				<div className="tv-menu-header">
 					<div className="menu-logo">
-						<span className="logo-text">desiTV</span>
+						<span className="logo-text">DesiTV™</span>
 						<span className="logo-guide">GUIDE</span>
 					</div>
 					<div className="menu-time">
@@ -309,8 +309,9 @@ export default function TVMenu({
 
 							<div className="settings-section">
 								<h4>📺 ABOUT</h4>
-								<p>desiTV - Retro Television Experience</p>
+								<p>DesiTV™ - Relive the 2000s</p>
 								<p className="version">Version 1.0.0</p>
+								<p className="creator">Created by PudiIsh</p>
 							</div>
 						</div>
 					)}

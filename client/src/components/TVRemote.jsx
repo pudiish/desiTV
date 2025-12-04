@@ -158,7 +158,7 @@ export default function TVRemote({
 			{/* Remote Body */}
 			<div className="remote-body">
 				{/* Brand Label */}
-				<div className="remote-brand">desiTV</div>
+				<div className="remote-brand">DesiTV™</div>
 
 				{/* Power Button */}
 				<div className="remote-section power-section">

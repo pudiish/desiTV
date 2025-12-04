@@ -1,6 +1,24 @@
 {
-  "name": "retro-tv-mern",
+  "name": "desitv",
   "version": "1.0.0",
+  "description": "DesiTV™ - Nostalgic retro TV streaming platform recreating 2000s Indian television vibes",
+  "author": "Swarnapudi Ishwar <swarnapudiishwar@gmail.com> (https://pudiish.github.io/pudi/)",
+  "license": "MIT",
+  "homepage": "https://github.com/pudiish/desiTV",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pudiish/desiTV.git"
+  },
+  "keywords": [
+    "desitv",
+    "retro-tv",
+    "nostalgia",
+    "2000s",
+    "indian-tv",
+    "9xm",
+    "mern",
+    "streaming"
+  ],
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm:dev:*\"",

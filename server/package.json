@@ -1,6 +1,8 @@
 {
-  "name": "retro-tv-server",
+  "name": "desitv-server",
   "version": "1.0.0",
+  "description": "DesiTV™ - Express API server for nostalgic retro TV experience",
+  "author": "Swarnapudi Ishwar <swarnapudiishwar@gmail.com>",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js --watch ./",
