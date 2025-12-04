@@ -5,6 +5,9 @@ import ChannelManager from './sections/ChannelManager'
 import VideoFetcher from './sections/VideoFetcher'
 import APIMonitor from './sections/APIMonitor'
 import SystemHealth from './sections/SystemHealth'
+import APIHealth from './sections/APIHealth'
+import CacheManagerUI from './sections/CacheManagerUI'
+import ComponentHealth from './sections/ComponentHealth'
 
 export default function AdminDashboard() {
 	const [activeSection, setActiveSection] = useState('dashboard')
@@ -17,6 +20,24 @@ export default function AdminDashboard() {
 			label: 'Dashboard',
 			icon: '📊',
 			component: <SystemHealth />,
+		},
+		{
+			id: 'health',
+			label: 'Component Health',
+			icon: '❤️',
+			component: <ComponentHealth />,
+		},
+		{
+			id: 'api-health',
+			label: 'API Health',
+			icon: '🔌',
+			component: <APIHealth />,
+		},
+		{
+			id: 'cache',
+			label: 'Cache Manager',
+			icon: '💾',
+			component: <CacheManagerUI />,
 		},
 		{
 			id: 'broadcast',
@@ -39,7 +60,7 @@ export default function AdminDashboard() {
 		{
 			id: 'api',
 			label: 'API Monitor',
-			icon: '🔌',
+			icon: '📋',
 			component: <APIMonitor />,
 		},
 	]

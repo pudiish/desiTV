@@ -6,6 +6,8 @@ import TVMenu from '../components/TVMenu'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
 import SessionManager from '../utils/SessionManager'
+import { useSessionCleanup } from '../hooks/useSessionCleanup'
+import { moduleManager } from '../services/moduleManager'
 
 export default function Home() {
 	const [channels, setChannels] = useState([])
@@ -26,6 +28,12 @@ export default function Home() {
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 
 	const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
+
+	// ===== PRE-TV CLEANUP =====
+	const cacheMonitor = moduleManager.getModule('cacheMonitor')
+	useSessionCleanup(cacheMonitor, () => {
+		console.log('[Home] Pre-TV cleanup complete, initializing TV session')
+	})
 
 	// ===== SESSION MANAGEMENT =====
 	
