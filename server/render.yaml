@@ -1,0 +1,22 @@
+# DesiTV™ API Server - Render.com Configuration
+# https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: desitv-api
+    env: node
+    region: singapore  # Closest to India
+    plan: free  # Change to 'starter' ($7/mo) for always-on
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false  # Set manually in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Auto-generate secure value
+    autoDeploy: true  # Deploy on push to main branch

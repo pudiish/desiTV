@@ -1,28 +1,33 @@
 /**
  * Global Constants - Single source of truth for all configuration values
  * These values are used throughout the application and should be modified here
+ * 
+ * DesiTV™ - Optimized for both local development and production
  */
+
+// Detect environment
+const isProduction = typeof import.meta !== 'undefined' && import.meta.env?.PROD
 
 // ===== TIMING CONSTANTS =====
 export const TIMING = {
   // Player timing
   SWITCH_BEFORE_END: 2, // seconds - switch video 2 seconds before end
-  MAX_BUFFER_TIME: 8000, // milliseconds - max buffering time before retry
-  MAX_RETRY_ATTEMPTS: 5, // maximum retry attempts before giving up
+  MAX_BUFFER_TIME: isProduction ? 10000 : 8000, // milliseconds - slightly longer in production
+  MAX_RETRY_ATTEMPTS: isProduction ? 3 : 5, // fewer retries in production (fail faster)
   RETRY_BACKOFF_BASE: 1000, // milliseconds - base retry backoff time
   PROGRESS_UPDATE_INTERVAL: 500, // milliseconds - how often to update progress
 
-  // Session management
-  SESSION_SAVE_DEBOUNCE: 500, // milliseconds - debounce session saves
-  SESSION_MIN_SAVE_INTERVAL: 1000, // milliseconds - minimum interval between saves
-  SESSION_SAVE_AUTO_INTERVAL: 3000, // milliseconds - auto-save interval
+  // Session management - more aggressive saving in production
+  SESSION_SAVE_DEBOUNCE: isProduction ? 1000 : 500, // milliseconds - debounce session saves
+  SESSION_MIN_SAVE_INTERVAL: isProduction ? 2000 : 1000, // milliseconds - minimum interval between saves
+  SESSION_SAVE_AUTO_INTERVAL: isProduction ? 5000 : 3000, // milliseconds - auto-save interval
 
-  // Broadcast state sync
-  BROADCAST_SYNC_INTERVAL: 5000, // milliseconds - sync state to DB every 5 seconds
+  // Broadcast state sync - less frequent in production to reduce API calls
+  BROADCAST_SYNC_INTERVAL: isProduction ? 10000 : 5000, // milliseconds - sync state to DB
 
-  // Health monitoring
-  HEALTH_CHECK_INTERVAL: 10000, // milliseconds - check health every 10 seconds
-  API_HEALTH_TIMEOUT: 5000, // milliseconds - API call timeout
+  // Health monitoring - less frequent in production
+  HEALTH_CHECK_INTERVAL: isProduction ? 30000 : 10000, // milliseconds - check health
+  API_HEALTH_TIMEOUT: isProduction ? 10000 : 5000, // milliseconds - API call timeout (longer for cold starts)
 
   // UI feedback
   STATUS_MESSAGE_DURATION: 5000, // milliseconds - status message duration

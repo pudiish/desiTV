@@ -13,11 +13,52 @@ if (fs.existsSync(rootEnv)) {
 }
 // Load server/.env if present (will override root values)
 dotenv.config();
+
 const app = express();
-app.use(cors());
+
+// ===== ENVIRONMENT =====
+const isProduction = process.env.NODE_ENV === 'production';
+const PORT = process.env.PORT || 5002;
+
+// ===== CORS CONFIGURATION =====
+const corsOptions = {
+	origin: isProduction 
+		? [
+			/\.vercel\.app$/,  // Allow all Vercel deployments
+			/\.onrender\.com$/, // Allow Render deployments
+			process.env.CLIENT_URL, // Custom client URL if set
+		].filter(Boolean)
+		: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
+
+// ===== MIDDLEWARE =====
 app.use(express.json({ limit: '1mb' }));
 
-const PORT = process.env.PORT || 5002;
+// Request logging (only in development or if DEBUG is set)
+if (!isProduction || process.env.DEBUG) {
+	app.use((req, res, next) => {
+		console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+		next();
+	});
+}
+
+// ===== MONGODB CONNECTION =====
+const mongoOptions = {
+	useNewUrlParser: true,
+	useUnifiedTopology: true,
+	// Connection pool settings for production
+	maxPoolSize: isProduction ? 10 : 5,
+	minPoolSize: isProduction ? 2 : 1,
+	serverSelectionTimeoutMS: 5000,
+	socketTimeoutMS: 45000,
+	// Retry settings
+	retryWrites: true,
+	retryReads: true,
+};
 
 // Routes
 const channelRoutes = require('./routes/channels');
@@ -37,18 +78,28 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 
 // health check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', (req, res) => res.json({ 
+	status: 'ok',
+	environment: isProduction ? 'production' : 'development',
+	timestamp: new Date().toISOString()
+}));
 
 // error handler (last middleware)
 const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
 
-app.get('/', (req, res) => res.send('Retro TV API running'));
+app.get('/', (req, res) => res.send('DesiTV™ API running'));
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+// ===== DATABASE CONNECTION & SERVER START =====
+mongoose.connect(process.env.MONGO_URI, mongoOptions)
 	.then(() => {
-		console.log('Mongo connected');
-		const server = app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+		console.log(`[DesiTV™] MongoDB connected (${isProduction ? 'production' : 'development'})`);
+		const server = app.listen(PORT, () => {
+			console.log(`[DesiTV™] Server listening on port ${PORT}`);
+			if (!isProduction) {
+				console.log(`[DesiTV™] Local: http://localhost:${PORT}`);
+			}
+		});
 
 		server.on('error', (err) => {
 			if (err && err.code === 'EADDRINUSE') {
