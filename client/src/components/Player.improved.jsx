@@ -13,6 +13,7 @@ import { getPseudoLiveItem, getNextVideoInSequence } from '../utils/pseudoLive'
 import { EventCleanupManager } from '../utils/EventCleanupManager'
 import { PlayerStateManager } from '../utils/PlayerStateManager'
 import { StuckStateDetector } from '../utils/StuckStateDetector'
+import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 
 // Player action types for reducer
 const PLAYER_ACTIONS = {
@@ -423,80 +424,6 @@ export default function Player({
     }
 
     // ------- Remove YouTube UI -------
-    function removeYouTubeUI() {
-        // Remove all YouTube UI elements after they render
-        const removeElements = () => {
-            const iframe = document.querySelector('.youtube-iframe iframe')
-            if (!iframe) return
-
-            try {
-                // Access iframe's document (may fail due to cross-origin)
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-                if (!iframeDoc) return
-
-                // Add inline style to hide YouTube UI permanently
-                if (!iframeDoc.querySelector('#yt-ui-hide')) {
-                    const style = iframeDoc.createElement('style')
-                    style.id = 'yt-ui-hide'
-                    style.innerHTML = `
-                        .ytp-chrome, .ytp-chrome-bottom, .ytp-chrome-top,
-                        .ytp-logo, .ytp-logo-button, .ytp-title,
-                        .ytp-watermark, .ytp-pause-overlay,
-                        .html5-endscreen-ui, .html5-video-info-panel-container,
-                        .ytp-endscreen-container, .ytp-gradient-bottom,
-                        .ytp-gradient-top, .ytp-tooltip-bg, .ytp-tooltip-text,
-                        .ytp-info-icon, .ytp-large-play-button-bg,
-                        [data-tooltip], [data-tooltip-alignment] {
-                            display: none !important;
-                            visibility: hidden !important;
-                            opacity: 0 !important;
-                            pointer-events: none !important;
-                            height: 0 !important;
-                            width: 0 !important;
-                        }
-                        .html5-video-player,
-                        .video-stream {
-                            width: 100% !important;
-                            height: 100% !important;
-                        }
-                    `
-                    iframeDoc.head.appendChild(style)
-                }
-
-                // Remove YouTube UI elements
-                const elementsToRemove = iframeDoc.querySelectorAll(
-                    '.ytp-chrome-bottom, .ytp-chrome-top, .ytp-chrome, ' +
-                    '.ytp-logo, .ytp-logo-button, .ytp-title, ' +
-                    '.ytp-watermark, .ytp-pause-overlay, ' +
-                    '.html5-endscreen-ui, .html5-video-info-panel-container, ' +
-                    '.ytp-endscreen-container, .ytp-gradient-bottom, ' +
-                    '.ytp-gradient-top, .ytp-tooltip-bg, .ytp-tooltip-text, ' +
-                    '.ytp-info-icon, .ytp-large-play-button-bg'
-                )
-
-                elementsToRemove.forEach(el => {
-                    el.style.display = 'none'
-                    el.style.visibility = 'hidden'
-                    el.style.opacity = '0'
-                    el.style.pointerEvents = 'none'
-                    el.style.height = '0'
-                    el.style.width = '0'
-                })
-            } catch (err) {
-                // Cross-origin iframe - CSS will handle hiding
-            }
-        }
-
-        // Remove immediately and keep checking
-        removeElements()
-        
-        // Check every 300ms to catch new elements
-        const interval = setInterval(removeElements, 300)
-        
-        // Stop checking after 10 seconds
-        eventManagerRef.current.setTimeout('remove-ui-cleanup', () => clearInterval(interval), 10000)
-    }
-
     // ------- Player Ready -------
     function onReady(e) {
         playerRef.current = e.target
@@ -517,8 +444,8 @@ export default function Player({
             }
             e.target.playVideo()
 
-            // Remove YouTube UI elements
-            removeYouTubeUI()
+            // Remove YouTube UI elements using the utility
+            YouTubeUIRemover.init()
 
             eventManagerRef.current.setTimeout('unmute', () => {
                 if (playerRef.current && volume > 0) {
