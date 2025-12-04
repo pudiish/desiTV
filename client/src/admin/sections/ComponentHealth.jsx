@@ -16,6 +16,19 @@ export default function ComponentHealth() {
   const errors = useErrors(errorAggregator)
   const [expandedSection, setExpandedSection] = useState(null)
 
+  if (!metricsCollector || !errorAggregator) {
+    return (
+      <div className="section-container">
+        <div className="section-header">
+          <h3>❤️ Component Health</h3>
+        </div>
+        <div style={{ padding: '20px', color: '#ff9', backgroundColor: '#333', borderRadius: '4px' }}>
+          ⚠️ Monitoring systems not initialized yet. Please wait...
+        </div>
+      </div>
+    )
+  }
+
   const formatUptime = (ms) => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import './AdminDashboard.css'
+import SystemMonitor from './sections/SystemMonitor'
 import BroadcastStateMonitor from './sections/BroadcastStateMonitor'
 import ChannelManager from './sections/ChannelManager'
 import VideoFetcher from './sections/VideoFetcher'
 import APIMonitor from './sections/APIMonitor'
-import SystemHealth from './sections/SystemHealth'
 import APIHealth from './sections/APIHealth'
 import CacheManagerUI from './sections/CacheManagerUI'
 import ComponentHealth from './sections/ComponentHealth'
@@ -17,9 +17,9 @@ export default function AdminDashboard() {
 	const sections = [
 		{
 			id: 'dashboard',
-			label: 'Dashboard',
-			icon: '📊',
-			component: <SystemHealth />,
+			label: 'System Monitor',
+			icon: '🖥️',
+			component: <SystemMonitor />,
 		},
 		{
 			id: 'health',

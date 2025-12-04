@@ -15,6 +15,19 @@ export default function CacheManagerSection() {
   const [lastAction, setLastAction] = useState(null)
   const [expandedSection, setExpandedSection] = useState(null)
 
+  if (!cacheMonitor) {
+    return (
+      <div className="section-container">
+        <div className="section-header">
+          <h3>💾 Cache Manager</h3>
+        </div>
+        <div style={{ padding: '20px', color: '#ff9', backgroundColor: '#333', borderRadius: '4px' }}>
+          ⚠️ Cache monitor not initialized yet. Please wait...
+        </div>
+      </div>
+    )
+  }
+
   useEffect(() => {
     // Refresh stats on mount and periodically
     if (cacheMonitor) {

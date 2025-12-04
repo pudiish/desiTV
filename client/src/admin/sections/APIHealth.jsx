@@ -11,6 +11,19 @@ import '../AdminDashboard.css'
 export default function APIHealth() {
   const healthMonitor = moduleManager.getModule('healthMonitor')
   const health = useHealthMonitoring(healthMonitor)
+  
+  if (!healthMonitor) {
+    return (
+      <div className="section-container">
+        <div className="section-header">
+          <h3>🔌 API Health Monitor</h3>
+        </div>
+        <div style={{ padding: '20px', color: '#ff9', backgroundColor: '#333', borderRadius: '4px' }}>
+          ⚠️ Health monitor not initialized yet. Please wait...
+        </div>
+      </div>
+    )
+  }
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(null)
 

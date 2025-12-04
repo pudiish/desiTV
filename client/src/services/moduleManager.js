@@ -6,10 +6,10 @@
 
 import { apiClient, APIClient } from './apiClient'
 import { apiService, APIService } from './apiService'
-import { HealthMonitor } from '../monitoring/healthMonitor'
-import { MetricsCollector } from '../monitoring/metricsCollector'
-import { ErrorAggregator } from '../monitoring/errorAggregator'
-import { CacheMonitor } from '../monitoring/cacheMonitor'
+import HealthMonitor from '../monitoring/healthMonitor'
+import MetricsCollector from '../monitoring/metricsCollector'
+import ErrorAggregator from '../monitoring/errorAggregator'
+import CacheMonitor from '../monitoring/cacheMonitor'
 
 export class ModuleManager {
   constructor(config = {}) {

@@ -10,6 +10,26 @@ const router = express.Router()
 const BroadcastState = require('../models/BroadcastState')
 
 /**
+ * GET /api/broadcast-state/all
+ * Get all broadcast states (diagnostic/admin only)
+ * MUST be defined before /:channelId route to avoid being caught by param matcher
+ */
+router.get('/all', async (req, res) => {
+	try {
+		const states = await BroadcastState.find({}).sort({ lastAccessTime: -1 })
+
+		res.json({
+			count: states.length,
+			states: states.map((state) => state.toObject()),
+			timestamp: new Date().toISOString(),
+		})
+	} catch (err) {
+		console.error('[BroadcastState] GetAll error:', err)
+		res.status(500).json({ error: 'Failed to get all states', details: err.message })
+	}
+})
+
+/**
  * GET /api/broadcast-state/:channelId
  * Retrieve current broadcast state for a channel
  * Calculates virtual position based on elapsed time since last session
@@ -185,25 +205,6 @@ router.delete('/:channelId', async (req, res) => {
 	} catch (err) {
 		console.error('[BroadcastState] DELETE error:', err)
 		res.status(500).json({ error: 'Failed to clear state', details: err.message })
-	}
-})
-
-/**
- * GET /api/broadcast-state/all
- * Get all broadcast states (diagnostic/admin only)
- */
-router.get('/all', async (req, res) => {
-	try {
-		const states = await BroadcastState.find({}).sort({ lastAccessTime: -1 })
-
-		res.json({
-			count: states.length,
-			states: states.map((state) => state.toObject()),
-			timestamp: new Date().toISOString(),
-		})
-	} catch (err) {
-		console.error('[BroadcastState] GetAll error:', err)
-		res.status(500).json({ error: 'Failed to get all states', details: err.message })
 	}
 })
 
