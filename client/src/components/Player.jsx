@@ -69,12 +69,11 @@ export default function Player({
 
 
 
+	// Use broadcast epoch directly - this is the single source of truth
+	// Broadcast never stops, so always calculate from epoch
 	const effectiveStartEpoch = useMemo(() => {
-		if (uiLoadTime && channel?.playlistStartEpoch) {
-			return new Date(uiLoadTime)
-		}
 		return channel?.playlistStartEpoch || new Date('2020-01-01T00:00:00Z')
-	}, [uiLoadTime, channel?.playlistStartEpoch])
+	}, [channel?.playlistStartEpoch])
 	
 	const live = useMemo(() => {
 		if (items.length === 0) return null

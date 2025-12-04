@@ -21,7 +21,7 @@ export default function Home() {
 	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
 	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
 	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
-	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
+	// NOTE: DO NOT use uiLoadTime - broadcast epoch is the single source of truth
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 
@@ -43,9 +43,6 @@ export default function Home() {
 				volume,
 				isPowerOn: power,
 				selectedChannels,
-				timeline: {
-					uiLoadTime: uiLoadTimeRef.current,
-				},
 			})
 		}, 500) // 500ms debounce
 	}, [filteredChannels, activeChannelIndex, volume, power, selectedChannels])
@@ -78,10 +75,8 @@ export default function Home() {
 		shutdownSoundRef.current.volume = 0.5
 	}, [])
 
-	// Track UI load time for pseudo-live playback
-	useEffect(() => {
-		uiLoadTimeRef.current = Date.now()
-	}, [])
+	// NOTE: Broadcast epoch (stored in channel) is the timing reference
+	// Do NOT create any local timing references - they break on reload
 
 	function filterChannelsBySelection(channelList, selectedChannelNames) {
 		// If no channels selected, show all channels
@@ -152,10 +147,8 @@ export default function Home() {
 						setStatusMessage(`SESSION RESTORED. ${allChannels.length} CHANNELS READY.`)
 					}
 					
-					// Restore UI load time if available
-					if (savedState.timeline?.uiLoadTime) {
-						uiLoadTimeRef.current = savedState.timeline.uiLoadTime
-					}
+					// NOTE: UI load time should NOT be persisted or restored
+					// Broadcast epoch is stored in the channel and is the source of truth
 					
 					setSessionRestored(true)
 				} else {
@@ -399,18 +392,15 @@ export default function Home() {
 				</div>
 			</div>
 
-			{/* TV Menu Overlay */}
-			<TVMenu
-				isOpen={menuOpen}
-				onClose={() => setMenuOpen(false)}
-				channels={filteredChannels}
-				activeChannelIndex={activeChannelIndex}
-				onChannelSelect={handleChannelDirect}
-				power={power}
-				uiLoadTime={uiLoadTimeRef.current}
-			/>
-
-			{/* Footer / Status Text */}
+		{/* TV Menu Overlay */}
+		<TVMenu
+			isOpen={menuOpen}
+			onClose={() => setMenuOpen(false)}
+			channels={filteredChannels}
+			activeChannelIndex={activeChannelIndex}
+			onChannelSelect={handleChannelDirect}
+			power={power}
+		/>			{/* Footer / Status Text */}
 			<div className="footer-status">
 				<div className="status-text">
 					{statusMessage}
