@@ -19,7 +19,6 @@ export default function Player({
 	volume = 0.5, 
 	uiLoadTime, 
 	allChannels = [], 
-	shouldAdvanceVideo = false, 
 	onBufferingChange = null,
 	onPlaybackStateChange = null, // New: callback for playback state
 }){
@@ -51,9 +50,12 @@ export default function Player({
 	const calculatedStartTimeRef = useRef(0) // Precise start time calculated at render
 	const hasInitializedRef = useRef(false) // Prevent double initialization
 	const videoLoadedRef = useRef(false) // Track if video has loaded
+	const nextVideoPreloadedRef = useRef(false) // Track if next video is preloaded
+	const pendingVideoIdRef = useRef(null) // Video ID to load next
+	const useLoadVideoByIdRef = useRef(false) // Use loadVideoById for seamless transition
 
 	// ===== CONSTANTS =====
-	const SWITCH_BEFORE_END = 3
+	const SWITCH_BEFORE_END = 2 // Switch 2 seconds before end for smoother transition
 	const MAX_BUFFER_TIME = 8000 // 8 seconds max buffering before retry
 	const MAX_RETRY_ATTEMPTS = 5
 	const RETRY_BACKOFF_BASE = 1000 // 1 second base
@@ -65,13 +67,7 @@ export default function Player({
 	
 	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10)
 
-	const isAdsChannel = useMemo(() => {
-		return channel?.name && (
-			channel.name.toLowerCase() === 'ads' || 
-			channel.name.toLowerCase() === 'ad' || 
-			channel.name.toLowerCase() === 'advertisements'
-		)
-	}, [channel?.name])
+
 
 	const effectiveStartEpoch = useMemo(() => {
 		if (uiLoadTime && channel?.playlistStartEpoch) {
@@ -110,10 +106,12 @@ export default function Player({
 		return calculatedOffset
 	}, [live?.offset])
 
+	// Only change key on channel change, NOT on video change
+	// Changing on video change causes YouTube component to remount instead of using loadVideoById
 	const playerKey = useMemo(() => {
-		if (!channel?._id || !current?.youtubeId) return 'no-video'
-		return `${channel._id}-${current.youtubeId}-${currIndex}-${channelChangeCounterRef.current}`
-	}, [channel?._id, current?.youtubeId, currIndex])
+		if (!channel?._id) return 'no-channel'
+		return `${channel._id}-${channelChangeCounterRef.current}`
+	}, [channel?._id])
 
 	// YouTube player options - start time is set here and in onReady for reliability
 	const opts = useMemo(() => {
@@ -271,11 +269,13 @@ export default function Player({
 
 				await BroadcastStateManager.initializeChannel(channel, preloadedState)
 
-				if (position.videoIndex >= 0 && position.videoIndex < items.length) {
-					setCurrentIndex(position.videoIndex)
-					if (playerRef.current) {
-						playerRef.current.targetOffset = position.offset
-					}
+				// IMPORTANT: Do NOT set currentIndex from saved state
+				// The 'live' timeline value (calculated from epoch and current time)
+				// will automatically determine the correct video
+				// We only need to set the offset for seeking within the video
+				if (position.offset && playerRef.current) {
+					playerRef.current.targetOffset = position.offset
+					console.log(`[Player] Set target offset: ${position.offset.toFixed(1)}s`)
 				}
 			} catch (err) {
 				console.error('[Player] Error loading state:', err)
@@ -330,17 +330,7 @@ export default function Player({
 		}
 	}, [volume])
 
-	// Effect: Handle advancing to next video after ad completes
-	useEffect(() => {
-		if (shouldAdvanceVideo && !isAdsChannel && !isTransitioningRef.current && items.length > 0) {
-			console.log('Advancing to next video after ad...')
-			setCurrentIndex(prevIndex => {
-				const nextIndex = (prevIndex + 1) % items.length
-				setManualIndex(nextIndex)
-				return nextIndex
-			})
-		}
-	}, [shouldAdvanceVideo, isAdsChannel, items.length])
+
 
 	// Effect: Monitor buffering time
 	useEffect(() => {
@@ -403,21 +393,26 @@ export default function Player({
 			clearInterval(progressIntervalRef.current)
 		}
 
+		let hasTriggered = false // Prevent multiple triggers
+
 		progressIntervalRef.current = setInterval(() => {
-			if (!playerRef.current || isTransitioningRef.current) return
+			if (!playerRef.current || isTransitioningRef.current || hasTriggered) return
 
 			try {
 				Promise.all([
 					playerRef.current.getCurrentTime(),
 					playerRef.current.getDuration()
 				]).then(([currentTime, duration]) => {
-					if (duration && currentTime && duration > 0) {
+					if (duration && currentTime && duration > 0 && !isTransitioningRef.current && !hasTriggered) {
 						const timeRemaining = duration - currentTime
 						
 						// Update last play time for health monitoring
 						lastPlayTimeRef.current = Date.now()
 						
-						if (timeRemaining <= SWITCH_BEFORE_END && timeRemaining > 0 && !isTransitioningRef.current) {
+						// Switch before end or when ended
+						if (timeRemaining <= SWITCH_BEFORE_END && timeRemaining >= -0.5) {
+							hasTriggered = true
+							console.log(`[Player] Triggering video switch with ${timeRemaining.toFixed(1)}s remaining`)
 							switchToNextVideoRef.current()
 						}
 					}
@@ -426,68 +421,52 @@ export default function Player({
 		}, 500)
 	}, [])
 
-	const switchToNextVideo = useCallback((skipFailed = false) => {
+	// Simple: play next video immediately
+	const switchToNextVideo = useCallback(() => {
 		if (isTransitioningRef.current) return
-
-		if (isAdsChannel) {
-			if (onVideoEnd) onVideoEnd()
-			return
-		}
+		if (!playerRef.current) return
+		if (!items || items.length === 0) return
 
 		isTransitioningRef.current = true
-		setIsTransitioning(true)
-		
+
+		// Stop progress monitoring
 		if (progressIntervalRef.current) {
 			clearInterval(progressIntervalRef.current)
 			progressIntervalRef.current = null
 		}
 
-		try {
-			if (playerRef.current) {
-				playerRef.current.pauseVideo()
-			}
-		} catch(err) {}
-
 		if (onVideoEnd) onVideoEnd()
 
-		transitionTimeoutRef.current = setTimeout(() => {
-			if (channelIdRef.current === channel?._id && !isAdsChannel) {
-				setCurrentIndex(prevIndex => {
-					let nextIndex
-					let attempts = 0
-					const maxAttempts = items.length || 10
-					
-					do {
-						if (items.length <= 1) {
-							nextIndex = 0
-							break
-						}
-						
-						// Use YouTubeRetryManager to find next healthy video
-						const result = YouTubeRetryManager.getNextHealthyVideo(items, prevIndex)
-						nextIndex = result.index
-						
-						attempts++
-						
-						if (attempts >= maxAttempts) {
-							failedVideosRef.current.clear()
-							YouTubeRetryManager.reset()
-							skipAttemptsRef.current = 0
-							break
-						}
-					} while (skipFailed && failedVideosRef.current.has(items[nextIndex]?.youtubeId) && attempts < maxAttempts)
-					
-					setManualIndex(nextIndex)
-					isTransitioningRef.current = false
-					setIsTransitioning(false)
-					return nextIndex
-				})
-			} else {
-				isTransitioningRef.current = false
-				setIsTransitioning(false)
+		// Calculate next video index using setter to get latest state
+		setCurrentIndex(prevIndex => {
+			const nextIdx = (prevIndex + 1) % items.length
+			const nextVid = items[nextIdx]
+
+			if (nextVid?.youtubeId) {
+				console.log(`[Player] Loading video ${nextIdx}: ${nextVid.youtubeId}`)
+				try {
+					playerRef.current.loadVideoById({
+						videoId: nextVid.youtubeId,
+						startSeconds: 0,
+					})
+					// Ensure video plays
+					playerRef.current.playVideo()
+				} catch (err) {
+					console.error('[Player] Switch video error:', err)
+				}
 			}
-		}, 500)
-	}, [channel?._id, isAdsChannel, items, onVideoEnd])
+
+			setManualIndex(nextIdx)
+			
+			// Restart monitoring after video is loaded
+			setTimeout(() => {
+				isTransitioningRef.current = false
+				startProgressMonitoring()
+			}, 800)
+
+			return nextIdx
+		})
+	}, [items, onVideoEnd, startProgressMonitoring])
 
 	// Keep ref updated
 	switchToNextVideoRef.current = switchToNextVideo
@@ -553,26 +532,28 @@ export default function Player({
 			playbackStateRef.current = state === 1 ? 'playing' : state === 3 ? 'buffering' : 'other'
 			
 			if (state === 0) {
+				// Video ended - switch immediately
 				if (!isTransitioningRef.current) {
-					if (isAdsChannel) {
-						if (onVideoEnd) onVideoEnd()
-					} else {
-						switchToNextVideo()
-					}
+					switchToNextVideo()
 				}
 			} else if (state === 3) {
-				setIsBuffering(true)
-				setPlaybackHealth('buffering')
-				
-				if (staticAudioRef.current) {
-					try {
-						staticAudioRef.current.currentTime = 0
-						staticAudioRef.current.play().catch(() => {})
-					} catch (err) {}
-				}
+				// Buffering - only show indicator after 500ms to avoid flicker
 				if (bufferTimeoutRef.current) {
 					clearTimeout(bufferTimeoutRef.current)
 				}
+				bufferTimeoutRef.current = setTimeout(() => {
+					if (playbackStateRef.current === 'buffering') {
+						setIsBuffering(true)
+						setPlaybackHealth('buffering')
+						
+						if (staticAudioRef.current) {
+							try {
+								staticAudioRef.current.currentTime = 0
+								staticAudioRef.current.play().catch(() => {})
+							} catch (err) {}
+						}
+					}
+				}, 500) // Only show buffering after 500ms
 			} else if (state === 1) {
 				// SUCCESS - Video is playing
 				setRetryCount(0)
@@ -611,7 +592,7 @@ export default function Player({
 		} catch (err) {
 			console.error('[Player] Error in onStateChange:', err)
 		}
-	}, [isAdsChannel, onVideoEnd, switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange])
+	}, [onVideoEnd, switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange])
 
 	const onReady = useCallback((e) => {
 		try {

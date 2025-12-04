@@ -12,7 +12,8 @@ export default function TVMenu({
 	activeChannelIndex,
 	onChannelSelect,
 	currentVideoIndex,
-	power
+	power,
+	uiLoadTime
 }) {
 	const [selectedIndex, setSelectedIndex] = useState(activeChannelIndex)
 	const [activeTab, setActiveTab] = useState('channels') // 'channels', 'queue', 'settings'
@@ -92,7 +93,13 @@ export default function TVMenu({
 			return { now: null, next: null, upcoming: [] }
 		}
 
-		const live = getPseudoLiveItem(channel.items, channel.playlistStartEpoch)
+		// Use uiLoadTime if provided to sync with Player's calculation
+		// If not provided, fall back to current time (legacy behavior)
+		const effectiveStartEpoch = uiLoadTime && channel?.playlistStartEpoch
+			? new Date(uiLoadTime)
+			: channel.playlistStartEpoch
+
+		const live = getPseudoLiveItem(channel.items, effectiveStartEpoch)
 		const currentIdx = live?.videoIndex ?? 0
 		const now = channel.items[currentIdx]
 		const next = channel.items[(currentIdx + 1) % channel.items.length]
@@ -110,7 +117,7 @@ export default function TVMenu({
 			offset: live?.offset || 0,
 			duration: now?.duration || 300
 		}
-	}, [])
+	}, [uiLoadTime])
 
 	// Get active channel's queue
 	const activeChannel = channels[activeChannelIndex]

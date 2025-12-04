@@ -14,7 +14,7 @@ const BroadcastState = require('../models/BroadcastState')
  * Retrieve current broadcast state for a channel
  * Calculates virtual position based on elapsed time since last session
  */
-router.get('/broadcast-state/:channelId', async (req, res) => {
+router.get('/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 
@@ -78,7 +78,7 @@ router.get('/broadcast-state/:channelId', async (req, res) => {
  * Save or update broadcast state for a channel
  * Called periodically during playback to persist state
  */
-router.post('/broadcast-state/:channelId', async (req, res) => {
+router.post('/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 		const stateData = req.body
@@ -127,7 +127,7 @@ router.post('/broadcast-state/:channelId', async (req, res) => {
  * Calculate where we should be in the timeline right now
  * Accounts for time passed since last session ended
  */
-router.get('/broadcast-state/:channelId/timeline', async (req, res) => {
+router.get('/:channelId/timeline', async (req, res) => {
 	try {
 		const { channelId } = req.params
 		const state = await BroadcastState.findOne({ channelId })
@@ -175,7 +175,7 @@ router.get('/broadcast-state/:channelId/timeline', async (req, res) => {
  * DELETE /api/broadcast-state/:channelId
  * Clear broadcast state for a channel
  */
-router.delete('/broadcast-state/:channelId', async (req, res) => {
+router.delete('/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 
@@ -192,7 +192,7 @@ router.delete('/broadcast-state/:channelId', async (req, res) => {
  * GET /api/broadcast-state/all
  * Get all broadcast states (diagnostic/admin only)
  */
-router.get('/broadcast-state/all', async (req, res) => {
+router.get('/all', async (req, res) => {
 	try {
 		const states = await BroadcastState.find({}).sort({ lastAccessTime: -1 })
 

@@ -22,10 +22,6 @@ export default function Home() {
 	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
 	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
 	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
-	const originalChannelRef = useRef(null) // Track original channel when playing ads
-	const originalIndexRef = useRef(null) // Track original video index when playing ads
-	const isPlayingAdRef = useRef(false) // Track if currently playing an ad
-	const [shouldAdvanceVideo, setShouldAdvanceVideo] = useState(false) // Signal to advance video after ad
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 
@@ -204,17 +200,8 @@ export default function Home() {
 		filterChannelsBySelection(channels, selectedChannels)
 	}, [selectedChannels, channels])
 
-	// Find Ads channel
-	const adsChannel = channels.find(ch => 
-		ch.name && (ch.name.toLowerCase() === 'ads' || ch.name.toLowerCase() === 'ad' || ch.name.toLowerCase() === 'advertisements')
-	)
-
-	// State for ad channel and playing status
-	const [adChannel, setAdChannel] = useState(null)
-	const [isPlayingAd, setIsPlayingAd] = useState(false)
-
-	// Get active channel - if playing ad, use ad channel, otherwise use filtered channel
-	const activeChannel = isPlayingAd && adChannel ? adChannel : (filteredChannels[activeChannelIndex] || null)
+	// Active channel - simply the filtered channel at current index
+	const activeChannel = filteredChannels[activeChannelIndex] || null
 
 	function handlePowerToggle() {
 		const newPower = !power
@@ -246,11 +233,6 @@ export default function Home() {
 
 	function handleChannelUp() {
 		if (!power || filteredChannels.length === 0) return
-		// Reset ad state when manually changing channels
-		setIsPlayingAd(false)
-		setAdChannel(null)
-		originalChannelRef.current = null
-		originalIndexRef.current = null
 		
 		setActiveChannelIndex(prevIndex => {
 			const nextIndex = (prevIndex + 1) % filteredChannels.length
@@ -263,11 +245,6 @@ export default function Home() {
 
 	function handleChannelDown() {
 		if (!power || filteredChannels.length === 0) return
-		// Reset ad state when manually changing channels
-		setIsPlayingAd(false)
-		setAdChannel(null)
-		originalChannelRef.current = null
-		originalIndexRef.current = null
 		
 		setActiveChannelIndex(prevIndex => {
 			const newIndex = prevIndex === 0 
@@ -314,12 +291,6 @@ export default function Home() {
 			return
 		}
 		
-		// Reset ad state
-		setIsPlayingAd(false)
-		setAdChannel(null)
-		originalChannelRef.current = null
-		originalIndexRef.current = null
-		
 		triggerStatic()
 		triggerBuffering(`SWITCHING TO ${filteredChannels[index]?.name || 'UNKNOWN'}...`)
 		setActiveChannelIndex(index)
@@ -346,62 +317,7 @@ export default function Home() {
 
 	function handleVideoEnd() {
 		triggerStatic()
-		
-		// If we just finished an ad, return to original channel and advance video
-		if (isPlayingAd) {
-			setIsPlayingAd(false)
-			setAdChannel(null)
-			
-			if (originalChannelRef.current !== null) {
-				// Find the original channel in filteredChannels
-				const originalChannelName = originalChannelRef.current.name
-				const channelIndex = filteredChannels.findIndex(ch => ch.name === originalChannelName)
-				if (channelIndex >= 0) {
-					setActiveChannelIndex(channelIndex)
-					setStatusMessage(`RETURNING TO ${originalChannelName.toUpperCase()}`)
-				}
-				originalChannelRef.current = null
-				originalIndexRef.current = null
-			}
-			
-			// Signal to advance to next video after ad
-			setShouldAdvanceVideo(true)
-			setTimeout(() => setShouldAdvanceVideo(false), 100)
-			return
-		}
-
-		// If we finished a regular video (not an ad), play an ad if available
-		// Only play ads if we have an ads channel and it's not already the active channel
-		if (adsChannel && adsChannel.items && adsChannel.items.length > 0) {
-			const isCurrentAd = activeChannel && activeChannel.name && (
-				activeChannel.name.toLowerCase() === 'ads' || 
-				activeChannel.name.toLowerCase() === 'ad' || 
-				activeChannel.name.toLowerCase() === 'advertisements'
-			)
-			
-			if (!isCurrentAd) {
-				// Store original channel info before switching to ad
-				originalChannelRef.current = activeChannel
-				originalIndexRef.current = activeChannelIndex
-				isPlayingAdRef.current = true
-				
-				// Get random ad from the ads channel
-				const adItems = adsChannel.items
-				const randomAd = adItems[Math.floor(Math.random() * adItems.length)]
-				
-				// Create temporary ad channel with just one random ad
-				const tempAdChannel = {
-					...adsChannel,
-					items: [randomAd],
-					_id: `ad-${Date.now()}`,
-					name: 'Ads'
-				}
-				
-				setIsPlayingAd(true)
-				setAdChannel(tempAdChannel)
-				setStatusMessage('COMMERCIAL BREAK')
-			}
-		}
+		// Videos now auto-advance in Player component
 	}
 
 	function handleChannelChange() {
@@ -436,15 +352,14 @@ export default function Home() {
 					activeChannel={activeChannel}
 					onStaticTrigger={handleChannelChange}
 					statusMessage={statusMessage}
-					volume={volume}
-					staticActive={staticActive}
-					uiLoadTime={uiLoadTimeRef.current}
-					allChannels={channels}
-					onVideoEnd={handleVideoEnd}
-					shouldAdvanceVideo={shouldAdvanceVideo}
-					isBuffering={isBuffering}
-					bufferErrorMessage={bufferErrorMessage}
-					onBufferingChange={(isBuffering, errorMsg) => {
+				volume={volume}
+				staticActive={staticActive}
+				uiLoadTime={uiLoadTimeRef.current}
+				allChannels={channels}
+				onVideoEnd={handleVideoEnd}
+				isBuffering={isBuffering}
+				bufferErrorMessage={bufferErrorMessage}
+				onBufferingChange={(isBuffering, errorMsg) => {
 						setIsBuffering(isBuffering)
 						setBufferErrorMessage(errorMsg || '')
 						// Auto-hide after 2 seconds
@@ -492,6 +407,7 @@ export default function Home() {
 				activeChannelIndex={activeChannelIndex}
 				onChannelSelect={handleChannelDirect}
 				power={power}
+				uiLoadTime={uiLoadTimeRef.current}
 			/>
 
 			{/* Footer / Status Text */}

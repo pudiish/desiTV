@@ -25,12 +25,14 @@ const authRoutes = require('./routes/auth');
 const categoriesRoutes = require('./routes/categories');
 const youtubeRoutes = require('./routes/youtube');
 const broadcastStateRoutes = require('./routes/broadcastState');
+const sessionRoutes = require('./routes/session');
 
 app.use('/api/channels', channelRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api', broadcastStateRoutes);
+app.use('/api/session', sessionRoutes);
 
 // health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

@@ -97,8 +97,9 @@ class SessionManager {
 			volume: 0.5,
 			isPowerOn: false,
 			selectedChannels: [],
-			currentVideoIndex: 0,
-			currentPlaybackPosition: 0,
+			// NOTE: Do NOT persist currentVideoIndex or currentPlaybackPosition
+			// Video playback is determined by the pseudo-live timeline, not saved state
+			// When user returns, the timeline calculates which video should play based on time
 			timeline: {},
 		}
 	}

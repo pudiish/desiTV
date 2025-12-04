@@ -18,61 +18,28 @@ const BroadcastStateSchema = new mongoose.Schema(
 			type: String,
 			required: true,
 		},
-		// Timeline epoch - when this channel's broadcast started (never changes)
+		// Timeline epoch - when this channel's broadcast started
+		// IMPORTANT: This NEVER changes and defines the entire pseudo-live timeline
+		// All video playback positions are calculated from this epoch:
+		// elapsedSeconds = (now - playlistStartEpoch) / 1000
+		// currentPosition = elapsedSeconds % playlistTotalDuration
+		// Then walk through videoDurations to find which video is playing
 		playlistStartEpoch: {
 			type: Date,
 			required: true,
 			index: true,
 		},
-		// Current video index in playlist (changes as broadcast progresses)
-		currentVideoIndex: {
-			type: Number,
-			default: 0,
-		},
-		// Current playback offset in seconds within the current video
-		currentTime: {
-			type: Number,
-			default: 0,
-		},
-		// When the app last saved state (for calculating elapsed time)
-		lastSessionEndTime: {
-			type: Date,
-			default: () => new Date(),
-		},
-		// When user last accessed this channel
-		lastAccessTime: {
-			type: Date,
-			default: () => new Date(),
-		},
 		// Total duration of the entire playlist in seconds
+		// Used for: (elapsed_time % total_duration) to find position in cycle
 		playlistTotalDuration: {
 			type: Number,
 			default: 3600, // Default 1 hour
 		},
 		// Individual video durations for accurate timeline calculation
+		// Array of durations for each video in the channel's playlist
 		videoDurations: {
 			type: [Number],
 			default: [],
-		},
-		// Playback rate (1.0 = normal speed)
-		playbackRate: {
-			type: Number,
-			default: 1.0,
-		},
-		// Last update timestamp
-		updatedAt: {
-			type: Date,
-			default: () => new Date(),
-		},
-		// Virtual elapsed time since playlist start (in seconds)
-		virtualElapsedTime: {
-			type: Number,
-			default: 0,
-		},
-		// Track how many times this broadcast has cycled through
-		playlistCycleCount: {
-			type: Number,
-			default: 0,
 		},
 	},
 	{
@@ -80,6 +47,31 @@ const BroadcastStateSchema = new mongoose.Schema(
 		collection: 'broadcastStates',
 	}
 )
+
+/**
+ * CRITICAL: BroadcastState ONLY tracks timeline, NOT playback state
+ *
+ * What IS saved:
+ * - playlistStartEpoch: Immutable reference point (set once, never changes)
+ * - playlistTotalDuration: Total length of entire playlist
+ * - videoDurations: Array of video lengths
+ *
+ * What is NEVER saved (calculated on-the-fly):
+ * - currentVideoIndex: Calculated from elapsed time
+ * - currentTime: Calculated from elapsed time
+ * - playbackRate, virtualElapsedTime, playlistCycleCount: Not needed
+ *
+ * WHY: Video playback must follow the pseudo-live timeline continuously.
+ * If we save currentVideoIndex/currentTime, users would resume from a
+ * specific video's saved position instead of from the live timeline.
+ *
+ * Example:
+ * - Channel started 1 hour ago
+ * - Video 1: 10 min, Video 2: 10 min, Video 3: 10 min (repeating)
+ * - Current time: 35 mins elapsed = Video 2 at 5 min mark
+ * - If user closes app and comes back later: 120 mins elapsed = Video 3 at 0 min
+ * - Timeline continues naturally, like a real TV broadcast
+ */
 
 // Index for efficient queries
 BroadcastStateSchema.index({ channelId: 1, updatedAt: -1 })
