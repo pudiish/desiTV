@@ -73,8 +73,14 @@ export const API_ENDPOINTS = {
   // YouTube
   YOUTUBE_SEARCH: '/api/youtube/search',
   
-  // Health
+  // Health & Monitoring
   HEALTH: '/health',
+  MONITORING_HEALTH: '/api/monitoring/health',
+  MONITORING_ENDPOINTS: '/api/monitoring/endpoints',
+  MONITORING_SERVICES: '/api/monitoring/services',
+  MONITORING_METRICS: '/api/monitoring/metrics',
+  MONITORING_STATUS: '/api/monitoring/status',
+  MONITORING_RESET: '/api/monitoring/reset',
 }
 
 // ===== ERROR HANDLING =====

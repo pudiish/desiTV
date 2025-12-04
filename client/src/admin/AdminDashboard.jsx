@@ -8,6 +8,7 @@ import APIMonitor from './sections/APIMonitor'
 import APIHealth from './sections/APIHealth'
 import CacheManagerUI from './sections/CacheManagerUI'
 import ComponentHealth from './sections/ComponentHealth'
+import MonitoringMetrics from './sections/MonitoringMetrics'
 
 export default function AdminDashboard() {
 	const [activeSection, setActiveSection] = useState('dashboard')
@@ -20,6 +21,12 @@ export default function AdminDashboard() {
 			label: 'System Monitor',
 			icon: '🖥️',
 			component: <SystemMonitor />,
+		},
+		{
+			id: 'metrics',
+			label: 'Metrics Dashboard',
+			icon: '📊',
+			component: <MonitoringMetrics />,
 		},
 		{
 			id: 'health',

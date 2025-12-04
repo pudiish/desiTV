@@ -264,6 +264,34 @@ export class APIService {
       }
     }
   }
+
+  /**
+   * Monitoring API Methods
+   */
+
+  async getMonitoringHealth() {
+    return this.get(API_ENDPOINTS.MONITORING_HEALTH)
+  }
+
+  async getMonitoringEndpoints() {
+    return this.get(API_ENDPOINTS.MONITORING_ENDPOINTS)
+  }
+
+  async getMonitoringServices() {
+    return this.get(API_ENDPOINTS.MONITORING_SERVICES)
+  }
+
+  async getMonitoringMetrics() {
+    return this.get(API_ENDPOINTS.MONITORING_METRICS)
+  }
+
+  async getMonitoringStatus() {
+    return this.get(API_ENDPOINTS.MONITORING_STATUS)
+  }
+
+  async resetMonitoring() {
+    return this.post(API_ENDPOINTS.MONITORING_RESET, {})
+  }
 }
 
 // Create singleton instance

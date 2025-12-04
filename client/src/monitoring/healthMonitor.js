@@ -13,6 +13,8 @@ export class HealthMonitor {
       API_ENDPOINTS.HEALTH,
       API_ENDPOINTS.CHANNELS,
       API_ENDPOINTS.BROADCAST_STATE_ALL,
+      API_ENDPOINTS.MONITORING_HEALTH,
+      API_ENDPOINTS.MONITORING_STATUS,
     ]
     this.checkInterval = null
     this.lastCheck = null
