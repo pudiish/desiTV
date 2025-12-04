@@ -4,7 +4,7 @@ import StaticEffect from './StaticEffect'
 import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, uiLoadTime, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -107,7 +107,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									onVideoEnd={onVideoEnd || onStaticTrigger}
 									onChannelChange={onStaticTrigger}
 									volume={volume}
-									uiLoadTime={uiLoadTime}
 									allChannels={allChannels}
 									shouldAdvanceVideo={shouldAdvanceVideo}
 									onBufferingChange={onBufferingChange}

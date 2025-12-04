@@ -340,15 +340,14 @@ export default function Home() {
 		<div className="main-container">
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
-				<TVFrame 
-					power={power}
-					activeChannel={activeChannel}
-					onStaticTrigger={handleChannelChange}
-					statusMessage={statusMessage}
-				volume={volume}
-				staticActive={staticActive}
-				uiLoadTime={uiLoadTimeRef.current}
-				allChannels={channels}
+			<TVFrame 
+				power={power}
+				activeChannel={activeChannel}
+				onStaticTrigger={handleChannelChange}
+				statusMessage={statusMessage}
+			volume={volume}
+			staticActive={staticActive}
+			allChannels={channels}
 				onVideoEnd={handleVideoEnd}
 				isBuffering={isBuffering}
 				bufferErrorMessage={bufferErrorMessage}
