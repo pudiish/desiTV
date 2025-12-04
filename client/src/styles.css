@@ -282,6 +282,7 @@ body {
 	/* Subtle barrel distortion for convex effect */
 	transform: scale(1.01) perspective(800px) rotateX(-0.2deg);
 	transform-origin: center center;
+	overflow: hidden !important;
 }
 
 .youtube-player-container > div {
@@ -300,6 +301,9 @@ body {
 	border: none;
 	/* Additional convex curvature */
 	border-radius: 2px;
+	/* Clip the iframe to hide YouTube UI - critical for hiding title, logo, etc */
+	clip-path: inset(0 0 0 0);
+	overflow: hidden !important;
 }
 
 /* Hide YouTube controls completely - prevent any interaction */
@@ -316,31 +320,42 @@ body {
 	pointer-events: none !important;
 }
 
-/* Hide YouTube frame description, title, watch later, and logos */
-/* This uses CSS to hide the endscreen and description overlays */
-.youtube-player-container iframe {
-	/* Clip the iframe to hide YouTube UI elements at edges */
-	clip-path: inset(0 0 0 0);
-}
-
-/* Hide YouTube's loading splash screen and info cards */
-.youtube-iframe {
-	/* Ensure no extra spacing or elements appear */
-	overflow: hidden !important;
-}
-
-/* Hide YouTube pause overlay and branding elements */
-.html5-video-container .ytp-chrome-bottom {
+/* Aggressive hide of all YouTube UI elements using CSS */
+/* These target YouTube's internal classes through iframe mutations */
+.html5-video-container .ytp-chrome-bottom,
+.html5-video-container .ytp-chrome-top,
+.html5-video-container .ytp-chrome,
+.html5-video-player .ytp-chrome,
+.ytp-tooltip-bg,
+.ytp-tooltip-text,
+.ytp-logo,
+.ytp-logo-button,
+.ytp-title,
+.ytp-info-icon,
+.ytp-watermark,
+.ytp-pause-overlay,
+.ytp-large-play-button-bg,
+.ytp-large-play-button,
+.html5-endscreen-ui,
+.html5-video-info-panel-container,
+.ytp-endscreen-container,
+.ytp-gradient-bottom,
+.ytp-gradient-top,
+.ytp-show-scroll-indicator {
 	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	height: 0 !important;
+	width: 0 !important;
 }
 
-.html5-video-container .ytp-endscreen-container {
+/* Hide data-tooltip elements */
+[data-tooltip],
+[data-tooltip-alignment] {
 	display: none !important;
-}
-
-/* Hide the entire bottom control bar area */
-.html5-video-container .ytp-chrome {
-	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
 }
 
 /* Right Side - Controls and Categories */

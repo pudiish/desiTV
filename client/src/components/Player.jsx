@@ -126,6 +126,82 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 	// Use channelChangeCounterRef to ensure key changes on channel switch
 	const playerKey = `${channel?._id}-${current.youtubeId}-${currIndex}-${channelChangeCounterRef.current}`
 
+
+	function removeYouTubeUI() {
+		// Remove all YouTube UI elements after a short delay to let them render first
+		const removeElements = () => {
+			const iframe = document.querySelector('.youtube-iframe iframe')
+			if (!iframe) return
+
+			try {
+				// Access iframe's document (may fail due to cross-origin)
+				const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+				if (!iframeDoc) return
+
+				// Add inline style to hide YouTube UI permanently
+				if (!iframeDoc.querySelector('#yt-ui-hide')) {
+					const style = iframeDoc.createElement('style')
+					style.id = 'yt-ui-hide'
+					style.innerHTML = `
+						.ytp-chrome, .ytp-chrome-bottom, .ytp-chrome-top,
+						.ytp-logo, .ytp-logo-button, .ytp-title,
+						.ytp-watermark, .ytp-pause-overlay,
+						.html5-endscreen-ui, .html5-video-info-panel-container,
+						.ytp-endscreen-container, .ytp-gradient-bottom,
+						.ytp-gradient-top, .ytp-tooltip-bg, .ytp-tooltip-text,
+						.ytp-info-icon, .ytp-large-play-button-bg,
+						[data-tooltip], [data-tooltip-alignment] {
+							display: none !important;
+							visibility: hidden !important;
+							opacity: 0 !important;
+							pointer-events: none !important;
+							height: 0 !important;
+							width: 0 !important;
+						}
+						.html5-video-player,
+						.video-stream {
+							width: 100% !important;
+							height: 100% !important;
+						}
+					`
+					iframeDoc.head.appendChild(style)
+				}
+
+				// Remove YouTube UI elements
+				const elementsToRemove = iframeDoc.querySelectorAll(
+					'.ytp-chrome-bottom, .ytp-chrome-top, .ytp-chrome, ' +
+					'.ytp-logo, .ytp-logo-button, .ytp-title, ' +
+					'.ytp-watermark, .ytp-pause-overlay, ' +
+					'.html5-endscreen-ui, .html5-video-info-panel-container, ' +
+					'.ytp-endscreen-container, .ytp-gradient-bottom, ' +
+					'.ytp-gradient-top, .ytp-tooltip-bg, .ytp-tooltip-text, ' +
+					'.ytp-info-icon, .ytp-large-play-button-bg'
+				)
+
+				elementsToRemove.forEach(el => {
+					el.style.display = 'none'
+					el.style.visibility = 'hidden'
+					el.style.opacity = '0'
+					el.style.pointerEvents = 'none'
+					el.style.height = '0'
+					el.style.width = '0'
+				})
+			} catch (err) {
+				// Cross-origin iframe - can't access directly
+				// CSS will handle hiding in this case
+			}
+		}
+
+		// Remove immediately and keep checking
+		removeElements()
+		
+		// Check every 300ms to catch new elements that appear
+		const interval = setInterval(removeElements, 300)
+		
+		// Stop checking after 10 seconds
+		setTimeout(() => clearInterval(interval), 10000)
+	}
+
 	function onReady(e){
 		playerRef.current = e.target
 		try{
@@ -142,6 +218,9 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			
 			if(offset) e.target.seekTo(offset, true)
 			e.target.playVideo()
+			
+			// Remove YouTube UI elements
+			removeYouTubeUI()
 			
 			// Unmute after short delay if volume > 0
 			setTimeout(() => {
