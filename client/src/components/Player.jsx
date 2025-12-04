@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react'
 import YouTube from 'react-youtube'
 import { getPseudoLiveItem, getNextVideoInSequence } from '../utils/pseudoLive'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
+import BroadcastStateManager from '../utils/BroadcastStateManager'
 
 export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [], shouldAdvanceVideo = false, onBufferingChange = null }){
 	const [currentIndex, setCurrentIndex] = useState(0)
@@ -147,6 +148,21 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			
 			// Remove YouTube UI elements using the utility
 			YouTubeUIRemover.init()
+			
+			// Initialize broadcast state manager
+			if (channel?._id) {
+				BroadcastStateManager.updateChannelState(channel._id, {
+					channelName: channel.name,
+					currentVideoIndex: currIndex,
+					currentTime: offset || 0,
+					playlistStartEpoch: effectiveStartEpoch,
+				})
+				
+				// Start auto-syncing state to database
+				BroadcastStateManager.startAutoSync((state) => {
+					console.log('[BroadcastStateManager] Auto-synced state:', state)
+				})
+			}
 			
 			// Unmute after short delay if volume > 0
 			setTimeout(() => {
@@ -404,6 +420,8 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			if (errorTimeoutRef.current) {
 				clearTimeout(errorTimeoutRef.current)
 			}
+			// Stop broadcast state auto-sync on unmount
+			BroadcastStateManager.stopAutoSync()
 		}
 	}, [currIndex]) // Re-run cleanup when video index changes
 
