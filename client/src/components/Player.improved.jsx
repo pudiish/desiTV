@@ -507,7 +507,8 @@ export default function Player({
             widget_referrer: window.location.origin,
             quality: 'medium',
             autohide: 1,
-            loop: 0
+            loop: 0,
+            pp: 0, // Disable pause overlay/branding
         }
     }
 

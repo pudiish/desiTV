@@ -379,6 +379,8 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 			quality: 'medium', // Use medium quality for better buffering
 			autohide: 1, // Auto-hide controls
 			loop: 0, // Don't loop individual videos (we handle looping)
+			fs: 0, // Disable fullscreen
+			pp: 0, // Disable pause overlay/branding
 		}
 	}
 
