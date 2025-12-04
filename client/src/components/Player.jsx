@@ -66,6 +66,79 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		}
 	}, [channel?._id, onChannelChange])
 
+	// CRITICAL: Load and restore saved state from database when channel changes
+	// Must happen BEFORE player initializes to use correct position
+	useEffect(() => {
+		if (!channel?._id) return
+
+		const loadAndRestoreState = async () => {
+			try {
+				console.log(`[Player] Loading state for channel ${channel._id}...`)
+				
+				// PRE-LOAD state from MongoDB BEFORE playback
+				const preloadedState = await BroadcastStateManager.preloadStateForChannel(
+					channel._id
+				)
+
+				// Calculate current position using the loaded state
+				const position = BroadcastStateManager.calculateCurrentPosition(
+					channel,
+					preloadedState
+				)
+
+				console.log(`[Player] Calculated position:`, {
+					videoIndex: position.videoIndex,
+					offset: position.offset.toFixed(1),
+					totalElapsed: position.totalElapsedSec?.toFixed(1),
+				})
+
+				// Initialize BroadcastStateManager with preloaded state
+				await BroadcastStateManager.initializeChannel(channel, preloadedState)
+
+				// SET PLAYER STATE TO CALCULATED POSITION
+				// This ensures player starts from correct video and offset
+				setCurrentIndex(position.videoIndex)
+				setManualIndex(null)
+
+				// Store offset for player to use
+				if (playerRef.current) {
+					playerRef.current.targetOffset = position.offset
+				}
+			} catch (err) {
+				console.error('[Player] Error loading state:', err)
+				// Fall back to default initialization
+				await BroadcastStateManager.initializeChannel(channel)
+			}
+		}
+
+		loadAndRestoreState()
+	}, [channel?._id])
+
+	// Save state before page unload
+	useEffect(() => {
+		const handleBeforeUnload = (e) => {
+			// Save current state to MongoDB before leaving
+			if (channel?._id) {
+				// Use sendBeacon for reliable delivery even if page is unloading
+				const stateData = BroadcastStateManager.getChannelState(channel._id)
+				if (stateData) {
+					try {
+						navigator.sendBeacon(
+							`/api/channels/${channel._id}/broadcast-state`,
+							JSON.stringify(stateData)
+						)
+						console.log('[Player] State saved via sendBeacon')
+					} catch (err) {
+						console.error('[Player] Error saving on unload:', err)
+					}
+				}
+			}
+		}
+
+		window.addEventListener('beforeunload', handleBeforeUnload)
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+	}, [channel?._id])
+
 	// Compute pseudo-live item using UI load time if available, otherwise use channel's playlistStartEpoch
 	// This ensures consistent timing across page loads and channel changes
 	// The timeline NEVER resets - it keeps moving forward like a real TV broadcast
@@ -143,7 +216,12 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				// Quality setting not available, ignore
 			}
 			
-			if(offset) e.target.seekTo(offset, true)
+			// USE CALCULATED OFFSET FROM BROADCAST STATE
+			// This is crucial for resuming at correct position after reload
+			const positionToSeek = playerRef.current?.targetOffset || offset || 0
+			console.log(`[Player] Seeking to offset: ${positionToSeek.toFixed(1)}s`)
+			
+			if(positionToSeek) e.target.seekTo(positionToSeek, true)
 			e.target.playVideo()
 			
 			// Remove YouTube UI elements using the utility
@@ -154,13 +232,15 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 				BroadcastStateManager.updateChannelState(channel._id, {
 					channelName: channel.name,
 					currentVideoIndex: currIndex,
-					currentTime: offset || 0,
-					playlistStartEpoch: effectiveStartEpoch,
+					currentTime: positionToSeek || 0,
+					playlistStartEpoch: new Date(channel.playlistStartEpoch),
+					videoDurations: items.map(v => v.duration || 300),
+					playlistTotalDuration: items.reduce((sum, v) => sum + (v.duration || 300), 0),
 				})
 				
 				// Start auto-syncing state to database
-				BroadcastStateManager.startAutoSync((state) => {
-					console.log('[BroadcastStateManager] Auto-synced state:', state)
+				BroadcastStateManager.startAutoSync((channelId, state) => {
+					console.log(`[Player] Auto-synced state for ${channelId}`)
 				})
 			}
 			
@@ -175,7 +255,9 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 
 			// Start monitoring video progress for early switching
 			startProgressMonitoring()
-		}catch{}
+		}catch(err) {
+			console.error('[Player] Error in onReady:', err)
+		}
 	}
 
 	function startProgressMonitoring() {

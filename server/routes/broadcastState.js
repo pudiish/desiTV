@@ -2,23 +2,23 @@
  * broadcastStateRoutes.js
  * API endpoints for managing broadcast state persistence
  * Handles real-time timeline tracking for pseudo-live broadcasts
+ * Now fully integrated with MongoDB for persistent storage
  */
 
 const express = require('express')
 const router = express.Router()
-
-// In-memory cache for broadcast state (in production, use MongoDB)
-const broadcastStateCache = {}
+const BroadcastState = require('../models/BroadcastState')
 
 /**
  * GET /api/channels/:channelId/broadcast-state
  * Retrieve current broadcast state for a channel
+ * Calculates virtual position based on elapsed time since last session
  */
-router.get('/channels/:channelId/broadcast-state', (req, res) => {
+router.get('/channels/:channelId/broadcast-state', async (req, res) => {
 	try {
 		const { channelId } = req.params
 
-		const state = broadcastStateCache[channelId]
+		let state = await BroadcastState.findOne({ channelId })
 
 		if (!state) {
 			return res.status(404).json({
@@ -28,14 +28,43 @@ router.get('/channels/:channelId/broadcast-state', (req, res) => {
 			})
 		}
 
-		// Calculate current virtual position based on stored state
+		// Calculate how much time elapsed since last session ended
 		const now = new Date()
-		const lastUpdate = new Date(state.lastUpdate)
-		const timeSinceUpdate = (now.getTime() - lastUpdate.getTime()) / 1000 // seconds
+		const lastSessionEndTime = new Date(state.lastSessionEndTime)
+		const elapsedSinceLastSessionMs = now.getTime() - lastSessionEndTime.getTime()
+		const elapsedSinceLastSessionSec = elapsedSinceLastSessionMs / 1000
+
+		// Update virtual elapsed time
+		state.virtualElapsedTime = state.virtualElapsedTime + elapsedSinceLastSessionSec
+
+		// Calculate current position in the broadcast timeline
+		let cyclePosition = state.virtualElapsedTime
+		let videoIndex = 0
+		let currentTime = 0
+
+		if (state.videoDurations && state.videoDurations.length > 0) {
+			// Find which video we're in based on accumulated duration
+			let accumulatedTime = 0
+			const playlistDuration = state.playlistTotalDuration || 3600
+
+			cyclePosition = state.virtualElapsedTime % playlistDuration
+
+			for (let i = 0; i < state.videoDurations.length; i++) {
+				if (accumulatedTime + state.videoDurations[i] > cyclePosition) {
+					videoIndex = i
+					currentTime = cyclePosition - accumulatedTime
+					break
+				}
+				accumulatedTime += state.videoDurations[i]
+			}
+		}
 
 		res.json({
-			...state,
-			timeSinceLastUpdate: timeSinceUpdate,
+			...state.toObject(),
+			videoIndex,
+			currentTime,
+			cyclePosition,
+			timeSinceLastSession: elapsedSinceLastSessionSec,
 			calculatedAt: now.toISOString(),
 		})
 	} catch (err) {
@@ -47,8 +76,9 @@ router.get('/channels/:channelId/broadcast-state', (req, res) => {
 /**
  * POST /api/channels/:channelId/broadcast-state
  * Save or update broadcast state for a channel
+ * Called periodically during playback to persist state
  */
-router.post('/channels/:channelId/broadcast-state', (req, res) => {
+router.post('/channels/:channelId/broadcast-state', async (req, res) => {
 	try {
 		const { channelId } = req.params
 		const stateData = req.body
@@ -57,24 +87,33 @@ router.post('/channels/:channelId/broadcast-state', (req, res) => {
 			return res.status(400).json({ error: 'No state data provided' })
 		}
 
-		// Merge with existing state
 		const now = new Date()
-		broadcastStateCache[channelId] = {
-			channelId,
-			channelName: stateData.channelName,
-			currentVideoIndex: stateData.currentVideoIndex || 0,
-			currentTime: stateData.currentTime || 0,
-			playlistStartEpoch: stateData.playlistStartEpoch || now,
-			sessionStartTime: stateData.sessionStartTime || now,
-			lastUpdate: now, // Always update timestamp
-			playbackRate: stateData.playbackRate || 1.0,
-			virtualElapsedTime: stateData.virtualElapsedTime || 0,
-		}
+
+		// Use findByIdAndUpdate with upsert to create or update
+		const state = await BroadcastState.findOneAndUpdate(
+			{ channelId },
+			{
+				channelId,
+				channelName: stateData.channelName || 'Unknown',
+				playlistStartEpoch: stateData.playlistStartEpoch || now,
+				currentVideoIndex: stateData.currentVideoIndex || 0,
+				currentTime: stateData.currentTime || 0,
+				lastSessionEndTime: now, // Update when this save happened
+				lastAccessTime: now,
+				playlistTotalDuration: stateData.playlistTotalDuration || 3600,
+				videoDurations: stateData.videoDurations || [],
+				playbackRate: stateData.playbackRate || 1.0,
+				virtualElapsedTime: stateData.virtualElapsedTime || 0,
+				playlistCycleCount: stateData.playlistCycleCount || 0,
+				updatedAt: now,
+			},
+			{ upsert: true, new: true }
+		)
 
 		res.json({
 			success: true,
-			message: 'Broadcast state saved',
-			state: broadcastStateCache[channelId],
+			message: 'Broadcast state saved to MongoDB',
+			state: state.toObject(),
 			savedAt: now.toISOString(),
 		})
 	} catch (err) {
@@ -86,11 +125,12 @@ router.post('/channels/:channelId/broadcast-state', (req, res) => {
 /**
  * GET /api/channels/:channelId/broadcast-state/timeline
  * Calculate where we should be in the timeline right now
+ * Accounts for time passed since last session ended
  */
-router.get('/channels/:channelId/broadcast-state/timeline', (req, res) => {
+router.get('/channels/:channelId/broadcast-state/timeline', async (req, res) => {
 	try {
 		const { channelId } = req.params
-		const state = broadcastStateCache[channelId]
+		const state = await BroadcastState.findOne({ channelId })
 
 		if (!state) {
 			return res.status(404).json({ error: 'State not found', channelId })
@@ -98,16 +138,32 @@ router.get('/channels/:channelId/broadcast-state/timeline', (req, res) => {
 
 		const now = new Date()
 		const playlistStart = new Date(state.playlistStartEpoch)
-		const elapsedMs = now.getTime() - playlistStart.getTime()
+		const lastSessionEnd = new Date(state.lastSessionEndTime)
+
+		// Calculate elapsed time from playlist start to now
+		const totalElapsedMs = now.getTime() - playlistStart.getTime()
+		const totalElapsedSec = totalElapsedMs / 1000
+
+		// Time passed since last session
+		const sessionGapMs = now.getTime() - lastSessionEnd.getTime()
+		const sessionGapSec = sessionGapMs / 1000
+
+		// Calculate position in current cycle
+		const playlistDurationSec = state.playlistTotalDuration || 3600
+		const cyclePosition = totalElapsedSec % playlistDurationSec
 
 		res.json({
 			channelId,
 			currentTime: now.toISOString(),
 			playlistStartEpoch: playlistStart.toISOString(),
-			elapsedMs,
-			elapsedSeconds: Math.floor(elapsedMs / 1000),
-			lastStateUpdate: state.lastUpdate,
-			timeSinceStateUpdate: (now.getTime() - new Date(state.lastUpdate).getTime()) / 1000,
+			lastSessionEndTime: lastSessionEnd.toISOString(),
+			totalElapsedMs,
+			totalElapsedSec: Math.floor(totalElapsedSec),
+			sessionGapSec: Math.floor(sessionGapSec),
+			playlistDurationSec,
+			cyclePosition: Math.floor(cyclePosition),
+			cycleCount: Math.floor(totalElapsedSec / playlistDurationSec),
+			virtualElapsedTime: state.virtualElapsedTime + sessionGapSec,
 		})
 	} catch (err) {
 		console.error('[BroadcastState] Timeline error:', err)
@@ -119,13 +175,11 @@ router.get('/channels/:channelId/broadcast-state/timeline', (req, res) => {
  * DELETE /api/channels/:channelId/broadcast-state
  * Clear broadcast state for a channel
  */
-router.delete('/channels/:channelId/broadcast-state', (req, res) => {
+router.delete('/channels/:channelId/broadcast-state', async (req, res) => {
 	try {
 		const { channelId } = req.params
 
-		if (broadcastStateCache[channelId]) {
-			delete broadcastStateCache[channelId]
-		}
+		await BroadcastState.deleteOne({ channelId })
 
 		res.json({ success: true, message: 'Broadcast state cleared', channelId })
 	} catch (err) {
@@ -138,16 +192,13 @@ router.delete('/channels/:channelId/broadcast-state', (req, res) => {
  * GET /api/broadcast-state/all
  * Get all broadcast states (diagnostic/admin only)
  */
-router.get('/broadcast-state/all', (req, res) => {
+router.get('/broadcast-state/all', async (req, res) => {
 	try {
-		const states = Object.keys(broadcastStateCache).map((channelId) => ({
-			channelId,
-			...broadcastStateCache[channelId],
-		}))
+		const states = await BroadcastState.find({}).sort({ lastAccessTime: -1 })
 
 		res.json({
 			count: states.length,
-			states,
+			states: states.map((state) => state.toObject()),
 			timestamp: new Date().toISOString(),
 		})
 	} catch (err) {

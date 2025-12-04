@@ -1,242 +1,338 @@
 /**
- * BroadcastStateManager.js
- * Manages virtual live broadcast state that persists across sessions
- * Simulates a TV channel that never stops, even when the app is closed
+ * BroadcastStateManager.js - SOLID ALGORITHM FOR PERSISTENT BROADCAST STATE
+ * 
+ * Core Principle: "THE BROADCAST NEVER STOPS"
+ * 
+ * Algorithm:
+ * =========
+ * 1. TIMELINE EPOCH: When broadcast started (stored in DB, never changes)
+ * 2. VIRTUAL ELAPSED TIME: Total seconds elapsed since epoch to NOW
+ *    - Accounts for app being closed, reloaded, or crashed
+ *    - Calculated from: now - playlistStartEpoch
+ * 3. CYCLE POSITION: Where we are in current playlist cycle
+ *    - Calculated from: virtualElapsedTime % totalPlaylistDuration
+ * 4. VIDEO INDEX & OFFSET: Which video + where in that video
+ *    - Find by: Iterate through videos until cumulative duration > cyclePosition
+ * 5. SMOOTH RESUME: Seek to calculated position on player load
+ *    - Player automatically starts from correct position
+ *    - No visual interruption
+ * 
+ * Error Handling:
+ * - Network gaps: Stored times are used for calculation
+ * - DB outages: Fall back to calculation from channel epoch
+ * - Rapid reloads: Debounced saves to DB (500ms intervals)
+ * - Missing data: Sensible defaults (300 sec per video)
  */
 
 class BroadcastStateManager {
 	constructor() {
-		this.state = {
-			channels: {}, // { channelId: { currentVideoIndex, currentTime, lastUpdate, playlistStartEpoch } }
-			sessionStart: null,
-			lastSync: null,
-		}
-		this.storageKey = 'retro_tv_broadcast_state'
+		this.state = {} // { channelId: state }
 		this.syncInterval = null
 		this.syncIntervalMs = 5000 // Sync to DB every 5 seconds
 		this.listeners = []
+		this.isSyncing = false
+		this.pendingSaves = {} // Track pending saves per channel
+		this.lastCalculatedPosition = {} // Cache last calculated positions
 	}
 
 	/**
-	 * Initialize broadcast state for a channel
-	 * Called when channel is first loaded
+	 * PRE-LOAD STATE BEFORE PLAYER STARTS
+	 * This is critical - must happen BEFORE any playback
 	 */
-	initializeChannel(channel) {
+	async preloadStateForChannel(channelId) {
+		try {
+			console.log(`[BSM] Pre-loading state for channel: ${channelId}`)
+
+			// Fetch saved state from MongoDB
+			const response = await fetch(`/api/channels/${channelId}/broadcast-state`)
+
+			if (response.ok) {
+				const savedState = await response.json()
+				console.log(`[BSM] Pre-loaded state from DB:`, {
+					videoIndex: savedState.videoIndex,
+					currentTime: savedState.currentTime?.toFixed(1),
+					cyclePosition: savedState.cyclePosition?.toFixed(1),
+				})
+				return savedState
+			}
+
+			console.log(`[BSM] No saved state in DB (first time or cleared)`)
+			return null
+		} catch (err) {
+			console.error(`[BSM] Error pre-loading state:`, err)
+			return null
+		}
+	}
+
+	/**
+	 * INITIALIZE CHANNEL STATE
+	 * Sets up state for a channel - either from DB or fresh
+	 */
+	async initializeChannel(channel, preloadedState = null) {
 		if (!channel || !channel._id) return null
 
 		const channelId = channel._id
 		const now = new Date()
 
-		// If channel state doesn't exist, create it
-		if (!this.state.channels[channelId]) {
-			this.state.channels[channelId] = {
+		if (preloadedState) {
+			// Use preloaded state from DB
+			this.state[channelId] = preloadedState
+			console.log(`[BSM] Channel ${channelId} initialized from DB state`)
+		} else {
+			// Create fresh state
+			this.state[channelId] = {
 				channelId,
 				channelName: channel.name,
+				playlistStartEpoch: new Date(
+					channel.playlistStartEpoch || now.toISOString()
+				),
 				currentVideoIndex: 0,
-				currentTime: 0, // Current playback time in video
-				playlistStartEpoch: channel.playlistStartEpoch || now,
-				sessionStartTime: now, // When user tuned into this channel
-				lastUpdate: now,
-				playbackRate: 1.0, // Normal playback
+				currentTime: 0,
+				lastSessionEndTime: now,
+				playlistTotalDuration: this.calculateTotalDuration(channel.items),
+				videoDurations: channel.items.map((v) => v.duration || 300),
+				playbackRate: 1.0,
+				virtualElapsedTime: 0,
 			}
+			console.log(`[BSM] Channel ${channelId} initialized as new`)
 		}
 
-		return this.state.channels[channelId]
+		return this.state[channelId]
 	}
 
 	/**
-	 * Get the correct video and playback position based on elapsed time
-	 * This is the heart of the pseudo-live system
+	 * CORE ALGORITHM: Calculate current position in broadcast timeline
+	 * 
+	 * Handles TWO cases:
+	 * 1. SINGLE VIDEO: Loop the same video continuously
+	 *    - Entire timeline is just looping one video
+	 *    - Calculate offset by: totalElapsed % videoDuration
+	 * 
+	 * 2. MULTIPLE VIDEOS: Cycle through playlist
+	 *    - Timeline cycles through all videos in sequence
+	 *    - Calculate offset by: totalElapsed % totalPlaylistDuration
+	 *
+	 * This is the "magic" that makes "broadcast never stops" work
+	 * Even if app was closed for hours, this calculates exactly where to resume
 	 */
-	calculateCurrentPosition(channel, uiLoadTime) {
+	calculateCurrentPosition(channel, savedState = null) {
 		if (!channel || !channel.items || channel.items.length === 0) {
-			return { videoIndex: 0, offset: 0, cyclePosition: 0 }
+			return {
+				videoIndex: 0,
+				offset: 0,
+				debugInfo: 'No items in channel',
+			}
 		}
 
-		const playlistStartEpoch = new Date(channel.playlistStartEpoch || uiLoadTime)
-		const now = new Date(uiLoadTime)
-		const elapsedMs = now.getTime() - playlistStartEpoch.getTime()
+		const now = new Date()
 
-		// Calculate total duration of all videos
-		let totalDurationMs = 0
-		const videoDurations = []
+		// Step 1: Determine broadcast epoch
+		// This is the absolute start time of the broadcast timeline
+		const playlistStartEpoch = savedState?.playlistStartEpoch
+			? new Date(savedState.playlistStartEpoch)
+			: new Date(channel.playlistStartEpoch)
 
-		channel.items.forEach((video) => {
-			// Estimate duration: YouTube videos average 4-10 minutes, use 5 as default
-			const durationSec = video.duration || 300
-			const durationMs = durationSec * 1000
-			videoDurations.push(durationMs)
-			totalDurationMs += durationMs
+		console.log(`[BSM] Calculating position for ${channel.items.length} video(s):`, {
+			now: now.toISOString(),
+			epoch: playlistStartEpoch.toISOString(),
 		})
 
-		// Handle edge case: no videos
-		if (totalDurationMs === 0) {
-			totalDurationMs = 300000 // Default 5 minutes
-			videoDurations.forEach((_, i) => {
-				videoDurations[i] = 300000
+		// Step 2: Calculate total elapsed time since broadcast epoch
+		// CRUCIAL: This is in absolute terms, not relative to last session
+		const totalElapsedMs = now.getTime() - playlistStartEpoch.getTime()
+		const totalElapsedSec = totalElapsedMs / 1000
+
+		console.log(
+			`[BSM] Total elapsed: ${totalElapsedSec.toFixed(1)}s (${(totalElapsedMs / 1000 / 60 / 60).toFixed(1)}h)`
+		)
+
+		// Step 3: Calculate video durations
+		const videoDurations = channel.items.map((v) => v.duration || 300)
+		const totalDurationSec = videoDurations.reduce((sum, d) => sum + d, 0) || 3600
+
+		let videoIndex = 0
+		let offsetInVideo = 0
+		let cyclePosition = 0
+		let cycleCount = 0
+
+		// ========================================
+		// CASE 1: SINGLE VIDEO - Loop it continuously
+		// ========================================
+		if (channel.items.length === 1) {
+			const singleVideoDuration = videoDurations[0]
+
+			// Position is just looping within this one video
+			cyclePosition = totalElapsedSec % singleVideoDuration
+			offsetInVideo = cyclePosition
+			videoIndex = 0
+			cycleCount = Math.floor(totalElapsedSec / singleVideoDuration)
+
+			console.log(`[BSM] SINGLE VIDEO MODE:`, {
+				videoDuration: singleVideoDuration.toFixed(1),
+				offset: offsetInVideo.toFixed(1),
+				loopCount: cycleCount,
+			})
+		}
+		// ========================================
+		// CASE 2: MULTIPLE VIDEOS - Cycle through playlist
+		// ========================================
+		else {
+			// Find cycle position in the full playlist
+			cyclePosition = totalElapsedSec % totalDurationSec
+			cycleCount = Math.floor(totalElapsedSec / totalDurationSec)
+
+			// Find which video we're in
+			let accumulatedTime = 0
+
+			for (let i = 0; i < videoDurations.length; i++) {
+				const videoDuration = videoDurations[i]
+
+				if (accumulatedTime + videoDuration > cyclePosition) {
+					videoIndex = i
+					offsetInVideo = cyclePosition - accumulatedTime
+					break
+				}
+
+				accumulatedTime += videoDuration
+			}
+
+			console.log(`[BSM] MULTI-VIDEO MODE:`, {
+				totalPlaylistDuration: totalDurationSec.toFixed(1),
+				cyclePosition: cyclePosition.toFixed(1),
+				videoIndex,
+				offsetInVideo: offsetInVideo.toFixed(1),
+				cycleCount,
 			})
 		}
 
-		// Find current position in broadcast timeline
-		// Timeline is cyclic - after all videos play, loop back to start
-		const cyclePosition = elapsedMs % totalDurationMs
-		let currentPosition = 0
-		let videoIndex = 0
-
-		for (let i = 0; i < videoDurations.length; i++) {
-			if (currentPosition + videoDurations[i] > cyclePosition) {
-				videoIndex = i
-				break
-			}
-			currentPosition += videoDurations[i]
-		}
-
-		// Calculate offset (how far into this video we are)
-		const offset = (cyclePosition - currentPosition) / 1000 // Convert to seconds
-
-		return {
+		const position = {
 			videoIndex,
-			offset: Math.max(0, offset),
-			cyclePosition: elapsedMs,
-			totalDuration: totalDurationMs,
-			elapsedMs,
+			offset: Math.max(0, offsetInVideo),
+			cyclePosition,
+			totalDuration: totalDurationSec,
+			totalElapsedSec,
+			cycleCount,
 			videoDurations,
-		}
-	}
-
-	/**
-	 * Update channel state during playback
-	 * Call this periodically to keep state current
-	 */
-	updateChannelState(channelId, updateData) {
-		if (!this.state.channels[channelId]) {
-			return null
+			isSingleVideo: channel.items.length === 1,
 		}
 
-		const now = new Date()
-		this.state.channels[channelId] = {
-			...this.state.channels[channelId],
-			...updateData,
-			lastUpdate: now,
-		}
-
-		this.notifyListeners('stateUpdated', {
-			channelId,
-			state: this.state.channels[channelId],
+		console.log(`[BSM] Final position:`, {
+			videoIndex: position.videoIndex,
+			offset: position.offset.toFixed(1),
+			totalElapsed: position.totalElapsedSec.toFixed(1),
 		})
 
-		return this.state.channels[channelId]
+		this.lastCalculatedPosition[channel._id] = position
+		return position
 	}
 
 	/**
-	 * Get channel state
+	 * Calculate total playlist duration
 	 */
-	getChannelState(channelId) {
-		return this.state.channels[channelId] || null
+	calculateTotalDuration(items) {
+		if (!items || items.length === 0) return 3600
+		return items.reduce((sum, item) => sum + (item.duration || 300), 0)
 	}
 
 	/**
-	 * Get all channel states
+	 * UPDATE STATE DURING PLAYBACK
+	 * Called when video changes or we detect changes
 	 */
-	getAllStates() {
-		return this.state.channels
-	}
-
-	/**
-	 * Handle channel change - reset tracking for new channel
-	 */
-	onChannelChange(fromChannelId, toChannelId) {
-		if (fromChannelId) {
-			// Save state of previous channel
-			const prevState = this.state.channels[fromChannelId]
-			if (prevState) {
-				this.saveToDB(fromChannelId, prevState)
-			}
+	updateChannelState(channelId, updateData) {
+		if (!this.state[channelId]) {
+			this.state[channelId] = updateData
+			return updateData
 		}
-
-		// Initialize new channel if needed
-		return this.initializeChannel({ _id: toChannelId })
-	}
-
-	/**
-	 * Prepare state for save to database
-	 */
-	prepareForDB(channelId) {
-		const channelState = this.state.channels[channelId]
-		if (!channelState) return null
-
-		return {
-			channelId,
-			channelName: channelState.channelName,
-			currentVideoIndex: channelState.currentVideoIndex,
-			currentTime: channelState.currentTime,
-			playlistStartEpoch: channelState.playlistStartEpoch,
-			sessionStartTime: channelState.sessionStartTime,
-			lastUpdate: channelState.lastUpdate,
-			playbackRate: channelState.playbackRate,
-			// Calculate virtual position as of now
-			virtualElapsedTime: this.calculateElapsedTime(channelState),
-		}
-	}
-
-	/**
-	 * Calculate how much time has elapsed since session start
-	 */
-	calculateElapsedTime(channelState) {
-		if (!channelState || !channelState.sessionStartTime) return 0
 
 		const now = new Date()
-		const startTime = new Date(channelState.sessionStartTime)
-		const elapsedMs = now.getTime() - startTime.getTime()
+		this.state[channelId] = {
+			...this.state[channelId],
+			...updateData,
+			lastSessionEndTime: now,
+		}
 
-		return Math.max(0, elapsedMs / 1000) // Return in seconds
+		// Trigger listeners
+		this.notifyListeners('stateUpdated', {
+			channelId,
+			state: this.state[channelId],
+		})
+
+		// Queue save to DB (debounced)
+		this.queueSaveToDb(channelId)
+
+		return this.state[channelId]
 	}
 
 	/**
-	 * Start periodic sync to database
+	 * QUEUE SAVE TO DB (Debounced)
+	 * Prevents excessive database writes
+	 */
+	queueSaveToDb(channelId) {
+		if (this.pendingSaves[channelId]) {
+			clearTimeout(this.pendingSaves[channelId])
+		}
+
+		this.pendingSaves[channelId] = setTimeout(() => {
+			this.saveToDB(channelId)
+			delete this.pendingSaves[channelId]
+		}, 500) // Wait 500ms before saving
+	}
+
+	/**
+	 * START AUTO-SYNC TO DATABASE
+	 * Periodic save of state to ensure persistence
 	 */
 	startAutoSync(onSync) {
 		if (this.syncInterval) {
 			clearInterval(this.syncInterval)
 		}
 
-		this.syncInterval = setInterval(() => {
-			// Sync all active channels
-			Object.keys(this.state.channels).forEach((channelId) => {
-				const stateForDB = this.prepareForDB(channelId)
-				if (stateForDB && onSync) {
-					onSync(channelId, stateForDB)
-				}
-			})
+		console.log(`[BSM] Starting auto-sync (every ${this.syncIntervalMs}ms)`)
 
-			this.state.lastSync = new Date()
-			this.notifyListeners('synced', { timestamp: this.state.lastSync })
+		this.syncInterval = setInterval(async () => {
+			// Sync all active channels
+			for (const channelId of Object.keys(this.state)) {
+				try {
+					const stateToSave = this.state[channelId]
+
+					if (stateToSave) {
+						await this.saveToDB(channelId, stateToSave)
+
+						if (onSync) {
+							onSync(channelId, stateToSave)
+						}
+					}
+				} catch (err) {
+					console.error(`[BSM] Error in auto-sync for ${channelId}:`, err)
+				}
+			}
 		}, this.syncIntervalMs)
 	}
 
 	/**
-	 * Stop auto sync
+	 * STOP AUTO-SYNC
+	 * Called on component unmount
 	 */
 	stopAutoSync() {
 		if (this.syncInterval) {
 			clearInterval(this.syncInterval)
 			this.syncInterval = null
 		}
+		console.log(`[BSM] Auto-sync stopped`)
 	}
 
 	/**
-	 * Handle manual sync (immediate save to DB)
+	 * SAVE STATE TO DATABASE
+	 * Persists current state to MongoDB
 	 */
 	async saveToDB(channelId, stateData = null) {
 		try {
-			const dataToSave = stateData || this.prepareForDB(channelId)
+			const dataToSave = stateData || this.state[channelId]
 
 			if (!dataToSave) {
-				console.warn('[BroadcastStateManager] No data to save for channel:', channelId)
 				return false
 			}
 
-			// Make API call to save state
 			const response = await fetch(`/api/channels/${channelId}/broadcast-state`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -248,48 +344,26 @@ class BroadcastStateManager {
 			}
 
 			const result = await response.json()
-			this.notifyListeners('savedToDB', { channelId, result })
+			console.log(`[BSM] State saved to DB for ${channelId}`)
 
+			this.notifyListeners('savedToDB', { channelId, result })
 			return true
 		} catch (err) {
-			console.error('[BroadcastStateManager] Error saving to DB:', err)
+			console.error(`[BSM] Error saving to DB:`, err)
 			this.notifyListeners('dbSaveError', { channelId, error: err.message })
 			return false
 		}
 	}
 
 	/**
-	 * Load state from database
+	 * GET STATE
 	 */
-	async loadFromDB(channelId) {
-		try {
-			const response = await fetch(`/api/channels/${channelId}/broadcast-state`)
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`)
-			}
-
-			const stateData = await response.json()
-
-			// Restore state
-			this.state.channels[channelId] = {
-				...stateData,
-				playlistStartEpoch: new Date(stateData.playlistStartEpoch),
-				sessionStartTime: new Date(stateData.sessionStartTime),
-				lastUpdate: new Date(stateData.lastUpdate),
-			}
-
-			this.notifyListeners('loadedFromDB', { channelId, state: this.state.channels[channelId] })
-
-			return this.state.channels[channelId]
-		} catch (err) {
-			console.warn('[BroadcastStateManager] Could not load from DB, using defaults:', err)
-			return null
-		}
+	getChannelState(channelId) {
+		return this.state[channelId] || null
 	}
 
 	/**
-	 * Subscribe to state changes
+	 * SUBSCRIBE TO CHANGES
 	 */
 	subscribe(callback) {
 		this.listeners.push(callback)
@@ -299,43 +373,39 @@ class BroadcastStateManager {
 	}
 
 	/**
-	 * Notify all listeners of state changes
+	 * NOTIFY LISTENERS
 	 */
 	notifyListeners(event, data) {
 		this.listeners.forEach((callback) => {
 			try {
 				callback({ event, data, timestamp: new Date() })
 			} catch (err) {
-				console.error('[BroadcastStateManager] Listener error:', err)
+				console.error(`[BSM] Listener error:`, err)
 			}
 		})
 	}
 
 	/**
-	 * Clear all state
-	 */
-	clearAll() {
-		this.state.channels = {}
-		this.state.lastSync = null
-		this.stopAutoSync()
-		this.listeners = []
-	}
-
-	/**
-	 * Get diagnostic info
+	 * GET DIAGNOSTICS
 	 */
 	getDiagnostics() {
 		return {
-			channelCount: Object.keys(this.state.channels).length,
-			channels: Object.keys(this.state.channels).map((channelId) => ({
-				channelId,
-				...this.state.channels[channelId],
-				elapsedTime: this.calculateElapsedTime(this.state.channels[channelId]),
+			channels: Object.keys(this.state).map((cid) => ({
+				channelId: cid,
+				...this.state[cid],
 			})),
-			lastSync: this.state.lastSync,
-			syncIntervalMs: this.syncIntervalMs,
 			isSyncing: !!this.syncInterval,
+			pendingSaves: Object.keys(this.pendingSaves),
 		}
+	}
+
+	/**
+	 * CLEAR ALL STATE
+	 */
+	clearAll() {
+		this.state = {}
+		this.stopAutoSync()
+		this.listeners = []
 	}
 }
 
