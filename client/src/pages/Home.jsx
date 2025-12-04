@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
 import TVMenu from '../components/TVMenu'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
+import SessionManager from '../utils/SessionManager'
 
 export default function Home() {
 	const [channels, setChannels] = useState([])
@@ -19,14 +20,61 @@ export default function Home() {
 	const [isBuffering, setIsBuffering] = useState(false)
 	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
 	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
+	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
 	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
 	const originalChannelRef = useRef(null) // Track original channel when playing ads
 	const originalIndexRef = useRef(null) // Track original video index when playing ads
 	const isPlayingAdRef = useRef(false) // Track if currently playing an ad
 	const [shouldAdvanceVideo, setShouldAdvanceVideo] = useState(false) // Signal to advance video after ad
 	const shutdownSoundRef = useRef(null) // Shutdown sound
+	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 
 	const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
+
+	// ===== SESSION MANAGEMENT =====
+	
+	// Save session state (debounced)
+	const saveSessionState = useCallback(() => {
+		if (sessionSaveTimeoutRef.current) {
+			clearTimeout(sessionSaveTimeoutRef.current)
+		}
+		
+		sessionSaveTimeoutRef.current = setTimeout(() => {
+			const activeChannel = filteredChannels[activeChannelIndex]
+			SessionManager.updateState({
+				activeChannelId: activeChannel?._id,
+				activeChannelIndex,
+				volume,
+				isPowerOn: power,
+				selectedChannels,
+				timeline: {
+					uiLoadTime: uiLoadTimeRef.current,
+				},
+			})
+		}, 500) // 500ms debounce
+	}, [filteredChannels, activeChannelIndex, volume, power, selectedChannels])
+
+	// Save session on page unload
+	useEffect(() => {
+		const handleBeforeUnload = () => {
+			SessionManager.forceSave()
+		}
+		
+		window.addEventListener('beforeunload', handleBeforeUnload)
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload)
+			if (sessionSaveTimeoutRef.current) {
+				clearTimeout(sessionSaveTimeoutRef.current)
+			}
+		}
+	}, [])
+
+	// Save session when key state changes
+	useEffect(() => {
+		if (sessionRestored) {
+			saveSessionState()
+		}
+	}, [power, volume, activeChannelIndex, selectedChannels, sessionRestored, saveSessionState])
 
 	// Initialize shutdown sound
 	useEffect(() => {
@@ -62,26 +110,93 @@ export default function Home() {
 		}
 	}
 
-	// Load channels
+	// Load channels and restore session
 	useEffect(() => {
-		axios.get(`${API}/api/channels`)
-			.then(channelsRes => {
+		const initializeApp = async () => {
+			try {
+				// Initialize session manager first
+				const sessionResult = await SessionManager.initialize()
+				
+				// Load channels from API
+				const channelsRes = await axios.get(`${API}/api/channels`)
 				const allChannels = channelsRes.data || []
 				setChannels(allChannels)
 				
-				// Auto-select all channels initially
-				const allChannelNames = allChannels.map(ch => ch.name)
-				setSelectedChannels(allChannelNames)
-				filterChannelsBySelection(allChannels, allChannelNames)
-				
-				if (allChannels.length > 0) {
-					setStatusMessage(`LOADED ${allChannels.length} CHANNELS. READY TO PLAY.`)
+				// If session was restored, use saved state
+				if (sessionResult.restored && sessionResult.state) {
+					const savedState = sessionResult.state
+					console.log('[Home] Restoring session:', savedState)
+					
+					// Restore selected channels
+					if (savedState.selectedChannels && savedState.selectedChannels.length > 0) {
+						setSelectedChannels(savedState.selectedChannels)
+						filterChannelsBySelection(allChannels, savedState.selectedChannels)
+					} else {
+						const allChannelNames = allChannels.map(ch => ch.name)
+						setSelectedChannels(allChannelNames)
+						filterChannelsBySelection(allChannels, allChannelNames)
+					}
+					
+					// Restore volume
+					if (typeof savedState.volume === 'number') {
+						setVolume(savedState.volume)
+						setPrevVolume(savedState.volume)
+					}
+					
+					// Restore active channel index
+					if (typeof savedState.activeChannelIndex === 'number') {
+						setActiveChannelIndex(savedState.activeChannelIndex)
+					}
+					
+					// Restore power state (auto-start if was on)
+					if (savedState.isPowerOn) {
+						setPower(true)
+						setStatusMessage('SESSION RESTORED. RESUMING PLAYBACK...')
+					} else {
+						setStatusMessage(`SESSION RESTORED. ${allChannels.length} CHANNELS READY.`)
+					}
+					
+					// Restore UI load time if available
+					if (savedState.timeline?.uiLoadTime) {
+						uiLoadTimeRef.current = savedState.timeline.uiLoadTime
+					}
+					
+					setSessionRestored(true)
+				} else {
+					// Fresh start - auto-select all channels
+					const allChannelNames = allChannels.map(ch => ch.name)
+					setSelectedChannels(allChannelNames)
+					filterChannelsBySelection(allChannels, allChannelNames)
+					
+					if (allChannels.length > 0) {
+						setStatusMessage(`LOADED ${allChannels.length} CHANNELS. READY TO PLAY.`)
+					}
+					
+					setSessionRestored(true)
 				}
-			})
-			.catch(err => {
-				console.error('Error loading data:', err)
-				setStatusMessage('ERROR LOADING CHANNELS. CHECK SERVER CONNECTION.')
-			})
+			} catch (err) {
+				console.error('Error initializing app:', err)
+				setStatusMessage('ERROR LOADING. PLEASE REFRESH.')
+				
+				// Try to load channels anyway
+				try {
+					const channelsRes = await axios.get(`${API}/api/channels`)
+					const allChannels = channelsRes.data || []
+					setChannels(allChannels)
+					
+					const allChannelNames = allChannels.map(ch => ch.name)
+					setSelectedChannels(allChannelNames)
+					filterChannelsBySelection(allChannels, allChannelNames)
+					
+					setSessionRestored(true)
+				} catch (loadErr) {
+					console.error('Failed to load channels:', loadErr)
+					setStatusMessage('ERROR LOADING CHANNELS. CHECK SERVER CONNECTION.')
+				}
+			}
+		}
+
+		initializeApp()
 	}, [API])
 
 	// Filter channels when selection changes
