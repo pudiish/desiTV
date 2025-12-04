@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react'
 import Player from './Player'
 import StaticEffect from './StaticEffect'
+import BufferingOverlay from './BufferingOverlay'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, uiLoadTime, allChannels, onVideoEnd, shouldAdvanceVideo }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, uiLoadTime, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -97,7 +98,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							</div>
 						</div>
 					) : (
-						<>
+						<div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
 							{activeChannel ? (
 								<Player 
 									channel={activeChannel} 
@@ -107,6 +108,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									uiLoadTime={uiLoadTime}
 									allChannels={allChannels}
 									shouldAdvanceVideo={shouldAdvanceVideo}
+									onBufferingChange={onBufferingChange}
 								/>
 							) : (
 								<div className="tv-off-screen">
@@ -119,7 +121,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							<div className="scanlines" />
 							{/* Static effect inside TV screen */}
 							<StaticEffect active={staticActive} />
-						</>
+							{/* Buffering overlay positioned absolutely over the player */}
+							<BufferingOverlay 
+								isBuffering={isBuffering} 
+								duration={2000}
+								videoPath="/sounds/alb_tvn0411_1080p.mp4"
+								errorMessage={bufferErrorMessage}
+							/>
+						</div>
 					)}
 					<div className="tv-screen-glow" />
 				</div>

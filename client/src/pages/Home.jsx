@@ -14,6 +14,8 @@ export default function Home() {
 	const [volume, setVolume] = useState(0.5)
 	const [staticActive, setStaticActive] = useState(false)
 	const [statusMessage, setStatusMessage] = useState('WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY.')
+	const [isBuffering, setIsBuffering] = useState(false)
+	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
 	const uiLoadTimeRef = useRef(null) // Track when UI loads for pseudo-live timing
 	const originalChannelRef = useRef(null) // Track original channel when playing ads
 	const originalIndexRef = useRef(null) // Track original video index when playing ads
@@ -92,10 +94,21 @@ export default function Home() {
 	function handlePowerToggle() {
 		const newPower = !power
 		setPower(newPower)
-		setStatusMessage(newPower 
-			? `TV ON. PLAYING ${activeChannel?.name || 'CHANNEL'}.`
-			: 'TV OFF. CLICK POWER TO START.'
-		)
+		
+		if (newPower) {
+			// Show buffering overlay for 2 seconds when powering on
+			setIsBuffering(true)
+			setBufferErrorMessage('POWERING ON...')
+			setTimeout(() => {
+				setIsBuffering(false)
+				setBufferErrorMessage('')
+			}, 2000)
+			setStatusMessage(`TV ON. PLAYING ${activeChannel?.name || 'CHANNEL'}.`)
+		} else {
+			setStatusMessage('TV OFF. CLICK POWER TO START.')
+			setIsBuffering(false)
+			setBufferErrorMessage('')
+		}
 	}
 
 	function handleChannelUp() {
@@ -109,6 +122,7 @@ export default function Home() {
 		setActiveChannelIndex(prevIndex => {
 			const nextIndex = (prevIndex + 1) % filteredChannels.length
 			triggerStatic()
+			triggerBuffering(`SWITCHING TO ${filteredChannels[nextIndex]?.name || 'UNKNOWN'}...`)
 			setStatusMessage(`CHANNEL ${nextIndex + 1}: ${filteredChannels[nextIndex]?.name || 'UNKNOWN'}`)
 			return nextIndex
 		})
@@ -127,6 +141,7 @@ export default function Home() {
 				? filteredChannels.length - 1 
 				: prevIndex - 1
 			triggerStatic()
+			triggerBuffering(`SWITCHING TO ${filteredChannels[newIndex]?.name || 'UNKNOWN'}...`)
 			setStatusMessage(`CHANNEL ${newIndex + 1}: ${filteredChannels[newIndex]?.name || 'UNKNOWN'}`)
 			return newIndex
 		})
@@ -145,6 +160,15 @@ export default function Home() {
 	function triggerStatic() {
 		setStaticActive(true)
 		setTimeout(() => setStaticActive(false), 300)
+	}
+
+	function triggerBuffering(errorMsg = '') {
+		setIsBuffering(true)
+		setBufferErrorMessage(errorMsg)
+		setTimeout(() => {
+			setIsBuffering(false)
+			setBufferErrorMessage('')
+		}, 2000)
 	}
 
 	function handleVideoEnd() {
@@ -245,6 +269,19 @@ export default function Home() {
 					allChannels={channels}
 					onVideoEnd={handleVideoEnd}
 					shouldAdvanceVideo={shouldAdvanceVideo}
+					isBuffering={isBuffering}
+					bufferErrorMessage={bufferErrorMessage}
+					onBufferingChange={(isBuffering, errorMsg) => {
+						setIsBuffering(isBuffering)
+						setBufferErrorMessage(errorMsg || '')
+						// Auto-hide after 2 seconds
+						if (isBuffering) {
+							setTimeout(() => {
+								setIsBuffering(false)
+								setBufferErrorMessage('')
+							}, 2000)
+						}
+					}}
 				/>
 
 				{/* Right Side - Controls and Categories */}

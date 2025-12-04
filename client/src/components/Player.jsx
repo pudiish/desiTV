@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react'
 import YouTube from 'react-youtube'
 import { getPseudoLiveItem } from '../utils/pseudoLive'
 
-export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [], shouldAdvanceVideo = false }){
+export default function Player({ channel, onVideoEnd, onChannelChange, volume = 0.5, uiLoadTime, allChannels = [], shouldAdvanceVideo = false, onBufferingChange = null }){
 	const [currentIndex, setCurrentIndex] = useState(0)
 	const [manualIndex, setManualIndex] = useState(null)
 	const [channelChanged, setChannelChanged] = useState(false)
@@ -264,6 +264,17 @@ export default function Player({ channel, onVideoEnd, onChannelChange, volume = 
 		
 		if (isUnavailable && current?.youtubeId) {
 			console.warn(`Video ${current.youtubeId} is unavailable (error ${errorCode}), skipping to next...`)
+			
+			// Trigger buffering overlay with error message
+			if (onBufferingChange) {
+				const errorMessages = {
+					100: 'VIDEO NOT FOUND',
+					101: 'VIDEO NOT EMBEDDABLE',
+					150: 'VIDEO RESTRICTED',
+					2: 'INVALID VIDEO ID'
+				}
+				onBufferingChange(true, errorMessages[errorCode] || `ERROR ${errorCode}`)
+			}
 			
 			// Mark this video as failed
 			failedVideosRef.current.add(current.youtubeId)

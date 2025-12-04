@@ -10,3 +10,6 @@ client/dist/
 *.log
 retro-tv.channels.json
 music_playlist.json
+# Audio/Video files
+client/public/sounds/tv-static-noise-291374.mp3
+client/public/sounds/alb_tvn0411_1080p.mp4
