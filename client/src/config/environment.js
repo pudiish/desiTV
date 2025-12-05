@@ -2,52 +2,83 @@
  * Environment Configuration
  * Manages environment-specific settings and variables
  * Works seamlessly for: Local dev, Vercel, Render, any deployment
+ * 
+ * All ports are configured via environment variables in .env file:
+ * - PORT / VITE_SERVER_PORT: Backend server port
+ * - VITE_CLIENT_PORT: Frontend dev server port
  */
+
+// Get ports from Vite env (set in .env file)
+const getServerPort = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const port = import.meta.env.VITE_SERVER_PORT || import.meta.env.PORT
+    if (!port) {
+      console.warn('⚠️  VITE_SERVER_PORT not set in .env')
+    }
+    return port || ''
+  }
+  return ''
+}
 
 class EnvironmentConfig {
   constructor() {
     this.isProduction = this.getIsProduction()
     this.isDevelopment = !this.isProduction
-    this.apiBaseUrl = this.getApiBaseUrl()
     this.debug = this.getDebugMode()
     this.appVersion = this.getAppVersion()
+    // apiBaseUrl is computed dynamically via getter
+  }
+
+  /**
+   * Get API base URL - DYNAMICALLY computed based on current hostname
+   * This ensures it works correctly when accessed from any device
+   */
+  get apiBaseUrl() {
+    return this.getApiBaseUrl()
   }
 
   /**
    * Get API base URL - works for all environments
-   * Priority: VITE_API_BASE env > Proxy (dev) > Same origin (prod)
+   * Priority: Network detection > Proxy (localhost) > Production rewrites
    */
   getApiBaseUrl() {
-    // 1. Check Vite env variable (set in Vercel or .env)
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      const viteUrl = import.meta.env.VITE_API_BASE
-      if (viteUrl) {
-        return viteUrl.replace(/\/$/, '') // Remove trailing slash
-      }
-    }
-
-    // 2. In browser environment
+    // In browser environment - detect hostname dynamically
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
       const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
       
-      // Development: Use empty string (proxy handles /api routes)
+      // Check if accessing from local network IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+      const isLocalNetwork = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname)
+      
+      // LOCAL NETWORK ACCESS: Connect directly to backend on same IP
+      // This is checked FIRST so mobile/other devices work correctly
+      if (isLocalNetwork) {
+        const serverPort = getServerPort()
+        return `http://${hostname}:${serverPort}`
+      }
+      
+      // LOCALHOST: Use empty string (Vite proxy handles /api routes)
       if (isLocalhost) {
-        return ''  // Vite proxy will handle /api/* routes
+        return ''  // Vite proxy will forward /api/* to backend
       }
       
-      // Production on Vercel: Routes are rewritten to API server
-      // Return empty string so /api/* uses Vercel rewrites
+      // PRODUCTION on Vercel: Routes are rewritten to API server
       if (hostname.includes('vercel.app')) {
-        return ''
+        return ''  // Vercel rewrites handle /api/*
       }
       
-      // Fallback: Use same origin (for self-hosted setups)
+      // PRODUCTION on Render or custom domain
+      if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) {
+        return import.meta.env.VITE_API_BASE.replace(/\/$/, '')
+      }
+      
+      // Fallback: Use same origin
       return window.location.origin
     }
 
-    // 3. Fallback for SSR or non-browser
-    return 'http://localhost:5002'
+    // SSR or non-browser fallback
+    const serverPort = getServerPort()
+    return `http://localhost:${serverPort}`
   }
 
   /**
@@ -58,7 +89,10 @@ class EnvironmentConfig {
       return import.meta.env.MODE === 'production' || import.meta.env.PROD === true
     }
     if (typeof window !== 'undefined') {
-      return !['localhost', '127.0.0.1'].includes(window.location.hostname)
+      const hostname = window.location.hostname
+      // Local network IPs are still development
+      const isLocalNetwork = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname)
+      return !['localhost', '127.0.0.1'].includes(hostname) && !isLocalNetwork
     }
     return false
   }

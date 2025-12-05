@@ -1,27 +1,40 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig(({ mode }) => {
-  // Load env file based on mode
-  const env = loadEnv(mode, process.cwd(), '')
+  // Load env file from parent directory (project root) where .env lives
+  const projectRoot = path.resolve(__dirname, '..')
+  const env = loadEnv(mode, projectRoot, '')
   const isProduction = mode === 'production'
+  
+  // Get ports from environment variables with sensible defaults
+  const serverPort = parseInt(env.PORT) || parseInt(env.VITE_SERVER_PORT) || 5003
+  const clientPort = parseInt(env.VITE_CLIENT_PORT) || 5173
+  
+  console.log(`[Vite] Server port: ${serverPort}, Client port: ${clientPort}`)
   
   return {
     plugins: [react()],
     
+    // Make env vars available to client code
+    define: {
+      'import.meta.env.VITE_SERVER_PORT': JSON.stringify(serverPort.toString()),
+    },
+    
     // Development server config
     server: {
-      port: parseInt(env.VITE_CLIENT_PORT) || 5173,
-      host: true, // Allow external connections
+      port: clientPort,
+      host: false, // localhost only, no network exposure
       proxy: {
         // Proxy API calls to local server in development
         '/api': {
-          target: env.VITE_API_BASE || 'http://localhost:5002',
+          target: `http://localhost:${serverPort}`,
           changeOrigin: true,
           secure: false,
         },
         '/health': {
-          target: env.VITE_API_BASE || 'http://localhost:5002',
+          target: `http://localhost:${serverPort}`,
           changeOrigin: true,
           secure: false,
         }
@@ -45,12 +58,6 @@ export default defineConfig(({ mode }) => {
       },
       // Reduce chunk size warnings threshold
       chunkSizeWarningLimit: 500,
-    },
-    
-    // Define global constants
-    define: {
-      __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
-      __IS_PRODUCTION__: isProduction,
     },
     
     // Preview server (for testing production build locally)

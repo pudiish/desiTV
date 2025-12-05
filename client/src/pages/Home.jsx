@@ -27,7 +27,7 @@ export default function Home() {
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 
-	const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
+	const API = import.meta.env.VITE_API_BASE || ''
 
 	// ===== PRE-TV CLEANUP =====
 	const cacheMonitor = moduleManager.getModule('cacheMonitor')

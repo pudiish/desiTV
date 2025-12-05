@@ -13,7 +13,7 @@ export default function Admin(){
   const [duration, setDuration] = useState('30')
   const [tags, setTags] = useState('')
 
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
+  const API_BASE = import.meta.env.VITE_API_BASE || ''
   const API = (path) => `${API_BASE}${path}`
 
   // Modern color palette

@@ -17,10 +17,30 @@ dotenv.config();
 const app = express();
 
 // ===== ENVIRONMENT =====
+// All configuration comes from .env file - no hardcoded values
 const isProduction = process.env.NODE_ENV === 'production';
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT;
+const CLIENT_PORT = process.env.VITE_CLIENT_PORT;
+
+if (!PORT) {
+	console.warn('⚠️  PORT not set in .env, server may not start correctly');
+}
 
 // ===== CORS CONFIGURATION =====
+// Get local network IP for logging
+const getLocalIP = () => {
+	const { networkInterfaces } = require('os');
+	const nets = networkInterfaces();
+	for (const name of Object.keys(nets)) {
+		for (const net of nets[name]) {
+			if (net.family === 'IPv4' && !net.internal) {
+				return net.address;
+			}
+		}
+	}
+	return 'localhost';
+};
+
 const corsOptions = {
 	origin: isProduction 
 		? [
@@ -28,7 +48,15 @@ const corsOptions = {
 			/\.onrender\.com$/, // Allow Render deployments
 			process.env.CLIENT_URL, // Custom client URL if set
 		].filter(Boolean)
-		: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+		: [
+			`http://localhost:${CLIENT_PORT}`, 
+			'http://localhost:3000', 
+			`http://127.0.0.1:${CLIENT_PORT}`,
+			// Allow local network access (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+			/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+			/^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+			/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+		],
 	credentials: true,
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 	allowedHeaders: ['Content-Type', 'Authorization'],
@@ -94,10 +122,14 @@ app.get('/', (req, res) => res.send('DesiTV™ API running'));
 mongoose.connect(process.env.MONGO_URI, mongoOptions)
 	.then(() => {
 		console.log(`[DesiTV™] MongoDB connected (${isProduction ? 'production' : 'development'})`);
-		const server = app.listen(PORT, () => {
-			console.log(`[DesiTV™] Server listening on port ${PORT}`);
+		// Bind to 0.0.0.0 to allow network access
+		const HOST = process.env.HOST || '0.0.0.0';
+		const server = app.listen(PORT, HOST, () => {
+			console.log(`[DesiTV™] Server listening on ${HOST}:${PORT}`);
 			if (!isProduction) {
-				console.log(`[DesiTV™] Local: http://localhost:${PORT}`);
+				const localIP = getLocalIP();
+				console.log(`[DesiTV™] Local:   http://localhost:${PORT}`);
+				console.log(`[DesiTV™] Network: http://${localIP}:${PORT}`);
 			}
 		});
 

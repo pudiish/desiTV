@@ -1,14 +1,17 @@
 import React from 'react'
 
 export default function CategoryList({ 
-	channels, 
-	selectedChannels, 
+	channels = [], 
+	selectedChannels = [], 
 	onToggleChannel, 
 	onSelectAll, 
 	onSelectNone 
 }) {
+	// Ensure channels is an array before mapping
+	const safeChannels = Array.isArray(channels) ? channels : []
+	
 	// Group channels by their name and count videos
-	const channelList = channels.map(channel => ({
+	const channelList = safeChannels.map(channel => ({
 		name: channel.name,
 		count: channel.items?.length || 0,
 		_id: channel._id

@@ -5,7 +5,7 @@
   "author": "Swarnapudi Ishwar <swarnapudiishwar@gmail.com>",
   "private": true,
   "scripts": {
-    "dev": "vite --port $VITE_CLIENT_PORT",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -10,7 +10,7 @@ const { decade } = useParams()
 const [channels,setChannels]=useState([])
 const [i,setI]=useState(0)
 const noiseRef = useRef(null)
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:5002'
+const API = import.meta.env.VITE_API_BASE || ''
 
 
 useEffect(()=>{
