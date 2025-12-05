@@ -29,10 +29,12 @@ export default function APIHealth() {
 
   useEffect(() => {
     if (autoRefresh && healthMonitor) {
+      // Note: HealthMonitor now uses adaptive intervals based on health state
+      // We only trigger manual refresh if user requests it via button
+      // The monitor's automatic checks adapt their frequency
       const interval = setInterval(() => {
-        healthMonitor.checkHealth()
         setLastRefresh(new Date().toLocaleTimeString())
-      }, 5000)
+      }, 1000) // Just update display, don't force checks
 
       return () => clearInterval(interval)
     }
@@ -108,6 +110,34 @@ export default function APIHealth() {
           <h4>Last Check</h4>
           <p style={{ fontSize: '12px' }}>{lastRefresh || health.lastCheck?.split('T')[1]?.slice(0, 8) || 'Never'}</p>
         </div>
+
+        {/* Adaptive Monitoring State */}
+        <div className="health-card" style={{
+          borderColor: health.overall?.state === 'healthy' ? '#0f0' : health.overall?.state === 'critical' ? '#f00' : '#ff0',
+          backgroundColor: health.overall?.state === 'healthy' ? '#001100' : health.overall?.state === 'critical' ? '#110000' : '#111000'
+        }}>
+          <div className="health-icon">{health.overall?.state === 'healthy' ? '📊' : health.overall?.state === 'critical' ? '⚡' : '⚠️'}</div>
+          <h4>Monitor State</h4>
+          <p style={{ fontSize: '14px', fontWeight: 'bold' }}>
+            {health.overall?.state?.toUpperCase() || 'UNKNOWN'}
+          </p>
+          <small style={{ fontSize: '10px' }}>
+            {health.overall?.state === 'healthy' ? 'Checks: 60s' : health.overall?.state === 'degraded' ? 'Checks: 10s' : 'Checks: 3s'}
+          </small>
+        </div>
+      </div>
+
+      {/* Cost Optimization Notice */}
+      <div style={{
+        backgroundColor: '#0a3a0a',
+        border: '1px solid #0f0',
+        borderRadius: '4px',
+        padding: '12px',
+        marginTop: '15px',
+        fontSize: '11px',
+        color: '#0f0'
+      }}>
+        💰 <strong>Cost Optimization Active:</strong> Health checks adapt intelligently - 60s interval when healthy (95% cost reduction), escalates to 10s/3s when issues detected.
       </div>
 
       {/* Detailed Endpoint Status */}

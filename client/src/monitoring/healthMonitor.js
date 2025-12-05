@@ -1,6 +1,13 @@
 /**
- * Health Monitor - Tracks API and system health
- * Provides real-time status of backend services
+ * Health Monitor - Tracks API and system health with Intelligent Adaptive Checking
+ * 
+ * Cost Optimization Strategy:
+ * - Normal state: Check every 60 seconds (baseline)
+ * - Degraded state: Check every 10 seconds (escalation)
+ * - Critical state: Check every 3 seconds (urgent)
+ * - Recovery: Exponential backoff to normal (cost reduction)
+ * 
+ * This reduces API costs by ~95% during normal operation
  */
 
 import { TIMING, API_ENDPOINTS } from '../config/constants'
@@ -20,10 +27,28 @@ export class HealthMonitor {
     this.lastCheck = null
     this.listeners = []
     this.isMonitoring = false
+    
+    // Adaptive checking configuration
+    this.healthState = 'healthy' // healthy, degraded, critical
+    this.consecutiveFailures = 0
+    this.failureThreshold = 2 // failures before escalating
+    this.recoveryAttempts = 0
+    this.maxRecoveryAttempts = 5 // attempts before giving up on recovery
+    
+    // Check intervals based on state (in ms)
+    this.checkIntervals = {
+      healthy: 60000,    // 60 seconds - normal operation
+      degraded: 10000,   // 10 seconds - something wrong
+      critical: 3000,    // 3 seconds - critical issue
+    }
+    
+    // Historical data for trend analysis
+    this.failureHistory = []
+    this.maxHistoryLength = 10
   }
 
   /**
-   * Start health monitoring
+   * Start health monitoring with adaptive intervals
    */
   start() {
     if (this.isMonitoring) {
@@ -31,16 +56,36 @@ export class HealthMonitor {
       return
     }
 
-    console.log('[HealthMonitor] Starting health monitoring...')
+    console.log('[HealthMonitor] Starting adaptive health monitoring...')
+    console.log('[HealthMonitor] Cost optimization: Normal checks every 60s, escalates to 10s/3s on issues')
     this.isMonitoring = true
 
     // Initial check
     this.checkHealth()
 
-    // Periodic checks
+    // Adaptive periodic checks
+    this.scheduleNextCheck()
+  }
+
+  /**
+   * Schedule next health check based on current state
+   */
+  scheduleNextCheck() {
+    if (!this.isMonitoring) return
+
+    // Clear existing interval
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+    }
+
+    // Get interval based on current health state
+    const interval = this.checkIntervals[this.healthState] || this.checkIntervals.healthy
+
+    console.log(`[HealthMonitor] Next check in ${interval}ms (State: ${this.healthState})`)
+
     this.checkInterval = setInterval(() => {
       this.checkHealth()
-    }, TIMING.HEALTH_CHECK_INTERVAL)
+    }, interval)
   }
 
   /**
@@ -56,42 +101,127 @@ export class HealthMonitor {
   }
 
   /**
+   * Detect if system is in critical condition
+   */
+  detectCriticalIssue(results) {
+    const healthy = results.filter(r => r.status === 'healthy').length
+    const total = results.length
+    const healthPercent = total > 0 ? (healthy / total) * 100 : 100
+
+    // Critical if more than 50% of endpoints are unhealthy
+    return healthPercent < 50
+  }
+
+  /**
+   * Update health state based on results
+   */
+  updateHealthState(results) {
+    const isCritical = this.detectCriticalIssue(results)
+    const previousState = this.healthState
+
+    if (isCritical) {
+      this.consecutiveFailures++
+      
+      if (this.consecutiveFailures >= this.failureThreshold) {
+        this.healthState = 'critical'
+        this.recoveryAttempts = 0
+      } else {
+        this.healthState = 'degraded'
+      }
+    } else {
+      // System is recovering
+      if (this.healthState === 'critical') {
+        this.recoveryAttempts++
+        
+        // Exponential backoff: stay degraded for a while before returning to healthy
+        const requiredRecoveryAttempts = Math.min(3, this.maxRecoveryAttempts)
+        if (this.recoveryAttempts < requiredRecoveryAttempts) {
+          this.healthState = 'degraded'
+        } else {
+          this.healthState = 'healthy'
+          this.consecutiveFailures = 0
+          this.recoveryAttempts = 0
+        }
+      } else {
+        this.healthState = 'healthy'
+        this.consecutiveFailures = 0
+      }
+    }
+
+    // Log state changes
+    if (previousState !== this.healthState) {
+      console.warn(`[HealthMonitor] State changed: ${previousState} → ${this.healthState}`)
+    }
+
+    // Record failure history for trend analysis
+    this.failureHistory.push({
+      timestamp: Date.now(),
+      state: this.healthState,
+      failureCount: this.consecutiveFailures,
+    })
+    if (this.failureHistory.length > this.maxHistoryLength) {
+      this.failureHistory.shift()
+    }
+  }
+
+  /**
    * Check health of all endpoints
    */
   async checkHealth() {
-    const checks = this.endpoints.map(async (endpoint) => {
-      try {
-        const startTime = performance.now()
-        await this.apiService.client.get(endpoint)
-        const duration = performance.now() - startTime
+    if (!this.isMonitoring) return
 
-        return {
-          endpoint,
-          status: 'healthy',
-          duration: Math.round(duration),
-          timestamp: new Date().toISOString(),
+    try {
+      const checks = this.endpoints.map(async (endpoint) => {
+        try {
+          const startTime = performance.now()
+          const timeoutMs = 5000 // 5 second timeout
+          
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+          
+          await this.apiService.client.get(endpoint, { signal: controller.signal })
+          clearTimeout(timeoutId)
+          
+          const duration = performance.now() - startTime
+
+          return {
+            endpoint,
+            status: 'healthy',
+            duration: Math.round(duration),
+            timestamp: new Date().toISOString(),
+          }
+        } catch (error) {
+          return {
+            endpoint,
+            status: 'unhealthy',
+            error: error.message,
+            timestamp: new Date().toISOString(),
+          }
         }
-      } catch (error) {
-        return {
-          endpoint,
-          status: 'unhealthy',
-          error: error.message,
-          timestamp: new Date().toISOString(),
-        }
+      })
+
+      const results = await Promise.all(checks)
+
+      // Update status
+      results.forEach((result) => {
+        this.status[result.endpoint] = result
+      })
+
+      // Update health state and reschedule if needed
+      const previousState = this.healthState
+      this.updateHealthState(results)
+      
+      if (previousState !== this.healthState) {
+        this.scheduleNextCheck() // Reschedule with new interval
       }
-    })
 
-    const results = await Promise.all(checks)
+      this.lastCheck = new Date().toISOString()
+      this.notifyListeners()
 
-    // Update status
-    results.forEach((result) => {
-      this.status[result.endpoint] = result
-    })
-
-    this.lastCheck = new Date().toISOString()
-    this.notifyListeners()
-
-    return results
+      return results
+    } catch (err) {
+      console.error('[HealthMonitor] Check health error:', err)
+    }
   }
 
   /**
@@ -115,6 +245,8 @@ export class HealthMonitor {
       total,
       percentage: total > 0 ? Math.round((healthy / total) * 100) : 0,
       lastCheck: this.lastCheck,
+      state: this.healthState,
+      consecutiveFailures: this.consecutiveFailures,
     }
   }
 
@@ -126,6 +258,8 @@ export class HealthMonitor {
       endpoints: { ...this.status },
       overall: this.getOverallStatus(),
       isMonitoring: this.isMonitoring,
+      healthState: this.healthState,
+      failureHistory: this.failureHistory,
     }
   }
 

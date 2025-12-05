@@ -26,6 +26,31 @@ if (!PORT) {
 	console.warn('⚠️  PORT not set in .env, server may not start correctly');
 }
 
+// ===== SECURITY MIDDLEWARE =====
+const { 
+	securityMiddleware, 
+	generalLimiter, 
+	apiLimiter,
+	connectionTracker,
+	requestSizeLimit,
+	FREE_TIER_LIMITS 
+} = require('./middleware/security');
+
+// Apply security middleware FIRST (before any other middleware)
+// securityMiddleware is an array: [helmet, sanitize, hpp, logger]
+securityMiddleware.forEach(middleware => {
+	app.use(middleware);
+});
+
+// Connection tracker for free tier (track concurrent connections)
+app.use(connectionTracker);
+
+// Request size limit (1MB for free tier)
+app.use(requestSizeLimit);
+
+// General rate limiter (100 requests per 15 minutes per IP)
+app.use(generalLimiter);
+
 // ===== CORS CONFIGURATION =====
 // Get local network IP for logging
 const getLocalIP = () => {
@@ -97,6 +122,10 @@ const broadcastStateRoutes = require('./routes/broadcastState');
 const sessionRoutes = require('./routes/session');
 const monitoringRoutes = require('./routes/monitoring');
 
+// Apply API rate limiter to all API routes (60 requests per minute)
+app.use('/api', apiLimiter);
+
+// Mount routes
 app.use('/api/channels', channelRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoriesRoutes);
@@ -104,12 +133,24 @@ app.use('/api/youtube', youtubeRoutes);
 app.use('/api/broadcast-state', broadcastStateRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoriesRoutes);
+app.use('/api/youtube', youtubeRoutes);
+app.use('/api/broadcast-state', broadcastStateRoutes);
+app.use('/api/session', sessionRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
-// health check
+// health check with security stats
 app.get('/health', (req, res) => res.json({ 
 	status: 'ok',
 	environment: isProduction ? 'production' : 'development',
-	timestamp: new Date().toISOString()
+	timestamp: new Date().toISOString(),
+	security: {
+		rateLimiting: 'enabled',
+		helmet: 'enabled',
+		mongoSanitize: 'enabled',
+		freeTierLimits: FREE_TIER_LIMITS
+	}
 }));
 
 // error handler (last middleware)

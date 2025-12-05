@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import '../AdminDashboard.css'
 
 export default function VideoFetcher() {
+	const { getAuthHeaders, isAuthenticated } = useAuth()
 	const [searchQuery, setSearchQuery] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [results, setResults] = useState([])
@@ -56,6 +58,12 @@ export default function VideoFetcher() {
 			setError('Select videos to add')
 			return
 		}
+		
+		// Check auth before adding
+		if (!isAuthenticated()) {
+			if (window.adminNotify) window.adminNotify('Authentication required', 'error')
+			return
+		}
 
 		setLoading(true)
 		try {
@@ -66,11 +74,17 @@ export default function VideoFetcher() {
 
 			const response = await fetch(`/api/channels/${channelId}/add-videos`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 
+					...getAuthHeaders(),
+					'Content-Type': 'application/json' 
+				},
 				body: JSON.stringify({ videos: videoDetails.filter(Boolean) }),
 			})
 
-			if (!response.ok) throw new Error('Failed to add videos')
+			if (!response.ok) {
+				const data = await response.json()
+				throw new Error(data.message || 'Failed to add videos')
+			}
 			setSelectedVideos([])
 			if (window.adminNotify)
 				window.adminNotify(`Added ${selectedVideos.length} videos to channel`, 'success')

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import HybridStateManager from '../../services/HybridStateManager'
 import '../AdminDashboard.css'
 
 export default function SystemHealth() {
@@ -13,12 +14,18 @@ export default function SystemHealth() {
 	const fetchHealth = async () => {
 		setLoading(true)
 		try {
-			const healthRes = await fetch('/health')
-			const healthData = await healthRes.json()
+			// Use hybrid state manager for local caching + backend sync
+			// Reduces API calls by serving from cache when available (1 min TTL)
+			const healthData = await HybridStateManager.get('health', async () => {
+				const healthRes = await fetch('/health')
+				return healthRes.json()
+			})
 			setHealth(healthData)
 
-			const statesRes = await fetch('/api/broadcast-state/all')
-			const statesData = await statesRes.json()
+			const statesData = await HybridStateManager.get('broadcastStates', async () => {
+				const statesRes = await fetch('/api/broadcast-state/all')
+				return statesRes.json()
+			})
 
 			setStats({
 				channels: statesData.count || 0,
@@ -33,9 +40,23 @@ export default function SystemHealth() {
 	}
 
 	useEffect(() => {
+		// Initial fetch - uses local cache if available (reduces API call)
 		fetchHealth()
-		const interval = setInterval(fetchHealth, 10000) // Check every 10s
-		return () => clearInterval(interval)
+		
+		// Subscribe to cache updates from other components
+		const unsubscribeHealth = HybridStateManager.subscribe('health', setHealth)
+		const unsubscribeStates = HybridStateManager.subscribe('broadcastStates', (data) => {
+			setStats({
+				channels: data.count || 0,
+				states: data.count || 0,
+				uptime: Math.floor(process.uptime?.() || 0),
+			})
+		})
+		
+		return () => {
+			unsubscribeHealth()
+			unsubscribeStates()
+		}
 	}, [])
 
 	return (

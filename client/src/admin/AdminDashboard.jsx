@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './AdminDashboard.css'
 import SystemMonitor from './sections/SystemMonitor'
 import BroadcastStateMonitor from './sections/BroadcastStateMonitor'
 import ChannelManager from './sections/ChannelManager'
 import VideoFetcher from './sections/VideoFetcher'
+import VideoManager from './sections/VideoManager'
 import APIMonitor from './sections/APIMonitor'
 import APIHealth from './sections/APIHealth'
 import CacheManagerUI from './sections/CacheManagerUI'
@@ -12,70 +14,85 @@ import MonitoringMetrics from './sections/MonitoringMetrics'
 import SystemControls from './sections/SystemControls'
 
 export default function AdminDashboard() {
-	const [activeSection, setActiveSection] = useState('dashboard')
-	const [sidebarOpen, setSidebarOpen] = useState(true)
+	const navigate = useNavigate()
+	const [activeSection, setActiveSection] = useState('videos-channels')
 	const [notifications, setNotifications] = useState([])
 
 	const sections = [
+		// Content Management (Priority)
 		{
-			id: 'dashboard',
-			label: 'System Monitor',
-			icon: '🖥️',
-			component: <SystemMonitor />,
-		},
-		{
-			id: 'controls',
-			label: 'System Controls',
-			icon: '🛠️',
-			component: <SystemControls />,
-		},
-		{
-			id: 'metrics',
-			label: 'Metrics Dashboard',
-			icon: '📊',
-			component: <MonitoringMetrics />,
-		},
-		{
-			id: 'health',
-			label: 'Component Health',
-			icon: '❤️',
-			component: <ComponentHealth />,
-		},
-		{
-			id: 'api-health',
-			label: 'API Health',
-			icon: '🔌',
-			component: <APIHealth />,
-		},
-		{
-			id: 'cache',
-			label: 'Cache Manager',
-			icon: '💾',
-			component: <CacheManagerUI />,
-		},
-		{
-			id: 'broadcast',
-			label: 'Broadcast State',
-			icon: '📡',
-			component: <BroadcastStateMonitor />,
+			id: 'videos-channels',
+			label: '📹 Videos & Channels',
+			icon: '📹',
+			component: <VideoManager />,
+			category: 'Content'
 		},
 		{
 			id: 'channels',
-			label: 'Channels',
+			label: '📺 Manage Channels',
 			icon: '📺',
 			component: <ChannelManager />,
+			category: 'Content'
+		},
+		// System Monitoring
+		{
+			id: 'dashboard',
+			label: '🖥️ System Monitor',
+			icon: '🖥️',
+			component: <SystemMonitor />,
+			category: 'System'
 		},
 		{
-			id: 'videos',
-			label: 'Video Fetcher',
-			icon: '🎬',
-			component: <VideoFetcher />,
+			id: 'metrics',
+			label: '📊 Metrics',
+			icon: '📊',
+			component: <MonitoringMetrics />,
+			category: 'System'
+		},
+		{
+			id: 'health',
+			label: '❤️ Health',
+			icon: '❤️',
+			component: <ComponentHealth />,
+			category: 'System'
+		},
+		// API & Infrastructure
+		{
+			id: 'api-health',
+			label: '🔌 API Health',
+			icon: '🔌',
+			component: <APIHealth />,
+			category: 'API'
 		},
 		{
 			id: 'api',
-			label: 'API Monitor',
+			label: '📋 API Monitor',
 			icon: '📋',
 			component: <APIMonitor />,
+			category: 'API'
+		},
+		// Broadcast & State
+		{
+			id: 'broadcast',
+			label: '📡 Broadcast State',
+			icon: '📡',
+			component: <BroadcastStateMonitor />,
+			category: 'Broadcast'
+		},
+		// Tools
+		{
+			id: 'controls',
+			label: '🛠️ System Controls',
+			icon: '🛠️',
+			component: <SystemControls />,
+			category: 'Tools'
+		},
+		{
+			id: 'cache',
+			label: '💾 Cache Manager',
+			icon: '💾',
+			component: <CacheManagerUI />,
+			category: 'Tools'
 		},
 	]
 
@@ -93,68 +110,40 @@ export default function AdminDashboard() {
 	}, [])
 
 	const activeComponent = sections.find((s) => s.id === activeSection)?.component
+	const groupedSections = sections.reduce((acc, section) => {
+		if (!acc[section.category]) acc[section.category] = []
+		acc[section.category].push(section)
+		return acc
+	}, {})
 
 	return (
 		<div className="admin-dashboard">
-			{/* Sidebar */}
-			<div className={`admin-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-				<div className="sidebar-header">
-					<h1>🎛️ Admin</h1>
-					<button
-						className="sidebar-toggle"
-						onClick={() => setSidebarOpen(!sidebarOpen)}
-					>
-						{sidebarOpen ? '◀' : '▶'}
-					</button>
-				</div>
-
-				<nav className="sidebar-nav">
+			<div className="dashboard-header">
+				<h1 className="dashboard-logo">🎛️ DesiTV Admin</h1>
+				<div className="section-tabs">
 					{sections.map((section) => (
 						<button
 							key={section.id}
-							className={`nav-item ${activeSection === section.id ? 'active' : ''}`}
+							className={`section-tab ${activeSection === section.id ? 'active' : ''}`}
 							onClick={() => setActiveSection(section.id)}
 							title={section.label}
 						>
-							<span className="nav-icon">{section.icon}</span>
-							{sidebarOpen && <span className="nav-label">{section.label}</span>}
+							{section.icon} {section.label}
 						</button>
 					))}
-				</nav>
-
-				<div className="sidebar-footer">
-					<div className="status-indicator">
-						<div className="status-dot online"></div>
-						<span>Online</span>
-					</div>
 				</div>
 			</div>
 
-			{/* Main Content */}
-			<div className="admin-content">
-				{/* Top Bar */}
-				<div className="admin-topbar">
-					<div className="topbar-left">
-						<h2>{sections.find((s) => s.id === activeSection)?.label}</h2>
-					</div>
-					<div className="topbar-right">
-						<div className="time-display">
-							{new Date().toLocaleTimeString()}
-						</div>
-					</div>
-				</div>
-
-				{/* Content Area */}
-				<div className="admin-main">{activeComponent}</div>
-
+			<div className="dashboard-content">
 				{/* Notifications */}
-				<div className="notifications">
-					{notifications.map((notif) => (
-						<div key={notif.id} className={`notification ${notif.type}`}>
-							{notif.message}
-						</div>
-					))}
-				</div>
+				{notifications.map((notif) => (
+					<div key={notif.id} className={`alert alert-${notif.type}`}>
+						{notif.message}
+					</div>
+				))}
+
+				{/* Active Component */}
+				{activeComponent}
 			</div>
 		</div>
 	)

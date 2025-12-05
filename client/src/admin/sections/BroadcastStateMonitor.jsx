@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import HybridStateManager from '../../services/HybridStateManager'
 import '../AdminDashboard.css'
 
 export default function BroadcastStateMonitor() {
@@ -11,9 +12,13 @@ export default function BroadcastStateMonitor() {
 		setLoading(true)
 		setError(null)
 		try {
-			const response = await fetch('/api/broadcast-state/all')
-			if (!response.ok) throw new Error('Failed to fetch states')
-			const data = await response.json()
+			// Use hybrid state manager for local caching + backend sync
+			// Reduces API calls by serving from cache when available (1 min TTL)
+			const data = await HybridStateManager.get('broadcastStates', async () => {
+				const response = await fetch('/api/broadcast-state/all')
+				if (!response.ok) throw new Error('Failed to fetch states')
+				return response.json()
+			})
 			setStates(data.states || [])
 		} catch (err) {
 			setError(err.message)
@@ -24,9 +29,15 @@ export default function BroadcastStateMonitor() {
 	}
 
 	useEffect(() => {
+		// Initial fetch - uses local cache if available (reduces API call)
 		fetchStates()
-		const interval = setInterval(fetchStates, 5000) // Auto-refresh every 5s
-		return () => clearInterval(interval)
+		
+		// Subscribe to cache updates from other components
+		const unsubscribe = HybridStateManager.subscribe('broadcastStates', (data) => {
+			setStates(data.states || [])
+		})
+		
+		return () => unsubscribe()
 	}, [])
 
 	return (

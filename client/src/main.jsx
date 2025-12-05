@@ -1,25 +1,14 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Landing from './pages/Landing'
-import Home from './pages/Home'
-import Admin from './pages/Admin'
+import App from './App'
 import AppInitializer from './components/AppInitializer'
 import './styles.css'
 
-function App(){
-  return (
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
     <AppInitializer>
-      <BrowserRouter>
-        <Routes>
-          <Route path='/' element={<Landing/>} />
-          <Route path='/tv' element={<Home/>} />
-          <Route path='/admin' element={<Admin/>} />
-        </Routes>
-      </BrowserRouter>
+      <App />
     </AppInitializer>
-  )
-}
-
-createRoot(document.getElementById('root')).render(<App />)
+  </React.StrictMode>
+)
 

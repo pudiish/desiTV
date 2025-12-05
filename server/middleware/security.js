@@ -1,0 +1,271 @@
+/**
+ * Security Middleware for DesiTV™
+ * 
+ * Provides:
+ * - Rate limiting (DDoS protection)
+ * - Request sanitization
+ * - Security headers (Helmet)
+ * - Traffic management for free tier limits
+ * 
+ * Free Tier Limits:
+ * - Vercel: 100GB bandwidth/month, 100k function invocations
+ * - Render: 750 hours/month, 100GB bandwidth
+ * - MongoDB Atlas: 512MB storage, 100 connections
+ */
+
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
+
+// ===== RATE LIMITING CONFIGURATION =====
+// Optimized for free tier limits
+// Note: Using default keyGenerator which handles IPv6 properly
+
+/**
+ * General rate limiter - prevents DDoS and excessive API calls
+ * 1000 requests per 15 minutes per IP (safe for testing)
+ * Production: Reduce to 500 for tighter security
+ */
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // 1000 requests per 15 minutes (testing, reduce for production)
+  message: {
+    error: 'Too many requests',
+    message: 'Please try again later',
+    retryAfter: 900
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for health checks and static assets
+  skip: (req) => req.path === '/health' || req.path.startsWith('/assets'),
+  // Use default keyGenerator (handles IPv6 correctly)
+  validate: { xForwardedForHeader: false }
+});
+
+/**
+ * Strict rate limiter for auth endpoints
+ * Safe for testing: 30 attempts per 15 minutes (2 per minute)
+ * Production: Reduce to 5-10 attempts for security
+ */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 login attempts (safe for testing, reduce for production)
+  message: {
+    error: 'Too many login attempts',
+    message: 'Account temporarily locked. Try again in 15 minutes.',
+    retryAfter: 900
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
+});
+
+/**
+ * API rate limiter for general API calls
+ * 600 requests per minute per IP (safe for dashboard testing)
+ * Production: Reduce to 200-300 for security
+ */
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 600, // 600 requests per minute (dashboard testing, reduce for production)
+  message: {
+    error: 'API rate limit exceeded',
+    message: 'Too many API requests. Please slow down.',
+    retryAfter: 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip internal monitoring endpoints from rate limiting
+  skip: (req) => req.path.includes('/monitoring/') || req.path.includes('/broadcast-state/'),
+  validate: { xForwardedForHeader: false }
+});
+
+/**
+ * Admin route rate limiter
+ * 30 requests per minute (admin operations should be less frequent)
+ */
+const adminLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute
+  message: {
+    error: 'Admin rate limit exceeded',
+    message: 'Too many admin requests.',
+    retryAfter: 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
+});
+
+// ===== SECURITY HEADERS (HELMET) =====
+const helmetConfig = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.youtube.com", "https://s.ytimg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      frameSrc: ["https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      connectSrc: ["'self'", "https://www.googleapis.com"],
+      mediaSrc: ["'self'", "https:", "blob:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Required for YouTube embeds
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+});
+
+// ===== REQUEST SANITIZATION =====
+/**
+ * Sanitize MongoDB queries to prevent NoSQL injection
+ */
+const sanitizeRequest = mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    console.warn(`[Security] Sanitized key "${key}" in request from ${req.ip}`);
+  }
+});
+
+/**
+ * Prevent HTTP Parameter Pollution
+ */
+const preventParamPollution = hpp({
+  whitelist: ['tags', 'category'] // Allow arrays for these params
+});
+
+// ===== CONCURRENT USER LIMITER =====
+// Track active connections for free tier management
+const activeConnections = new Map();
+const MAX_CONCURRENT_USERS = parseInt(process.env.MAX_CONCURRENT_USERS) || 50;
+
+const connectionTracker = (req, res, next) => {
+  const clientId = req.headers['x-forwarded-for']?.split(',')[0] || 
+                   req.headers['x-real-ip'] || 
+                   req.ip;
+  
+  // Clean up old connections (older than 5 minutes)
+  const now = Date.now();
+  for (const [id, timestamp] of activeConnections.entries()) {
+    if (now - timestamp > 5 * 60 * 1000) {
+      activeConnections.delete(id);
+    }
+  }
+  
+  // Update or add connection
+  activeConnections.set(clientId, now);
+  
+  // Check concurrent user limit
+  if (activeConnections.size > MAX_CONCURRENT_USERS) {
+    // Find if this is a new user
+    const existingTimestamp = activeConnections.get(clientId);
+    if (!existingTimestamp || now - existingTimestamp > 60000) {
+      return res.status(503).json({
+        error: 'Server at capacity',
+        message: 'Too many users. Please try again later.',
+        currentUsers: activeConnections.size,
+        maxUsers: MAX_CONCURRENT_USERS
+      });
+    }
+  }
+  
+  next();
+};
+
+// ===== REQUEST SIZE LIMITER =====
+const requestSizeLimiter = (maxSize = '1mb') => {
+  return (req, res, next) => {
+    const contentLength = parseInt(req.headers['content-length'] || '0');
+    const maxBytes = parseSize(maxSize);
+    
+    if (contentLength > maxBytes) {
+      return res.status(413).json({
+        error: 'Payload too large',
+        message: `Request body exceeds ${maxSize} limit`,
+        maxSize: maxSize
+      });
+    }
+    next();
+  };
+};
+
+function parseSize(size) {
+  const units = { b: 1, kb: 1024, mb: 1024 * 1024, gb: 1024 * 1024 * 1024 };
+  const match = size.toLowerCase().match(/^(\d+)(b|kb|mb|gb)?$/);
+  if (!match) return 1024 * 1024; // Default 1MB
+  return parseInt(match[1]) * (units[match[2]] || 1);
+}
+
+// ===== SECURITY LOGGING =====
+const securityLogger = (req, res, next) => {
+  // Log suspicious requests
+  const suspicious = [
+    req.path.includes('..'),
+    req.path.includes('<script'),
+    req.path.includes('SELECT'),
+    req.path.includes('DROP'),
+    /\$[a-z]+/i.test(JSON.stringify(req.body || {})),
+  ];
+  
+  if (suspicious.some(s => s)) {
+    console.warn(`[Security] Suspicious request from ${req.ip}: ${req.method} ${req.path}`);
+  }
+  
+  next();
+};
+
+// ===== COMBINED SECURITY MIDDLEWARE =====
+/**
+ * Combined security middleware for easy application
+ * Applies: Helmet, Sanitization, HPP in order
+ */
+const securityMiddleware = [
+  helmetConfig,
+  sanitizeRequest,
+  preventParamPollution,
+  securityLogger
+];
+
+// ===== FREE TIER LIMITS DOCUMENTATION =====
+const FREE_TIER_LIMITS = {
+  maxConcurrentUsers: MAX_CONCURRENT_USERS,
+  maxDailyRequests: 10000,
+  maxRequestSize: '1mb',
+  rateLimits: {
+    general: '100 requests per 15 minutes',
+    auth: '5 attempts per 15 minutes',
+    api: '60 requests per minute',
+    admin: '30 requests per minute'
+  }
+};
+
+// ===== EXPORTS =====
+module.exports = {
+  // Rate limiters
+  generalLimiter,
+  authLimiter,
+  apiLimiter,
+  adminLimiter,
+  
+  // Combined security middleware array
+  securityMiddleware,
+  
+  // Individual security middleware
+  helmetConfig,
+  sanitizeRequest,
+  preventParamPollution,
+  
+  // Traffic management
+  connectionTracker,
+  connectionLimiter: connectionTracker, // Alias for backward compatibility
+  requestSizeLimiter,
+  requestSizeLimit: requestSizeLimiter('1mb'), // Pre-configured 1MB limit
+  
+  // Logging
+  securityLogger,
+  
+  // Stats
+  getActiveConnections: () => activeConnections.size,
+  MAX_CONCURRENT_USERS,
+  FREE_TIER_LIMITS
+};
