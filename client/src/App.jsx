@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Landing from './pages/Landing';
+import RetroTVTest from './pages/RetroTVTest';
 import AdminDashboard from './admin/AdminDashboard';
 import AdminLogin from './pages/AdminLoginNew';
 import './App.css';
@@ -100,6 +101,9 @@ function AppRoutes() {
         
         {/* Public: TV View - Completely independent, no admin dependencies */}
         <Route path="/tv" element={<TVView />} />
+        
+        {/* RetroTV Test - iPhone Compatible Version */}
+        <Route path="/retro" element={<RetroTVTest />} />
         
         {/* Admin Routes - Separate module with auth */}
         <Route

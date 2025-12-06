@@ -1,0 +1,131 @@
+/* RetroTV.css - minimal CRT look + static effect */
+.retro-tv-wrapper { 
+  width: 640px; 
+  margin: 24px auto; 
+  font-family: monospace; 
+}
+
+.tv-frame { 
+  background: #010101; 
+  border: 10px solid #222; 
+  border-radius: 12px; 
+  padding: 8px; 
+  position: relative; 
+  box-shadow: 0 10px 40px rgba(0,0,0,.8); 
+}
+
+.tv-viewport { 
+  position: relative; 
+  width: 100%; 
+  aspect-ratio: 16/9; 
+  overflow: hidden; 
+  background: #000; 
+}
+
+.tv-iframe iframe, 
+#retro-tv-iframe iframe { 
+  width: 100%; 
+  height: 100%; 
+  display: block; 
+  border: 0; 
+}
+
+.tv-overlay { 
+  position: absolute; 
+  inset: 0; 
+  z-index: 50; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: center; 
+  align-items: center; 
+  gap: 10px; 
+  background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.8)); 
+  color: #7CFFBC; 
+  cursor: pointer; 
+}
+
+.power-button { 
+  background: #2b2b2b; 
+  padding: 8px 16px; 
+  border-radius: 6px; 
+  border: 2px solid #444; 
+  box-shadow: inset 0 -6px 12px rgba(0,0,0,0.6); 
+}
+
+.tap-text { 
+  font-size: 1.2rem; 
+  text-shadow: 0 0 8px rgba(124,255,188,0.7); 
+}
+
+.crt-lines { 
+  pointer-events: none; 
+  position: absolute; 
+  inset: 0; 
+  z-index: 30; 
+  background: repeating-linear-gradient(
+    to bottom, 
+    rgba(0,255,150,0.045) 0px, 
+    rgba(0,255,150,0.045) 1px, 
+    transparent 2px
+  ); 
+  mix-blend-mode: screen; 
+  animation: flicker .12s infinite alternate; 
+}
+
+@keyframes flicker { 
+  from { opacity: .18; } 
+  to { opacity: .32; } 
+}
+
+.tv-static { 
+  position: absolute; 
+  inset: 0; 
+  z-index: 60; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background: rgba(0,0,0,.85); 
+}
+
+.static-noise { 
+  width: 100%; 
+  height: 100%; 
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><filter id="f"><feTurbulence baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(%23f)" /></svg>'); 
+  background-size: cover; 
+  opacity: .8; 
+  mix-blend-mode: screen; 
+  animation: static-shift .12s steps(2) infinite; 
+}
+
+@keyframes static-shift { 
+  0% { transform: translateY(0); } 
+  100% { transform: translateY(1px); } 
+}
+
+.tv-controls { 
+  display: flex; 
+  gap: 8px; 
+  justify-content: center; 
+  margin-top: 10px; 
+}
+
+.tv-controls button { 
+  background: #121212; 
+  color: #9ef0c6; 
+  border: 1px solid #333; 
+  padding: 6px 10px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+}
+
+.tv-controls button:hover {
+  background: #1a1a1a;
+  border-color: #555;
+}
+
+.tv-error { 
+  color: #ff6b6b; 
+  margin-top: 8px; 
+  text-align: center; 
+  font-size: 0.9rem; 
+}
