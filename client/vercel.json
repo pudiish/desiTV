@@ -48,6 +48,6 @@
     }
   ],
   "env": {
-    "VITE_API_BASE": "@desitv_api_url"
+    "VITE_API_BASE": "https://desitv-api.onrender.com"
   }
 }
