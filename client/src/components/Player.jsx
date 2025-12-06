@@ -208,6 +208,14 @@ export default function Player({
 			// Show tap overlay again on channel switch (for iOS resume)
 			if (wasChannelChange) {
 				setShowTapOverlay(true)
+				
+				// Auto-trigger tap after short delay to resume playback
+				// Only if user has already given gesture permission
+				if (userGestureReceived) {
+					setTimeout(() => {
+						handleTapToStart()
+					}, 300) // 300ms delay for player to be ready
+				}
 			}
 			
 			// Clear all timeouts and intervals
@@ -230,7 +238,7 @@ export default function Player({
 			
 			if (onChannelChange) onChannelChange()
 		}
-	}, [channel?._id, onChannelChange])
+	}, [channel?._id, onChannelChange, userGestureReceived, handleTapToStart])
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {
