@@ -31,10 +31,16 @@ export default function Home() {
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
+	const fullscreenToggleRef = useRef(null) // Fullscreen toggle handler from TVFrame
 
 	// Store tap handler from Player (passed through TVFrame)
 	const handleTapHandlerReady = (handler) => {
 		tapTriggerRef.current = handler
+	}
+
+	// Store fullscreen toggle handler from TVFrame
+	const handleFullscreenToggleReady = (handler) => {
+		fullscreenToggleRef.current = handler
 	}
 
 	// Trigger tap for remote buttons and screen clicks
@@ -422,6 +428,7 @@ export default function Home() {
 			bufferErrorMessage={bufferErrorMessage}
 			playbackInfo={playbackInfo}
 			onTapHandlerReady={handleTapHandlerReady}
+			onFullscreenToggleReady={handleFullscreenToggleReady}
 				onBufferingChange={(isBuffering, errorMsg) => {
 						setIsBuffering(isBuffering)
 						setBufferErrorMessage(errorMsg || '')
@@ -466,6 +473,11 @@ export default function Home() {
 						totalChannels={filteredChannels.length}
 						menuOpen={menuOpen}
 						onTapTrigger={handleTapTrigger}
+						onFullscreenToggle={() => {
+							if (fullscreenToggleRef.current) {
+								fullscreenToggleRef.current()
+							}
+						}}
 					/>
 
 					<CategoryList
