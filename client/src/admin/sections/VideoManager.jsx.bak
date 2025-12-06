@@ -523,68 +523,6 @@ function VideoManagerContent() {
 					{bulkUploading ? '⏳ Importing...' : '⬆️ Upload & Import'}
 				</button>
 			</form>
-
-			{/* Add Channel Modal */}
-			{showAddChannel && (
-				<div style={{
-					position: 'fixed',
-					top: 0,
-					left: 0,
-					right: 0,
-					bottom: 0,
-					background: 'rgba(0, 0, 0, 0.7)',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					zIndex: 1000
-				}}>
-					<div style={{
-						background: 'rgba(0, 0, 0, 0.9)',
-						border: '2px solid #00d4ff',
-						borderRadius: '8px',
-						padding: '24px',
-						minWidth: '400px',
-						boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)'
-					}}>
-						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Channel</h2>
-						<form onSubmit={handleAddChannel}>
-							<div className="form-group">
-								<label className="form-label">CHANNEL NAME *</label>
-								<input
-									type="text"
-									placeholder="e.g., Music Videos, Comedy"
-									value={newChannelName}
-									onChange={(e) => setNewChannelName(e.target.value)}
-									disabled={addingChannel}
-									autoFocus
-								/>
-							</div>
-							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-								<button
-									type="submit"
-									disabled={addingChannel || !newChannelName.trim()}
-									className="btn btn-success"
-									style={{ flex: 1 }}
-								>
-									{addingChannel ? '⏳ Creating...' : '✓ Create Channel'}
-								</button>
-								<button
-									type="button"
-									onClick={() => {
-										setShowAddChannel(false)
-										setNewChannelName('')
-									}}
-									disabled={addingChannel}
-									className="btn btn-secondary"
-									style={{ flex: 1 }}
-								>
-									✕ Cancel
-								</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
 		</div>
 	)
 }

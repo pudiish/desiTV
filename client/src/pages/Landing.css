@@ -115,6 +115,27 @@
 	}
 }
 
+.tagline {
+	font-size: 1.1rem;
+	color: #00cc00;
+	margin-top: 10px;
+	opacity: 0.9;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	animation: fadeInUp 1s ease-out 0.5s both;
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 0.9;
+		transform: translateY(0);
+	}
+}
+
 .title-glow {
 	width: 300px;
 	height: 100px;
@@ -248,12 +269,20 @@
 	transition: all 0.3s ease;
 	font-size: 0.9rem;
 	text-shadow: 0 0 3px #00ff00;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .info-link:hover {
 	background: rgba(0, 255, 0, 0.2);
 	box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 	text-shadow: 0 0 5px #00ff00;
+	transform: translateY(-2px);
+}
+
+.link-icon {
+	font-size: 1rem;
 }
 
 /* Scrollbar styling */
@@ -405,6 +434,60 @@
 	margin-top: 10px;
 }
 
+/* How to Use Section */
+.how-to-use {
+	background: rgba(0, 255, 0, 0.05);
+	border-radius: 8px;
+	padding: 20px !important;
+	margin: 20px 0 !important;
+}
+
+.instructions-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 15px;
+	margin-top: 15px;
+}
+
+.instruction-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 12px;
+	background: rgba(0, 0, 0, 0.3);
+	border: 1px solid rgba(0, 255, 0, 0.3);
+	border-radius: 4px;
+	transition: all 0.3s ease;
+}
+
+.instruction-item:hover {
+	background: rgba(0, 255, 0, 0.1);
+	border-color: #00ff00;
+	transform: translateX(5px);
+}
+
+.instruction-icon {
+	font-size: 1.5rem;
+	min-width: 40px;
+	text-align: center;
+}
+
+.instruction-text strong {
+	display: block;
+	font-size: 0.95rem;
+	color: #00ff00;
+	margin-bottom: 4px;
+	text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.instruction-text p {
+	font-size: 0.8rem;
+	margin: 0;
+	color: #00cc00;
+	opacity: 0.9;
+	line-height: 1.4;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
 	.retro-title {
@@ -442,6 +525,10 @@
 		text-align: center;
 		width: 100%;
 	}
+
+	.instructions-grid {
+		grid-template-columns: 1fr;
+	}
 }
 
 @media (max-width: 480px) {
@@ -468,5 +555,18 @@
 
 	.landing-content {
 		width: 95%;
+	}
+
+	.instructions-grid {
+		gap: 10px;
+	}
+
+	.instruction-item {
+		padding: 10px;
+	}
+
+	.instruction-icon {
+		font-size: 1.2rem;
+		min-width: 30px;
 	}
 }

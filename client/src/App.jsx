@@ -7,6 +7,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Home from './pages/Home';
+import Landing from './pages/Landing';
 import AdminDashboard from './admin/AdminDashboard';
 import AdminLogin from './pages/AdminLoginNew';
 import './App.css';
@@ -103,8 +104,11 @@ function AppRoutes() {
   return (
     <div className="app">
       <Routes>
+        {/* Public: Landing Page */}
+        <Route path="/" element={<Landing />} />
+        
         {/* Public: TV View */}
-        <Route path="/" element={<TVView />} />
+        <Route path="/tv" element={<TVView />} />
         
         {/* Public: Admin Login */}
         <Route path="/admin/login" element={<AdminLogin />} />

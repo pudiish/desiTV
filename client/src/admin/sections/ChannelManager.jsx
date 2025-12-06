@@ -47,6 +47,9 @@ function ChannelManagerContent() {
 	const [error, setError] = useState(null)
 	const [selectedChannel, setSelectedChannel] = useState(null)
 	const [deletingVideo, setDeletingVideo] = useState(null)
+	const [showAddChannel, setShowAddChannel] = useState(false)
+	const [newChannelName, setNewChannelName] = useState('')
+	const [addingChannel, setAddingChannel] = useState(false)
 
 	const fetchChannels = async () => {
 		setLoading(true)
@@ -150,6 +153,40 @@ function ChannelManagerContent() {
 		return `https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`
 	}
 
+	const handleAddChannel = async (e) => {
+		e.preventDefault()
+		if (!newChannelName.trim()) {
+			setError('Channel name is required')
+			return
+		}
+
+		setAddingChannel(true)
+		try {
+			const response = await fetch('/api/channels', {
+				method: 'POST',
+				headers: {
+					...getAuthHeaders(),
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ name: newChannelName.trim() })
+			})
+
+			const data = await response.json()
+			if (response.ok) {
+				setChannels([...channels, data])
+				setNewChannelName('')
+				setShowAddChannel(false)
+				setError(null)
+			} else {
+				setError(data.message || 'Failed to create channel')
+			}
+		} catch (err) {
+			setError(err.message)
+		} finally {
+			setAddingChannel(false)
+		}
+	}
+
 	return (
 		<div className="section">
 			<div className="section-title">📺 Manage Channels</div>
@@ -174,6 +211,14 @@ function ChannelManagerContent() {
 					color: '#888'
 				}}>
 					{loading ? '🔄 Loading channels...' : '📭 No channels found'}
+					<br />
+					<button
+						onClick={() => setShowAddChannel(true)}
+						className="btn btn-success"
+						style={{ marginTop: '16px' }}
+					>
+						➕ Create First Channel
+					</button>
 				</div>
 			) : (
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', minHeight: '600px' }}>
@@ -384,6 +429,69 @@ function ChannelManagerContent() {
 							👈 Select a channel to view videos
 						</div>
 					)}
+				</div>
+			)}
+
+			{/* Add Channel Modal */}
+			{showAddChannel && (
+				<div style={{
+					position: 'fixed',
+					top: 0,
+					left: 0,
+					right: 0,
+					bottom: 0,
+					background: 'rgba(0, 0, 0, 0.7)',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					zIndex: 1000
+				}}>
+					<div style={{
+						background: 'rgba(0, 0, 0, 0.9)',
+						border: '2px solid #00d4ff',
+						borderRadius: '8px',
+						padding: '24px',
+						minWidth: '400px',
+						boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)'
+					}}>
+						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Channel</h2>
+						<form onSubmit={handleAddChannel}>
+							<div className="form-group">
+								<label className="form-label">CHANNEL NAME *</label>
+								<input
+									type="text"
+									placeholder="e.g., Music Videos, Comedy"
+									value={newChannelName}
+									onChange={(e) => setNewChannelName(e.target.value)}
+									disabled={addingChannel}
+									autoFocus
+								/>
+							</div>
+							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+								<button
+									type="submit"
+									disabled={addingChannel || !newChannelName.trim()}
+									className="btn btn-success"
+									style={{ flex: 1 }}
+								>
+									{addingChannel ? '⏳ Creating...' : '✓ Create Channel'}
+								</button>
+								<button
+									type="button"
+									onClick={() => {
+										setShowAddChannel(false)
+										setNewChannelName('')
+										setError(null)
+									}}
+									disabled={addingChannel}
+									className="btn btn-secondary"
+									style={{ flex: 1 }}
+								>
+									✕ Cancel
+								</button>
+							</div>
+						</form>
+					</div>
 				</div>
 			)}
 		</div>

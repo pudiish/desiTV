@@ -1,23 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { getPseudoLiveItem } from '../utils/pseudoLive'
+import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
 
 /**
- * TVMenu - Retro TV on-screen menu with channel guide and what's next
- * Keyboard navigable, shows queue preview
+ * TVMenuV2 - Unified with BroadcastPosition
+ * 
+ * No longer calculates anything. All info comes from:
+ * - broadcastPosition hook (contains current video, offset, timeRemaining)
+ * - channels prop (for channel list and next videos)
+ * - YouTube player state (only for error recovery)
  */
-export default function TVMenu({
+export default function TVMenuV2({
 	isOpen,
 	onClose,
 	channels,
 	activeChannelIndex,
 	onChannelSelect,
-	currentVideoIndex,
-	power
+	power,
+	currentYouTubeTime = 0
 }) {
 	const [selectedIndex, setSelectedIndex] = useState(activeChannelIndex)
-	const [activeTab, setActiveTab] = useState('channels') // 'channels', 'queue', 'settings'
+	const [activeTab, setActiveTab] = useState('channels')
 	const menuRef = useRef(null)
 	const itemRefs = useRef([])
+
+	// Get position for ACTIVE channel only (this is what's ACTUALLY playing)
+	const activeChannel = channels[activeChannelIndex]
+	const activeBroadcast = useBroadcastPosition(activeChannel)
 
 	// Reset selected index when menu opens
 	useEffect(() => {
@@ -86,49 +94,11 @@ export default function TVMenu({
 		return () => window.removeEventListener('keydown', handleKeyDown)
 	}, [isOpen, selectedIndex, channels, activeTab, onChannelSelect, onClose])
 
-	// Get what's playing now and next for a channel
-	const getChannelSchedule = useCallback((channel, isActiveChannel = false) => {
-		if (!channel || !channel.items || channel.items.length === 0) {
-			return { now: null, next: null, upcoming: [] }
-		}
-
-		// If this is the active channel being viewed, use the actual currentVideoIndex from Player
-		// Otherwise calculate from broadcast epoch (for preview in channel list)
-		let currentIdx = 0
-		let offset = 0
-
-		if (isActiveChannel && currentVideoIndex !== undefined) {
-			// Use the actual playing video index from Player
-			currentIdx = currentVideoIndex
-			offset = 0  // Menu doesn't track offset, that's in Player
-		} else {
-			// Calculate from broadcast epoch for preview purposes
-			const live = getPseudoLiveItem(channel.items, channel.playlistStartEpoch)
-			currentIdx = live?.videoIndex ?? 0
-			offset = live?.offset || 0
-		}
-
-		const now = channel.items[currentIdx]
-		const next = channel.items[(currentIdx + 1) % channel.items.length]
-		const upcoming = []
-
-		for (let i = 2; i <= 4; i++) {
-			const idx = (currentIdx + i) % channel.items.length
-			upcoming.push(channel.items[idx])
-		}
-
-		return {
-			now,
-			next,
-			upcoming,
-			offset: offset,
-			duration: now?.duration || 300
-		}
-	}, [currentVideoIndex])
-
-	// Get active channel's queue
-	const activeChannel = channels[activeChannelIndex]
-	const activeSchedule = activeChannel ? getChannelSchedule(activeChannel, true) : { now: null, next: null, upcoming: [] }
+	const formatTime = (seconds) => {
+		const mins = Math.floor(seconds / 60)
+		const secs = Math.floor(seconds % 60)
+		return `${mins}:${String(secs).padStart(2, '0')}`
+	}
 
 	if (!isOpen || !power) return null
 
@@ -176,8 +146,11 @@ export default function TVMenu({
 						<div className="channels-grid">
 							{channels.map((channel, idx) => {
 								const isActive = idx === activeChannelIndex
-								const schedule = getChannelSchedule(channel, isActive)
 								const isSelected = idx === selectedIndex
+								
+								// Only show broadcast info for active channel
+								const displayVideo = isActive ? activeBroadcast.video : null
+								const displayNext = isActive ? activeBroadcast.nextVideo : null
 
 								return (
 									<div
@@ -194,20 +167,20 @@ export default function TVMenu({
 										<div className="channel-info">
 											<div className="channel-name">{channel.name}</div>
 											<div className="now-playing">
-												{schedule.now ? (
+												{displayVideo ? (
 													<>
 														<span className="now-label">NOW:</span>
-														<span className="now-title">{schedule.now.title?.substring(0, 30)}...</span>
+														<span className="now-title">{displayVideo.title?.substring(0, 30)}...</span>
 													</>
 												) : (
 													<span className="no-content">No content</span>
 												)}
 											</div>
 											<div className="next-up">
-												{schedule.next && (
+												{displayNext && (
 													<>
 														<span className="next-label">NEXT:</span>
-														<span className="next-title">{schedule.next.title?.substring(0, 25)}...</span>
+														<span className="next-title">{displayNext.title?.substring(0, 25)}...</span>
 													</>
 												)}
 											</div>
@@ -222,7 +195,7 @@ export default function TVMenu({
 						</div>
 					)}
 
-					{/* Queue Tab */}
+					{/* Queue Tab - Shows what's actually playing on current channel */}
 					{activeTab === 'queue' && (
 						<div className="queue-view">
 							<div className="queue-header">
@@ -230,22 +203,29 @@ export default function TVMenu({
 								<span className="queue-subtitle">What's Playing</span>
 							</div>
 
-							{/* Now Playing */}
-							{activeSchedule.now && (
+							{/* Now Playing - From Broadcast Position */}
+							{activeBroadcast.video && (
 								<div className="queue-item now-playing-item">
 									<div className="queue-badge now">▶ NOW</div>
 									<div className="queue-info">
-										<div className="queue-title">{activeSchedule.now.title}</div>
+										<div className="queue-title">{activeBroadcast.video.title}</div>
 										<div className="queue-meta">
 											<span className="duration">
-												{Math.floor((activeSchedule.duration - activeSchedule.offset) / 60)}:{String(Math.floor((activeSchedule.duration - activeSchedule.offset) % 60)).padStart(2, '0')} remaining
+												{formatTime(activeBroadcast.timeRemaining)} remaining
 											</span>
-											{activeSchedule.now.year && <span className="year">{activeSchedule.now.year}</span>}
+											{activeBroadcast.video.year && (
+												<span className="year">{activeBroadcast.video.year}</span>
+											)}
+											{activeBroadcast.video.category && (
+												<span className="category">{activeBroadcast.video.category}</span>
+											)}
 										</div>
 										<div className="progress-bar">
 											<div 
 												className="progress-fill"
-												style={{ width: `${(activeSchedule.offset / activeSchedule.duration) * 100}%` }}
+												style={{ 
+													width: `${(activeBroadcast.offset / (activeBroadcast.video.duration || 300)) * 100}%` 
+												}}
 											></div>
 										</div>
 									</div>
@@ -253,88 +233,58 @@ export default function TVMenu({
 							)}
 
 							{/* Up Next */}
-							{activeSchedule.next && (
+							{activeBroadcast.nextVideo && (
 								<div className="queue-item next-item">
 									<div className="queue-badge next">⏭ NEXT</div>
 									<div className="queue-info">
-										<div className="queue-title">{activeSchedule.next.title}</div>
+										<div className="queue-title">{activeBroadcast.nextVideo.title}</div>
 										<div className="queue-meta">
-											<span className="duration">{Math.floor((activeSchedule.next.duration || 300) / 60)} min</span>
-											{activeSchedule.next.year && <span className="year">{activeSchedule.next.year}</span>}
+											<span className="duration">
+												{formatTime(activeBroadcast.nextVideo.duration || 300)}
+											</span>
+											{activeBroadcast.nextVideo.year && (
+												<span className="year">{activeBroadcast.nextVideo.year}</span>
+											)}
 										</div>
 									</div>
 								</div>
 							)}
 
-							{/* Upcoming */}
-							<div className="upcoming-section">
-								<h4>COMING UP</h4>
-								{activeSchedule.upcoming.map((video, idx) => (
-									<div key={idx} className="queue-item upcoming-item">
-										<div className="queue-position">{idx + 3}</div>
+							{/* Upcoming (next 3 after next) */}
+							<div className="queue-divider">UPCOMING</div>
+							{Array.from({ length: 3 }).map((_, i) => {
+								const idx = (activeBroadcast.nextVideoIndex + 1 + i) % activeChannel.items.length
+								const video = activeChannel?.items[idx]
+								return video ? (
+									<div key={`upcoming-${i}`} className="queue-item upcoming-item">
+										<div className="queue-badge upcoming">#{i + 3}</div>
 										<div className="queue-info">
-											<div className="queue-title">{video?.title || 'Unknown'}</div>
+											<div className="queue-title">{video.title}</div>
 											<div className="queue-meta">
-												<span className="duration">{Math.floor((video?.duration || 300) / 60)} min</span>
+												<span className="duration">{formatTime(video.duration || 30)}</span>
 											</div>
 										</div>
 									</div>
-								))}
-							</div>
+								) : null
+							})}
 						</div>
 					)}
 
 					{/* Settings Tab */}
 					{activeTab === 'settings' && (
 						<div className="settings-view">
-							<div className="settings-section">
-								<h4>⌨️ KEYBOARD SHORTCUTS</h4>
-								<div className="shortcuts-grid">
-									<div className="shortcut">
-										<kbd>↑</kbd><kbd>↓</kbd>
-										<span>Channel Up/Down</span>
-									</div>
-									<div className="shortcut">
-										<kbd>←</kbd><kbd>→</kbd>
-										<span>Volume Down/Up</span>
-									</div>
-									<div className="shortcut">
-										<kbd>0-9</kbd>
-										<span>Direct Channel</span>
-									</div>
-									<div className="shortcut">
-										<kbd>M</kbd>
-										<span>Mute</span>
-									</div>
-									<div className="shortcut">
-										<kbd>Space</kbd>
-										<span>Power</span>
-									</div>
-									<div className="shortcut">
-										<kbd>Esc</kbd>
-										<span>Open/Close Menu</span>
-									</div>
+							<div className="settings-item">
+								<span>📡 Broadcast Info</span>
+								<div className="settings-value">
+									Total Channels: {channels.length}
+									<br />
+									Playlist Duration: {formatTime(activeBroadcast.totalPlaylistDuration)}
+									<br />
+									Current Position: {formatTime(activeBroadcast.cyclePosition)}
 								</div>
-							</div>
-
-							<div className="settings-section">
-								<h4>📺 ABOUT</h4>
-								<p>DesiTV™ - Relive the 2000s</p>
-								<p className="version">Version 1.0.0</p>
-								<p className="creator">Created by PudiIsh</p>
 							</div>
 						</div>
 					)}
-				</div>
-
-				{/* Menu Footer */}
-				<div className="menu-footer">
-					<div className="hint-text">
-						<span>↑↓ Navigate</span>
-						<span>←→ Tabs</span>
-						<span>Enter Select</span>
-						<span>Esc Close</span>
-					</div>
 				</div>
 			</div>
 		</div>

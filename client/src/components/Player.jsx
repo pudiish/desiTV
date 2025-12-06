@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import YouTube from 'react-youtube'
-import { getPseudoLiveItem, getNextVideoInSequence } from '../utils/pseudoLive'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import BroadcastStateManager from '../utils/BroadcastStateManager'
 import YouTubeRetryManager from '../utils/YouTubeRetryManager'
+import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
 
 /**
  * Enhanced Player Component with:
@@ -11,6 +11,7 @@ import YouTubeRetryManager from '../utils/YouTubeRetryManager'
  * - Timeline continuity maintenance
  * - YouTube retry mechanism (never go to loading state)
  * - Robust error handling with try-catch
+ * - Unified position calculation via useBroadcastPosition hook
  */
 export default function Player({ 
 	channel, 
@@ -20,12 +21,14 @@ export default function Player({
 	uiLoadTime, 
 	allChannels = [], 
 	onBufferingChange = null,
-	onPlaybackStateChange = null, // New: callback for playback state
+	onPlaybackStateChange = null, // Callback for playback state
 }){
-	// ===== STATE =====
-	const [currentIndex, setCurrentIndex] = useState(0)
-	const [manualIndex, setManualIndex] = useState(null)
-	const [channelChanged, setChannelChanged] = useState(false)
+	// ===== SINGLE SOURCE OF TRUTH FOR POSITION =====
+	// All timing and video index calculations come from this hook
+	// Never recalculates unless channel changes
+	const broadcastPosition = useBroadcastPosition(channel)
+
+	// ===== STATE - ONLY for UI and transient events =====
 	const [isBuffering, setIsBuffering] = useState(false)
 	const [isTransitioning, setIsTransitioning] = useState(false)
 	const [retryCount, setRetryCount] = useState(0)
@@ -47,12 +50,8 @@ export default function Player({
 	const lastPlayTimeRef = useRef(Date.now())
 	const bufferingStartTimeRef = useRef(null)
 	const playbackStateRef = useRef('idle') // idle, loading, playing, buffering, error
-	const calculatedStartTimeRef = useRef(0) // Precise start time calculated at render
 	const hasInitializedRef = useRef(false) // Prevent double initialization
 	const videoLoadedRef = useRef(false) // Track if video has loaded
-	const nextVideoPreloadedRef = useRef(false) // Track if next video is preloaded
-	const pendingVideoIdRef = useRef(null) // Video ID to load next
-	const useLoadVideoByIdRef = useRef(false) // Use loadVideoById for seamless transition
 
 	// ===== CONSTANTS =====
 	const SWITCH_BEFORE_END = 2 // Switch 2 seconds before end for smoother transition
@@ -67,43 +66,10 @@ export default function Player({
 	
 	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10)
 
-
-
-	// Use broadcast epoch directly - this is the single source of truth
-	// Broadcast never stops, so always calculate from epoch
-	const effectiveStartEpoch = useMemo(() => {
-		return channel?.playlistStartEpoch || new Date('2020-01-01T00:00:00Z')
-	}, [channel?.playlistStartEpoch])
-	
-	const live = useMemo(() => {
-		if (items.length === 0) return null
-		try {
-			return getPseudoLiveItem(items, effectiveStartEpoch)
-		} catch (err) {
-			console.error('[Player] Error calculating live position:', err)
-			return { videoIndex: 0, offset: 0 }
-		}
-	}, [items, effectiveStartEpoch])
-
-	const liveIndex = live?.videoIndex ?? 0
-	
-	const currIndex = useMemo(() => {
-		if (items.length === 0) return 0
-		if (channelChanged) return liveIndex
-		if (manualIndex !== null) return manualIndex
-		if (currentIndex >= 0 && currentIndex < items.length) return currentIndex
-		return liveIndex
-	}, [channelChanged, liveIndex, manualIndex, currentIndex, items.length])
-
+	// Derive current video from broadcast position (single source of truth)
+	const currIndex = broadcastPosition.videoIndex
 	const current = items[currIndex] || null
-
-	// Calculate precise offset at render time and store in ref
-	const offset = useMemo(() => {
-		const calculatedOffset = live?.offset || 0
-		// Store in ref for immediate access in callbacks
-		calculatedStartTimeRef.current = calculatedOffset
-		return calculatedOffset
-	}, [live?.offset])
+	const offset = broadcastPosition.offset
 
 	// Only change key on channel change, NOT on video change
 	// Changing on video change causes YouTube component to remount instead of using loadVideoById
@@ -112,11 +78,11 @@ export default function Player({
 		return `${channel._id}-${channelChangeCounterRef.current}`
 	}, [channel?._id])
 
-	// YouTube player options - start time is set here and in onReady for reliability
+	// YouTube player options - start time from broadcast position
 	const opts = useMemo(() => {
-		// Calculate fresh offset at this moment for accuracy
-		const startSeconds = Math.floor(calculatedStartTimeRef.current || offset)
-		console.log(`[Player] opts calculated with start: ${startSeconds}s`)
+		// Use broadcast position offset directly
+		const startSeconds = Math.floor(offset)
+		console.log(`[Player] opts calculated with start: ${startSeconds}s, videoIndex: ${currIndex}`)
 		
 		return {
 			width: '100%',
@@ -142,7 +108,7 @@ export default function Player({
 				loop: 0,
 			}
 		}
-	}, [offset])
+	}, [offset, currIndex])
 
 	// Use ref to avoid stale closure in interval
 	const switchToNextVideoRef = useRef(null)
@@ -222,16 +188,10 @@ export default function Player({
 			setRetryCount(0)
 			setPlaybackHealth('healthy')
 			
-			setChannelChanged(wasChannelChange)
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
-			setManualIndex(null)
 			
 			if (onChannelChange) onChannelChange()
-			
-			if (wasChannelChange) {
-				setTimeout(() => setChannelChanged(false), 100)
-			}
 		}
 	}, [channel?._id, onChannelChange])
 
@@ -383,7 +343,7 @@ export default function Player({
 				skipAttemptsRef.current = 0
 			}
 		}
-	}, [current?.youtubeId])
+	}, [current?.youtubeId, currIndex])
 
 	// ===== CALLBACKS =====
 
@@ -421,6 +381,8 @@ export default function Player({
 	}, [])
 
 	// Simple: play next video immediately
+	// Note: The next video is automatically calculated by pseudoLive algorithm on channel epoch
+	// We just trigger the video switch and let broadcastPosition hook recalculate
 	const switchToNextVideo = useCallback(() => {
 		if (isTransitioningRef.current) return
 		if (!playerRef.current) return
@@ -436,36 +398,30 @@ export default function Player({
 
 		if (onVideoEnd) onVideoEnd()
 
-		// Calculate next video index using setter to get latest state
-		setCurrentIndex(prevIndex => {
-			const nextIdx = (prevIndex + 1) % items.length
-			const nextVid = items[nextIdx]
+		// Calculate next index using broadcast position logic
+		const nextIdx = (currIndex + 1) % items.length
+		const nextVid = items[nextIdx]
 
-			if (nextVid?.youtubeId) {
-				console.log(`[Player] Loading video ${nextIdx}: ${nextVid.youtubeId}`)
-				try {
-					playerRef.current.loadVideoById({
-						videoId: nextVid.youtubeId,
-						startSeconds: 0,
-					})
-					// Ensure video plays
-					playerRef.current.playVideo()
-				} catch (err) {
-					console.error('[Player] Switch video error:', err)
-				}
+		if (nextVid?.youtubeId) {
+			console.log(`[Player] Loading video ${nextIdx}: ${nextVid.youtubeId}`)
+			try {
+				playerRef.current.loadVideoById({
+					videoId: nextVid.youtubeId,
+					startSeconds: 0,
+				})
+				// Ensure video plays
+				playerRef.current.playVideo()
+			} catch (err) {
+				console.error('[Player] Switch video error:', err)
 			}
-
-			setManualIndex(nextIdx)
-			
-			// Restart monitoring after video is loaded
-			setTimeout(() => {
-				isTransitioningRef.current = false
-				startProgressMonitoring()
-			}, 800)
-
-			return nextIdx
-		})
-	}, [items, onVideoEnd, startProgressMonitoring])
+		}
+		
+		// Restart monitoring after video is loaded
+		setTimeout(() => {
+			isTransitioningRef.current = false
+			startProgressMonitoring()
+		}, 800)
+	}, [items, currIndex, onVideoEnd, startProgressMonitoring])
 
 	// Keep ref updated
 	switchToNextVideoRef.current = switchToNextVideo
@@ -612,13 +568,12 @@ export default function Player({
 				e.target.setPlaybackQuality('medium')
 			} catch(err) {}
 			
-			// Use the most accurate offset - prioritize ref, then prop
-			const positionToSeek = calculatedStartTimeRef.current || playerRef.current?.targetOffset || offset || 0
-			console.log(`[Player] onReady - Seeking to: ${positionToSeek.toFixed(1)}s (ref: ${calculatedStartTimeRef.current}, prop: ${offset})`)
+			// Use broadcast position offset directly - this is the single source of truth
+			console.log(`[Player] onReady - Seeking to: ${offset.toFixed(1)}s, videoIndex: ${currIndex}`)
 			
 			// Seek BEFORE playing to prevent flash of wrong position
-			if (positionToSeek > 0) {
-				e.target.seekTo(positionToSeek, true)
+			if (offset > 0) {
+				e.target.seekTo(offset, true)
 			}
 			
 			// Small delay to ensure seek completes before play
@@ -636,7 +591,7 @@ export default function Player({
 					BroadcastStateManager.updateChannelState(channel._id, {
 						channelName: channel.name,
 						currentVideoIndex: currIndex,
-						currentTime: positionToSeek || 0,
+						currentTime: offset || 0,
 						playlistStartEpoch: new Date(channel.playlistStartEpoch),
 						videoDurations: items.map(v => v.duration || 300),
 						playlistTotalDuration: items.reduce((sum, v) => sum + (v.duration || 300), 0),
@@ -672,7 +627,7 @@ export default function Player({
 		} catch(err) {
 			console.error('[Player] Error in onReady:', err)
 		}
-	}, [volume, offset, channel, currIndex, items, startProgressMonitoring, current?.youtubeId])
+	}, [volume, offset, currIndex, channel, items, startProgressMonitoring, current?.youtubeId])
 
 	// ===== RENDER =====
 

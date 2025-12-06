@@ -37,7 +37,8 @@ export default function Landing() {
 			<div className="landing-content">
 				{/* Logo/Title */}
 				<div className="landing-header">
-					<h1 className="retro-title">📺 RETRO TV</h1>
+					<h1 className="retro-title">📺 DesiTV</h1>
+					<p className="tagline">Your Nostalgic TV Experience</p>
 					<div className="title-glow"></div>
 				</div>
 
@@ -55,8 +56,9 @@ export default function Landing() {
 						<div className="info-section">
 							<h3>🎬 About This Project</h3>
 							<p>
-								A nostalgic pseudo-live TV broadcast application built with modern web technologies.
-								Experience continuous video playback that never stops, just like a real TV channel.
+								A nostalgic pseudo-live TV broadcast experience that simulates real television channels.
+								Content plays 24/7 continuously - when you tune in, you join wherever the broadcast currently is,
+								just like flipping channels on a real TV!
 							</p>
 						</div>
 
@@ -84,16 +86,64 @@ export default function Landing() {
 							</ul>
 						</div>
 
+						<div className="info-section how-to-use">
+							<h3>📖 How to Use</h3>
+							<div className="instructions-grid">
+								<div className="instruction-item">
+									<span className="instruction-icon">🔴</span>
+									<div className="instruction-text">
+										<strong>Power Button</strong>
+										<p>Click to turn the TV on/off</p>
+									</div>
+								</div>
+								<div className="instruction-item">
+									<span className="instruction-icon">🔼🔽</span>
+									<div className="instruction-text">
+										<strong>Channel Up/Down</strong>
+										<p>Switch between channels using remote or arrow keys</p>
+									</div>
+								</div>
+								<div className="instruction-item">
+									<span className="instruction-icon">🔊</span>
+									<div className="instruction-text">
+										<strong>Volume Control</strong>
+										<p>Adjust volume with remote slider or +/- keys</p>
+									</div>
+								</div>
+								<div className="instruction-item">
+									<span className="instruction-icon">📺</span>
+									<div className="instruction-text">
+										<strong>Fullscreen</strong>
+										<p>Double-click TV screen for fullscreen mode</p>
+									</div>
+								</div>
+								<div className="instruction-item">
+									<span className="instruction-icon">📋</span>
+									<div className="instruction-text">
+										<strong>TV Menu</strong>
+										<p>Press ESC or click menu button for channel guide</p>
+									</div>
+								</div>
+								<div className="instruction-item">
+									<span className="instruction-icon">🔄</span>
+									<div className="instruction-text">
+										<strong>Live Broadcast</strong>
+										<p>Content plays 24/7 - join wherever the broadcast is!</p>
+									</div>
+								</div>
+							</div>
+						</div>
+
 						<div className="info-section">
-							<h3>🔗 Links</h3>
+							<h3>🔗 Connect</h3>
 							<div className="links-container">
 								<a
-									href="https://github.com/pudiish/retro-tv-mern"
+									href="https://github.com/pudiish/desiTV"
 									target="_blank"
 									rel="noopener noreferrer"
 									className="info-link"
 								>
-									GitHub Repository
+									<span className="link-icon">📁</span> GitHub Repository
 								</a>
 								<a
 									href="https://www.linkedin.com/in/ishwar-swarnapudi"
@@ -101,15 +151,13 @@ export default function Landing() {
 									rel="noopener noreferrer"
 									className="info-link"
 								>
-									LinkedIn Profile
+									<span className="link-icon">💼</span> LinkedIn
 								</a>
 								<a
-									href="https://portfolio.example.com"
-									target="_blank"
-									rel="noopener noreferrer"
+									href="mailto:ishwar@example.com"
 									className="info-link"
 								>
-									Portfolio
+									<span className="link-icon">✉️</span> Contact
 								</a>
 							</div>
 						</div>

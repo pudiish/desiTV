@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
-import TVMenu from '../components/TVMenu'
+import TVMenuV2 from '../components/TVMenuV2'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
 import SessionManager from '../utils/SessionManager'
@@ -353,9 +353,9 @@ export default function Home() {
 				activeChannel={activeChannel}
 				onStaticTrigger={handleChannelChange}
 				statusMessage={statusMessage}
-			volume={volume}
-			staticActive={staticActive}
-			allChannels={channels}
+				volume={volume}
+				staticActive={staticActive}
+				allChannels={channels}
 				onVideoEnd={handleVideoEnd}
 				isBuffering={isBuffering}
 				bufferErrorMessage={bufferErrorMessage}
@@ -400,7 +400,7 @@ export default function Home() {
 			</div>
 
 		{/* TV Menu Overlay */}
-		<TVMenu
+		<TVMenuV2
 			isOpen={menuOpen}
 			onClose={() => setMenuOpen(false)}
 			channels={filteredChannels}

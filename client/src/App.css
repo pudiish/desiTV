@@ -12,10 +12,15 @@
 }
 
 .admin-view {
-	width: 100%;
-	height: 100%;
+	width: 100vw;
+	height: 100vh;
 	display: flex;
-	position: relative;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	overflow: hidden;
 }
 
 /* Admin Button */
@@ -53,75 +58,80 @@
 /* Admin Navigation Buttons */
 .admin-nav-buttons {
 	position: fixed;
-	top: 20px;
-	right: 20px;
+	top: 10px;
+	right: 24px;
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 12px;
 	z-index: 200;
+	background: rgba(15, 20, 25, 0.95);
+	padding: 8px 16px;
+	border-radius: 8px;
+	border: 1px solid #30363d;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Admin User Info */
 .admin-user-info {
-	padding: 10px 16px;
-	background: rgba(0, 255, 136, 0.1);
-	border: 1px solid rgba(0, 255, 136, 0.3);
-	border-radius: 4px;
-	color: #00ff88;
+	padding: 6px 12px;
+	background: rgba(0, 212, 170, 0.1);
+	border: 1px solid rgba(0, 212, 170, 0.3);
+	border-radius: 6px;
+	color: #00d4aa;
 	font-size: 13px;
-	font-family: 'Courier New', monospace;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Back to App Button */
 .back-to-app-btn {
-	padding: 12px 20px;
+	padding: 8px 16px;
 	background: transparent;
-	border: 2px solid #00ff88;
-	color: #00ff88;
-	font-weight: bold;
+	border: 1px solid #00d4aa;
+	color: #00d4aa;
+	font-weight: 500;
 	cursor: pointer;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-	font-family: 'Courier New', monospace;
-	transition: all 0.3s ease;
-	border-radius: 4px;
-	font-size: 14px;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	transition: all 0.2s ease;
+	border-radius: 6px;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
 }
 
 .back-to-app-btn:hover {
-	background: #00ff88;
-	color: #0a0e27;
-	box-shadow: 0 0 15px #00ff88;
+	background: rgba(0, 212, 170, 0.1);
+	border-color: #00f5c4;
 }
 
 .back-to-app-btn:active {
-	transform: scale(0.95);
+	transform: scale(0.98);
 }
 
 /* Logout Button */
 .logout-btn {
-	padding: 12px 20px;
+	padding: 8px 16px;
 	background: transparent;
-	border: 2px solid #ff3860;
-	color: #ff3860;
-	font-weight: bold;
+	border: 1px solid #f85149;
+	color: #f85149;
+	font-weight: 500;
 	cursor: pointer;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-	font-family: 'Courier New', monospace;
-	transition: all 0.3s ease;
-	border-radius: 4px;
-	font-size: 14px;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	transition: all 0.2s ease;
+	border-radius: 6px;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
 }
 
 .logout-btn:hover {
-	background: #ff3860;
-	color: #fff;
-	box-shadow: 0 0 15px #ff3860;
+	background: rgba(248, 81, 73, 0.1);
+	border-color: #f85149;
 }
 
 .logout-btn:active {
-	transform: scale(0.95);
+	transform: scale(0.98);
 }
 
 /* Auth Checking Spinner */

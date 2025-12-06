@@ -17,82 +17,99 @@ export default function AdminDashboard() {
 	const navigate = useNavigate()
 	const [activeSection, setActiveSection] = useState('videos-channels')
 	const [notifications, setNotifications] = useState([])
+	const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+	const [currentTime, setCurrentTime] = useState(new Date())
+
+	// Update time every second
+	useEffect(() => {
+		const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+		return () => clearInterval(timer)
+	}, [])
 
 	const sections = [
-		// Content Management (Priority)
+		// Content Management
 		{
 			id: 'videos-channels',
-			label: '📹 Videos & Channels',
+			label: 'Add Videos',
 			icon: '📹',
 			component: <VideoManager />,
-			category: 'Content'
+			category: 'Content',
+			description: 'Add new videos to channels'
 		},
 		{
 			id: 'channels',
-			label: '📺 Manage Channels',
+			label: 'Channels',
 			icon: '📺',
 			component: <ChannelManager />,
-			category: 'Content'
+			category: 'Content',
+			description: 'Manage TV channels'
 		},
-		// System Monitoring
+		// Monitoring
 		{
 			id: 'dashboard',
-			label: '🖥️ System Monitor',
+			label: 'System',
 			icon: '🖥️',
 			component: <SystemMonitor />,
-			category: 'System'
+			category: 'Monitoring',
+			description: 'System overview'
+		},
+		{
+			id: 'broadcast',
+			label: 'Broadcast',
+			icon: '📡',
+			component: <BroadcastStateMonitor />,
+			category: 'Monitoring',
+			description: 'Broadcast state'
 		},
 		{
 			id: 'metrics',
-			label: '📊 Metrics',
+			label: 'Metrics',
 			icon: '📊',
 			component: <MonitoringMetrics />,
-			category: 'System'
+			category: 'Monitoring',
+			description: 'Performance metrics'
 		},
+		// Health
 		{
 			id: 'health',
-			label: '❤️ Health',
+			label: 'Components',
 			icon: '❤️',
 			component: <ComponentHealth />,
-			category: 'System'
+			category: 'Health',
+			description: 'Component health'
 		},
-		// API & Infrastructure
 		{
 			id: 'api-health',
-			label: '🔌 API Health',
+			label: 'API Status',
 			icon: '🔌',
 			component: <APIHealth />,
-			category: 'API'
+			category: 'Health',
+			description: 'API health check'
 		},
 		{
 			id: 'api',
-			label: '📋 API Monitor',
+			label: 'API Logs',
 			icon: '📋',
 			component: <APIMonitor />,
-			category: 'API'
-		},
-		// Broadcast & State
-		{
-			id: 'broadcast',
-			label: '📡 Broadcast State',
-			icon: '📡',
-			component: <BroadcastStateMonitor />,
-			category: 'Broadcast'
+			category: 'Health',
+			description: 'API request logs'
 		},
 		// Tools
 		{
 			id: 'controls',
-			label: '🛠️ System Controls',
+			label: 'Controls',
 			icon: '🛠️',
 			component: <SystemControls />,
-			category: 'Tools'
+			category: 'Tools',
+			description: 'System controls'
 		},
 		{
 			id: 'cache',
-			label: '💾 Cache Manager',
+			label: 'Cache',
 			icon: '💾',
 			component: <CacheManagerUI />,
-			category: 'Tools'
+			category: 'Tools',
+			description: 'Cache management'
 		},
 	]
 
@@ -105,46 +122,120 @@ export default function AdminDashboard() {
 	}
 
 	useEffect(() => {
-		// Make addNotification available globally
 		window.adminNotify = addNotification
 	}, [])
 
 	const activeComponent = sections.find((s) => s.id === activeSection)?.component
-	const groupedSections = sections.reduce((acc, section) => {
-		if (!acc[section.category]) acc[section.category] = []
-		acc[section.category].push(section)
+	const activeSectionData = sections.find((s) => s.id === activeSection)
+	
+	// Group sections by category
+	const categories = ['Content', 'Monitoring', 'Health', 'Tools']
+	const groupedSections = categories.reduce((acc, cat) => {
+		acc[cat] = sections.filter(s => s.category === cat)
 		return acc
 	}, {})
 
+	const categoryIcons = {
+		'Content': '📁',
+		'Monitoring': '📈',
+		'Health': '🏥',
+		'Tools': '🔧'
+	}
+
 	return (
-		<div className="admin-dashboard">
-			<div className="dashboard-header">
-				<h1 className="dashboard-logo">🎛️ DesiTV Admin</h1>
-				<div className="section-tabs">
-					{sections.map((section) => (
-						<button
-							key={section.id}
-							className={`section-tab ${activeSection === section.id ? 'active' : ''}`}
-							onClick={() => setActiveSection(section.id)}
-							title={section.label}
-						>
-							{section.icon} {section.label}
-						</button>
-					))}
-				</div>
-			</div>
-
-			<div className="dashboard-content">
-				{/* Notifications */}
-				{notifications.map((notif) => (
-					<div key={notif.id} className={`alert alert-${notif.type}`}>
-						{notif.message}
+		<div className={`admin-dashboard ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+			{/* Sidebar */}
+			<aside className="admin-sidebar">
+				<div className="sidebar-header">
+					<div className="logo-section">
+						<span className="logo-icon">🎛️</span>
+						{!sidebarCollapsed && <span className="logo-text">DesiTV Admin</span>}
 					</div>
-				))}
+					<button 
+						className="sidebar-toggle"
+						onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+						title={sidebarCollapsed ? 'Expand' : 'Collapse'}
+					>
+						{sidebarCollapsed ? '→' : '←'}
+					</button>
+				</div>
 
-				{/* Active Component */}
-				{activeComponent}
-			</div>
+				<nav className="sidebar-nav">
+					{categories.map(category => (
+						<div key={category} className="nav-category">
+							{!sidebarCollapsed && (
+								<div className="category-label">
+									<span className="category-icon">{categoryIcons[category]}</span>
+									{category}
+								</div>
+							)}
+							<div className="category-items">
+								{groupedSections[category].map(section => (
+									<button
+										key={section.id}
+										className={`nav-item ${activeSection === section.id ? 'active' : ''}`}
+										onClick={() => setActiveSection(section.id)}
+										title={sidebarCollapsed ? section.label : section.description}
+									>
+										<span className="nav-icon">{section.icon}</span>
+										{!sidebarCollapsed && (
+											<span className="nav-label">{section.label}</span>
+										)}
+									</button>
+								))}
+							</div>
+						</div>
+					))}
+				</nav>
+
+				<div className="sidebar-footer">
+					<div className="status-indicator">
+						<span className="status-dot online"></span>
+						{!sidebarCollapsed && <span>System Online</span>}
+					</div>
+				</div>
+			</aside>
+
+			{/* Main Content */}
+			<main className="admin-main">
+				{/* Top Bar */}
+				<header className="admin-topbar">
+					<div className="topbar-left">
+						<h1 className="page-title">
+							{activeSectionData?.icon} {activeSectionData?.label}
+						</h1>
+						<span className="page-description">{activeSectionData?.description}</span>
+					</div>
+					<div className="topbar-right">
+						<div className="time-display">
+							{currentTime.toLocaleTimeString()}
+						</div>
+					</div>
+				</header>
+
+				{/* Content Area */}
+				<div className="admin-content">
+					{/* Notifications */}
+					<div className="notifications-container">
+						{notifications.map((notif) => (
+							<div key={notif.id} className={`notification ${notif.type}`}>
+								{notif.message}
+								<button 
+									className="notification-close"
+									onClick={() => setNotifications(prev => prev.filter(n => n.id !== notif.id))}
+								>
+									×
+								</button>
+							</div>
+						))}
+					</div>
+
+					{/* Active Section */}
+					<div className="section-wrapper">
+						{activeComponent}
+					</div>
+				</div>
+			</main>
 		</div>
 	)
 }
