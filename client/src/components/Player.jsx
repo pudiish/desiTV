@@ -201,17 +201,15 @@ export default function Player({
 			channelIdRef.current = channel?._id
 			channelChangeCounterRef.current += 1 // This forces iframe reload via playerKey
 			
-			// Reset initialization flags for new channel
-			hasInitializedRef.current = false
-			videoLoadedRef.current = false
-			
-			// Show tap overlay on channel switch and keep it visible
-			if (wasChannelChange) {
-				setShowTapOverlay(true)
-				// Don't auto-trigger - let user see and interact with overlay
-			}
-			
-			// Clear all timeouts and intervals
+		// Reset initialization flags for new channel
+		hasInitializedRef.current = false
+		videoLoadedRef.current = false
+		
+		// Don't show tap overlay on channel switch - power cycle handles auto-tap
+		// Only show on first load
+		if (!wasChannelChange) {
+			setShowTapOverlay(true)
+		}			// Clear all timeouts and intervals
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current)
 				progressIntervalRef.current = null
