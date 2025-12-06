@@ -35,9 +35,9 @@ export default function Player({
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
-	// iOS autoplay handling - automatic gesture capture
+	// iOS autoplay handling
 	const [userGestureReceived, setUserGestureReceived] = useState(false)
-	const autoTriggerAttemptedRef = useRef(false)
+	const [showTapOverlay, setShowTapOverlay] = useState(true)
 
 	// ===== REFS =====
 	const playerRef = useRef(null)
@@ -94,8 +94,8 @@ export default function Player({
 			height: '100%',
 			// Use standard youtube.com domain instead of nocookie to avoid restrictions
 			playerVars: { 
-				autoplay: 0, // Don't autoplay initially - we'll trigger manually
-				mute: 1, // Start muted for iOS compatibility
+				autoplay: userGestureReceived ? 1 : 0,
+				mute: userGestureReceived ? 0 : 1,
 				controls: 0, 
 				disablekb: 1, 
 				modestbranding: 1, 
@@ -167,52 +167,22 @@ export default function Player({
 
 	// ===== EFFECTS =====
 
-	// Effect: Automatic gesture unlock on ANY interaction
-	useEffect(() => {
-		if (userGestureReceived || autoTriggerAttemptedRef.current) return
-
-		const unlockPlayback = (event) => {
-			if (autoTriggerAttemptedRef.current) return
-			autoTriggerAttemptedRef.current = true
-
-			console.log('[Player] Auto-gesture captured via:', event?.type || 'direct')
-			setUserGestureReceived(true)
-
-			// Immediately try to play if player is ready
-			setTimeout(() => {
-				if (playerRef.current) {
-					try {
-						playerRef.current.unMute()
-						playerRef.current.setVolume(volume * 100)
-						playerRef.current.playVideo()
-						console.log('[Player] Autoplay initiated - volume:', volume * 100)
-					} catch (err) {
-						console.warn('[Player] Autoplay failed:', err)
-					}
-				}
-			}, 100)
-		}
-
-		// Aggressive listener setup - capture everything
-		const events = ['click', 'touchstart', 'touchend', 'mousedown', 'mousemove', 'keydown', 'scroll', 'pointerdown']
+	// Manual tap handler for iOS
+	const handleTapToStart = useCallback(() => {
+		if (userGestureReceived) return
 		
-		// Add all listeners
-		events.forEach(eventType => {
-			document.addEventListener(eventType, unlockPlayback, { once: true, passive: true, capture: true })
-		})
-
-		// Also add to window for maximum coverage
-		window.addEventListener('focus', unlockPlayback, { once: true, passive: true })
-		window.addEventListener('click', unlockPlayback, { once: true, passive: true })
-
-		console.log('[Player] Auto-gesture listeners registered, waiting for ANY interaction')
-
-		return () => {
-			events.forEach(eventType => {
-				document.removeEventListener(eventType, unlockPlayback, { capture: true })
-			})
-			window.removeEventListener('focus', unlockPlayback)
-			window.removeEventListener('click', unlockPlayback)
+		setUserGestureReceived(true)
+		setShowTapOverlay(false)
+		
+		if (playerRef.current) {
+			try {
+				playerRef.current.unMute()
+				playerRef.current.setVolume(volume * 100)
+				playerRef.current.playVideo()
+				console.log('[Player] User tapped - unmuted and playing')
+			} catch (err) {
+				console.error('[Player] Error after tap:', err)
+			}
 		}
 	}, [userGestureReceived, volume])
 
@@ -652,23 +622,13 @@ const onStateChange = useCallback((event) => {
 			// Small delay to ensure seek completes before play
 			setTimeout(() => {
 				if (playerRef.current) {
-					// Try to play - this will trigger auto-gesture if needed
-					playerRef.current.playVideo().then(() => {
-						// Success! If we got here, we have gesture permission
-						if (!userGestureReceived && !autoTriggerAttemptedRef.current) {
-							autoTriggerAttemptedRef.current = true
-							setUserGestureReceived(true)
-							console.log('[Player] Autoplay succeeded - gesture permission granted')
-						}
-						// Now unmute if we have permission
-						if (userGestureReceived) {
-							try {
-								playerRef.current.unMute()
-								playerRef.current.setVolume(volume * 100)
-							} catch (err) {}
-						}
-					}).catch((err) => {
-						console.log('[Player] Autoplay blocked:', err?.message || err)
+					if (userGestureReceived) {
+						try {
+							playerRef.current.unMute()
+							playerRef.current.setVolume(volume * 100)
+						} catch (err) {}
+					}
+					playerRef.current.playVideo().catch(() => {
 						setNeedsUserInteraction(true)
 					})
 					videoLoadedRef.current = true
@@ -748,10 +708,18 @@ const onStateChange = useCallback((event) => {
 
 	return (
 		<div className="player-wrapper">
-			{/* Subtle waiting indicator - only shows briefly until first interaction */}
-			{!userGestureReceived && (
-				<div className="auto-unlock-indicator">
-					<div className="pulse-dot"></div>
+			{/* Tap to Start Overlay */}
+			{showTapOverlay && !userGestureReceived && (
+				<div className="tap-to-start-overlay" onClick={handleTapToStart}>
+					<div className="tap-to-start-content">
+						<div className="crt-flicker"></div>
+						<div className="tap-message">
+							<div className="tv-icon">📺</div>
+							<h2>TAP TO START TV</h2>
+							<p>Experience retro television</p>
+							<div className="tap-hint">👆 Tap anywhere</div>
+						</div>
+					</div>
 				</div>
 			)}
 			
