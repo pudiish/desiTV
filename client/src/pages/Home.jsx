@@ -237,6 +237,14 @@ export default function Home() {
 				setBufferErrorMessage('')
 			}, 2000)
 			setStatusMessage(`TV ON. PLAYING ${activeChannel?.name || 'CHANNEL'}.`)
+			
+			// Auto-trigger tap overlay after 2.5 seconds delay
+			setTimeout(() => {
+				if (tapTriggerRef.current) {
+					console.log('[Home] Auto-triggering tap after power on')
+					tapTriggerRef.current()
+				}
+			}, 2500)
 		} else {
 			setStatusMessage('TV OFF. CLICK POWER TO START.')
 			setIsBuffering(false)
