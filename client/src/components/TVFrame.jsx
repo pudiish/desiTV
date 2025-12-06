@@ -6,12 +6,14 @@ import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
 import BlueRaysEffect from './BlueRaysEffect'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenToggleReady = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
 	const tapHandlerRef = useRef(null)
+	const lastTapTimeRef = useRef(0)
+	const tapTimeoutRef = useRef(null)
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -95,11 +97,52 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}
 
+	// Expose toggleFullscreen to parent (for TVRemote button)
+	useEffect(() => {
+		if (onFullscreenToggleReady) {
+			onFullscreenToggleReady(toggleFullscreen)
+		}
+	}, [onFullscreenToggleReady])
+
+	// Handle double-tap for mobile
+	const handleTouchStart = (e) => {
+		const now = Date.now()
+		const timeSinceLastTap = now - lastTapTimeRef.current
+
+		// Clear any existing timeout
+		if (tapTimeoutRef.current) {
+			clearTimeout(tapTimeoutRef.current)
+		}
+
+		// If taps are within 300ms, it's a double tap
+		if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+			e.preventDefault()
+			toggleFullscreen()
+			lastTapTimeRef.current = 0 // Reset to prevent triple-tap
+		} else {
+			// Set timeout to detect single tap
+			tapTimeoutRef.current = setTimeout(() => {
+				lastTapTimeRef.current = 0
+			}, 300)
+			lastTapTimeRef.current = now
+		}
+	}
+
+	// Cleanup tap timeout
+	useEffect(() => {
+		return () => {
+			if (tapTimeoutRef.current) {
+				clearTimeout(tapTimeoutRef.current)
+			}
+		}
+	}, [])
+
 	return (
 		<div 
 			className="tv-frame-container" 
 			ref={tvFrameRef} 
 			onDoubleClick={toggleFullscreen}
+			onTouchStart={handleTouchStart}
 			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
 			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
@@ -178,7 +221,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					opacity: showFullscreenHint ? 1 : 0.5,
 					transition: 'opacity 0.3s ease'
 				}}>
-					Double click for fullscreen
+					Double tap/click for fullscreen
 				</div>
 			)}
 			{isFullscreen && (
@@ -189,7 +232,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					textAlign: 'center',
 					textShadow: '0 0 5px #4a9eff'
 				}}>
-					Double click to exit fullscreen
+					Double tap/click to exit fullscreen
 				</div>
 			)}
 		</div>

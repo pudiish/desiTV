@@ -21,7 +21,8 @@ export default function TVRemote({
 	activeChannelIndex,
 	totalChannels,
 	menuOpen = false,
-	onTapTrigger = null // Handler to trigger iOS gesture unlock
+	onTapTrigger = null, // Handler to trigger iOS gesture unlock
+	onFullscreenToggle = null // Handler to toggle fullscreen
 }) {
 	const [channelInput, setChannelInput] = useState('')
 	const channelInputTimeout = useRef(null)
@@ -143,6 +144,14 @@ export default function TVRemote({
 						onMenuToggle()
 					}
 					break
+				case 'f':
+				case 'F':
+					e.preventDefault()
+					if (power && onFullscreenToggle) {
+						playButtonSound()
+						onFullscreenToggle()
+					}
+					break
 				case '0':
 				case '1':
 				case '2':
@@ -163,7 +172,7 @@ export default function TVRemote({
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [power, onChannelUp, onChannelDown, onVolumeUp, onVolumeDown, onMute, onMenuToggle, channelInput, menuOpen])
+	}, [power, onChannelUp, onChannelDown, onVolumeUp, onVolumeDown, onMute, onMenuToggle, onFullscreenToggle, channelInput, menuOpen])
 
 	return (
 		<div className="tv-remote">
@@ -260,7 +269,7 @@ export default function TVRemote({
 					</div>
 				</div>
 
-				{/* Mute Button */}
+				{/* Mute and Fullscreen Buttons */}
 				<div className="mute-section">
 					<button
 						className={`remote-btn mute-btn ${volume === 0 ? 'active' : ''}`}
@@ -270,6 +279,16 @@ export default function TVRemote({
 					>
 						{volume === 0 ? '🔇' : '🔊'} MUTE
 					</button>
+					{onFullscreenToggle && (
+						<button
+							className="remote-btn fullscreen-btn"
+							onClick={() => { playButtonSound(); onFullscreenToggle(); }}
+							disabled={!power}
+							title="Fullscreen (F)"
+						>
+							⛶ FULLSCREEN
+						</button>
+					)}
 				</div>
 
 				{/* VCR Controls */}
@@ -327,6 +346,7 @@ export default function TVRemote({
 					<div className="hint">←→ VOL</div>
 					<div className="hint">0-9 DIRECT</div>
 					<div className="hint">M MUTE</div>
+					{onFullscreenToggle && <div className="hint">F FULLSCREEN</div>}
 				</div>
 			</div>
 		</div>
