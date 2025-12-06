@@ -4,19 +4,35 @@ import "./RetroTV.css";
 
 /**
  * Props:
- *  - initialVideoId: string (YouTube video id)
- *  - channels: array of { id: string, title?: string }
+ *  - channel: object { _id, name, items: [{ videoId, title, duration }] }
+ *  - onChannelUp: function
+ *  - onChannelDown: function
  */
-export default function RetroTV({ initialVideoId, channels = [] }) {
+export default function RetroTV({ channel, onChannelUp, onChannelDown }) {
   const playerRef = useRef(null);
   const ytRef = useRef(null);
-  const [videoId, setVideoId] = useState(initialVideoId);
+  const [videoIndex, setVideoIndex] = useState(0);
   const [started, setStarted] = useState(
     sessionStorage.getItem("retro_tv_gesture") === "1"
   );
   const [isLoading, setIsLoading] = useState(false);
   const [staticVisible, setStaticVisible] = useState(false);
   const [error, setError] = useState(null);
+  const channelIdRef = useRef(null);
+
+  // Get current video from channel playlist
+  const currentVideo = channel?.items?.[videoIndex];
+  const videoId = currentVideo?.videoId;
+
+  // Reset video index when channel changes
+  useEffect(() => {
+    if (channel?._id !== channelIdRef.current) {
+      channelIdRef.current = channel?._id;
+      setVideoIndex(0);
+      setStaticVisible(false);
+      setIsLoading(false);
+    }
+  }, [channel?._id]);
 
   // Load YT API once
   useEffect(() => {
@@ -29,12 +45,12 @@ export default function RetroTV({ initialVideoId, channels = [] }) {
     tag.src = "https://www.youtube.com/iframe_api";
     tag.async = true;
     document.body.appendChild(tag);
-
-    // you can define a no-op; real ready is handled in createPlayer below
   }, []);
 
   // Create or reuse player
   useEffect(() => {
+    if (!videoId) return;
+
     if (!window.YT || !window.YT.Player) {
       // wait for API; poll until available
       const timer = setInterval(() => {
@@ -49,10 +65,12 @@ export default function RetroTV({ initialVideoId, channels = [] }) {
     }
 
     function createPlayer() {
-      // if player already exists, simply cue the initial video (no destroy)
-      if (ytRef.current) {
-        // update video if needed
-        ytRef.current.cueVideoById(videoId);
+      // if player already exists, load new video
+      if (ytRef.current && playerRef.current) {
+        ytRef.current.loadVideoById(videoId);
+        if (started) {
+          setTimeout(() => tryPlayUnmute(), 300);
+        }
         return;
       }
 
@@ -74,21 +92,25 @@ export default function RetroTV({ initialVideoId, channels = [] }) {
             playerRef.current = e.target;
             // if user already performed gesture in earlier session, try autoplay
             if (started) {
-              // try to play (may succeed if gesture already happened)
               tryPlayUnmute();
             }
           },
           onStateChange: (e) => {
-            // You can use state for analytics / UI
+            // Video ended - play next in playlist
+            if (e.data === 0) { // YT.PlayerState.ENDED
+              playNextVideo();
+            }
           },
           onError: (e) => {
             setError(`YT Error ${e.data}`);
+            // Try next video on error
+            setTimeout(() => playNextVideo(), 1000);
           },
         },
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [videoId, channel?._id]);
 
   // helper: attempt to play and unmute (handles promise rejection)
   const tryPlayUnmute = async () => {
@@ -134,33 +156,52 @@ export default function RetroTV({ initialVideoId, channels = [] }) {
     // If unmute fails (some browsers may keep it muted), it's okay — user can toggle
   };
 
-  // Channel switcher: show static, then load videoId and autoplay (user gesture already happened)
-  const switchChannel = (nextId) => {
-    if (!ytRef.current) {
-      setVideoId(nextId);
-      return;
-    }
+  // Play next video in playlist
+  const playNextVideo = () => {
+    if (!channel?.items) return;
+    
+    const nextIndex = (videoIndex + 1) % channel.items.length;
     setStaticVisible(true);
-    setIsLoading(true);
-    // short static duration
+    
     setTimeout(() => {
-      ytRef.current.loadVideoById({ videoId: nextId, startSeconds: 0 });
-      setVideoId(nextId);
-      // small delay to allow player to start
+      setVideoIndex(nextIndex);
+      setStaticVisible(false);
+    }, 400);
+  };
+
+  // Play previous video in playlist
+  const playPreviousVideo = () => {
+    if (!channel?.items) return;
+    
+    const prevIndex = videoIndex === 0 ? channel.items.length - 1 : videoIndex - 1;
+    setStaticVisible(true);
+    
+    setTimeout(() => {
+      setVideoIndex(prevIndex);
+      setStaticVisible(false);
+    }, 400);
+  };
+
+  // Handle channel up (external)
+  const handleChannelUp = () => {
+    if (onChannelUp) {
+      setStaticVisible(true);
       setTimeout(() => {
-        // if user gesture occurred, we can call play and unmute
-        if (sessionStorage.getItem("retro_tv_gesture") === "1") {
-          try {
-            ytRef.current.unMute?.();
-          } catch (_) {}
-          try {
-            ytRef.current.playVideo?.();
-          } catch (_) {}
-        }
+        onChannelUp();
         setStaticVisible(false);
-        setIsLoading(false);
-      }, 600); // tweak for taste
-    }, 700); // static duration
+      }, 700);
+    }
+  };
+
+  // Handle channel down (external)
+  const handleChannelDown = () => {
+    if (onChannelDown) {
+      setStaticVisible(true);
+      setTimeout(() => {
+        onChannelDown();
+        setStaticVisible(false);
+      }, 700);
+    }
   };
 
   return (
@@ -168,7 +209,7 @@ export default function RetroTV({ initialVideoId, channels = [] }) {
       <div className={`tv-frame ${started ? "on" : "off"}`}>
         {!started && (
           <div className="tv-overlay" role="button" onClick={onUserGesture}>
-            <div className="power-button">POWER</div>
+            <div className="power-button">⏻ POWER</div>
             <div className="tap-text">Tap to Start TV</div>
           </div>
         )}
@@ -183,21 +224,37 @@ export default function RetroTV({ initialVideoId, channels = [] }) {
             </div>
           )}
 
+          {/* Video info overlay */}
+          {started && currentVideo && (
+            <div className="video-info">
+              <div className="video-title">{currentVideo.title || 'Now Playing'}</div>
+              <div className="video-counter">
+                {videoIndex + 1} / {channel?.items?.length || 0}
+              </div>
+            </div>
+          )}
+
           <div className="crt-lines" />
         </div>
 
         <div className="tv-controls">
-          <button onClick={() => {
-            const i = channels.findIndex(c => c.id === videoId);
-            const next = channels[(i + 1) % channels.length];
-            switchChannel(next.id);
-          }}>CH ▲</button>
-
-          <button onClick={() => {
-            const i = channels.findIndex(c => c.id === videoId);
-            const prev = channels[(i - 1 + channels.length) % channels.length];
-            switchChannel(prev.id);
-          }}>CH ▼</button>
+          <div className="control-row">
+            <button onClick={handleChannelUp} title="Channel Up">
+              CH ▲
+            </button>
+            <button onClick={handleChannelDown} title="Channel Down">
+              CH ▼
+            </button>
+          </div>
+          
+          <div className="control-row">
+            <button onClick={playPreviousVideo} title="Previous Video">
+              ⏮ PREV
+            </button>
+            <button onClick={playNextVideo} title="Next Video">
+              NEXT ⏭
+            </button>
+          </div>
         </div>
 
         {error && <div className="tv-error">Error: {error}</div>}
