@@ -23,6 +23,7 @@ export default function Player({
 	onBufferingChange = null,
 	onPlaybackStateChange = null, // Callback for playback state
 	onPlaybackProgress = null, // Emits current playback position
+	onTapHandlerReady = null, // Callback to expose tap handler for external triggers
 }){
 	// ===== SINGLE SOURCE OF TRUTH FOR POSITION =====
 	// All timing and video index calculations come from this hook
@@ -185,6 +186,13 @@ export default function Player({
 			}
 		}
 	}, [userGestureReceived, volume])
+
+	// Expose tap handler to parent components
+	useEffect(() => {
+		if (onTapHandlerReady) {
+			onTapHandlerReady(handleTapToStart)
+		}
+	}, [handleTapToStart, onTapHandlerReady])
 
 	// Effect: Reset when channel changes
 	useEffect(() => {
