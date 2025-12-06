@@ -205,6 +205,11 @@ export default function Player({
 			hasInitializedRef.current = false
 			videoLoadedRef.current = false
 			
+			// Show tap overlay again on channel switch (for iOS resume)
+			if (wasChannelChange) {
+				setShowTapOverlay(true)
+			}
+			
 			// Clear all timeouts and intervals
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current)
