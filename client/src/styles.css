@@ -974,9 +974,6 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .mute-section {
 	margin: 15px 0;
 	text-align: center;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
 }
 
 .remote-btn.mute-btn {
@@ -999,31 +996,6 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .remote-btn.mute-btn:hover:not(:disabled) {
 	background: linear-gradient(145deg, #555, #333);
-}
-
-.remote-btn.fullscreen-btn {
-	background: linear-gradient(145deg, #4a9eff, #0066cc);
-	border: 2px solid #111;
-	color: #fff;
-	font-size: 10px;
-	padding: 10px 20px;
-	cursor: pointer;
-	transition: all 0.15s ease;
-	font-family: 'Press Start 2P', monospace;
-	border-radius: 8px;
-	width: 100%;
-	box-shadow: 0 0 10px rgba(74, 158, 255, 0.3);
-}
-
-.remote-btn.fullscreen-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #5ab0ff, #0077dd);
-	box-shadow: 0 0 15px rgba(74, 158, 255, 0.5);
-	transform: scale(1.02);
-}
-
-.remote-btn.fullscreen-btn:disabled {
-	opacity: 0.4;
-	cursor: not-allowed;
 }
 
 /* VCR Section */
@@ -1692,15 +1664,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 	.mute-section {
 		margin: 12px 0;
-		gap: 6px;
 	}
 
 	.remote-btn.mute-btn {
-		font-size: 9px;
-		padding: 8px 16px;
-	}
-
-	.remote-btn.fullscreen-btn {
 		font-size: 9px;
 		padding: 8px 16px;
 	}
