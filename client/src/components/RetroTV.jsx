@@ -47,70 +47,96 @@ export default function RetroTV({ channel, onChannelUp, onChannelDown }) {
     document.body.appendChild(tag);
   }, []);
 
-  // Create or reuse player
+  // Create player once, then update video
   useEffect(() => {
-    if (!videoId) return;
-
-    if (!window.YT || !window.YT.Player) {
-      // wait for API; poll until available
-      const timer = setInterval(() => {
-        if (window.YT && window.YT.Player) {
-          clearInterval(timer);
-          createPlayer();
-        }
-      }, 50);
-      return () => clearInterval(timer);
-    } else {
-      createPlayer();
+    if (!videoId) {
+      console.log('[RetroTV] No videoId available');
+      return;
     }
 
-    function createPlayer() {
-      // if player already exists, load new video
-      if (ytRef.current && playerRef.current) {
-        ytRef.current.loadVideoById(videoId);
-        if (started) {
-          setTimeout(() => tryPlayUnmute(), 300);
-        }
-        return;
+    const initPlayer = () => {
+      if (!window.YT || !window.YT.Player) {
+        console.log('[RetroTV] Waiting for YT API...');
+        return false;
       }
 
-      ytRef.current = new window.YT.Player("retro-tv-iframe", {
-        height: "100%",
-        width: "100%",
-        videoId,
-        playerVars: {
-          autoplay: 0,        // we will call play() after gesture
-          playsinline: 1,     // required on iPhone to play inline
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          iv_load_policy: 3,
-          mute: 1,            // start muted to be allowed to autoplay (if autoplay were used)
-        },
-        events: {
-          onReady: (e) => {
-            playerRef.current = e.target;
-            // if user already performed gesture in earlier session, try autoplay
-            if (started) {
-              tryPlayUnmute();
-            }
+      // Check if player container exists
+      const container = document.getElementById("retro-tv-iframe");
+      if (!container) {
+        console.log('[RetroTV] Container not found');
+        return false;
+      }
+
+      // If player already exists, just load new video
+      if (ytRef.current && playerRef.current) {
+        console.log('[RetroTV] Loading video:', videoId);
+        try {
+          ytRef.current.loadVideoById(videoId);
+          if (started) {
+            setTimeout(() => tryPlayUnmute(), 500);
+          }
+        } catch (err) {
+          console.error('[RetroTV] Error loading video:', err);
+        }
+        return true;
+      }
+
+      // Create new player
+      console.log('[RetroTV] Creating player with videoId:', videoId);
+      try {
+        ytRef.current = new window.YT.Player("retro-tv-iframe", {
+          height: "100%",
+          width: "100%",
+          videoId: videoId,
+          playerVars: {
+            autoplay: 0,
+            playsinline: 1,
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            iv_load_policy: 3,
+            mute: 1,
           },
-          onStateChange: (e) => {
-            // Video ended - play next in playlist
-            if (e.data === 0) { // YT.PlayerState.ENDED
-              playNextVideo();
-            }
+          events: {
+            onReady: (e) => {
+              console.log('[RetroTV] Player ready');
+              playerRef.current = e.target;
+              if (started) {
+                setTimeout(() => tryPlayUnmute(), 300);
+              }
+            },
+            onStateChange: (e) => {
+              if (e.data === 0) { // Video ended
+                console.log('[RetroTV] Video ended, playing next');
+                playNextVideo();
+              }
+            },
+            onError: (e) => {
+              console.error('[RetroTV] Player error:', e.data);
+              setError(`YT Error ${e.data}`);
+              setTimeout(() => playNextVideo(), 1000);
+            },
           },
-          onError: (e) => {
-            setError(`YT Error ${e.data}`);
-            // Try next video on error
-            setTimeout(() => playNextVideo(), 1000);
-          },
-        },
-      });
+        });
+        return true;
+      } catch (err) {
+        console.error('[RetroTV] Error creating player:', err);
+        setError(`Failed to create player: ${err.message}`);
+        return false;
+      }
+    };
+
+    // Try to initialize, poll if API not ready
+    if (!initPlayer()) {
+      const timer = setInterval(() => {
+        if (initPlayer()) {
+          clearInterval(timer);
+        }
+      }, 100);
+      return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId, channel?._id]);
+  }, [videoId, started]);
 
   // helper: attempt to play and unmute (handles promise rejection)
   const tryPlayUnmute = async () => {

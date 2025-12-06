@@ -22,6 +22,15 @@
   background: #000; 
 }
 
+.tv-iframe,
+#retro-tv-iframe { 
+  width: 100%; 
+  height: 100%; 
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 .tv-iframe iframe, 
 #retro-tv-iframe iframe { 
   width: 100%; 
