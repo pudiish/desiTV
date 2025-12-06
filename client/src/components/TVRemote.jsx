@@ -19,7 +19,8 @@ export default function TVRemote({
 	onStop,
 	onRecord,
 	activeChannelIndex,
-	totalChannels
+	totalChannels,
+	menuOpen = false
 }) {
 	const [channelInput, setChannelInput] = useState('')
 	const channelInputTimeout = useRef(null)
@@ -81,6 +82,13 @@ export default function TVRemote({
 		const handleKeyDown = (e) => {
 			// Ignore if typing in an input
 			if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+
+			// While menu is open, prevent remote keys from changing channel/volume
+			const menuBlockingKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+			if (menuOpen && menuBlockingKeys.includes(e.key)) {
+				e.preventDefault()
+				return
+			}
 
 			switch (e.key) {
 				case 'ArrowUp':
@@ -151,7 +159,7 @@ export default function TVRemote({
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [power, onChannelUp, onChannelDown, onVolumeUp, onVolumeDown, onMute, onMenuToggle, channelInput])
+	}, [power, onChannelUp, onChannelDown, onVolumeUp, onVolumeDown, onMute, onMenuToggle, channelInput, menuOpen])
 
 	return (
 		<div className="tv-remote">

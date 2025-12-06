@@ -4,6 +4,7 @@ import TVRemote from '../components/TVRemote'
 import TVMenuV2 from '../components/TVMenuV2'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
+import CRTInfoOverlay from '../components/CRTInfoOverlay'
 import SessionManager from '../utils/SessionManager'
 import channelManager from '../logic/channelManager'
 import { channelSwitchPipeline } from '../logic/effects'
@@ -22,6 +23,10 @@ export default function Home() {
 	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
 	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
 	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
+	const [playbackInfo, setPlaybackInfo] = useState(null) // Live playback snapshot from Player
+	const [crtVolume, setCrtVolume] = useState(null) // CRT overlay volume trigger
+	const [crtIsMuted, setCrtIsMuted] = useState(false) // CRT overlay muted state
+	const lastPlaybackInfoRef = useRef(null) // Throttle updates to UI
 	// NOTE: DO NOT use uiLoadTime - broadcast epoch is the single source of truth
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
@@ -252,6 +257,8 @@ export default function Home() {
 	function handleVolumeUp() {
 		setVolume(prev => {
 			const newVol = Math.min(1, prev + 0.1)
+			setCrtVolume(newVol)
+			setCrtIsMuted(false)
 			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
 			return newVol
 		})
@@ -260,6 +267,8 @@ export default function Home() {
 	function handleVolumeDown() {
 		setVolume(prev => {
 			const newVol = Math.max(0, prev - 0.1)
+			setCrtVolume(newVol)
+			setCrtIsMuted(false)
 			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
 			return newVol
 		})
@@ -269,9 +278,13 @@ export default function Home() {
 		if (volume > 0) {
 			setPrevVolume(volume)
 			setVolume(0)
+			setCrtVolume(0)
+			setCrtIsMuted(true)
 			setStatusMessage('MUTED')
 		} else {
 			setVolume(prevVolume || 0.5)
+			setCrtVolume(prevVolume || 0.5)
+			setCrtIsMuted(false)
 			setStatusMessage(`VOLUME: ${Math.round((prevVolume || 0.5) * 100)}%`)
 		}
 	}
@@ -377,17 +390,20 @@ export default function Home() {
 		<div className="main-container">
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
-			<TVFrame 
-				power={power}
-				activeChannel={activeChannel}
-				onStaticTrigger={handleChannelChange}
-				statusMessage={statusMessage}
-				volume={volume}
-				staticActive={staticActive}
-				allChannels={channels}
-				onVideoEnd={handleVideoEnd}
-				isBuffering={isBuffering}
-				bufferErrorMessage={bufferErrorMessage}
+		<TVFrame 
+			power={power}
+			activeChannel={activeChannel}
+			activeChannelIndex={activeChannelIndex}
+			channels={filteredChannels}
+			onStaticTrigger={handleChannelChange}
+			statusMessage={statusMessage}
+			volume={volume}
+			staticActive={staticActive}
+			allChannels={channels}
+			onVideoEnd={handleVideoEnd}
+			isBuffering={isBuffering}
+			bufferErrorMessage={bufferErrorMessage}
+			playbackInfo={playbackInfo}
 				onBufferingChange={(isBuffering, errorMsg) => {
 						setIsBuffering(isBuffering)
 						setBufferErrorMessage(errorMsg || '')
@@ -398,7 +414,21 @@ export default function Home() {
 								setBufferErrorMessage('')
 							}, 2000)
 						}
-					}}
+				}}
+				onPlaybackProgress={(info) => {
+					// Only update when active channel matches and change is meaningful
+					const activeId = activeChannel?._id
+					if (!info || !activeId || info.channelId !== activeId) return
+
+					const last = lastPlaybackInfoRef.current
+					const videoChanged = info.videoId && last?.videoId !== info.videoId
+					const timeDelta = Math.abs((info.currentTime || 0) - (last?.currentTime || 0))
+
+					if (!videoChanged && timeDelta < 0.5) return // Throttle minor updates
+
+					lastPlaybackInfoRef.current = info
+					setPlaybackInfo(info)
+				}}
 				/>
 
 				{/* Right Side - Remote Control and Categories */}
@@ -416,6 +446,7 @@ export default function Home() {
 						onMenuToggle={handleMenuToggle}
 						activeChannelIndex={activeChannelIndex}
 						totalChannels={filteredChannels.length}
+						menuOpen={menuOpen}
 					/>
 
 					<CategoryList
@@ -436,7 +467,18 @@ export default function Home() {
 			activeChannelIndex={activeChannelIndex}
 			onChannelSelect={handleChannelDirect}
 			power={power}
-		/>			{/* Footer / Status Text */}
+			playbackInfo={playbackInfo}
+		/>
+
+		{/* CRT Info Overlay - Volume and Channel Display */}
+		<CRTInfoOverlay 
+			activeChannelIndex={activeChannelIndex}
+			channels={filteredChannels}
+			volume={crtVolume}
+			isMuted={crtIsMuted}
+		/>
+
+		{/* Footer / Status Text */}
 			<div className="footer-status">
 				<div className="status-text">
 					{statusMessage}
