@@ -1,8 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import YouTube from 'react-youtube'
-import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
-import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
 
 /**
@@ -36,9 +33,14 @@ export default function Player({
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
-	// iOS autoplay handling
-	const [userGestureReceived, setUserGestureReceived] = useState(false)
-	const [showTapOverlay, setShowTapOverlay] = useState(true)
+	// iOS autoplay handling - use sessionStorage like RetroTV
+	const [userGestureReceived, setUserGestureReceived] = useState(
+		sessionStorage.getItem('desitv_gesture') === '1'
+	)
+	const [showTapOverlay, setShowTapOverlay] = useState(
+		sessionStorage.getItem('desitv_gesture') !== '1'
+	)
+	const ytPlayerRef = useRef(null) // Direct YouTube API player reference
 
 	// ===== REFS =====
 	const playerRef = useRef(null)
@@ -84,37 +86,9 @@ export default function Player({
 		return `${channel._id}-${channelChangeCounterRef.current}`
 	}, [channel?._id])
 
-	// YouTube player options - start time from broadcast position
-	const opts = useMemo(() => {
-		// Use broadcast position offset directly
-		const startSeconds = Math.floor(offset)
-		console.log(`[Player] opts calculated with start: ${startSeconds}s, videoIndex: ${currIndex}`)
-		
-		return {
-			width: '100%',
-			height: '100%',
-			// Use standard youtube.com domain instead of nocookie to avoid restrictions
-			playerVars: { 
-				autoplay: userGestureReceived ? 1 : 0,
-				mute: userGestureReceived ? 0 : 1,
-				controls: 0, 
-				disablekb: 1, 
-				modestbranding: 1, 
-				rel: 0, 
-				start: startSeconds,
-				iv_load_policy: 3,
-				showinfo: 0,
-				fs: 0,
-				cc_load_policy: 0,
-				playsinline: 1,
-				enablejsapi: 1,
-				origin: window.location.origin,
-				widget_referrer: window.location.origin,
-				autohide: 1,
-				loop: 0,
-			}
-		}
-	}, [offset, currIndex])
+	// Get current video ID and start time
+	const videoId = current?.youtubeId
+	const startSeconds = Math.floor(offset)
 
 	// Use ref to avoid stale closure in interval
 	const switchToNextVideoRef = useRef(null)
@@ -168,23 +142,32 @@ export default function Player({
 
 	// ===== EFFECTS =====
 
-	// Manual tap handler for iOS
+	// Manual tap handler for iOS - RetroTV approach
 	const handleTapToStart = useCallback(() => {
 		if (userGestureReceived) return
 		
 		setUserGestureReceived(true)
 		setShowTapOverlay(false)
+		sessionStorage.setItem('desitv_gesture', '1')
 		
-		if (playerRef.current) {
+		// Wait for player to be ready
+		const tryPlay = () => {
+			if (!ytPlayerRef.current) {
+				setTimeout(tryPlay, 100)
+				return
+			}
+			
 			try {
-				playerRef.current.unMute()
-				playerRef.current.setVolume(volume * 100)
-				playerRef.current.playVideo()
+				ytPlayerRef.current.playVideo?.()
+				ytPlayerRef.current.unMute?.()
+				ytPlayerRef.current.setVolume?.(volume * 100)
 				console.log('[Player] User tapped - unmuted and playing')
 			} catch (err) {
 				console.error('[Player] Error after tap:', err)
 			}
 		}
+		
+		tryPlay()
 	}, [userGestureReceived, volume])
 
 	// Expose tap handler to parent components
@@ -230,6 +213,146 @@ export default function Player({
 			if (onChannelChange) onChannelChange()
 		}
 	}, [channel?._id, onChannelChange, userGestureReceived, handleTapToStart])
+
+	// Load YouTube IFrame API (like RetroTV)
+	useEffect(() => {
+		if (window.YT && window.YT.Player) {
+			return
+		}
+		const existing = document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+		if (existing) return
+		
+		const tag = document.createElement('script')
+		tag.src = 'https://www.youtube.com/iframe_api'
+		tag.async = true
+		document.body.appendChild(tag)
+		console.log('[Player] Loading YouTube IFrame API')
+	}, [])
+
+	// Direct YouTube API player initialization (RetroTV approach)
+	useEffect(() => {
+		if (!videoId || !channel?._id) {
+			console.log('[Player] No videoId or channel')
+			return
+		}
+
+		const initPlayer = () => {
+			if (!window.YT || !window.YT.Player) {
+				console.log('[Player] Waiting for YT API...')
+				return false
+			}
+
+			const container = document.getElementById('desitv-player-iframe')
+			if (!container) {
+				console.log('[Player] Container not found')
+				return false
+			}
+
+			// If player exists, load new video
+			if (ytPlayerRef.current) {
+				console.log('[Player] Loading video:', videoId, 'at', startSeconds, 's')
+				try {
+					ytPlayerRef.current.loadVideoById({
+						videoId: videoId,
+						startSeconds: startSeconds
+					})
+					
+					if (userGestureReceived) {
+						setTimeout(() => {
+							try {
+								ytPlayerRef.current.unMute?.()
+								ytPlayerRef.current.setVolume?.(volume * 100)
+								ytPlayerRef.current.playVideo?.()
+							} catch (err) {
+								console.error('[Player] Error playing:', err)
+							}
+						}, 300)
+					}
+				} catch (err) {
+					console.error('[Player] Error loading video:', err)
+				}
+				return true
+			}
+
+			// Create new player
+			console.log('[Player] Creating player:', videoId, 'at', startSeconds, 's')
+			try {
+				ytPlayerRef.current = new window.YT.Player('desitv-player-iframe', {
+					height: '100%',
+					width: '100%',
+					videoId: videoId,
+					playerVars: {
+						autoplay: 0,
+						playsinline: 1,
+						controls: 0,
+						modestbranding: 1,
+						rel: 0,
+						start: startSeconds,
+						iv_load_policy: 3,
+						mute: 1,
+					},
+					events: {
+						onReady: (e) => {
+							console.log('[Player] Ready')
+							playerRef.current = e.target
+							
+							if (startSeconds > 0) {
+								e.target.seekTo(startSeconds, true)
+							}
+							
+							if (userGestureReceived) {
+								setTimeout(() => {
+									try {
+										e.target.unMute?.()
+										e.target.setVolume?.(volume * 100)
+										e.target.playVideo?.()
+									} catch (err) {}
+								}, 300)
+							}
+						},
+						onStateChange: (e) => {
+							// Video ended
+							if (e.data === 0 && switchToNextVideoRef.current) {
+								console.log('[Player] Video ended')
+								switchToNextVideoRef.current()
+							}
+							// Video playing
+							if (e.data === 1) {
+								setIsBuffering(false)
+								setIsTransitioning(false)
+							}
+							// Video buffering
+							if (e.data === 3) {
+								setIsBuffering(true)
+							}
+						},
+						onError: (e) => {
+							console.error('[Player] Error:', e.data)
+							setError(`YT Error ${e.data}`)
+							if (switchToNextVideoRef.current) {
+								setTimeout(() => switchToNextVideoRef.current(), 1000)
+							}
+						},
+					},
+				})
+				return true
+			} catch (err) {
+				console.error('[Player] Error creating player:', err)
+				return false
+			}
+		}
+
+		// Try to initialize, poll if API not ready
+		if (!initPlayer()) {
+			const timer = setInterval(() => {
+				if (initPlayer()) {
+					clearInterval(timer)
+				}
+			}, 100)
+			return () => clearInterval(timer)
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [videoId, channel?._id, userGestureReceived, startSeconds, volume])
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {
@@ -742,15 +865,17 @@ const onStateChange = useCallback((event) => {
 				loop
 			/>
 			<div className="crt-scanlines"></div>
-			<YouTube 
-				key={playerKey} 
-				videoId={current.youtubeId} 
-				opts={opts} 
-				onReady={onReady}
-				onStateChange={onStateChange}
-				onError={handleVideoError}
+			{/* Direct YouTube IFrame API - iPhone compatible */}
+			<div 
+				id="desitv-player-iframe" 
 				className="youtube-player-container"
-				iframeClassName="youtube-iframe"
+				style={{
+					width: '100%',
+					height: '100%',
+					position: 'absolute',
+					top: 0,
+					left: 0
+				}}
 			/>
 			{(isBuffering || isTransitioning) && (
 				<div className="static-effect-tv">
