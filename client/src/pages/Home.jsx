@@ -31,6 +31,7 @@ export default function Home() {
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
+	const powerCycleInProgress = useRef(false) // Track power cycle animation
 
 	// Store tap handler from Player (passed through TVFrame)
 	const handleTapHandlerReady = (handler) => {
@@ -43,6 +44,39 @@ export default function Home() {
 			tapTriggerRef.current()
 		}
 	}
+
+	// Power cycle animation for channel switch
+	const performPowerCycle = useCallback((callback) => {
+		if (powerCycleInProgress.current) return
+		powerCycleInProgress.current = true
+
+		// Step 1: Power OFF (300ms)
+		setPower(false)
+		setIsBuffering(true)
+		setBufferErrorMessage('SWITCHING CHANNEL...')
+
+		setTimeout(() => {
+			// Step 2: Execute channel switch callback
+			if (callback) callback()
+
+			setTimeout(() => {
+				// Step 3: Power ON (200ms after switch)
+				setPower(true)
+				setBufferErrorMessage('POWERING ON...')
+
+				setTimeout(() => {
+					// Step 4: Auto-tap to start playback (400ms after power on)
+					setIsBuffering(false)
+					setBufferErrorMessage('')
+					
+					if (tapTriggerRef.current) {
+						tapTriggerRef.current()
+					}
+					powerCycleInProgress.current = false
+				}, 400)
+			}, 200)
+		}, 300)
+	}, [])
 
 
 	// ===== SESSION MANAGEMENT =====
@@ -246,24 +280,24 @@ export default function Home() {
 	}
 
 	function handleChannelUp() {
-		if (!power || filteredChannels.length === 0) return
+		if (!power || filteredChannels.length === 0 || powerCycleInProgress.current) return
 		
-		setActiveChannelIndex(prevIndex => {
-			const nextIndex = (prevIndex + 1) % filteredChannels.length
+		const nextIndex = (activeChannelIndex + 1) % filteredChannels.length
+		performPowerCycle(() => {
+			setActiveChannelIndex(nextIndex)
 			switchChannel(nextIndex)
-			return nextIndex
 		})
 	}
 
 	function handleChannelDown() {
-		if (!power || filteredChannels.length === 0) return
+		if (!power || filteredChannels.length === 0 || powerCycleInProgress.current) return
 		
-		setActiveChannelIndex(prevIndex => {
-			const newIndex = prevIndex === 0 
-				? filteredChannels.length - 1 
-				: prevIndex - 1
+		const newIndex = activeChannelIndex === 0 
+			? filteredChannels.length - 1 
+			: activeChannelIndex - 1
+		performPowerCycle(() => {
+			setActiveChannelIndex(newIndex)
 			switchChannel(newIndex)
-			return newIndex
 		})
 	}
 
@@ -303,14 +337,16 @@ export default function Home() {
 	}
 
 	function handleChannelDirect(index) {
-		if (!power || filteredChannels.length === 0) return
+		if (!power || filteredChannels.length === 0 || powerCycleInProgress.current) return
 		if (index < 0 || index >= filteredChannels.length) {
 			setStatusMessage(`CHANNEL ${index + 1} NOT AVAILABLE`)
 			return
 		}
 		
-		switchChannel(index)
-		setActiveChannelIndex(index)
+		performPowerCycle(() => {
+			setActiveChannelIndex(index)
+			switchChannel(index)
+		})
 	}
 
 	function handleMenuToggle() {
