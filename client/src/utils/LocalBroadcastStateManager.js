@@ -295,6 +295,53 @@ class LocalBroadcastStateManager {
 	}
 
 	/**
+	 * JUMP TO SPECIFIC VIDEO
+	 * Adjusts the epoch so the timeline calculation lands on the specified video
+	 */
+	jumpToVideo(channelId, targetVideoIndex, targetOffset = 0, items) {
+		const state = this.state[channelId]
+		if (!state || !items || items.length === 0) {
+			console.warn(`[LBSM] Cannot jump - no state for channel ${channelId}`)
+			return false
+		}
+
+		// Calculate cumulative time up to target video
+		let cumulativeTime = 0
+		for (let i = 0; i < targetVideoIndex && i < items.length; i++) {
+			cumulativeTime += items[i]?.duration || 30
+		}
+		cumulativeTime += targetOffset
+
+		// Calculate total playlist duration
+		const totalDuration = items.reduce((sum, v) => sum + (v.duration || 30), 0)
+		
+		// Get current cycle position
+		const cyclePosition = cumulativeTime % totalDuration
+
+		// Adjust epoch: now - cyclePosition = new epoch
+		const now = new Date()
+		const newEpoch = new Date(now.getTime() - (cyclePosition * 1000))
+
+		this.state[channelId] = {
+			...state,
+			playlistStartEpoch: newEpoch,
+			currentVideoIndex: targetVideoIndex,
+			currentTime: targetOffset,
+			lastAccessTime: now,
+		}
+
+		this.saveToStorage()
+		this.notifyListeners('videoJump', {
+			channelId,
+			videoIndex: targetVideoIndex,
+			offset: targetOffset,
+		})
+
+		console.log(`[LBSM] Jumped to video ${targetVideoIndex} at ${targetOffset}s, adjusted epoch`)
+		return true
+	}
+
+	/**
 	 * RESET CHANNEL STATE (start fresh timeline)
 	 */
 	resetChannel(channelId) {

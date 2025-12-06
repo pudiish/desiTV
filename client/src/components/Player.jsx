@@ -4,7 +4,6 @@ import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
-import TapToStartOverlay from './TapToStartOverlay'
 
 /**
  * Enhanced Player Component with:
@@ -36,9 +35,9 @@ export default function Player({
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
-	// iOS autoplay handling
+	// iOS autoplay handling - automatic gesture capture
 	const [userGestureReceived, setUserGestureReceived] = useState(false)
-	const [showTapToStart, setShowTapToStart] = useState(true)
+	const autoTriggerAttemptedRef = useRef(false)
 
 	// ===== REFS =====
 	const playerRef = useRef(null)
@@ -167,6 +166,55 @@ export default function Player({
 	}, [attemptRetry, retryCount])
 
 	// ===== EFFECTS =====
+
+	// Effect: Automatic gesture unlock on ANY interaction
+	useEffect(() => {
+		if (userGestureReceived || autoTriggerAttemptedRef.current) return
+
+		const unlockPlayback = () => {
+			if (autoTriggerAttemptedRef.current) return
+			autoTriggerAttemptedRef.current = true
+
+			setUserGestureReceived(true)
+			console.log('[Player] Auto-gesture captured - playback unlocked')
+
+			// Immediately try to play if player is ready
+			setTimeout(() => {
+				if (playerRef.current) {
+					try {
+						playerRef.current.unMute()
+						playerRef.current.setVolume(volume * 100)
+						playerRef.current.playVideo()
+						console.log('[Player] Autoplay initiated after gesture unlock')
+					} catch (err) {
+						console.warn('[Player] Autoplay attempt:', err)
+					}
+				}
+			}, 100)
+
+			// Remove all listeners after first trigger
+			document.removeEventListener('mousemove', unlockPlayback)
+			document.removeEventListener('touchstart', unlockPlayback)
+			document.removeEventListener('click', unlockPlayback)
+			document.removeEventListener('keydown', unlockPlayback)
+			document.removeEventListener('scroll', unlockPlayback)
+		}
+
+		// Listen for ANY user interaction to unlock
+		document.addEventListener('mousemove', unlockPlayback, { once: true, passive: true })
+		document.addEventListener('touchstart', unlockPlayback, { once: true, passive: true })
+		document.addEventListener('click', unlockPlayback, { once: true, passive: true })
+		document.addEventListener('keydown', unlockPlayback, { once: true, passive: true })
+		document.addEventListener('scroll', unlockPlayback, { once: true, passive: true })
+
+		return () => {
+			document.removeEventListener('mousemove', unlockPlayback)
+			document.removeEventListener('touchstart', unlockPlayback)
+			document.removeEventListener('click', unlockPlayback)
+			document.removeEventListener('keydown', unlockPlayback)
+			document.removeEventListener('scroll', unlockPlayback)
+		}
+	}, [userGestureReceived, volume])
 
 	// Effect: Reset when channel changes
 	useEffect(() => {
@@ -399,12 +447,38 @@ export default function Player({
 		const nextVid = items[nextIdx]
 
 		if (nextVid?.youtubeId) {
-			console.log(`[Player] Loading video ${nextIdx}: ${nextVid.youtubeId}`)
+			console.log(`[Player] Switching from video ${currIndex} to ${nextIdx}: ${nextVid.youtubeId}`)
+			
+			// CRITICAL FIX: Update broadcast state to reflect video change
+			if (channel?._id) {
+				try {
+					// Jump to next video - this adjusts the epoch for correct timeline calculation
+					LocalBroadcastStateManager.jumpToVideo(
+						channel._id,
+						nextIdx,
+						0, // Start at beginning of video
+						items
+					)
+					console.log(`[Player] Jumped to video ${nextIdx} in broadcast timeline`)
+				} catch (err) {
+					console.error('[Player] Error jumping to video:', err)
+				}
+			}
+			
 			try {
 				playerRef.current.loadVideoById({
 					videoId: nextVid.youtubeId,
 					startSeconds: 0,
 				})
+				
+				// Auto-trigger playback after gesture unlock
+				if (userGestureReceived) {
+					try {
+						playerRef.current.unMute()
+						playerRef.current.setVolume(volume * 100)
+					} catch (err) {}
+				}
+				
 				// Ensure video plays
 				playerRef.current.playVideo()
 			} catch (err) {
@@ -417,7 +491,7 @@ export default function Player({
 			isTransitioningRef.current = false
 			startProgressMonitoring()
 		}, 800)
-	}, [items, currIndex, onVideoEnd, startProgressMonitoring])
+	}, [items, currIndex, onVideoEnd, startProgressMonitoring, channel, userGestureReceived, volume])
 
 	// Keep ref updated
 	switchToNextVideoRef.current = switchToNextVideo
@@ -578,6 +652,13 @@ const onStateChange = useCallback((event) => {
 			// Small delay to ensure seek completes before play
 			setTimeout(() => {
 				if (playerRef.current) {
+					// If gesture already received, unmute and play
+					if (userGestureReceived) {
+						try {
+							playerRef.current.unMute()
+							playerRef.current.setVolume(volume * 100)
+						} catch (err) {}
+					}
 					playerRef.current.playVideo().catch(() => {
 						setNeedsUserInteraction(true)
 					})
@@ -656,29 +737,8 @@ const onStateChange = useCallback((event) => {
 		)
 	}
 
-	// Handle iOS user gesture requirement
-	const handleTapToStart = () => {
-		if (userGestureReceived) return
-		setUserGestureReceived(true)
-		setShowTapToStart(false)
-		if (playerRef.current) {
-			try {
-				playerRef.current.unMute()
-				playerRef.current.setVolume(volume * 100)
-				playerRef.current.playVideo()
-				console.log('[Player] User gesture received - unmuted and playing')
-			} catch (err) {
-				console.error('[Player] Error starting playback:', err)
-			}
-		}
-	}
-
 	return (
 		<div className="player-wrapper">
-			<TapToStartOverlay 
-				show={showTapToStart && !userGestureReceived}
-				onTap={handleTapToStart}
-			/>
 			<audio
 				ref={staticAudioRef}
 				src="/sounds/tv-static-noise-291374.mp3"
