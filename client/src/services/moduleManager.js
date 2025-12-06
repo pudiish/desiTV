@@ -6,10 +6,6 @@
 
 import { apiClient, APIClient } from './apiClient'
 import { apiService, APIService } from './apiService'
-import HealthMonitor from '../monitoring/healthMonitor'
-import MetricsCollector from '../monitoring/metricsCollector'
-import ErrorAggregator from '../monitoring/errorAggregator'
-import CacheMonitor from '../monitoring/cacheMonitor'
 
 export class ModuleManager {
   constructor(config = {}) {
@@ -30,34 +26,6 @@ export class ModuleManager {
       // Initialize core services first
       this.registerModule('apiClient', apiClient)
       this.registerModule('apiService', apiService)
-
-      // Initialize monitoring services (optional)
-      if (this.config.enableMonitoring !== false) {
-        try {
-          const healthMonitor = new HealthMonitor(apiService)
-          this.registerModule('healthMonitor', healthMonitor)
-
-          const metricsCollector = new MetricsCollector()
-          this.registerModule('metricsCollector', metricsCollector)
-
-          const errorAggregator = new ErrorAggregator()
-          this.registerModule('errorAggregator', errorAggregator)
-
-          const cacheMonitor = new CacheMonitor()
-          this.registerModule('cacheMonitor', cacheMonitor)
-
-          // Setup interceptors
-          this.setupInterceptors()
-
-          console.log('[ModuleManager] ✓ Monitoring services initialized')
-        } catch (err) {
-          console.warn('[ModuleManager] Warning: Monitoring services failed to initialize:', err)
-          this.initializationErrors.push({
-            module: 'monitoring',
-            error: err.message,
-          })
-        }
-      }
 
       this.initialized = true
       this.notifyListeners('initialized')
@@ -94,52 +62,6 @@ export class ModuleManager {
     return this.modules[name]
   }
 
-  /**
-   * Setup interceptors for monitoring
-   */
-  setupInterceptors() {
-    const metricsCollector = this.modules.metricsCollector
-    const errorAggregator = this.modules.errorAggregator
-
-    if (!metricsCollector && !errorAggregator) {
-      return
-    }
-
-    // Request interceptor
-    if (metricsCollector) {
-      apiClient.addRequestInterceptor((config) => {
-        metricsCollector.recordRequestStart(config.url)
-        return config
-      })
-    }
-
-    // Response interceptor
-    if (metricsCollector) {
-      apiClient.addResponseInterceptor((response) => {
-        metricsCollector.recordRequestEnd(
-          response.status,
-          response.duration
-        )
-        return response
-      })
-    }
-
-    // Error interceptor
-    apiClient.addErrorInterceptor((error) => {
-      if (errorAggregator) {
-        errorAggregator.recordError({
-          type: 'api_error',
-          message: error.message,
-          status: error.status,
-          timestamp: new Date().toISOString(),
-        })
-      }
-      if (metricsCollector) {
-        metricsCollector.recordError()
-      }
-      return error
-    })
-  }
 
   /**
    * Get all modules
@@ -216,7 +138,7 @@ export class ModuleManager {
 
 // Create singleton instance
 export const moduleManager = new ModuleManager({
-  enableMonitoring: true,
+  enableMonitoring: false,
 })
 
 export default ModuleManager

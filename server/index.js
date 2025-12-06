@@ -159,10 +159,40 @@ app.use(errorHandler);
 
 app.get('/', (req, res) => res.send('DesiTV™ API running'));
 
+// Route to manually trigger JSON regeneration (useful for client fallback)
+app.post('/api/regenerate-json', async (req, res) => {
+	try {
+		const { ensureChannelsJSON } = require('./utils/generateJSON');
+		const result = await ensureChannelsJSON();
+		res.json({ 
+			success: true, 
+			message: `JSON regenerated with ${result.channels.length} channels`,
+			channelsCount: result.channels.length 
+		});
+	} catch (error) {
+		console.error('[Server] Error regenerating JSON:', error);
+		res.status(500).json({ 
+			success: false, 
+			message: error.message 
+		});
+	}
+});
+
 // ===== DATABASE CONNECTION & SERVER START =====
 mongoose.connect(process.env.MONGO_URI, mongoOptions)
-	.then(() => {
+	.then(async () => {
 		console.log(`[DesiTV™] MongoDB connected (${isProduction ? 'production' : 'development'})`);
+		
+		// Ensure channels.json exists and is populated from MongoDB
+		try {
+			const { ensureChannelsJSON } = require('./utils/generateJSON');
+			const jsonData = await ensureChannelsJSON();
+			console.log(`[DesiTV™] channels.json ready with ${jsonData.channels.length} channels`);
+		} catch (jsonErr) {
+			console.warn('[DesiTV™] Warning: Failed to ensure channels.json:', jsonErr.message);
+			console.warn('[DesiTV™] Server will continue, but JSON may need manual regeneration');
+		}
+		
 		// Bind to 0.0.0.0 to allow network access
 		const HOST = process.env.HOST || '0.0.0.0';
 		const server = app.listen(PORT, HOST, () => {

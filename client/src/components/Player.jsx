@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import YouTube from 'react-youtube'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
-import BroadcastStateManager from '../utils/BroadcastStateManager'
+import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
 
@@ -33,6 +33,7 @@ export default function Player({
 	const [isTransitioning, setIsTransitioning] = useState(false)
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
+	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
 
 	// ===== REFS =====
 	const playerRef = useRef(null)
@@ -199,78 +200,42 @@ export default function Player({
 	useEffect(() => {
 		if (!channel?._id || items.length === 0) return
 
-		const loadAndRestoreState = async () => {
-			try {
-				console.log(`[Player] Loading state for channel ${channel._id}...`)
-				
-				let preloadedState = null
-				let retries = 0
-				
-				// Retry fetching state up to 3 times
-				while (retries < 3) {
-					try {
-						preloadedState = await BroadcastStateManager.preloadStateForChannel(channel._id)
-						break
-					} catch (err) {
-						retries++
-						console.warn(`[Player] State fetch retry ${retries}:`, err)
-						await new Promise(resolve => setTimeout(resolve, 500 * retries))
-					}
-				}
-				
-				const position = BroadcastStateManager.calculateCurrentPosition(channel, preloadedState)
-
-				console.log(`[Player] Calculated position:`, {
-					videoIndex: position.videoIndex,
-					offset: position.offset.toFixed(1),
-					totalElapsed: position.totalElapsedSec?.toFixed(1),
-				})
-
-				await BroadcastStateManager.initializeChannel(channel, preloadedState)
-
-				// IMPORTANT: Do NOT set currentIndex from saved state
-				// The 'live' timeline value (calculated from epoch and current time)
-				// will automatically determine the correct video
-				// We only need to set the offset for seeking within the video
-				if (position.offset && playerRef.current) {
-					playerRef.current.targetOffset = position.offset
-					console.log(`[Player] Set target offset: ${position.offset.toFixed(1)}s`)
-				}
-			} catch (err) {
-				console.error('[Player] Error loading state:', err)
-				// Fall back gracefully
-				try {
-					await BroadcastStateManager.initializeChannel(channel)
-				} catch (initErr) {
-					console.error('[Player] Init fallback also failed:', initErr)
-				}
+		// Initialize channel state (loads from localStorage if exists)
+		try {
+			console.log(`[Player] Initializing state for channel ${channel._id}...`)
+			
+			LocalBroadcastStateManager.initializeChannel(channel)
+			
+			// Start auto-save if not already started
+			if (!LocalBroadcastStateManager.saveInterval) {
+				LocalBroadcastStateManager.startAutoSave()
 			}
-		}
 
-		loadAndRestoreState()
+			// Position is calculated by useBroadcastPosition hook
+			// which uses LocalBroadcastStateManager internally
+		} catch (err) {
+			console.error('[Player] Error initializing state:', err)
+		}
 	}, [channel?._id, items.length])
 
 	// Effect: Save state before page unload
 	useEffect(() => {
 		const handleBeforeUnload = () => {
 			try {
-				if (channel?._id) {
-					const stateData = BroadcastStateManager.getChannelState(channel._id)
-					if (stateData) {
-						navigator.sendBeacon(
-							`/api/broadcast-state/${channel._id}`,
-							JSON.stringify(stateData)
-						)
-						console.log('[Player] State saved via sendBeacon')
-					}
-				}
+				// Force save to localStorage
+				LocalBroadcastStateManager.saveToStorage()
+				console.log('[Player] State saved to localStorage on unload')
 			} catch (err) {
 				console.error('[Player] Error saving on unload:', err)
 			}
 		}
 
 		window.addEventListener('beforeunload', handleBeforeUnload)
-		return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload)
+			// Cleanup: stop auto-save when component unmounts
+			LocalBroadcastStateManager.stopAutoSave()
+		}
 	}, [channel?._id])
 
 	// Effect: Sync volume with player
@@ -328,7 +293,7 @@ export default function Player({
 			if (retryTimeoutRef.current) {
 				clearTimeout(retryTimeoutRef.current)
 			}
-			BroadcastStateManager.stopAutoSync()
+			LocalBroadcastStateManager.stopAutoSave()
 		}
 	}, [])
 
@@ -579,7 +544,9 @@ export default function Player({
 			// Small delay to ensure seek completes before play
 			setTimeout(() => {
 				if (playerRef.current) {
-					playerRef.current.playVideo()
+					playerRef.current.playVideo().catch(() => {
+						setNeedsUserInteraction(true)
+					})
 					videoLoadedRef.current = true
 				}
 			}, 50)
@@ -588,17 +555,11 @@ export default function Player({
 			
 			if (channel?._id) {
 				try {
-					BroadcastStateManager.updateChannelState(channel._id, {
+					// Update state (auto-save is already running)
+					LocalBroadcastStateManager.updateChannelState(channel._id, {
 						channelName: channel.name,
 						currentVideoIndex: currIndex,
 						currentTime: offset || 0,
-						playlistStartEpoch: new Date(channel.playlistStartEpoch),
-						videoDurations: items.map(v => v.duration || 300),
-						playlistTotalDuration: items.reduce((sum, v) => sum + (v.duration || 300), 0),
-					})
-					
-					BroadcastStateManager.startAutoSync((channelId, state) => {
-						console.log(`[Player] Auto-synced state for ${channelId}`)
 					})
 				} catch (err) {
 					console.error('[Player] Error updating broadcast state:', err)
@@ -611,6 +572,9 @@ export default function Player({
 					try {
 						playerRef.current.unMute()
 						playerRef.current.setVolume(volume * 100)
+						playerRef.current.playVideo().catch(() => {
+							setNeedsUserInteraction(true)
+						})
 					} catch(err) {}
 				}
 			}, 800)

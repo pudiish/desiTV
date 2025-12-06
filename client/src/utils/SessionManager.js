@@ -1,25 +1,21 @@
 /**
- * SessionManager.js - Client-side session caching and state recovery
+ * SessionManager.js - LOCALSTORAGE-BASED SESSION MANAGEMENT
+ * 
+ * Serverless version - no MongoDB dependency
  * 
  * Features:
- * - Automatic session persistence to MongoDB
+ * - Automatic session persistence to localStorage
  * - State recovery on page refresh/crash
- * - Timeline continuity maintenance
- * - Debounced saves to prevent API spam
- * - Offline queue for network failures
+ * - Simple, reliable, works offline
  */
 
 class SessionManager {
 	constructor() {
 		this.sessionId = this.getOrCreateSessionId()
 		this.state = null
-		this.saveTimeout = null
-		this.saveIntervalMs = 3000 // Save every 3 seconds
 		this.isInitialized = false
-		this.offlineQueue = []
 		this.listeners = []
-		this.lastSaveTime = 0
-		this.minSaveInterval = 1000 // Minimum 1 second between saves
+		this.storageKey = 'desitv-session-state'
 	}
 
 	/**
@@ -42,26 +38,25 @@ class SessionManager {
 	}
 
 	/**
-	 * Initialize session - load from server or create new
+	 * Initialize session - load from localStorage or create new
 	 */
 	async initialize() {
 		try {
 			console.log('[SessionManager] Initializing session...')
 			
-			const response = await fetch(`/api/session/${this.sessionId}`)
-			
-			if (response.ok) {
-				const data = await response.json()
-				this.state = data.session
+			// Load from localStorage
+			const cachedState = this.getLocalCache()
+			if (cachedState) {
+				this.state = cachedState
 				this.isInitialized = true
-				console.log('[SessionManager] Session restored from server:', {
+				console.log('[SessionManager] Session restored from localStorage:', {
 					channelId: this.state?.activeChannelId,
 					volume: this.state?.volume,
 					isPowerOn: this.state?.isPowerOn,
 				})
 				
 				this.notifyListeners('restored', this.state)
-				return { restored: true, state: this.state, broadcastState: data.broadcastState }
+				return { restored: true, state: this.state }
 			}
 			
 			// No existing session - start fresh
@@ -69,21 +64,14 @@ class SessionManager {
 			this.isInitialized = true
 			console.log('[SessionManager] Starting fresh session')
 			
-			return { restored: false, state: this.state, broadcastState: null }
+			return { restored: false, state: this.state }
 		} catch (err) {
 			console.error('[SessionManager] Init error:', err)
 			
-			// Try to recover from localStorage cache
-			const cachedState = this.getLocalCache()
-			if (cachedState) {
-				this.state = cachedState
-				console.log('[SessionManager] Recovered from local cache')
-				return { restored: true, state: this.state, broadcastState: null, fromCache: true }
-			}
-			
+			// Fallback to default state
 			this.state = this.getDefaultState()
 			this.isInitialized = true
-			return { restored: false, state: this.state, broadcastState: null }
+			return { restored: false, state: this.state }
 		}
 	}
 
@@ -105,13 +93,13 @@ class SessionManager {
 	}
 
 	/**
-	 * Update session state - debounced save to server
+	 * Update session state - save to localStorage immediately
 	 */
 	updateState(updates) {
 		if (!this.isInitialized) {
-			console.warn('[SessionManager] Not initialized, queuing update')
-			this.offlineQueue.push(updates)
-			return
+			console.warn('[SessionManager] Not initialized, initializing now')
+			this.state = this.getDefaultState()
+			this.isInitialized = true
 		}
 
 		// Merge updates
@@ -120,156 +108,63 @@ class SessionManager {
 			...updates,
 		}
 
-		// Save to local cache immediately
+		// Save to localStorage immediately
 		this.saveLocalCache()
 
-		// Debounced save to server
-		this.scheduleSave()
-
 		this.notifyListeners('updated', this.state)
-	}
-
-	/**
-	 * Schedule a debounced save to server
-	 */
-	scheduleSave() {
-		if (this.saveTimeout) {
-			clearTimeout(this.saveTimeout)
-		}
-
-		const timeSinceLastSave = Date.now() - this.lastSaveTime
-		const delay = Math.max(this.minSaveInterval - timeSinceLastSave, 0)
-
-		this.saveTimeout = setTimeout(() => {
-			this.saveToServer()
-		}, delay + 500) // Add 500ms debounce
-	}
-
-	/**
-	 * Save state to server
-	 */
-	async saveToServer() {
-		if (!this.state) return false
-
-		try {
-			const response = await fetch(`/api/session/${this.sessionId}`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					...this.state,
-					deviceInfo: {
-						userAgent: navigator.userAgent,
-						screenWidth: window.screen.width,
-						screenHeight: window.screen.height,
-					},
-				}),
-			})
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`)
-			}
-
-			this.lastSaveTime = Date.now()
-			console.log('[SessionManager] State saved to server')
-			this.notifyListeners('saved', this.state)
-			return true
-		} catch (err) {
-			console.error('[SessionManager] Save error:', err)
-			// Queue for retry
-			this.offlineQueue.push({ ...this.state })
-			this.notifyListeners('saveError', err)
-			return false
-		}
 	}
 
 	/**
 	 * Force immediate save (use on page unload)
 	 */
 	async forceSave() {
-		if (this.saveTimeout) {
-			clearTimeout(this.saveTimeout)
-		}
-		
-		// Use sendBeacon for reliable delivery on page unload
-		try {
-			const data = JSON.stringify({
-				...this.state,
-				deviceInfo: {
-					userAgent: navigator.userAgent,
-					screenWidth: window.screen.width,
-					screenHeight: window.screen.height,
-				},
-			})
-			
-			navigator.sendBeacon(`/api/session/${this.sessionId}`, new Blob([data], { type: 'application/json' }))
-			console.log('[SessionManager] State saved via sendBeacon')
-			return true
-		} catch (err) {
-			console.error('[SessionManager] Force save error:', err)
-			return false
-		}
+		this.saveLocalCache()
+		return true
 	}
 
 	/**
-	 * Attempt recovery from server
-	 */
-	async attemptRecovery(reason = 'unknown') {
-		try {
-			const response = await fetch(`/api/session/${this.sessionId}/recovery`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ reason }),
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				if (data.lastStableState) {
-					this.state = data.lastStableState
-					console.log('[SessionManager] Recovered from server:', data.recoveryAttempts, 'attempts')
-					this.notifyListeners('recovered', this.state)
-					return { success: true, state: this.state }
-				}
-			}
-
-			return { success: false, state: null }
-		} catch (err) {
-			console.error('[SessionManager] Recovery error:', err)
-			return { success: false, error: err.message }
-		}
-	}
-
-	/**
-	 * Local cache management
+	 * Local storage management
 	 */
 	saveLocalCache() {
 		try {
-			localStorage.setItem('retro-tv-session-cache', JSON.stringify({
+			localStorage.setItem(this.storageKey, JSON.stringify({
 				state: this.state,
 				timestamp: Date.now(),
 			}))
 		} catch (err) {
-			console.warn('[SessionManager] Local cache save error:', err)
+			console.warn('[SessionManager] Local storage save error:', err)
+			// If storage is full, try to clear old data
+			if (err.name === 'QuotaExceededError') {
+				console.warn('[SessionManager] Storage full, clearing old data')
+				this.clearLocalCache()
+				try {
+					localStorage.setItem(this.storageKey, JSON.stringify({
+						state: this.state,
+						timestamp: Date.now(),
+					}))
+				} catch (retryErr) {
+					console.error('[SessionManager] Retry save failed:', retryErr)
+				}
+			}
 		}
 	}
 
 	getLocalCache() {
 		try {
-			const cached = localStorage.getItem('retro-tv-session-cache')
+			const cached = localStorage.getItem(this.storageKey)
 			if (cached) {
 				const { state, timestamp } = JSON.parse(cached)
-				// Only use cache if less than 1 hour old
-				if (Date.now() - timestamp < 60 * 60 * 1000) {
-					return state
-				}
+				// Use cache regardless of age (user's session)
+				return state
 			}
 		} catch (err) {
-			console.warn('[SessionManager] Local cache read error:', err)
+			console.warn('[SessionManager] Local storage read error:', err)
 		}
 		return null
 	}
 
 	clearLocalCache() {
-		localStorage.removeItem('retro-tv-session-cache')
+		localStorage.removeItem(this.storageKey)
 	}
 
 	/**
@@ -303,23 +198,9 @@ class SessionManager {
 	}
 
 	/**
-	 * Process offline queue
-	 */
-	async processOfflineQueue() {
-		while (this.offlineQueue.length > 0) {
-			const update = this.offlineQueue.shift()
-			this.state = { ...this.state, ...update }
-		}
-		await this.saveToServer()
-	}
-
-	/**
 	 * Cleanup on destroy
 	 */
 	destroy() {
-		if (this.saveTimeout) {
-			clearTimeout(this.saveTimeout)
-		}
 		this.listeners = []
 	}
 }

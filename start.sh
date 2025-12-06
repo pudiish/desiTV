@@ -46,6 +46,13 @@ LOCAL_IP=$(get_local_ip)
 CLIENT_PORT="$VITE_CLIENT_PORT"
 SERVER_PORT="$PORT"
 
+# Kill any existing processes on required ports
+echo "🧹 Cleaning up ports $SERVER_PORT and $CLIENT_PORT..."
+lsof -ti:$SERVER_PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti:$CLIENT_PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 1
+echo "✅ Ports cleared"
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════╗"
 echo "║                🎬 DesiTV™ Development Server                  ║"

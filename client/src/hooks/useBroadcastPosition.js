@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
-import { getPseudoLiveItem } from '../utils/pseudoLive'
+import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 
 /**
  * useBroadcastPosition - Single source of truth for broadcast position
  * 
- * This is the ONLY place where broadcast position should be calculated.
+ * Uses LocalBroadcastStateManager for localStorage-based timeline
  * All components (Player, TVMenu, etc) use this hook to stay perfectly synced.
  * 
- * @param {Object} channel - Channel with items array and playlistStartEpoch
+ * @param {Object} channel - Channel with items array
  * @returns {Object} Complete broadcast position state
  */
 export function useBroadcastPosition(channel) {
@@ -28,10 +28,15 @@ export function useBroadcastPosition(channel) {
 		}
 
 		try {
-			// Calculate broadcast position using pseudoLive algorithm
-			const live = getPseudoLiveItem(channel.items, channel.playlistStartEpoch)
+			// Initialize channel state if needed
+			if (!LocalBroadcastStateManager.getChannelState(channel._id)) {
+				LocalBroadcastStateManager.initializeChannel(channel)
+			}
+
+			// Calculate broadcast position using LocalBroadcastStateManager
+			const position = LocalBroadcastStateManager.calculateCurrentPosition(channel)
 			
-			if (!live || live.videoIndex === -1) {
+			if (!position || position.videoIndex === -1) {
 				return {
 					videoIndex: 0,
 					video: channel.items[0],
@@ -46,25 +51,23 @@ export function useBroadcastPosition(channel) {
 				}
 			}
 
-			const currentVideo = channel.items[live.videoIndex]
+			const currentVideo = channel.items[position.videoIndex]
 			const videoDuration = currentVideo?.duration || 300
-			const timeRemaining = Math.max(0, videoDuration - live.offset)
+			const timeRemaining = Math.max(0, videoDuration - position.offset)
 			
-			const nextIdx = (live.videoIndex + 1) % channel.items.length
+			const nextIdx = (position.videoIndex + 1) % channel.items.length
 			const nextVideo = channel.items[nextIdx]
 			const nextDuration = nextVideo?.duration || 300
-			
-			const totalDuration = channel.items.reduce((sum, v) => sum + (v.duration || 30), 0)
 
 			return {
-				videoIndex: live.videoIndex,
+				videoIndex: position.videoIndex,
 				video: currentVideo,
-				offset: live.offset,
+				offset: position.offset,
 				timeRemaining: timeRemaining,
 				nextVideoIndex: nextIdx,
 				nextVideo: nextVideo,
-				cyclePosition: live.cyclePosition,
-				totalPlaylistDuration: totalDuration,
+				cyclePosition: position.cyclePosition,
+				totalPlaylistDuration: position.totalDuration,
 				nextTimeRemaining: nextDuration,
 				isValid: true
 			}
@@ -83,5 +86,5 @@ export function useBroadcastPosition(channel) {
 				isValid: false
 			}
 		}
-	}, [channel?.items, channel?.playlistStartEpoch])
+	}, [channel?._id, channel?.items])
 }

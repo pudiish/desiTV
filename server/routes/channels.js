@@ -3,6 +3,7 @@ const router = express.Router();
 const Channel = require('../models/Channel');
 const cache = require('../utils/cache');
 const { requireAuth } = require('../middleware/auth');
+const { regenerateChannelsJSON } = require('../utils/generateJSON');
 
 // Cache TTL constants (in seconds)
 const CACHE_TTL = {
@@ -104,7 +105,13 @@ router.post('/', requireAuth, async (req, res) => {
     // Invalidate channels list cache
     cache.delete('channels:all');
     
-    console.log(`[Channels] Admin "${req.admin.username}" created channel: ${name}`);
+    // Regenerate channels.json
+    try {
+      await regenerateChannelsJSON();
+    } catch (jsonErr) {
+      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    }
+    
     res.json(ch);
   } catch (err) {
     console.error('POST /api/channels error', err);
@@ -127,7 +134,13 @@ router.post('/:channelId/videos', requireAuth, async (req, res) => {
     cache.delete('channels:all');
     cache.deletePattern(`channel:${channelId}`);
     
-    console.log(`[Channels] Admin "${req.admin.username}" added video "${title}" to channel ${ch.name}`);
+    // Regenerate channels.json
+    try {
+      await regenerateChannelsJSON();
+    } catch (jsonErr) {
+      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    }
+    
     res.json(ch);
   } catch (err) {
     console.error('POST /api/channels/:id/videos error', err);
@@ -177,7 +190,13 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
     cache.delete('channels:all');
     cache.deletePattern(`channel:${channelId}`);
     
-    console.log('Video deleted successfully:', videoId);
+    // Regenerate channels.json
+    try {
+      await regenerateChannelsJSON();
+    } catch (jsonErr) {
+      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    }
+    
     res.json(updatedChannel);
   } catch (err) {
     console.error('DELETE /api/channels/:channelId/videos/:videoId error:', err.message, err);
@@ -200,7 +219,13 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
     cache.delete('channels:all');
     cache.deletePattern(`channel:${channelId}`);
     
-    console.log(`[Channels] Channel deleted successfully: ${ch.name}`);
+    // Regenerate channels.json
+    try {
+      await regenerateChannelsJSON();
+    } catch (jsonErr) {
+      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    }
+    
     res.json({ message: 'Channel deleted successfully', channel: ch });
   } catch (err) {
     console.error('DELETE /api/channels/:channelId error:', err.message, err);
@@ -254,7 +279,12 @@ router.post('/:id/add-video', requireAuth, async (req, res) => {
     cache.delete('channels:all');
     cache.deletePattern(`channel:${channelId}`);
 
-    console.log(`[Channels] Admin "${req.admin.username}" added video "${title}" (${youtubeId}) to channel "${channel.name}"`);
+    // Regenerate channels.json
+    try {
+      await regenerateChannelsJSON();
+    } catch (jsonErr) {
+      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    }
     
     res.json({ 
       message: 'Video added successfully', 
@@ -334,7 +364,12 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
     // Invalidate main channel list cache
     cache.delete('channels:all');
 
-    console.log(`[Channels] Admin "${req.admin.username}" bulk-added ${addedCount} videos`);
+    // Regenerate channels.json
+    try {
+      await regenerateChannelsJSON();
+    } catch (jsonErr) {
+      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    }
 
     res.json({ 
       message: `Successfully added ${addedCount} video(s)`,
