@@ -94,8 +94,8 @@ export default function Player({
 			height: '100%',
 			// Use standard youtube.com domain instead of nocookie to avoid restrictions
 			playerVars: { 
-				autoplay: userGestureReceived ? 1 : 0, // iOS requires user gesture first
-				mute: userGestureReceived ? 0 : 1, // Start muted, unmute after gesture
+				autoplay: 0, // Don't autoplay initially - we'll trigger manually
+				mute: 1, // Start muted for iOS compatibility
 				controls: 0, 
 				disablekb: 1, 
 				modestbranding: 1, 
@@ -171,12 +171,12 @@ export default function Player({
 	useEffect(() => {
 		if (userGestureReceived || autoTriggerAttemptedRef.current) return
 
-		const unlockPlayback = () => {
+		const unlockPlayback = (event) => {
 			if (autoTriggerAttemptedRef.current) return
 			autoTriggerAttemptedRef.current = true
 
+			console.log('[Player] Auto-gesture captured via:', event?.type || 'direct')
 			setUserGestureReceived(true)
-			console.log('[Player] Auto-gesture captured - playback unlocked')
 
 			// Immediately try to play if player is ready
 			setTimeout(() => {
@@ -185,34 +185,34 @@ export default function Player({
 						playerRef.current.unMute()
 						playerRef.current.setVolume(volume * 100)
 						playerRef.current.playVideo()
-						console.log('[Player] Autoplay initiated after gesture unlock')
+						console.log('[Player] Autoplay initiated - volume:', volume * 100)
 					} catch (err) {
-						console.warn('[Player] Autoplay attempt:', err)
+						console.warn('[Player] Autoplay failed:', err)
 					}
 				}
 			}, 100)
-
-			// Remove all listeners after first trigger
-			document.removeEventListener('mousemove', unlockPlayback)
-			document.removeEventListener('touchstart', unlockPlayback)
-			document.removeEventListener('click', unlockPlayback)
-			document.removeEventListener('keydown', unlockPlayback)
-			document.removeEventListener('scroll', unlockPlayback)
 		}
 
-		// Listen for ANY user interaction to unlock
-		document.addEventListener('mousemove', unlockPlayback, { once: true, passive: true })
-		document.addEventListener('touchstart', unlockPlayback, { once: true, passive: true })
-		document.addEventListener('click', unlockPlayback, { once: true, passive: true })
-		document.addEventListener('keydown', unlockPlayback, { once: true, passive: true })
-		document.addEventListener('scroll', unlockPlayback, { once: true, passive: true })
+		// Aggressive listener setup - capture everything
+		const events = ['click', 'touchstart', 'touchend', 'mousedown', 'mousemove', 'keydown', 'scroll', 'pointerdown']
+		
+		// Add all listeners
+		events.forEach(eventType => {
+			document.addEventListener(eventType, unlockPlayback, { once: true, passive: true, capture: true })
+		})
+
+		// Also add to window for maximum coverage
+		window.addEventListener('focus', unlockPlayback, { once: true, passive: true })
+		window.addEventListener('click', unlockPlayback, { once: true, passive: true })
+
+		console.log('[Player] Auto-gesture listeners registered, waiting for ANY interaction')
 
 		return () => {
-			document.removeEventListener('mousemove', unlockPlayback)
-			document.removeEventListener('touchstart', unlockPlayback)
-			document.removeEventListener('click', unlockPlayback)
-			document.removeEventListener('keydown', unlockPlayback)
-			document.removeEventListener('scroll', unlockPlayback)
+			events.forEach(eventType => {
+				document.removeEventListener(eventType, unlockPlayback, { capture: true })
+			})
+			window.removeEventListener('focus', unlockPlayback)
+			window.removeEventListener('click', unlockPlayback)
 		}
 	}, [userGestureReceived, volume])
 
@@ -652,14 +652,23 @@ const onStateChange = useCallback((event) => {
 			// Small delay to ensure seek completes before play
 			setTimeout(() => {
 				if (playerRef.current) {
-					// If gesture already received, unmute and play
-					if (userGestureReceived) {
-						try {
-							playerRef.current.unMute()
-							playerRef.current.setVolume(volume * 100)
-						} catch (err) {}
-					}
-					playerRef.current.playVideo().catch(() => {
+					// Try to play - this will trigger auto-gesture if needed
+					playerRef.current.playVideo().then(() => {
+						// Success! If we got here, we have gesture permission
+						if (!userGestureReceived && !autoTriggerAttemptedRef.current) {
+							autoTriggerAttemptedRef.current = true
+							setUserGestureReceived(true)
+							console.log('[Player] Autoplay succeeded - gesture permission granted')
+						}
+						// Now unmute if we have permission
+						if (userGestureReceived) {
+							try {
+								playerRef.current.unMute()
+								playerRef.current.setVolume(volume * 100)
+							} catch (err) {}
+						}
+					}).catch((err) => {
+						console.log('[Player] Autoplay blocked:', err?.message || err)
 						setNeedsUserInteraction(true)
 					})
 					videoLoadedRef.current = true
@@ -739,6 +748,13 @@ const onStateChange = useCallback((event) => {
 
 	return (
 		<div className="player-wrapper">
+			{/* Subtle waiting indicator - only shows briefly until first interaction */}
+			{!userGestureReceived && (
+				<div className="auto-unlock-indicator">
+					<div className="pulse-dot"></div>
+				</div>
+			)}
+			
 			<audio
 				ref={staticAudioRef}
 				src="/sounds/tv-static-noise-291374.mp3"
