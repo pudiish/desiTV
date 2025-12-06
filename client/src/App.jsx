@@ -78,61 +78,61 @@ function AdminView() {
 }
 
 /**
- * Main TV View
+ * Main TV View - Completely independent, no admin dependencies
  */
 function TVView() {
-  const navigate = useNavigate();
-
   return (
     <div className="tv-view">
       <Home />
-      <button
-        className="admin-button"
-        onClick={() => navigate('/admin')}
-        title="Admin Dashboard"
-      >
-        ⚙️
-      </button>
     </div>
   );
 }
 
 /**
- * App Routes wrapped in AuthProvider
+ * App Routes - TV routes are independent, Admin routes are separate
  */
 function AppRoutes() {
   return (
     <div className="app">
       <Routes>
-        {/* Public: Landing Page */}
+        {/* Public: Landing Page - No dependencies */}
         <Route path="/" element={<Landing />} />
         
-        {/* Public: TV View */}
+        {/* Public: TV View - Completely independent, no admin dependencies */}
         <Route path="/tv" element={<TVView />} />
         
-        {/* Public: Admin Login */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        
-        {/* Protected: Admin Dashboard */}
+        {/* Admin Routes - Separate module with auth */}
+        <Route
+          path="/admin/login"
+          element={
+            <AuthProvider>
+              <AdminLogin />
+            </AuthProvider>
+          }
+        />
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
-              <AdminView />
-            </ProtectedRoute>
+            <AuthProvider>
+              <ProtectedRoute>
+                <AdminView />
+              </ProtectedRoute>
+            </AuthProvider>
           }
         />
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
-              <AdminView />
-            </ProtectedRoute>
+            <AuthProvider>
+              <ProtectedRoute>
+                <AdminView />
+              </ProtectedRoute>
+            </AuthProvider>
           }
         />
         
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Fallback to TV */}
+        <Route path="*" element={<Navigate to="/tv" replace />} />
       </Routes>
     </div>
   );
@@ -140,13 +140,12 @@ function AppRoutes() {
 
 /**
  * Main App Component
+ * TV routes are independent, Admin routes have their own AuthProvider
  */
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

@@ -4,48 +4,100 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { moduleManager } from '../../services/moduleManager'
-import { useCache } from '../../hooks/useCache'
 import '../AdminDashboard.css'
 
+/**
+ * Simple cache utilities
+ */
+function getStorageStats(storage) {
+  const stats = {
+    items: 0,
+    sizeKB: 0,
+    details: {}
+  }
+
+  try {
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i)
+      if (key) {
+        const value = storage.getItem(key) || ''
+        const sizeBytes = new Blob([value]).size
+        const sizeKB = (sizeBytes / 1024).toFixed(2)
+        
+        stats.items++
+        stats.sizeKB += parseFloat(sizeKB)
+        stats.details[key] = {
+          sizeKB: parseFloat(sizeKB),
+          sizeBytes
+        }
+      }
+    }
+    stats.sizeKB = parseFloat(stats.sizeKB.toFixed(2))
+  } catch (err) {
+    console.error('Error reading storage:', err)
+  }
+
+  return stats
+}
+
+function getTotalSize() {
+  const localStorageStats = getStorageStats(localStorage)
+  const sessionStorageStats = getStorageStats(sessionStorage)
+  const totalKB = localStorageStats.sizeKB + sessionStorageStats.sizeKB
+  
+  return {
+    KB: totalKB.toFixed(2),
+    MB: (totalKB / 1024).toFixed(2)
+  }
+}
+
 export default function CacheManagerSection() {
-  const cacheMonitor = moduleManager.getModule('cacheMonitor')
-  const cache = useCache(cacheMonitor)
   const [clearing, setClearing] = useState(false)
   const [lastAction, setLastAction] = useState(null)
   const [expandedSection, setExpandedSection] = useState(null)
-
-  if (!cacheMonitor) {
-    return (
-      <div className="section-container">
-        <div className="section-header">
-          <h3>💾 Cache Manager</h3>
-        </div>
-        <div style={{ padding: '20px', color: '#ff9', backgroundColor: '#333', borderRadius: '4px' }}>
-          ⚠️ Cache monitor not initialized yet. Please wait...
-        </div>
-      </div>
-    )
-  }
+  const [stats, setStats] = useState({
+    localStorage: getStorageStats(localStorage),
+    sessionStorage: getStorageStats(sessionStorage),
+    browserCache: { count: 0, available: false }
+  })
 
   useEffect(() => {
-    // Refresh stats on mount and periodically
-    if (cacheMonitor) {
-      cacheMonitor.updateStats()
-      const interval = setInterval(() => cacheMonitor.updateStats(), 10000)
-      return () => clearInterval(interval)
-    }
-  }, [cacheMonitor])
+    // Refresh stats periodically
+    const interval = setInterval(() => {
+      setStats({
+        localStorage: getStorageStats(localStorage),
+        sessionStorage: getStorageStats(sessionStorage),
+        browserCache: { count: 0, available: false }
+      })
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const refreshStats = () => {
+    setStats({
+      localStorage: getStorageStats(localStorage),
+      sessionStorage: getStorageStats(sessionStorage),
+      browserCache: { count: 0, available: false }
+    })
+  }
 
   const handleClearLocalStorage = async () => {
     setClearing(true)
     try {
-      cache.clearLocalStorage([
-        'retro-tv-session-id',
-        'retro-tv-selected-channels',
-        'retro-tv-preferences',
-      ])
-      setLastAction({ type: 'success', message: 'localStorage cleared' })
+      // Preserve session-related keys
+      const preserveKeys = ['retro-tv-session-id', 'retro-tv-selected-channels', 'retro-tv-preferences']
+      const keysToRemove = []
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && !preserveKeys.includes(key)) {
+          keysToRemove.push(key)
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+      refreshStats()
+      setLastAction({ type: 'success', message: 'localStorage cleared (session preserved)' })
     } catch (err) {
       setLastAction({ type: 'error', message: `Error: ${err.message}` })
     }
@@ -55,7 +107,8 @@ export default function CacheManagerSection() {
   const handleClearSessionStorage = async () => {
     setClearing(true)
     try {
-      cache.clearSessionStorage()
+      sessionStorage.clear()
+      refreshStats()
       setLastAction({ type: 'success', message: 'sessionStorage cleared' })
     } catch (err) {
       setLastAction({ type: 'error', message: `Error: ${err.message}` })
@@ -66,8 +119,14 @@ export default function CacheManagerSection() {
   const handleClearBrowserCache = async () => {
     setClearing(true)
     try {
-      await cache.clearBrowserCache()
-      setLastAction({ type: 'success', message: 'Browser cache cleared' })
+      // Browser cache clearing requires Cache API
+      if ('caches' in window) {
+        const cacheNames = await caches.keys()
+        await Promise.all(cacheNames.map(name => caches.delete(name)))
+        setLastAction({ type: 'success', message: 'Browser cache cleared' })
+      } else {
+        setLastAction({ type: 'error', message: 'Browser cache API not available' })
+      }
     } catch (err) {
       setLastAction({ type: 'error', message: `Error: ${err.message}` })
     }
@@ -77,7 +136,26 @@ export default function CacheManagerSection() {
   const handleFullCleanup = async () => {
     setClearing(true)
     try {
-      await cache.fullCleanup(['retro-tv-session-id', 'retro-tv-selected-channels'])
+      // Preserve session keys
+      const preserveKeys = ['retro-tv-session-id', 'retro-tv-selected-channels']
+      const keysToRemove = []
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && !preserveKeys.includes(key)) {
+          keysToRemove.push(key)
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+      sessionStorage.clear()
+      
+      if ('caches' in window) {
+        const cacheNames = await caches.keys()
+        await Promise.all(cacheNames.map(name => caches.delete(name)))
+      }
+      
+      refreshStats()
       setLastAction({
         type: 'success',
         message: 'Full cleanup complete (session preserved)',
@@ -88,18 +166,27 @@ export default function CacheManagerSection() {
     setClearing(false)
   }
 
-  const handleClearItem = (key, storage) => {
-    cache.clearStorageItem(key, storage)
-    setLastAction({ type: 'success', message: `Cleared ${storage}[${key}]` })
+  const handleClearItem = (key, storageType) => {
+    try {
+      if (storageType === 'localStorage') {
+        localStorage.removeItem(key)
+      } else if (storageType === 'sessionStorage') {
+        sessionStorage.removeItem(key)
+      }
+      refreshStats()
+      setLastAction({ type: 'success', message: `Cleared ${storageType}[${key}]` })
+    } catch (err) {
+      setLastAction({ type: 'error', message: `Error: ${err.message}` })
+    }
   }
 
-  const totalSize = cache.getTotalSize()
+  const totalSize = getTotalSize()
 
   return (
     <div className="section-container">
       <div className="section-header">
         <h3>💾 Cache Management</h3>
-        <button className="btn btn-primary" onClick={() => cacheMonitor?.updateStats()} disabled={clearing}>
+        <button className="btn btn-primary" onClick={refreshStats} disabled={clearing}>
           Refresh Stats
         </button>
       </div>
@@ -133,22 +220,22 @@ export default function CacheManagerSection() {
         <div className="health-card">
           <div className="health-icon">📦</div>
           <h4>localStorage</h4>
-          <p style={{ fontSize: '18px' }}>{cache.stats.localStorage.items} items</p>
-          <small>{cache.stats.localStorage.sizeKB} KB</small>
+          <p style={{ fontSize: '18px' }}>{stats.localStorage.items} items</p>
+          <small>{stats.localStorage.sizeKB} KB</small>
         </div>
 
         <div className="health-card">
           <div className="health-icon">📝</div>
           <h4>sessionStorage</h4>
-          <p style={{ fontSize: '18px' }}>{cache.stats.sessionStorage.items} items</p>
-          <small>{cache.stats.sessionStorage.sizeKB} KB</small>
+          <p style={{ fontSize: '18px' }}>{stats.sessionStorage.items} items</p>
+          <small>{stats.sessionStorage.sizeKB} KB</small>
         </div>
 
         <div className="health-card">
           <div className="health-icon">🌐</div>
           <h4>Browser Cache</h4>
-          <p style={{ fontSize: '18px' }}>{cache.stats.browserCache.count} caches</p>
-          <small>{cache.stats.browserCache.available ? 'Available' : 'Unavailable'}</small>
+          <p style={{ fontSize: '18px' }}>{stats.browserCache.count} caches</p>
+          <small>{stats.browserCache.available ? 'Available' : 'Unavailable'}</small>
         </div>
       </div>
 
@@ -170,7 +257,7 @@ export default function CacheManagerSection() {
             style={{ padding: '10px', textAlign: 'left' }}
           >
             <div>🗑️ Clear localStorage</div>
-            <small>({cache.stats.localStorage.items} items)</small>
+            <small>({stats.localStorage.items} items)</small>
           </button>
 
           <button
@@ -180,7 +267,7 @@ export default function CacheManagerSection() {
             style={{ padding: '10px', textAlign: 'left' }}
           >
             <div>🗑️ Clear sessionStorage</div>
-            <small>({cache.stats.sessionStorage.items} items)</small>
+            <small>({stats.sessionStorage.items} items)</small>
           </button>
 
           <button
@@ -190,7 +277,7 @@ export default function CacheManagerSection() {
             style={{ padding: '10px', textAlign: 'left' }}
           >
             <div>🗑️ Clear Browser Cache</div>
-            <small>({cache.stats.browserCache.count} caches)</small>
+            <small>({stats.browserCache.count} caches)</small>
           </button>
 
           <button
@@ -229,11 +316,11 @@ export default function CacheManagerSection() {
 
         {expandedSection === 'localStorage' && (
           <div style={{ marginTop: '10px', fontSize: '11px', fontFamily: 'monospace' }}>
-            {Object.entries(cache.stats.localStorage.details).length === 0 ? (
+            {Object.entries(stats.localStorage.details).length === 0 ? (
               <div style={{ color: '#999' }}>No items</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', gap: '10px' }}>
-                {Object.entries(cache.stats.localStorage.details).map(([key, details]) => (
+                {Object.entries(stats.localStorage.details).map(([key, details]) => (
                   <React.Fragment key={key}>
                     <div style={{ wordBreak: 'break-word', color: '#0f0' }}>{key}</div>
                     <div style={{ textAlign: 'right' }}>{details.sizeKB} KB</div>
@@ -277,11 +364,11 @@ export default function CacheManagerSection() {
 
         {expandedSection === 'sessionStorage' && (
           <div style={{ marginTop: '10px', fontSize: '11px', fontFamily: 'monospace' }}>
-            {Object.entries(cache.stats.sessionStorage.details).length === 0 ? (
+            {Object.entries(stats.sessionStorage.details).length === 0 ? (
               <div style={{ color: '#999' }}>No items</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', gap: '10px' }}>
-                {Object.entries(cache.stats.sessionStorage.details).map(([key, details]) => (
+                {Object.entries(stats.sessionStorage.details).map(([key, details]) => (
                   <React.Fragment key={key}>
                     <div style={{ wordBreak: 'break-word', color: '#0f0' }}>{key}</div>
                     <div style={{ textAlign: 'right' }}>{details.sizeKB} KB</div>

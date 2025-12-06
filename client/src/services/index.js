@@ -13,10 +13,6 @@ export { APIService, apiService } from './apiService'
 export { ModuleManager, moduleManager } from './moduleManager'
 
 // Monitoring Service
-export { HealthMonitor } from '../monitoring/healthMonitor'
-export { MetricsCollector } from '../monitoring/metricsCollector'
-export { ErrorAggregator } from '../monitoring/errorAggregator'
-export { CacheMonitor } from '../monitoring/cacheMonitor'
 
 // Re-export for convenience
 export {

@@ -1,0 +1,473 @@
+{
+  "version": 1765037910996,
+  "generatedAt": "2025-12-06T16:18:30.996Z",
+  "channels": [
+    {
+      "_id": "6932ae9db0fc9c17cbe43a98",
+      "name": "Ads",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6932ae9db0fc9c17cbe43a99",
+          "title": "Indian spices advertisement for \"TRS Garam Masala\"",
+          "youtubeId": "iWLawOkCRIY",
+          "duration": 34,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9db0fc9c17cbe43a9a",
+          "title": "Kissan Jam",
+          "youtubeId": "5ICtgxRyb_s",
+          "duration": 33,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9db0fc9c17cbe43a9b",
+          "title": "munch Rani",
+          "youtubeId": "j-oZttp1U20",
+          "duration": 62,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9db0fc9c17cbe43a9c",
+          "title": "Alpenliebe Commercial",
+          "youtubeId": "8XrTtidde4U",
+          "duration": 56,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6932ae9db0fc9c17cbe43a9e",
+      "name": "Music",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6932ae9db0fc9c17cbe43a9f",
+          "title": "LOVE DOSE Full Video Song | #90s Version | Honey Singh | Desi Kalakaar | AI Song, #honeysingh",
+          "youtubeId": "72b1cEME4xs",
+          "duration": 209,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9db0fc9c17cbe43aa0",
+          "title": "Socha Hai Lyrical | Baadshaho | Emraan Hashmi, Esha Gupta |Tanishk Bagchi Jubin Nautiyal Neeti Mohan",
+          "youtubeId": "N3QcCHaoIF0",
+          "duration": 168,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9db0fc9c17cbe43aa2",
+          "title": "OFFICIAL: 'Manwa Laage' FULL VIDEO Song | Happy New Year | Shah Rukh Khan | Arijit Singh",
+          "youtubeId": "d8IT-16kA8M",
+          "duration": 269,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932c90b2b06e6d56e997b9e",
+          "title": "Khiladi 786 Lonely Song | Akshay Kumar, Asin Feat. Yo Yo Honey Singh",
+          "youtubeId": "Ffs-tQd5Ihs",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d13cb38f1e1fbba7c1c5",
+          "title": "Ichu Ichu - Video Song 8K | Vedi | Vishal, Sameera Reddy | Vijay Antony | Prabhu Deva",
+          "youtubeId": "bE0fhtiE65g",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d54878e75b7a157b70ab",
+          "title": "Azhagiya Theeye 4k Video Song - Minnale | Harris Jayaraj | Madhavan | Gautham V Menon",
+          "youtubeId": "h3AkAdfxOHI",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7102",
+          "title": "Aaj Ki Raat - Don (2006) *HQ*",
+          "youtubeId": "ue3MSprH0kU",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7103",
+          "title": "Bheegey Hont (From \"Murder\")",
+          "youtubeId": "EzqJ6wkZL_o",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7104",
+          "title": "\"Dus Bahane Karke Le Gaye Dil\" Lyrical Video | Dus | Sanjay Dutt, Abhishek Bacchan",
+          "youtubeId": "64qzsIwtvhY",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7105",
+          "title": "Falak Dekhun (From \"Garam Masala\")",
+          "youtubeId": "abzpVy52-bk",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7106",
+          "title": "Ganpat (Full Song) | Shoot Out At Lokhandwala",
+          "youtubeId": "4BB-aKPyLe0",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7107",
+          "title": "Lucky Ali - Jaane Kya Dhoondta Hai (Lyric Video) | Lucky Ali, Gauri Karnik | Sur The Melody Of Life",
+          "youtubeId": "H5f6KwbRoPo",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7108",
+          "title": "KABHI KABHI ADITI",
+          "youtubeId": "r9eGi0rVxBw",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7109",
+          "title": "Laaree Chootee",
+          "youtubeId": "cj84OtodGmA",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b710a",
+          "title": "Euphoria - Maaeri (with HQ audio from album)",
+          "youtubeId": "Jf2HVLWFFx8",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b710b",
+          "title": "Maula Mere Maula | Anwar | Roop Kumar Rathod | Mithoon | Sayeed Quadri | Love Songs",
+          "youtubeId": "AwjEzV2G1PA",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b710c",
+          "title": "O Meri Jaan (From \"Life In a Metro\")",
+          "youtubeId": "deZNSm_3XEc",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b710d",
+          "title": "Piya Basanti",
+          "youtubeId": "vselbiYZsmQ",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b710e",
+          "title": "Sajna Ji Vaari Vaari",
+          "youtubeId": "EJLjIlrsomk",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b710f",
+          "title": "Subah Subah",
+          "youtubeId": "d8EafY5IKTY",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7110",
+          "title": "Shaan - Tanha Dil Tanha Safar (Music Video) | Popular Hindi Song",
+          "youtubeId": "64KSVbMDr0c",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7112",
+          "title": "Tera Chehra Title Track Full (Audio) Song Adnan Sami Pop Album Songs",
+          "youtubeId": "zNUs54J3mKo",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7113",
+          "title": "Tera Mera Pyar",
+          "youtubeId": "nwXq1iKFmjY",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7114",
+          "title": "Tumhi Dekho Naa Best Audio Song - KANK|Shahrukh Khan, Rani|Sonu Nigam|Alka Yagnik",
+          "youtubeId": "yz847DzMCW4",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7115",
+          "title": "Tune Jo Na Kaha",
+          "youtubeId": "01HR1uP4kic",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7116",
+          "title": "Woh Lamhe Woh Baatein (From \"Zeher\")",
+          "youtubeId": "iWJJfHObWDE",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7117",
+          "title": "Zara Sa",
+          "youtubeId": "V1_5SHc21m8",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6932ae9db0fc9c17cbe43aa4",
+      "name": "Drama",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6932ae9db0fc9c17cbe43aa5",
+          "title": "Taarak Mehta Ka Ooltah Chashmah | तारक मेहता का उल्टा चश्मा | Episode 762 | 22nd May 2021",
+          "youtubeId": "TatHajLfFHA",
+          "duration": 1086,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932b38b842dc46ae0e7d792",
+          "title": "क्या Gada Family लगा पाएगी Taarak के Secret का पता? |Taarak Mehta Ka Ooltah Chashmah|Taarak's Affair",
+          "youtubeId": "_8grrNPJE6k",
+          "duration": 3505,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6932ae9eb0fc9c17cbe43aa7",
+      "name": "Movie",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6932ae9eb0fc9c17cbe43aa8",
+          "title": "Phir Hera Pheri  | Most Popular Comedy Scenes | Paresh Rawal - Akshay Kumar - Suniel Shetty",
+          "youtubeId": "kC5PwG8Ebw8",
+          "duration": 2116,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9eb0fc9c17cbe43aa9",
+          "title": "Bhagam Bhag | Best Comedy Scenes | Movie Bhagam Bhag | Paresh Rawal - Rajpal Yadav | Movie In Part 4",
+          "youtubeId": "KHvfdKyw2I8",
+          "duration": 1691,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6933e2ae9318752eefe78429",
+      "name": "Sports",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6933e4231345b8c2fe0496cb",
+          "title": "INDIA VS AUSTRALIA 2001 KOLKATA HIGHLIGHTS- INDIA'S GREATEST TEST MATCH WIN! Border Gavaskar Series",
+          "youtubeId": "jHNpvQK5Ers",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496cc",
+          "title": "One Of The Greatest ODI Matches Ever | England v India NatWest Series Final 2002 - Full Highlights",
+          "youtubeId": "d5LIyNlq2KY",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496cd",
+          "title": "YouTube Video d1m9Xq7g8l8",
+          "youtubeId": "d1m9Xq7g8l8",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496ce",
+          "title": "YouTube Video M-5H7YpQ4dI",
+          "youtubeId": "M-5H7YpQ4dI",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496cf",
+          "title": "IND v AUS | 2007 T20WC | Hindi Highlights",
+          "youtubeId": "nOTMWjlamAU",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d0",
+          "title": "India vs Pakistan 2015 ODI World Cup Short Highlights! India Came on top once again #india #pakistan",
+          "youtubeId": "ooMbatP36y8",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d1",
+          "title": "Dhoni 🔥 India vs Pakistan 2nd ODI 2005 Highlights | MS DHONI 148 Match | Dhoni 1st ODI Century",
+          "youtubeId": "rtx2uTkew4c",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d2",
+          "title": "Dhoni 183* Vs Sri Lanka One of his best Innings in the International Cricket",
+          "youtubeId": "SEuZMvOic38",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d3",
+          "title": "MS Dhoni 139* (121) vs Australia 3rd ODI 2013 Mohali (Extended Highlights)",
+          "youtubeId": "kj2EFrc8ByQ",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d4",
+          "title": "Dhoni's 92, spinners lift India to 22-Run Win! IND vs SA 2015 | 2nd ODI Indore Highlights",
+          "youtubeId": "XMocNwLgezA",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d5",
+          "title": "India’s Thumping Win Over Australia Remembered Forever For Sachin Tendulkar’s Massive Hundred",
+          "youtubeId": "PamVIEk1R14",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496d6",
+          "title": "India vs South Africa | Tendulkar's Masterclass Secures ODI Series | Baroda 2000 Highlights",
+          "youtubeId": "KqIDWc1i4yw",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4251345b8c2fe0496d7",
+          "title": "2000 | NZ v IND - ICC Knockout trophy final",
+          "youtubeId": "fMr-wfvVLMw",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    }
+  ]
+}

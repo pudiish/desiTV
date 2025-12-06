@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
     // Development server config
     server: {
       port: clientPort,
-      host: false, // localhost only, no network exposure
+      host: '0.0.0.0', // Allow network access
       proxy: {
         // Proxy API calls to local server in development
         '/api': {

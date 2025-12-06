@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import axios from 'axios'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
 import TVMenuV2 from '../components/TVMenuV2'
 import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
 import SessionManager from '../utils/SessionManager'
-import { useSessionCleanup } from '../hooks/useSessionCleanup'
-import { moduleManager } from '../services/moduleManager'
+import channelManager from '../logic/channelManager'
+import { channelSwitchPipeline } from '../logic/effects'
 
 export default function Home() {
 	const [channels, setChannels] = useState([])
@@ -27,13 +26,6 @@ export default function Home() {
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 
-	const API = import.meta.env.VITE_API_BASE || ''
-
-	// ===== PRE-TV CLEANUP =====
-	const cacheMonitor = moduleManager.getModule('cacheMonitor')
-	useSessionCleanup(cacheMonitor, () => {
-		console.log('[Home] Pre-TV cleanup complete, initializing TV session')
-	})
 
 	// ===== SESSION MANAGEMENT =====
 	
@@ -113,18 +105,23 @@ export default function Home() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// Initialize session manager first
+				// Initialize session manager (loads from localStorage)
 				const sessionResult = await SessionManager.initialize()
 				
-				// Load channels from API
-				const channelsRes = await axios.get(`${API}/api/channels`)
-				const allChannels = channelsRes.data || []
+				// Load channels from JSON only (no server dependency)
+				const allChannels = await channelManager.loadChannels()
 				setChannels(allChannels)
+				
+				if (allChannels.length === 0) {
+					setStatusMessage('NO CHANNELS FOUND. PLEASE CHECK CHANNELS.JSON FILE.')
+					setSessionRestored(true)
+					return
+				}
 				
 				// If session was restored, use saved state
 				if (sessionResult.restored && sessionResult.state) {
 					const savedState = sessionResult.state
-					console.log('[Home] Restoring session:', savedState)
+					console.log('[Home] Restoring session from localStorage:', savedState)
 					
 					// Restore selected channels
 					if (savedState.selectedChannels && savedState.selectedChannels.length > 0) {
@@ -143,7 +140,7 @@ export default function Home() {
 					}
 					
 					// Restore active channel index
-					if (typeof savedState.activeChannelIndex === 'number') {
+					if (typeof savedState.activeChannelIndex === 'number' && savedState.activeChannelIndex < allChannels.length) {
 						setActiveChannelIndex(savedState.activeChannelIndex)
 					}
 					
@@ -155,9 +152,6 @@ export default function Home() {
 						setStatusMessage(`SESSION RESTORED. ${allChannels.length} CHANNELS READY.`)
 					}
 					
-					// NOTE: UI load time should NOT be persisted or restored
-					// Broadcast epoch is stored in the channel and is the source of truth
-					
 					setSessionRestored(true)
 				} else {
 					// Fresh start - auto-select all channels
@@ -165,10 +159,7 @@ export default function Home() {
 					setSelectedChannels(allChannelNames)
 					filterChannelsBySelection(allChannels, allChannelNames)
 					
-					if (allChannels.length > 0) {
-						setStatusMessage(`LOADED ${allChannels.length} CHANNELS. READY TO PLAY.`)
-					}
-					
+					setStatusMessage(`LOADED ${allChannels.length} CHANNELS. READY TO PLAY.`)
 					setSessionRestored(true)
 				}
 			} catch (err) {
@@ -177,24 +168,28 @@ export default function Home() {
 				
 				// Try to load channels anyway
 				try {
-					const channelsRes = await axios.get(`${API}/api/channels`)
-					const allChannels = channelsRes.data || []
+					const allChannels = await channelManager.loadChannels()
 					setChannels(allChannels)
 					
-					const allChannelNames = allChannels.map(ch => ch.name)
-					setSelectedChannels(allChannelNames)
-					filterChannelsBySelection(allChannels, allChannelNames)
+					if (allChannels.length > 0) {
+						const allChannelNames = allChannels.map(ch => ch.name)
+						setSelectedChannels(allChannelNames)
+						filterChannelsBySelection(allChannels, allChannelNames)
+						setStatusMessage(`LOADED ${allChannels.length} CHANNELS.`)
+					} else {
+						setStatusMessage('NO CHANNELS FOUND IN JSON FILE.')
+					}
 					
 					setSessionRestored(true)
 				} catch (loadErr) {
 					console.error('Failed to load channels:', loadErr)
-					setStatusMessage('ERROR LOADING CHANNELS. CHECK SERVER CONNECTION.')
+					setStatusMessage('ERROR LOADING CHANNELS FROM JSON FILE.')
 				}
 			}
 		}
 
 		initializeApp()
-	}, [API])
+	}, [])
 
 	// Filter channels when selection changes
 	useEffect(() => {
@@ -237,9 +232,7 @@ export default function Home() {
 		
 		setActiveChannelIndex(prevIndex => {
 			const nextIndex = (prevIndex + 1) % filteredChannels.length
-			triggerStatic()
-			triggerBuffering(`SWITCHING TO ${filteredChannels[nextIndex]?.name || 'UNKNOWN'}...`)
-			setStatusMessage(`CHANNEL ${nextIndex + 1}: ${filteredChannels[nextIndex]?.name || 'UNKNOWN'}`)
+			switchChannel(nextIndex)
 			return nextIndex
 		})
 	}
@@ -251,9 +244,7 @@ export default function Home() {
 			const newIndex = prevIndex === 0 
 				? filteredChannels.length - 1 
 				: prevIndex - 1
-			triggerStatic()
-			triggerBuffering(`SWITCHING TO ${filteredChannels[newIndex]?.name || 'UNKNOWN'}...`)
-			setStatusMessage(`CHANNEL ${newIndex + 1}: ${filteredChannels[newIndex]?.name || 'UNKNOWN'}`)
+			switchChannel(newIndex)
 			return newIndex
 		})
 	}
@@ -292,10 +283,8 @@ export default function Home() {
 			return
 		}
 		
-		triggerStatic()
-		triggerBuffering(`SWITCHING TO ${filteredChannels[index]?.name || 'UNKNOWN'}...`)
+		switchChannel(index)
 		setActiveChannelIndex(index)
-		setStatusMessage(`CHANNEL ${index + 1}: ${filteredChannels[index]?.name || 'UNKNOWN'}`)
 	}
 
 	function handleMenuToggle() {
@@ -323,6 +312,46 @@ export default function Home() {
 
 	function handleChannelChange() {
 		triggerStatic()
+	}
+
+	/**
+	 * Channel switching with Retro-TV animation pipeline
+	 */
+	async function switchChannel(index) {
+		if (index < 0 || index >= filteredChannels.length) return
+		
+		const channel = filteredChannels[index]
+		if (!channel) return
+
+		// Execute channel switch pipeline
+		channelSwitchPipeline.on('onStaticStart', () => {
+			setStaticActive(true)
+		})
+		
+		channelSwitchPipeline.on('onStaticEnd', () => {
+			setStaticActive(false)
+		})
+		
+		channelSwitchPipeline.on('onBlackScreen', () => {
+			setIsBuffering(true)
+			setBufferErrorMessage(`SWITCHING TO ${channel.name}...`)
+		})
+		
+		channelSwitchPipeline.on('onVideoLoad', () => {
+			// Video loading is handled by Player component
+		})
+		
+		channelSwitchPipeline.on('onFadeIn', () => {
+			// Fade-in handled by CRT effects
+		})
+		
+		channelSwitchPipeline.on('onComplete', () => {
+			setIsBuffering(false)
+			setBufferErrorMessage('')
+			setStatusMessage(`CHANNEL ${index + 1}: ${channel.name}`)
+		})
+
+		await channelSwitchPipeline.execute()
 	}
 
 	function handleToggleChannel(channelName) {
