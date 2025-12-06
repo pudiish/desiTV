@@ -22,6 +22,7 @@ export default function Player({
 	allChannels = [], 
 	onBufferingChange = null,
 	onPlaybackStateChange = null, // Callback for playback state
+	onPlaybackProgress = null, // Emits current playback position
 }){
 	// ===== SINGLE SOURCE OF TRUTH FOR POSITION =====
 	// All timing and video index calculations come from this hook
@@ -88,8 +89,7 @@ export default function Player({
 		return {
 			width: '100%',
 			height: '100%',
-			// Use nocookie domain to prevent tracking and reduce glitches
-			host: 'https://www.youtube-nocookie.com',
+			// Use standard youtube.com domain instead of nocookie to avoid restrictions
 			playerVars: { 
 				autoplay: 1, 
 				controls: 0, 
@@ -312,6 +312,29 @@ export default function Player({
 
 	// ===== CALLBACKS =====
 
+	const emitPlaybackProgress = useCallback(() => {
+		if (!onPlaybackProgress || !playerRef.current) return
+
+		const player = playerRef.current
+		const videoData = player.getVideoData ? player.getVideoData() : {}
+		const currentPromise = player.getCurrentTime ? Promise.resolve(player.getCurrentTime()) : Promise.resolve(0)
+		const durationPromise = player.getDuration ? Promise.resolve(player.getDuration()) : Promise.resolve(current?.duration || 0)
+
+		Promise.all([currentPromise, durationPromise])
+			.then(([currentTime, duration]) => {
+				onPlaybackProgress({
+					channelId: channel?._id,
+					videoIndex: currIndex,
+					video: current,
+					videoId: videoData?.video_id || current?.youtubeId,
+					videoTitle: videoData?.title || current?.title,
+					currentTime: currentTime || 0,
+					duration: duration || current?.duration || 0,
+				})
+			})
+			.catch(() => {})
+	}, [channel?._id, currIndex, current, onPlaybackProgress])
+
 	const startProgressMonitoring = useCallback(() => {
 		if (progressIntervalRef.current) {
 			clearInterval(progressIntervalRef.current)
@@ -329,6 +352,9 @@ export default function Player({
 				]).then(([currentTime, duration]) => {
 					if (duration && currentTime && duration > 0 && !isTransitioningRef.current && !hasTriggered) {
 						const timeRemaining = duration - currentTime
+
+						// Report live playback info for UI sync
+						emitPlaybackProgress()
 						
 						// Update last play time for health monitoring
 						lastPlayTimeRef.current = Date.now()
@@ -343,7 +369,7 @@ export default function Player({
 				}).catch(() => {})
 			} catch(err) {}
 		}, 500)
-	}, [])
+	}, [emitPlaybackProgress])
 
 	// Simple: play next video immediately
 	// Note: The next video is automatically calculated by pseudoLive algorithm on channel epoch
@@ -405,11 +431,11 @@ export default function Player({
 				if (onBufferingChange) {
 					const errorMessages = {
 						100: 'VIDEO NOT FOUND',
-						101: 'VIDEO NOT EMBEDDABLE',
-						150: 'VIDEO RESTRICTED',
+						101: 'VIDEO EMBEDDING DISABLED - Skipping...',
+						150: 'VIDEO RESTRICTED (Geographic/Copyright) - Skipping...',
 						2: 'INVALID VIDEO ID'
 					}
-					onBufferingChange(true, errorMessages[errorCode] || `ERROR ${errorCode}`)
+					onBufferingChange(true, errorMessages[errorCode] || `ERROR ${errorCode} - Skipping...`)
 				}
 				
 				failedVideosRef.current.add(current.youtubeId)
@@ -422,7 +448,7 @@ export default function Player({
 					
 					errorTimeoutRef.current = setTimeout(() => {
 						switchToNextVideo(true)
-					}, 1000)
+					}, 1500) // Slightly longer delay for restricted videos
 				} else {
 					console.error('Too many consecutive video errors, stopping auto-skip')
 					setIsBuffering(false)
@@ -446,73 +472,76 @@ export default function Player({
 		}
 	}, [current?.youtubeId, onBufferingChange, MAX_SKIP_ATTEMPTS, switchToNextVideo, retryCount, attemptRetry])
 
-	const onStateChange = useCallback((event) => {
-		try {
-			const state = event.data
-			playbackStateRef.current = state === 1 ? 'playing' : state === 3 ? 'buffering' : 'other'
-			
-			if (state === 0) {
-				// Video ended - switch immediately
-				if (!isTransitioningRef.current) {
-					switchToNextVideo()
-				}
-			} else if (state === 3) {
-				// Buffering - only show indicator after 500ms to avoid flicker
-				if (bufferTimeoutRef.current) {
-					clearTimeout(bufferTimeoutRef.current)
-				}
-				bufferTimeoutRef.current = setTimeout(() => {
-					if (playbackStateRef.current === 'buffering') {
-						setIsBuffering(true)
-						setPlaybackHealth('buffering')
-						
-						if (staticAudioRef.current) {
-							try {
-								staticAudioRef.current.currentTime = 0
-								staticAudioRef.current.play().catch(() => {})
-							} catch (err) {}
-						}
-					}
-				}, 500) // Only show buffering after 500ms
-			} else if (state === 1) {
-				// SUCCESS - Video is playing
-				setRetryCount(0)
-				setPlaybackHealth('healthy')
-				lastPlayTimeRef.current = Date.now()
-				
-				if (bufferTimeoutRef.current) {
-					clearTimeout(bufferTimeoutRef.current)
-				}
-				bufferTimeoutRef.current = setTimeout(() => {
-					setIsBuffering(false)
+const onStateChange = useCallback((event) => {
+	try {
+		const state = event.data
+		playbackStateRef.current = state === 1 ? 'playing' : state === 3 ? 'buffering' : 'other'
+		
+		if (state === 0) {
+			// Video ended - switch immediately
+			if (!isTransitioningRef.current) {
+				switchToNextVideo()
+			}
+		} else if (state === 3) {
+			// Buffering - only show indicator after 500ms to avoid flicker
+			if (bufferTimeoutRef.current) {
+				clearTimeout(bufferTimeoutRef.current)
+			}
+			bufferTimeoutRef.current = setTimeout(() => {
+				if (playbackStateRef.current === 'buffering') {
+					setIsBuffering(true)
+					setPlaybackHealth('buffering')
+					
 					if (staticAudioRef.current) {
 						try {
-							staticAudioRef.current.pause()
 							staticAudioRef.current.currentTime = 0
+							staticAudioRef.current.play().catch(() => {})
 						} catch (err) {}
 					}
-				}, 200)
-
-				if (!progressIntervalRef.current && !isTransitioningRef.current) {
-					startProgressMonitoring()
 				}
-				
-				// Notify playback state change
-				if (onPlaybackStateChange) {
-					onPlaybackStateChange({ state: 'playing', videoId: current?.youtubeId })
-				}
-			} else if (state === 5) {
-				if (!progressIntervalRef.current && !isTransitioningRef.current) {
-					setTimeout(() => startProgressMonitoring(), 1000)
-				}
-			} else if (state === -1) {
-				// Unstarted - might need retry
-				console.log('[Player] Video unstarted, monitoring...')
+			}, 500) // Only show buffering after 500ms
+		} else if (state === 1) {
+			// SUCCESS - Video is playing
+			setRetryCount(0)
+			setPlaybackHealth('healthy')
+			lastPlayTimeRef.current = Date.now()
+			
+			if (bufferTimeoutRef.current) {
+				clearTimeout(bufferTimeoutRef.current)
 			}
-		} catch (err) {
-			console.error('[Player] Error in onStateChange:', err)
+			bufferTimeoutRef.current = setTimeout(() => {
+				setIsBuffering(false)
+				if (staticAudioRef.current) {
+					try {
+						staticAudioRef.current.pause()
+						staticAudioRef.current.currentTime = 0
+					} catch (err) {}
+				}
+			}, 200)
+
+			if (!progressIntervalRef.current && !isTransitioningRef.current) {
+				startProgressMonitoring()
+			}
+			
+			// Notify playback state change
+			if (onPlaybackStateChange) {
+				onPlaybackStateChange({ state: 'playing', videoId: current?.youtubeId })
+			}
+
+			// Emit progress snapshot on play start for menu sync
+			emitPlaybackProgress()
+		} else if (state === 5) {
+			if (!progressIntervalRef.current && !isTransitioningRef.current) {
+				setTimeout(() => startProgressMonitoring(), 1000)
+			}
+		} else if (state === -1) {
+			// Unstarted - might need retry
+			console.log('[Player] Video unstarted, monitoring...')
 		}
-	}, [onVideoEnd, switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange])
+	} catch (err) {
+		console.error('[Player] Error in onStateChange:', err)
+	}
+}, [onVideoEnd, switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange, emitPlaybackProgress])
 
 	const onReady = useCallback((e) => {
 		try {
@@ -588,10 +617,13 @@ export default function Player({
 			if (current?.youtubeId) {
 				YouTubeRetryManager.healthyVideos?.add(current.youtubeId)
 			}
-		} catch(err) {
-			console.error('[Player] Error in onReady:', err)
-		}
-	}, [volume, offset, currIndex, channel, items, startProgressMonitoring, current?.youtubeId])
+
+		// Emit initial progress snapshot after ready
+		emitPlaybackProgress()
+	} catch(err) {
+		console.error('[Player] Error in onReady:', err)
+	}
+}, [volume, offset, currIndex, channel, items, startProgressMonitoring, current?.youtubeId, emitPlaybackProgress])
 
 	// ===== RENDER =====
 

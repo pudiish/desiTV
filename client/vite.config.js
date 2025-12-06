@@ -26,6 +26,11 @@ export default defineConfig(({ mode }) => {
     server: {
       port: clientPort,
       host: '0.0.0.0', // Allow network access
+      headers: {
+        'Referrer-Policy': 'origin-when-cross-origin',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'X-Content-Type-Options': 'nosniff',
+      },
       proxy: {
         // Proxy API calls to local server in development
         '/api': {

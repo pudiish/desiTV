@@ -3,8 +3,10 @@ import Player from './Player'
 import StaticEffect from './StaticEffect'
 import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
+import CRTInfoOverlay from './CRTInfoOverlay'
+import BlueRaysEffect from './BlueRaysEffect'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [] }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -85,6 +87,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
 			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
+			{/* Blue Rays Effect - Positioned behind everything in fullscreen */}
+			{isFullscreen && <BlueRaysEffect isFullscreen={isFullscreen} volume={volume} />}
+			
 			{showFullscreenHint && !isFullscreen && power && (
 				<div className="fullscreen-hint-overlay">
 					DOUBLE CLICK FOR FULLSCREEN | ESC FOR MENU
@@ -110,6 +115,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									allChannels={allChannels}
 									shouldAdvanceVideo={shouldAdvanceVideo}
 									onBufferingChange={onBufferingChange}
+									onPlaybackProgress={onPlaybackProgress}
 								/>
 							) : (
 								<div className="tv-off-screen">
@@ -133,6 +139,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							<WhatsNextPreview 
 								channel={activeChannel}
 								isVisible={showPreview && !isBuffering && !staticActive}
+								playbackInfo={playbackInfo}
+							/>
+							{/* CRT Info Overlay - Channel and Volume Display */}
+							<CRTInfoOverlay 
+								activeChannelIndex={activeChannelIndex}
+								channels={channels}
+								volume={volume}
+								isMuted={volume === 0}
 							/>
 						</div>
 					)}

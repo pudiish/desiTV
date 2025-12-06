@@ -16,7 +16,7 @@ export default function TVMenuV2({
 	activeChannelIndex,
 	onChannelSelect,
 	power,
-	currentYouTubeTime = 0
+	playbackInfo = null
 }) {
 	const [selectedIndex, setSelectedIndex] = useState(activeChannelIndex)
 	const [activeTab, setActiveTab] = useState('channels')
@@ -25,6 +25,8 @@ export default function TVMenuV2({
 
 	// Get position for ACTIVE channel only (this is what's ACTUALLY playing)
 	const activeChannel = channels[activeChannelIndex]
+	const activeChannelItems = activeChannel?.items || []
+	const hasActivePlaylist = activeChannelItems.length > 0
 	const activeBroadcast = useBroadcastPosition(activeChannel)
 
 	// Reset selected index when menu opens
@@ -100,6 +102,38 @@ export default function TVMenuV2({
 		return `${mins}:${String(secs).padStart(2, '0')}`
 	}
 
+	// Always prefer live playback info when available and matching active channel
+	const playbackMatchesActive = playbackInfo?.channelId && playbackInfo.channelId === activeChannel?._id
+	
+	// Use live YouTube metadata when available
+	const nowTitle = playbackMatchesActive && playbackInfo?.videoTitle 
+		? playbackInfo.videoTitle 
+		: activeBroadcast.video?.title || 'Unknown'
+	
+	const nowVideoId = playbackMatchesActive && playbackInfo?.videoId
+		? playbackInfo.videoId
+		: activeBroadcast.video?.youtubeId
+	
+	const nowDuration = playbackMatchesActive && playbackInfo?.duration 
+		? playbackInfo.duration 
+		: activeBroadcast.video?.duration || 0
+	
+	const nowOffset = playbackMatchesActive && typeof playbackInfo?.currentTime === 'number'
+		? playbackInfo.currentTime
+		: activeBroadcast.offset
+	
+	const nowTimeRemaining = nowDuration ? Math.max(0, nowDuration - nowOffset) : activeBroadcast.timeRemaining
+	
+	const currentVideoIndex = playbackMatchesActive && typeof playbackInfo?.videoIndex === 'number'
+		? playbackInfo.videoIndex
+		: activeBroadcast.videoIndex
+	
+	const computedNextIndex = hasActivePlaylist && currentVideoIndex >= 0
+		? (currentVideoIndex + 1) % activeChannelItems.length
+		: activeBroadcast.nextVideoIndex
+	
+	const computedNextVideo = hasActivePlaylist ? activeChannelItems[computedNextIndex] : null
+
 	if (!isOpen || !power) return null
 
 	return (
@@ -145,14 +179,14 @@ export default function TVMenuV2({
 					{activeTab === 'channels' && (
 						<div className="channels-grid">
 							{channels.map((channel, idx) => {
-								const isActive = idx === activeChannelIndex
-								const isSelected = idx === selectedIndex
-								
-								// Only show broadcast info for active channel
-								const displayVideo = isActive ? activeBroadcast.video : null
-								const displayNext = isActive ? activeBroadcast.nextVideo : null
+							const isActive = idx === activeChannelIndex
+							const isSelected = idx === selectedIndex
+							
+							// Only show live info for active channel
+							const displayTitle = isActive ? nowTitle : null
+							const displayNext = isActive ? computedNextVideo : null
 
-								return (
+							return (
 									<div
 										key={channel._id}
 										ref={el => itemRefs.current[idx] = el}
@@ -167,10 +201,10 @@ export default function TVMenuV2({
 										<div className="channel-info">
 											<div className="channel-name">{channel.name}</div>
 											<div className="now-playing">
-												{displayVideo ? (
+												{displayTitle ? (
 													<>
 														<span className="now-label">NOW:</span>
-														<span className="now-title">{displayVideo.title?.substring(0, 30)}...</span>
+														<span className="now-title">{displayTitle.substring(0, 30)}...</span>
 													</>
 												) : (
 													<span className="no-content">No content</span>
@@ -203,70 +237,46 @@ export default function TVMenuV2({
 								<span className="queue-subtitle">What's Playing</span>
 							</div>
 
-							{/* Now Playing - From Broadcast Position */}
-							{activeBroadcast.video && (
-								<div className="queue-item now-playing-item">
-									<div className="queue-badge now">▶ NOW</div>
-									<div className="queue-info">
-										<div className="queue-title">{activeBroadcast.video.title}</div>
-										<div className="queue-meta">
-											<span className="duration">
-												{formatTime(activeBroadcast.timeRemaining)} remaining
-											</span>
-											{activeBroadcast.video.year && (
-												<span className="year">{activeBroadcast.video.year}</span>
-											)}
-											{activeBroadcast.video.category && (
-												<span className="category">{activeBroadcast.video.category}</span>
-											)}
-										</div>
-										<div className="progress-bar">
-											<div 
-												className="progress-fill"
-												style={{ 
-													width: `${(activeBroadcast.offset / (activeBroadcast.video.duration || 300)) * 100}%` 
-												}}
-											></div>
-										</div>
-									</div>
-								</div>
+							{!hasActivePlaylist && (
+								<div className="queue-empty">No playlist available for this channel.</div>
 							)}
 
-							{/* Up Next */}
-							{activeBroadcast.nextVideo && (
-								<div className="queue-item next-item">
-									<div className="queue-badge next">⏭ NEXT</div>
-									<div className="queue-info">
-										<div className="queue-title">{activeBroadcast.nextVideo.title}</div>
-										<div className="queue-meta">
-											<span className="duration">
-												{formatTime(activeBroadcast.nextVideo.duration || 300)}
-											</span>
-											{activeBroadcast.nextVideo.year && (
-												<span className="year">{activeBroadcast.nextVideo.year}</span>
-											)}
-										</div>
-									</div>
+					{/* Now Playing - Always use live data */}
+					{hasActivePlaylist && nowTitle && (
+							<div className="queue-item now-playing-item">
+								<div className="queue-badge now">▶ NOW</div>
+								<div className="queue-info">
+									<div className="queue-title">{nowTitle}</div>
 								</div>
-							)}
-
-							{/* Upcoming (next 3 after next) */}
-							<div className="queue-divider">UPCOMING</div>
-							{Array.from({ length: 3 }).map((_, i) => {
-								const idx = (activeBroadcast.nextVideoIndex + 1 + i) % activeChannel.items.length
-								const video = activeChannel?.items[idx]
-								return video ? (
-									<div key={`upcoming-${i}`} className="queue-item upcoming-item">
-										<div className="queue-badge upcoming">#{i + 3}</div>
-										<div className="queue-info">
-											<div className="queue-title">{video.title}</div>
-											<div className="queue-meta">
-												<span className="duration">{formatTime(video.duration || 30)}</span>
+							</div>
+						)}					{/* Up Next */}
+				{hasActivePlaylist && computedNextVideo && (
+						<div className="queue-item next-item">
+							<div className="queue-badge next">⏭ NEXT</div>
+						<div className="queue-info">
+							<div className="queue-title">{computedNextVideo.title}</div>
+							</div>
+							</div>
+						)}							{/* Upcoming (next 3 after next) */}
+							{hasActivePlaylist && (
+								<>
+									<div className="queue-divider">UPCOMING</div>
+									{Array.from({ length: 3 }).map((_, i) => {
+										const itemsLength = activeChannelItems.length
+										if (itemsLength === 0) return null
+										const idx = (computedNextIndex + 1 + i) % itemsLength
+										const video = activeChannelItems[idx]
+										return video ? (
+											<div key={`upcoming-${i}`} className="queue-item upcoming-item">
+												<div className="queue-badge upcoming">#{i + 3}</div>
+												<div className="queue-info">
+													<div className="queue-title">{video.title}</div>
+												</div>
 											</div>
-										</div>
-									</div>
-								) : null
-							})}
+										) : null
+									})}
+								</>
+							)}
 						</div>
 					)}
 
@@ -275,13 +285,22 @@ export default function TVMenuV2({
 						<div className="settings-view">
 							<div className="settings-item">
 								<span>📡 Broadcast Info</span>
-								<div className="settings-value">
-									Total Channels: {channels.length}
-									<br />
-									Playlist Duration: {formatTime(activeBroadcast.totalPlaylistDuration)}
-									<br />
-									Current Position: {formatTime(activeBroadcast.cyclePosition)}
-								</div>
+							<div className="settings-value">
+								Total Channels: {channels.length}
+								<br />
+								Playlist Duration: {formatTime(activeBroadcast.totalPlaylistDuration)}
+								<br />
+								Current Position: {formatTime(activeBroadcast.cyclePosition)}
+								<br />
+								{playbackMatchesActive && (
+									<>
+										<br />
+										<span style={{color: '#4a9eff'}}>● LIVE SYNC ACTIVE</span>
+										<br />
+										Video ID: {nowVideoId?.substring(0, 11)}
+									</>
+								)}
+							</div>
 							</div>
 						</div>
 					)}
