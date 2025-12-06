@@ -106,11 +106,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			{/* Blue Rays Effect - Positioned behind everything in fullscreen */}
 			{isFullscreen && <BlueRaysEffect isFullscreen={isFullscreen} volume={volume} />}
 			
-			{showFullscreenHint && !isFullscreen && power && (
-				<div className="fullscreen-hint-overlay">
-					DOUBLE CLICK FOR FULLSCREEN | ESC FOR MENU
-				</div>
-			)}
 			<div className="tv-frame">
 				<div className="tv-screen" onClick={handleScreenClick}>
 					{!power ? (
@@ -172,17 +167,31 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			</div>
 			<div className="tv-status-indicator">
 				{statusMessage || "WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY."}
-				{isFullscreen && (
-					<div className="fullscreen-hint" style={{
-						fontSize: '8px',
-						color: '#4a9eff',
-						marginTop: '5px',
-						textShadow: '0 0 5px #4a9eff'
-					}}>
-						DOUBLE CLICK TO EXIT FULLSCREEN
-					</div>
-				)}
 			</div>
+			{/* Fullscreen hint outside TV box */}
+			{!isFullscreen && power && (
+				<div style={{
+					fontSize: '10px',
+					color: '#666',
+					marginTop: '10px',
+					textAlign: 'center',
+					opacity: showFullscreenHint ? 1 : 0.5,
+					transition: 'opacity 0.3s ease'
+				}}>
+					Double click for fullscreen
+				</div>
+			)}
+			{isFullscreen && (
+				<div style={{
+					fontSize: '10px',
+					color: '#4a9eff',
+					marginTop: '10px',
+					textAlign: 'center',
+					textShadow: '0 0 5px #4a9eff'
+				}}>
+					Double click to exit fullscreen
+				</div>
+			)}
 		</div>
 	)
 }
