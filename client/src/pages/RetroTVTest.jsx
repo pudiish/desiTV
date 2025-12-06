@@ -3,31 +3,21 @@ import RetroTV from '../components/RetroTV'
 import channelManager from '../logic/channelManager'
 
 export default function RetroTVTest() {
-  const [channels, setChannels] = useState([])
+  const [allChannels, setAllChannels] = useState([])
+  const [activeChannelIndex, setActiveChannelIndex] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadChannels() {
       try {
-        const allChannels = await channelManager.loadChannels()
+        const channels = await channelManager.loadChannels()
         
-        // Convert our channel format to RetroTV format
-        // Extract all video IDs from all channels
-        const videoChannels = []
-        allChannels.forEach(channel => {
-          if (channel.items && Array.isArray(channel.items)) {
-            channel.items.forEach(item => {
-              if (item.videoId) {
-                videoChannels.push({
-                  id: item.videoId,
-                  title: `${channel.name} - ${item.title || 'Video'}`
-                })
-              }
-            })
-          }
-        })
+        // Keep channels in their original format with full playlist info
+        const validChannels = channels.filter(channel => 
+          channel.items && Array.isArray(channel.items) && channel.items.length > 0
+        )
         
-        setChannels(videoChannels)
+        setAllChannels(validChannels)
         setLoading(false)
       } catch (err) {
         console.error('Error loading channels:', err)
@@ -37,6 +27,20 @@ export default function RetroTVTest() {
     
     loadChannels()
   }, [])
+
+  const handleChannelUp = () => {
+    setActiveChannelIndex(prev => (prev + 1) % allChannels.length)
+  }
+
+  const handleChannelDown = () => {
+    setActiveChannelIndex(prev => prev === 0 ? allChannels.length - 1 : prev - 1)
+  }
+
+  const handleChannelDirect = (index) => {
+    if (index >= 0 && index < allChannels.length) {
+      setActiveChannelIndex(index)
+    }
+  }
 
   if (loading) {
     return (
@@ -53,7 +57,7 @@ export default function RetroTVTest() {
     )
   }
 
-  if (channels.length === 0) {
+  if (allChannels.length === 0) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -68,6 +72,9 @@ export default function RetroTVTest() {
     )
   }
 
+  const activeChannel = allChannels[activeChannelIndex]
+  const totalVideos = allChannels.reduce((sum, ch) => sum + (ch.items?.length || 0), 0)
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -78,25 +85,74 @@ export default function RetroTVTest() {
         textAlign: 'center', 
         color: '#7CFFBC', 
         fontFamily: 'monospace',
-        marginBottom: '20px'
+        marginBottom: '10px'
       }}>
         DesiTV - Retro Phone Compatible
       </h1>
       
+      <div style={{
+        textAlign: 'center',
+        color: '#7CFFBC',
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        marginBottom: '20px'
+      }}>
+        <p style={{ margin: '5px 0' }}>
+          Channel: {activeChannelIndex + 1}/{allChannels.length} - {activeChannel.name}
+        </p>
+        <p style={{ margin: '5px 0', color: '#666' }}>
+          {activeChannel.items.length} videos in this channel | {totalVideos} total videos
+        </p>
+      </div>
+      
       <RetroTV 
-        initialVideoId={channels[0].id} 
-        channels={channels} 
+        channel={activeChannel}
+        onChannelUp={handleChannelUp}
+        onChannelDown={handleChannelDown}
       />
+      
+      {/* Channel selector */}
+      <div style={{
+        marginTop: '20px',
+        maxWidth: '640px',
+        margin: '20px auto',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+        gap: '10px'
+      }}>
+        {allChannels.map((channel, index) => (
+          <button
+            key={channel._id || index}
+            onClick={() => handleChannelDirect(index)}
+            style={{
+              background: index === activeChannelIndex ? '#7CFFBC' : '#1a1a1a',
+              color: index === activeChannelIndex ? '#0a0a0a' : '#7CFFBC',
+              border: '1px solid ' + (index === activeChannelIndex ? '#7CFFBC' : '#333'),
+              padding: '10px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              transition: 'all 0.2s'
+            }}
+          >
+            {index + 1}. {channel.name}
+            <br />
+            <span style={{ fontSize: '10px', opacity: 0.7 }}>
+              ({channel.items.length} videos)
+            </span>
+          </button>
+        ))}
+      </div>
       
       <div style={{
         textAlign: 'center',
         color: '#666',
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '11px',
         marginTop: '20px'
       }}>
-        <p>iPhone Compatible - Tap POWER to start</p>
-        <p>Total Videos: {channels.length}</p>
+        <p>iPhone Compatible - Tap POWER to start • Use CH ▲/▼ or click channel buttons</p>
       </div>
     </div>
   )
