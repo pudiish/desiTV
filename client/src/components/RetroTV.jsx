@@ -22,7 +22,15 @@ export default function RetroTV({ channel, onChannelUp, onChannelDown }) {
 
   // Get current video from channel playlist
   const currentVideo = channel?.items?.[videoIndex];
-  const videoId = currentVideo?.videoId;
+  const videoId = currentVideo?.youtubeId || currentVideo?.videoId;
+  
+  // Debug log
+  useEffect(() => {
+    console.log('[RetroTV] Channel:', channel?.name);
+    console.log('[RetroTV] Video index:', videoIndex);
+    console.log('[RetroTV] Current video:', currentVideo);
+    console.log('[RetroTV] VideoId:', videoId);
+  }, [channel, videoIndex, currentVideo, videoId]);
 
   // Reset video index when channel changes
   useEffect(() => {
