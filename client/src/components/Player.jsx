@@ -199,23 +199,16 @@ export default function Player({
 		if (channel?._id !== channelIdRef.current) {
 			const wasChannelChange = channelIdRef.current !== null
 			channelIdRef.current = channel?._id
-			channelChangeCounterRef.current += 1
+			channelChangeCounterRef.current += 1 // This forces iframe reload via playerKey
 			
 			// Reset initialization flags for new channel
 			hasInitializedRef.current = false
 			videoLoadedRef.current = false
 			
-			// Show tap overlay again on channel switch (for iOS resume)
+			// Show tap overlay on channel switch and keep it visible
 			if (wasChannelChange) {
 				setShowTapOverlay(true)
-				
-				// Auto-trigger tap after short delay to resume playback
-				// Only if user has already given gesture permission
-				if (userGestureReceived) {
-					setTimeout(() => {
-						handleTapToStart()
-					}, 300) // 300ms delay for player to be ready
-				}
+				// Don't auto-trigger - let user see and interact with overlay
 			}
 			
 			// Clear all timeouts and intervals
