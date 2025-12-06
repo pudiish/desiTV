@@ -11,6 +11,11 @@ import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
  * @returns {Object} Complete broadcast position state
  */
 export function useBroadcastPosition(channel) {
+	// Get state timestamp to trigger recalculation on epoch changes
+	const stateTimestamp = channel?._id 
+		? LocalBroadcastStateManager.getChannelState(channel._id)?.lastAccessTime
+		: null
+
 	return useMemo(() => {
 		if (!channel?.items || channel.items.length === 0) {
 			return {
@@ -86,5 +91,5 @@ export function useBroadcastPosition(channel) {
 				isValid: false
 			}
 		}
-	}, [channel?._id, channel?.items])
+	}, [channel?._id, channel?.items, stateTimestamp])
 }
