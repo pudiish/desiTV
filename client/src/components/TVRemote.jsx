@@ -20,7 +20,8 @@ export default function TVRemote({
 	onRecord,
 	activeChannelIndex,
 	totalChannels,
-	menuOpen = false
+	menuOpen = false,
+	onTapTrigger = null // Handler to trigger iOS gesture unlock
 }) {
 	const [channelInput, setChannelInput] = useState('')
 	const channelInputTimeout = useRef(null)
@@ -44,6 +45,7 @@ export default function TVRemote({
 			shutdownSoundRef.current.play().catch(() => {})
 		}
 		playButtonSound()
+		if (onTapTrigger) onTapTrigger()
 		onPowerToggle()
 	}
 
@@ -52,11 +54,13 @@ export default function TVRemote({
 			buttonClickSoundRef.current.currentTime = 0
 			buttonClickSoundRef.current.play().catch(() => {})
 		}
+		if (onTapTrigger) onTapTrigger()
 	}
 
 	// Handle number pad input for direct channel access
 	const handleNumberClick = (num) => {
 		playButtonSound()
+		if (onTapTrigger) onTapTrigger()
 		if (!power) return
 		
 		const newInput = channelInput + num

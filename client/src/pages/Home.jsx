@@ -30,6 +30,19 @@ export default function Home() {
 	// NOTE: DO NOT use uiLoadTime - broadcast epoch is the single source of truth
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
+	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
+
+	// Store tap handler from Player (passed through TVFrame)
+	const handleTapHandlerReady = (handler) => {
+		tapTriggerRef.current = handler
+	}
+
+	// Trigger tap for remote buttons and screen clicks
+	const handleTapTrigger = () => {
+		if (tapTriggerRef.current) {
+			tapTriggerRef.current()
+		}
+	}
 
 
 	// ===== SESSION MANAGEMENT =====
@@ -386,7 +399,7 @@ export default function Home() {
 		setStatusMessage('NO CHANNELS SELECTED.')
 	}
 
-	return (
+		return (
 		<div className="main-container">
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
@@ -404,6 +417,7 @@ export default function Home() {
 			isBuffering={isBuffering}
 			bufferErrorMessage={bufferErrorMessage}
 			playbackInfo={playbackInfo}
+			onTapHandlerReady={handleTapHandlerReady}
 				onBufferingChange={(isBuffering, errorMsg) => {
 						setIsBuffering(isBuffering)
 						setBufferErrorMessage(errorMsg || '')
@@ -447,6 +461,7 @@ export default function Home() {
 						activeChannelIndex={activeChannelIndex}
 						totalChannels={filteredChannels.length}
 						menuOpen={menuOpen}
+						onTapTrigger={handleTapTrigger}
 					/>
 
 					<CategoryList

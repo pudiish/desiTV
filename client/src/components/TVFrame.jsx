@@ -6,11 +6,27 @@ import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
 import BlueRaysEffect from './BlueRaysEffect'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [] }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
+	const tapHandlerRef = useRef(null)
+
+	// Store tap handler from Player
+	const handleTapHandlerReady = (handler) => {
+		tapHandlerRef.current = handler
+		if (onTapHandlerReady) {
+			onTapHandlerReady(handler)
+		}
+	}
+
+	// Handle screen click to trigger tap
+	const handleScreenClick = () => {
+		if (tapHandlerRef.current) {
+			tapHandlerRef.current()
+		}
+	}
 
 	// Handle fullscreen change events
 	useEffect(() => {
@@ -96,7 +112,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				</div>
 			)}
 			<div className="tv-frame">
-				<div className="tv-screen">
+				<div className="tv-screen" onClick={handleScreenClick}>
 					{!power ? (
 						<div className="tv-off-screen">
 							<div className="scanlines" />
@@ -116,6 +132,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									shouldAdvanceVideo={shouldAdvanceVideo}
 									onBufferingChange={onBufferingChange}
 									onPlaybackProgress={onPlaybackProgress}
+									onTapHandlerReady={handleTapHandlerReady}
 								/>
 							) : (
 								<div className="tv-off-screen">
