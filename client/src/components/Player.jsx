@@ -4,6 +4,7 @@ import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
+import TapToStartOverlay from './TapToStartOverlay'
 
 /**
  * Enhanced Player Component with:
@@ -35,6 +36,9 @@ export default function Player({
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
+	// iOS autoplay handling
+	const [userGestureReceived, setUserGestureReceived] = useState(false)
+	const [showTapToStart, setShowTapToStart] = useState(true)
 
 	// ===== REFS =====
 	const playerRef = useRef(null)
@@ -91,7 +95,8 @@ export default function Player({
 			height: '100%',
 			// Use standard youtube.com domain instead of nocookie to avoid restrictions
 			playerVars: { 
-				autoplay: 1, 
+				autoplay: userGestureReceived ? 1 : 0, // iOS requires user gesture first
+				mute: userGestureReceived ? 0 : 1, // Start muted, unmute after gesture
 				controls: 0, 
 				disablekb: 1, 
 				modestbranding: 1, 
@@ -651,14 +656,36 @@ const onStateChange = useCallback((event) => {
 		)
 	}
 
+	// Handle iOS user gesture requirement
+	const handleTapToStart = () => {
+		if (userGestureReceived) return
+		setUserGestureReceived(true)
+		setShowTapToStart(false)
+		if (playerRef.current) {
+			try {
+				playerRef.current.unMute()
+				playerRef.current.setVolume(volume * 100)
+				playerRef.current.playVideo()
+				console.log('[Player] User gesture received - unmuted and playing')
+			} catch (err) {
+				console.error('[Player] Error starting playback:', err)
+			}
+		}
+	}
+
 	return (
 		<div className="player-wrapper">
+			<TapToStartOverlay 
+				show={showTapToStart && !userGestureReceived}
+				onTap={handleTapToStart}
+			/>
 			<audio
 				ref={staticAudioRef}
 				src="/sounds/tv-static-noise-291374.mp3"
 				preload="auto"
 				loop
 			/>
+			<div className="crt-scanlines"></div>
 			<YouTube 
 				key={playerKey} 
 				videoId={current.youtubeId} 
