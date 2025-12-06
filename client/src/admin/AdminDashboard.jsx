@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './AdminDashboard.css'
-import SystemMonitor from './sections/SystemMonitor'
-import BroadcastStateMonitor from './sections/BroadcastStateMonitor'
 import ChannelManager from './sections/ChannelManager'
 import VideoFetcher from './sections/VideoFetcher'
 import VideoManager from './sections/VideoManager'
-import APIMonitor from './sections/APIMonitor'
-import APIHealth from './sections/APIHealth'
 import CacheManagerUI from './sections/CacheManagerUI'
-import ComponentHealth from './sections/ComponentHealth'
-import MonitoringMetrics from './sections/MonitoringMetrics'
 import SystemControls from './sections/SystemControls'
 
 export default function AdminDashboard() {
@@ -43,56 +37,6 @@ export default function AdminDashboard() {
 			component: <ChannelManager />,
 			category: 'Content',
 			description: 'Manage TV channels'
-		},
-		// Monitoring
-		{
-			id: 'dashboard',
-			label: 'System',
-			icon: '🖥️',
-			component: <SystemMonitor />,
-			category: 'Monitoring',
-			description: 'System overview'
-		},
-		{
-			id: 'broadcast',
-			label: 'Broadcast',
-			icon: '📡',
-			component: <BroadcastStateMonitor />,
-			category: 'Monitoring',
-			description: 'Broadcast state'
-		},
-		{
-			id: 'metrics',
-			label: 'Metrics',
-			icon: '📊',
-			component: <MonitoringMetrics />,
-			category: 'Monitoring',
-			description: 'Performance metrics'
-		},
-		// Health
-		{
-			id: 'health',
-			label: 'Components',
-			icon: '❤️',
-			component: <ComponentHealth />,
-			category: 'Health',
-			description: 'Component health'
-		},
-		{
-			id: 'api-health',
-			label: 'API Status',
-			icon: '🔌',
-			component: <APIHealth />,
-			category: 'Health',
-			description: 'API health check'
-		},
-		{
-			id: 'api',
-			label: 'API Logs',
-			icon: '📋',
-			component: <APIMonitor />,
-			category: 'Health',
-			description: 'API request logs'
 		},
 		// Tools
 		{
@@ -129,7 +73,7 @@ export default function AdminDashboard() {
 	const activeSectionData = sections.find((s) => s.id === activeSection)
 	
 	// Group sections by category
-	const categories = ['Content', 'Monitoring', 'Health', 'Tools']
+	const categories = ['Content', 'Tools']
 	const groupedSections = categories.reduce((acc, cat) => {
 		acc[cat] = sections.filter(s => s.category === cat)
 		return acc
@@ -137,8 +81,6 @@ export default function AdminDashboard() {
 
 	const categoryIcons = {
 		'Content': '📁',
-		'Monitoring': '📈',
-		'Health': '🏥',
 		'Tools': '🔧'
 	}
 
