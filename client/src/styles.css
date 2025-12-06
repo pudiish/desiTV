@@ -2625,3 +2625,32 @@ transparent 2px
 	text-shadow: 0 0 10px #ff4444;
 	animation: pulse-glow 1.5s ease-in-out infinite;
 }
+
+/* Auto-unlock indicator - subtle waiting for interaction */
+.auto-unlock-indicator {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 9990;
+	pointer-events: none;
+}
+
+.pulse-dot {
+	width: 10px;
+	height: 10px;
+	background: #4a9eff;
+	border-radius: 50%;
+	box-shadow: 0 0 10px #4a9eff;
+	animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+	0%, 100% { 
+		opacity: 0.3; 
+		transform: scale(1);
+	}
+	50% { 
+		opacity: 1; 
+		transform: scale(1.2);
+	}
+}
