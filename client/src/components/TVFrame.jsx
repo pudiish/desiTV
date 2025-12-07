@@ -268,6 +268,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									onBufferingChange={onBufferingChange}
 									onPlaybackProgress={onPlaybackProgress}
 									onTapHandlerReady={handleTapHandlerReady}
+									power={power}
 								/>
 							) : (
 								<div className="tv-off-screen">

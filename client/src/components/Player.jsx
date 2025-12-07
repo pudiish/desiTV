@@ -5,6 +5,7 @@ import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import youtubePeakTimestamp from '../utils/YouTubePeakTimestamp'
 import mediaSessionManager from '../utils/MediaSessionManager'
+import playbackWatchdog from '../utils/PlaybackWatchdog'
 
 /**
  * Enhanced Player Component with:
@@ -26,6 +27,7 @@ onBufferingChange = null,
 	onPlaybackStateChange = null, // Callback for playback state
 	onPlaybackProgress = null, // Emits current playback position
 	onTapHandlerReady = null, // Callback to expose tap handler for external triggers (kept for compatibility)
+	power = true, // Power state - controls whether playback should be active
 }){
 	// ===== SINGLE SOURCE OF TRUTH FOR POSITION =====
 	// All timing and video index calculations come from this hook
@@ -67,6 +69,8 @@ onBufferingChange = null,
 	const skipErrorTimeoutIdRef = useRef(null) // RetroTV pattern: error skip timeout
 	const clipSeekTimeRef = useRef(0) // RetroTV pattern: seek time after video loads
 	const e7Ref = useRef(false) // RetroTV pattern: track if video loading was initiated
+	const powerRef = useRef(power) // Track power state
+	const shouldPlayRef = useRef(false) // Track if we should be playing
 
 	// ===== CONSTANTS =====
 	// RetroTV state constants
@@ -584,9 +588,14 @@ onBufferingChange = null,
 		}
 	}, [isBuffering, handleBufferingTimeout])
 
-	// Effect: Re-initialize MediaSession when channel/video changes
+	// Effect: Re-initialize MediaSession when channel/video changes (debounced)
 	useEffect(() => {
-		if (current && playerRef.current && hasInitializedRef.current) {
+		if (!current || !playerRef.current || !hasInitializedRef.current) return
+		
+		// Debounce MediaSession updates to avoid excessive re-initialization
+		const timeoutId = setTimeout(() => {
+			if (!current || !playerRef.current) return
+			
 			// Re-initialize MediaSession with new video metadata
 			mediaSessionManager.init(
 				{
@@ -702,7 +711,9 @@ onBufferingChange = null,
 					}
 				}
 			}, 1000) // Delay to ensure video is loaded
-		}
+		}, 500) // Debounce MediaSession updates
+		
+		return () => clearTimeout(timeoutId)
 	}, [current?.youtubeId, current?.title, channel?.name, channel?._id, currIndex, items])
 
 	// Effect: Handle page visibility for background playback
@@ -712,12 +723,13 @@ onBufferingChange = null,
 				// Page is in background - maintain playback
 				console.log('[Player] Page went to background - maintaining playback')
 				// MediaSession will handle controls in lock screen/notification
-				// Ensure video continues playing
-				if (playerRef.current) {
+				// Ensure video continues playing if power is on
+				if (playerRef.current && powerRef.current && shouldPlayRef.current) {
 					try {
 						const state = playerRef.current.getPlayerState?.()
-						if (state === STATE_PAUSED) {
-							// If paused, resume playback for background
+						if (state === STATE_PAUSED || state === STATE_UNSTARTED) {
+							// Resume playback for background
+							console.log('[Player] Resuming playback for background')
 							playerRef.current.playVideo()
 						}
 					} catch (err) {
@@ -725,11 +737,96 @@ onBufferingChange = null,
 					}
 				}
 			} else {
-				// Page is visible again
-				console.log('[Player] Page is visible again')
-				// Update position state when returning to foreground
-				if (playerRef.current && current) {
-					try {
+				// Page is visible again - update position state
+				if (playerRef.current && current && powerRef.current) {
+					setTimeout(() => {
+						try {
+							const duration = playerRef.current.getDuration?.() || 0
+							const currentTime = playerRef.current.getCurrentTime?.() || 0
+							
+							if (typeof duration === 'number' && typeof currentTime === 'number') {
+								mediaSessionManager.setPositionState({
+									duration: duration || 0,
+									playbackRate: 1.0,
+									position: currentTime || 0,
+								})
+							} else {
+								Promise.resolve(duration).then((dur) => {
+									Promise.resolve(currentTime).then((time) => {
+										mediaSessionManager.setPositionState({
+											duration: dur || 0,
+											playbackRate: 1.0,
+											position: time || 0,
+										})
+									}).catch(() => {})
+								}).catch(() => {})
+							}
+						} catch (err) {
+							console.error('[Player] Error updating position on visibility change:', err)
+						}
+					}, 500)
+				}
+			}
+		}
+
+		document.addEventListener('visibilitychange', handleVisibilityChange)
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange)
+		}
+	}, [current, power])
+
+	// Effect: Periodic health check and position state update - RESTRUCTURED for robustness
+	useEffect(() => {
+		if (!playerRef.current || !current || !power) return
+
+		let consecutiveFailures = 0
+		const maxFailures = 3
+
+		const healthCheck = () => {
+			// Only check if power is on
+			if (!powerRef.current) return
+			
+			try {
+				const state = playerRef.current.getPlayerState?.()
+				
+				// Health check: if we should be playing but aren't, try to recover
+				if (shouldPlayRef.current && powerRef.current && !isTransitioningRef.current) {
+					if (state === STATE_PAUSED || state === STATE_UNSTARTED) {
+						consecutiveFailures++
+						console.warn(`[Player] Health check: Should be playing but state is ${state} (failure ${consecutiveFailures}/${maxFailures})`)
+						
+						if (consecutiveFailures >= maxFailures) {
+							console.error('[Player] Multiple health check failures - attempting recovery')
+							try {
+								playerRef.current.playVideo()
+								consecutiveFailures = 0
+							} catch (err) {
+								console.error('[Player] Health check recovery failed:', err)
+								// Last resort: reload video
+								if (current?.youtubeId) {
+									try {
+										const currentTime = typeof playerRef.current.getCurrentTime === 'function'
+											? (typeof playerRef.current.getCurrentTime() === 'number' ? playerRef.current.getCurrentTime() : 0)
+											: 0
+										playerRef.current.loadVideoById({
+											videoId: current.youtubeId,
+											startSeconds: Math.max(0, currentTime)
+										})
+										setTimeout(() => {
+											if (playerRef.current && powerRef.current) {
+												playerRef.current.playVideo()
+											}
+										}, 500)
+									} catch (reloadErr) {
+										console.error('[Player] Video reload failed:', reloadErr)
+									}
+								}
+							}
+						}
+					} else if (state === STATE_PLAYING) {
+						consecutiveFailures = 0 // Reset on successful playback
+						
+						// Update MediaSession position state when playing
 						const duration = playerRef.current.getDuration?.() || 0
 						const currentTime = playerRef.current.getCurrentTime?.() || 0
 						
@@ -740,6 +837,7 @@ onBufferingChange = null,
 								position: currentTime || 0,
 							})
 						} else {
+							// Handle promises
 							Promise.resolve(duration).then((dur) => {
 								Promise.resolve(currentTime).then((time) => {
 									mediaSessionManager.setPositionState({
@@ -750,58 +848,21 @@ onBufferingChange = null,
 								}).catch(() => {})
 							}).catch(() => {})
 						}
-					} catch (err) {
-						console.error('[Player] Error updating position on visibility change:', err)
 					}
 				}
-			}
-		}
-
-		document.addEventListener('visibilitychange', handleVisibilityChange)
-		return () => {
-			document.removeEventListener('visibilitychange', handleVisibilityChange)
-		}
-	}, [current])
-
-	// Effect: Update position state periodically during playback
-	useEffect(() => {
-		if (!playerRef.current || !current) return
-
-		const updatePositionState = () => {
-			try {
-				const duration = playerRef.current.getDuration?.() || 0
-				const currentTime = playerRef.current.getCurrentTime?.() || 0
-				
-				if (typeof duration === 'number' && typeof currentTime === 'number') {
-					mediaSessionManager.setPositionState({
-						duration: duration || 0,
-						playbackRate: 1.0,
-						position: currentTime || 0,
-					})
-				} else {
-					// Handle promises
-					Promise.resolve(duration).then((dur) => {
-						Promise.resolve(currentTime).then((time) => {
-							mediaSessionManager.setPositionState({
-								duration: dur || 0,
-								playbackRate: 1.0,
-								position: time || 0,
-							})
-						}).catch(() => {})
-					}).catch(() => {})
-				}
 			} catch (err) {
-				// Silently fail - position updates are not critical
+				// Silently fail - health checks are non-critical
 			}
 		}
 
-		const interval = setInterval(updatePositionState, 5000) // Update every 5 seconds
+		const interval = setInterval(healthCheck, 5000) // Check every 5 seconds
 		return () => clearInterval(interval)
-	}, [current?.youtubeId])
+	}, [current?.youtubeId, power])
 
 	// Effect: Cleanup
 	useEffect(() => {
 		return () => {
+			playbackWatchdog.stop()
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current)
 				progressIntervalRef.current = null
@@ -842,30 +903,159 @@ onBufferingChange = null,
 		}
 	}, [current?.youtubeId, currIndex])
 
-	// Effect: Ensure playback continues after channel/video change
+	// Effect: Update power ref
 	useEffect(() => {
-		if (current && playerRef.current && hasInitializedRef.current && !isTransitioningRef.current) {
-			// Small delay to ensure video is loaded
+		powerRef.current = power
+		shouldPlayRef.current = power && userInteracted
+	}, [power, userInteracted])
+
+	// Effect: Start/stop playback watchdog based on power state - RESTRUCTURED
+	useEffect(() => {
+		if (power && playerRef.current && hasInitializedRef.current) {
+			// Start watchdog when power is on
+			playbackWatchdog.start(playerRef, {
+				shouldAutoResume: () => {
+					// Only auto-resume if power is on, user has interacted, and not transitioning
+					return powerRef.current && shouldPlayRef.current && !isTransitioningRef.current
+				},
+				onRecovery: (type) => {
+					console.log(`[Player] Playback recovered: ${type}`)
+					mediaSessionManager.setPlaybackState('playing')
+					setPlaybackHealth('healthy')
+					lastPlayTimeRef.current = Date.now()
+				},
+				onMaxRecoveryAttempts: () => {
+					console.error('[Player] Max recovery attempts reached - switching video')
+					// Try to switch to next video as last resort
+					if (switchToNextVideoRef.current && !isTransitioningRef.current) {
+						setTimeout(() => {
+							if (switchToNextVideoRef.current) {
+								switchToNextVideoRef.current()
+							}
+						}, 500)
+					}
+				},
+				checkInterval: 2000, // Check every 2 seconds
+			})
+		} else {
+			// Stop watchdog when power is off
+			playbackWatchdog.stop()
+		}
+		
+		return () => {
+			playbackWatchdog.stop()
+		}
+	}, [power, hasInitializedRef.current])
+
+	// Effect: Handle power on/off - RESTRUCTURED for robustness
+	useEffect(() => {
+		if (!hasInitializedRef.current) return
+
+		if (power) {
+			// Power ON - ensure playback starts
+			shouldPlayRef.current = userInteracted // Only auto-play if user has interacted
+			
 			const timeoutId = setTimeout(() => {
-				if (playerRef.current && !isTransitioningRef.current) {
+				if (playerRef.current && powerRef.current && !isTransitioningRef.current) {
 					try {
 						const state = playerRef.current.getPlayerState?.()
-						// If paused or unstarted, resume playback
-						if (state === STATE_PAUSED || state === STATE_UNSTARTED) {
-							console.log('[Player] Resuming playback after channel/video change')
+						
+						// If paused, unstarted, or cued, try to play
+						if ((state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) && shouldPlayRef.current) {
+							console.log('[Player] Power ON - resuming playback, state:', state)
 							playerRef.current.playVideo()
-							// Update MediaSession state
 							mediaSessionManager.setPlaybackState('playing')
+							playbackWatchdog.reset()
+						} else if (state === STATE_PLAYING) {
+							// Already playing, just update state
+							mediaSessionManager.setPlaybackState('playing')
+							playbackWatchdog.reset()
 						}
 					} catch (err) {
-						console.error('[Player] Error resuming playback:', err)
+						console.error('[Player] Error resuming on power on:', err)
+						// Retry once after a delay
+						setTimeout(() => {
+							if (playerRef.current && powerRef.current) {
+								try {
+									playerRef.current.playVideo()
+								} catch (retryErr) {
+									console.error('[Player] Retry failed:', retryErr)
+								}
+							}
+						}, 1000)
 					}
 				}
-			}, 500)
+			}, 300)
 			
 			return () => clearTimeout(timeoutId)
+		} else {
+			// Power OFF - pause playback
+			shouldPlayRef.current = false
+			
+			if (playerRef.current) {
+				try {
+					playerRef.current.pauseVideo()
+					mediaSessionManager.setPlaybackState('paused')
+				} catch (err) {
+					console.error('[Player] Error pausing on power off:', err)
+				}
+			}
 		}
-	}, [current?.youtubeId, channel?._id])
+	}, [power, hasInitializedRef.current, userInteracted])
+
+	// Effect: Ensure playback continues after channel/video change - RESTRUCTURED
+	useEffect(() => {
+		if (!current || !playerRef.current || !hasInitializedRef.current || isTransitioningRef.current || !power) {
+			return
+		}
+
+		// Wait for video to load before attempting playback
+		const timeoutId = setTimeout(() => {
+			if (!playerRef.current || isTransitioningRef.current || !powerRef.current) {
+				return
+			}
+
+			try {
+				const state = playerRef.current.getPlayerState?.()
+				
+				// If paused, unstarted, or cued, and we should be playing, start playback
+				if ((state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) && shouldPlayRef.current) {
+					console.log('[Player] Channel/video changed - resuming playback, state:', state)
+					playerRef.current.playVideo()
+					mediaSessionManager.setPlaybackState('playing')
+					playbackWatchdog.reset()
+				} else if (state === STATE_PLAYING) {
+					// Already playing, just ensure state is correct
+					mediaSessionManager.setPlaybackState('playing')
+					playbackWatchdog.reset()
+				} else if (state === STATE_BUFFERING) {
+					// Buffering - wait a bit and check again
+					setTimeout(() => {
+						if (playerRef.current && powerRef.current && shouldPlayRef.current) {
+							const newState = playerRef.current.getPlayerState?.()
+							if (newState === STATE_PAUSED || newState === STATE_UNSTARTED) {
+								playerRef.current.playVideo()
+							}
+						}
+					}, 1000)
+				}
+			} catch (err) {
+				console.error('[Player] Error resuming playback after change:', err)
+				// Retry once
+				setTimeout(() => {
+					if (playerRef.current && powerRef.current && shouldPlayRef.current) {
+						try {
+							playerRef.current.playVideo()
+						} catch (retryErr) {
+							console.error('[Player] Retry failed:', retryErr)
+						}
+					}
+				}, 1000)
+			}
+		}, 800) // Increased delay to ensure video is loaded
+		
+		return () => clearTimeout(timeoutId)
+	}, [current?.youtubeId, channel?._id, power])
 
 	// ===== CALLBACKS =====
 
@@ -928,13 +1118,22 @@ onBufferingChange = null,
 		}, 500)
 	}, [emitPlaybackProgress])
 
-	// Simple: play next video immediately
+	// Simple: play next video immediately - RESTRUCTURED for robustness
 	// Note: The next video is automatically calculated by pseudoLive algorithm on channel epoch
 	// We just trigger the video switch and let broadcastPosition hook recalculate
 	const switchToNextVideo = useCallback(() => {
-		if (isTransitioningRef.current) return
-		if (!playerRef.current) return
-		if (!items || items.length === 0) return
+		if (isTransitioningRef.current) {
+			console.log('[Player] Already transitioning, skipping switch')
+			return
+		}
+		if (!playerRef.current) {
+			console.warn('[Player] No player ref, cannot switch video')
+			return
+		}
+		if (!items || items.length === 0) {
+			console.warn('[Player] No items available, cannot switch')
+			return
+		}
 
 		isTransitioningRef.current = true
 		setShowStaticOverlay(true) // Show static during transition
@@ -980,34 +1179,73 @@ onBufferingChange = null,
 				clipSeekTimeRef.current = 0
 				e7Ref.current = true
 				
-				// Attempt autoplay after switching
-				setTimeout(() => {
-					if (playerRef.current) {
-						if (userInteracted) {
-							// User has interacted - can play with sound directly
-							try {
+				// Attempt autoplay after switching - RESTRUCTURED for robustness
+				// Use multiple retry attempts to ensure playback starts
+				const attemptPlayback = (attempt = 0) => {
+					if (!playerRef.current || !powerRef.current) return
+					
+					setTimeout(() => {
+						if (!playerRef.current || !powerRef.current) return
+						
+						try {
+							const state = playerRef.current.getPlayerState?.()
+							
+							if (userInteracted) {
+								// User has interacted - can play with sound directly
 								playerRef.current.unMute()
 								playerRef.current.setVolume(volume * 100)
-								playerRef.current.playVideo()
-							} catch (err) {
-								console.error('[Player] Error playing next video:', err)
+								
+								if (state !== STATE_PLAYING) {
+									playerRef.current.playVideo()
+								}
+								shouldPlayRef.current = true
+								playbackWatchdog.reset()
+							} else {
+								// Start muted autoplay
+								if (state !== STATE_PLAYING) {
+									attemptAutoplay(playerRef.current)
+								}
 							}
-						} else {
-							// Start muted autoplay
-							attemptAutoplay(playerRef.current)
+							
+							// Verify playback started, retry if needed
+							setTimeout(() => {
+								if (playerRef.current && powerRef.current && shouldPlayRef.current) {
+									const verifyState = playerRef.current.getPlayerState?.()
+									if (verifyState !== STATE_PLAYING && attempt < 2) {
+										console.log(`[Player] Playback not started, retrying (attempt ${attempt + 1})`)
+										attemptPlayback(attempt + 1)
+									}
+								}
+							}, 1000)
+						} catch (err) {
+							console.error('[Player] Error playing next video:', err)
+							if (attempt < 2) {
+								setTimeout(() => attemptPlayback(attempt + 1), 500)
+							}
 						}
-					}
-				}, 300)
+					}, attempt === 0 ? 300 : 500)
+				}
+				
+				attemptPlayback(0)
 			} catch (err) {
 				console.error('[Player] Switch video error:', err)
+				// Reset transition state on error
+				setTimeout(() => {
+					isTransitioningRef.current = false
+				}, 1000)
 			}
+		} else {
+			console.warn('[Player] No next video found')
+			isTransitioningRef.current = false
 		}
 		
 		// Restart monitoring after video is loaded
 		setTimeout(() => {
 			isTransitioningRef.current = false
-			startProgressMonitoring()
-		}, 800)
+			if (powerRef.current) {
+				startProgressMonitoring()
+			}
+		}, 1000) // Increased delay to ensure video is loaded
 	}, [items, currIndex, onVideoEnd, startProgressMonitoring, channel, volume, attemptAutoplay, userInteracted])
 
 	// Keep ref updated
@@ -1092,10 +1330,12 @@ onBufferingChange = null,
 		}
 	}, [current?.youtubeId, onBufferingChange, MAX_SKIP_ATTEMPTS, switchToNextVideo, retryCount, attemptRetry])
 
-	// RetroTV Pattern: State change handler
+	// RetroTV Pattern: State change handler - RESTRUCTURED for robustness
 	const onStateChange = useCallback((event) => {
 		try {
 			const state = event.data
+			const player = event.target || playerRef.current
+			
 			playbackStateRef.current = state === STATE_PLAYING ? 'playing' : state === STATE_BUFFERING ? 'buffering' : 'other'
 			
 			// RetroTV pattern: Clear watchdog timer on any state change
@@ -1106,8 +1346,23 @@ onBufferingChange = null,
 			
 			switch (state) {
 				case STATE_UNSTARTED:
-					// RetroTV: Known causes - seeking to time out of range
 					console.log('[Player] Video unstarted')
+					// If power is on and user has interacted, try to play
+					if (powerRef.current && shouldPlayRef.current && !isTransitioningRef.current && player) {
+						setTimeout(() => {
+							if (player && powerRef.current && shouldPlayRef.current) {
+								try {
+									const currentState = player.getPlayerState?.()
+									if (currentState === STATE_UNSTARTED || currentState === STATE_PAUSED) {
+										console.log('[Player] Auto-playing from unstarted state')
+										player.playVideo()
+									}
+								} catch (err) {
+									console.error('[Player] Error playing from unstarted:', err)
+								}
+							}
+						}, 200)
+					}
 					break
 					
 				case STATE_ENDED:
@@ -1121,20 +1376,27 @@ onBufferingChange = null,
 				// RetroTV: Video is playing - hide static, start monitoring
 				setRetryCount(0)
 				setPlaybackHealth('healthy')
-				setShowStaticOverlay(false) // Hide static video overlay
+				setShowStaticOverlay(false)
 				lastPlayTimeRef.current = Date.now()
+				shouldPlayRef.current = true
 				
-				// Update MediaSession playback state for background playback
+				// Update MediaSession
 				mediaSessionManager.setPlaybackState('playing')
 				
+				// Reset watchdog on successful playback
+				playbackWatchdog.reset()
+				
 				// RetroTV pattern: Seek to correct position if needed
-				if (clipSeekTimeRef.current > 0 && event.target) {
+				if (clipSeekTimeRef.current > 0 && player) {
 					try {
-						const currentTime = event.target.getCurrentTime()
+						const currentTime = typeof player.getCurrentTime === 'function' 
+							? (typeof player.getCurrentTime() === 'number' ? player.getCurrentTime() : 0)
+							: 0
+						
 						if (currentTime < clipSeekTimeRef.current - 2) {
 							console.log(`[Player] Seeking from ${currentTime.toFixed(1)}s to ${clipSeekTimeRef.current.toFixed(1)}s`)
-							event.target.seekTo(clipSeekTimeRef.current, true)
-							clipSeekTimeRef.current = 0 // Reset after seeking
+							player.seekTo(clipSeekTimeRef.current, true)
+							clipSeekTimeRef.current = 0
 						} else {
 							clipSeekTimeRef.current = 0
 						}
@@ -1144,6 +1406,7 @@ onBufferingChange = null,
 					}
 				}
 				
+				// Clear buffering state
 				if (bufferTimeoutRef.current) {
 					clearTimeout(bufferTimeoutRef.current)
 				}
@@ -1157,6 +1420,7 @@ onBufferingChange = null,
 					}
 				}, 200)
 
+				// Start progress monitoring if not already running
 				if (!progressIntervalRef.current && !isTransitioningRef.current) {
 					startProgressMonitoring()
 				}
@@ -1169,11 +1433,16 @@ onBufferingChange = null,
 				break
 				
 			case STATE_PAUSED:
-				// Don't auto-skip on pause - may be user interaction or loading issue
-				// RetroTV skips on pause but that's too aggressive for modern use
 				console.log('[Player] Video paused')
-				// Update MediaSession playback state
-				mediaSessionManager.setPlaybackState('paused')
+				// Only update MediaSession if power is off or user explicitly paused
+				// If power is on and we should be playing, watchdog will handle recovery
+				if (!powerRef.current || !shouldPlayRef.current) {
+					mediaSessionManager.setPlaybackState('paused')
+				} else {
+					// Power is on but paused - this might be a glitch, let watchdog handle it
+					// Don't auto-resume here - let the watchdog do it to avoid conflicts
+					console.log('[Player] Paused but should be playing - watchdog will recover')
+				}
 				break
 				
 			case STATE_BUFFERING:
@@ -1197,17 +1466,51 @@ onBufferingChange = null,
 					
 					// RetroTV watchdog: 8 seconds max buffering
 					watchDogTimeOutIdRef.current = setTimeout(() => {
-						if (playbackStateRef.current === 'buffering' && isTransitioningRef.current === false) {
+						if (playbackStateRef.current === 'buffering' && isTransitioningRef.current === false && powerRef.current) {
 							console.warn('[Player] Buffering watchdog triggered - attempting recovery')
-							handleVideoError({ data: 5 }) // Trigger error recovery
+							// Try to recover by reloading video
+							if (player && current?.youtubeId) {
+								try {
+									const currentTime = typeof player.getCurrentTime === 'function'
+										? (typeof player.getCurrentTime() === 'number' ? player.getCurrentTime() : 0)
+										: 0
+									player.loadVideoById({
+										videoId: current.youtubeId,
+										startSeconds: Math.max(0, currentTime - 1)
+									})
+									setTimeout(() => {
+										if (player && powerRef.current) {
+											player.playVideo()
+										}
+									}, 500)
+								} catch (err) {
+									console.error('[Player] Error recovering from buffering:', err)
+									handleVideoError({ data: 5 })
+								}
+							} else {
+								handleVideoError({ data: 5 })
+							}
 						}
 					}, MAX_BUFFER_TIME)
 					break
 					
 				case STATE_VIDEO_CUED:
 					// RetroTV: Video cued - prepare for playback
-					if (!progressIntervalRef.current && !isTransitioningRef.current) {
-						setTimeout(() => startProgressMonitoring(), 1000)
+					// If power is on, start playing
+					if (powerRef.current && shouldPlayRef.current && !isTransitioningRef.current && player) {
+						setTimeout(() => {
+							if (player && powerRef.current && shouldPlayRef.current) {
+								try {
+									const currentState = player.getPlayerState?.()
+									if (currentState === STATE_VIDEO_CUED || currentState === STATE_UNSTARTED) {
+										console.log('[Player] Auto-playing from cued state')
+										player.playVideo()
+									}
+								} catch (err) {
+									console.error('[Player] Error playing from cued:', err)
+								}
+							}
+						}, 300)
 					}
 					break
 					
@@ -1217,7 +1520,7 @@ onBufferingChange = null,
 		} catch (err) {
 			console.error('[Player] Error in onStateChange:', err)
 		}
-	}, [switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange, emitPlaybackProgress])
+	}, [switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange, emitPlaybackProgress, handleVideoError])
 
 	// Keep refs updated
 	onStateChangeRef.current = onStateChange
@@ -1267,17 +1570,29 @@ onBufferingChange = null,
 			}
 			
 			
-			// Small delay before autoplay
+			// Small delay before autoplay - RESTRUCTURED for robustness
 			setTimeout(() => {
-				if (playerRef.current) {
+				if (playerRef.current && powerRef.current) {
 					if (userInteracted) {
 						// User has interacted - play with sound
 						try {
 							playerRef.current.unMute()
 							playerRef.current.setVolume(volume * 100)
 							playerRef.current.playVideo()
+							shouldPlayRef.current = true
+							playbackWatchdog.reset()
 						} catch (err) {
 							console.error('[Player] Error playing:', err)
+							// Retry once
+							setTimeout(() => {
+								if (playerRef.current && powerRef.current) {
+									try {
+										playerRef.current.playVideo()
+									} catch (retryErr) {
+										console.error('[Player] Retry failed:', retryErr)
+									}
+								}
+							}, 500)
 						}
 					} else {
 						// Start muted autoplay
