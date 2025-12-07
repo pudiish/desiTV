@@ -135,6 +135,45 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
+	// Handle orientation change - auto fullscreen on landscape
+	useEffect(() => {
+		// Detect mobile device
+		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+			(window.innerWidth <= 768 && 'ontouchstart' in window)
+
+		if (!isMobile) return // Only for mobile devices
+
+		const handleOrientationChange = () => {
+			// Small delay to ensure window dimensions are updated
+			setTimeout(() => {
+				const isLandscape = window.innerWidth > window.innerHeight
+				const isCurrentlyFullscreen = !!(
+					document.fullscreenElement ||
+					document.webkitFullscreenElement ||
+					document.mozFullScreenElement ||
+					document.msFullscreenElement
+				)
+
+				if (isLandscape && !isCurrentlyFullscreen && power) {
+					// Rotated to landscape - enter fullscreen
+					toggleFullscreen()
+				} else if (!isLandscape && isCurrentlyFullscreen) {
+					// Rotated to portrait - exit fullscreen
+					toggleFullscreen()
+				}
+			}, 100) // Small delay to ensure dimensions are updated
+		}
+
+		// Listen to both orientationchange and resize events
+		window.addEventListener('orientationchange', handleOrientationChange)
+		window.addEventListener('resize', handleOrientationChange)
+
+		return () => {
+			window.removeEventListener('orientationchange', handleOrientationChange)
+			window.removeEventListener('resize', handleOrientationChange)
+		}
+	}, [toggleFullscreen, power])
+
 	// Handle double-tap for mobile fullscreen toggle
 	const handleTouchEnd = useCallback((e) => {
 		const now = Date.now()
