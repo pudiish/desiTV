@@ -26,6 +26,7 @@ yarn-error.log*
 # Data files
 retro-tv.channels.json
 music_playlist.json
+retrotv-org
 
 # Audio/Video files (large media)
 client/public/sounds/tv-static-noise-291374.mp3
@@ -48,3 +49,4 @@ coverage/
 
 # Build artifacts
 *.tgz
+

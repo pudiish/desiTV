@@ -2654,3 +2654,57 @@ transparent 2px
 		transform: scale(1.2);
 	}
 }
+
+/* ===== PLAYER OVERLAYS - PERFECTLY BLENDED ===== */
+
+/* Glass overlay - blocks all iframe interactions (RetroTV pattern) */
+.player-glass-overlay {
+	/* Transparent but catches all clicks */
+	background: transparent;
+	-webkit-tap-highlight-color: transparent;
+	touch-action: manipulation;
+}
+
+/* Tap to unmute indicator */
+.tap-to-unmute {
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	white-space: nowrap;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 0.9;
+		transform: translateX(-50%) scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: translateX(-50%) scale(1.05);
+	}
+}
+
+/* Static video overlay - seamless blend */
+.player-wrapper video[src*="static"] {
+	filter: contrast(1.1) brightness(1.05);
+	mix-blend-mode: normal;
+}
+
+/* CRT scanlines over static video */
+.player-wrapper .crt-scanlines {
+	z-index: 20;
+	mix-blend-mode: multiply;
+}
+
+/* Ensure iframe doesn't capture events */
+.youtube-player-container iframe {
+	pointer-events: none !important;
+}
+
+/* But allow glass to work */
+.player-glass-overlay {
+	pointer-events: auto;
+}

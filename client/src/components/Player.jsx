@@ -14,13 +14,13 @@ import YouTubeUIRemover from '../utils/YouTubeUIRemover'
  * - iPhone/iOS autoplay support (muted autoplay, then unmute)
  */
 export default function Player({ 
-	channel, 
-	onVideoEnd, 
+channel, 
+onVideoEnd, 
 	onChannelChange, 
-	volume = 0.5, 
+volume = 0.5, 
 	uiLoadTime, 
 	allChannels = [], 
-	onBufferingChange = null,
+onBufferingChange = null,
 	onPlaybackStateChange = null, // Callback for playback state
 	onPlaybackProgress = null, // Emits current playback position
 	onTapHandlerReady = null, // Callback to expose tap handler for external triggers (kept for compatibility)
@@ -36,6 +36,9 @@ export default function Player({
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
+	const [userInteracted, setUserInteracted] = useState(false) // RetroTV pattern: track user interaction
+	const [isMutedAutoplay, setIsMutedAutoplay] = useState(true) // Track if in muted autoplay mode
+	const [showStaticOverlay, setShowStaticOverlay] = useState(true) // Show static on initial load
 	const ytPlayerRef = useRef(null) // Direct YouTube API player reference
 
 	// ===== REFS =====
@@ -51,18 +54,32 @@ export default function Player({
 	const failedVideosRef = useRef(new Set())
 	const skipAttemptsRef = useRef(0)
 	const staticAudioRef = useRef(null)
+	const staticVideoRef = useRef(null) // Static video for loading/buffering
 	const lastPlayTimeRef = useRef(Date.now())
 	const bufferingStartTimeRef = useRef(null)
 	const playbackStateRef = useRef('idle') // idle, loading, playing, buffering, error
 	const hasInitializedRef = useRef(false) // Prevent double initialization
 	const videoLoadedRef = useRef(false) // Track if video has loaded
 	const autoplayAttemptedRef = useRef(false) // Track if we've attempted autoplay
+	const watchDogTimeOutIdRef = useRef(null) // RetroTV pattern: watchdog timer for buffering
+	const skipErrorTimeoutIdRef = useRef(null) // RetroTV pattern: error skip timeout
+	const clipSeekTimeRef = useRef(0) // RetroTV pattern: seek time after video loads
+	const e7Ref = useRef(false) // RetroTV pattern: track if video loading was initiated
 
 	// ===== CONSTANTS =====
+	// RetroTV state constants
+	const STATE_UNSTARTED = -1
+	const STATE_ENDED = 0
+	const STATE_PLAYING = 1
+	const STATE_PAUSED = 2
+	const STATE_BUFFERING = 3
+	const STATE_VIDEO_CUED = 5
+	
 	const SWITCH_BEFORE_END = 2 // Switch 2 seconds before end for smoother transition
-	const MAX_BUFFER_TIME = 8000 // 8 seconds max buffering before retry
+	const MAX_BUFFER_TIME = 8000 // 8 seconds max buffering before retry (RetroTV watchdog)
 	const MAX_RETRY_ATTEMPTS = 5
 	const RETRY_BACKOFF_BASE = 1000 // 1 second base
+	const ERROR_SKIP_DELAY = 1500 // 1.5 seconds before auto-skip on error (faster than RetroTV's 3s)
 
 	// ===== COMPUTED VALUES =====
 	const items = useMemo(() => {
@@ -122,7 +139,7 @@ export default function Player({
 				console.log(`[Player] Retry initiated at ${currentTime?.toFixed(1)}s`)
 				return true
 			}
-		} catch (err) {
+			} catch (err) {
 			console.error('[Player] Retry failed:', err)
 		}
 		
@@ -140,34 +157,23 @@ export default function Player({
 		}
 	}, [attemptRetry, retryCount])
 
-	// ===== AUTOPLAY HELPER (iOS/Phone compatible) =====
-	// Strategy: Start muted (allowed on iOS), then unmute after playing
+	// ===== AUTOPLAY HELPER (RetroTV Pattern) =====
+	// Strategy: Start muted autoplay, then on user interaction reload video to enable sound
 	const attemptAutoplay = useCallback(async (player) => {
 		if (!player || autoplayAttemptedRef.current) return
 		
 		try {
 			autoplayAttemptedRef.current = true
-			console.log('[Player] Attempting autoplay (muted first for iOS compatibility)')
+			console.log('[Player] Attempting muted autoplay (iOS compatible)')
 			
 			// Start muted - this is allowed on iOS
 			player.mute()
 			player.setVolume(volume * 100)
 			
-			// Try to play
+			// Try to play muted
 			await player.playVideo()
-			
-			// After a short delay, unmute (iOS allows unmuting after muted autoplay starts)
-			setTimeout(() => {
-				try {
-					if (player && volume > 0) {
-						player.unMute()
-						player.setVolume(volume * 100)
-						console.log('[Player] Autoplay successful, unmuted')
-					}
-				} catch (err) {
-					console.warn('[Player] Could not unmute after autoplay:', err)
-				}
-			}, 500)
+			setIsMutedAutoplay(true)
+			console.log('[Player] Muted autoplay started')
 		} catch (err) {
 			console.warn('[Player] Autoplay failed (may need user interaction):', err)
 			autoplayAttemptedRef.current = false
@@ -175,17 +181,88 @@ export default function Player({
 		}
 	}, [volume])
 
-	// Expose tap handler to parent components (for compatibility, but we auto-play)
+	// Handle user interaction - unmute smoothly without reload
+	const handleUserInteraction = useCallback(() => {
+		if (userInteracted) return
+		
+		const player = playerRef.current
+		if (!player) return
+		
+		try {
+			console.log('[Player] User interaction detected - enabling sound')
+			
+			// Simply unmute and set volume - no reload needed
+			player.unMute()
+			player.setVolume(volume * 100)
+			
+			// Ensure video is playing
+			const state = player.getPlayerState?.()
+			if (state !== 1) { // Not playing
+				player.playVideo()
+			}
+			
+			setIsMutedAutoplay(false)
+			setUserInteracted(true)
+			console.log('[Player] Sound enabled smoothly')
+		} catch (err) {
+			console.error('[Player] Error enabling sound:', err)
+		}
+	}, [userInteracted, volume])
+
+	// Listen for user interaction (click, touch, keydown)
+	useEffect(() => {
+		if (userInteracted) return // Already interacted
+		
+		const handleInteraction = () => {
+			handleUserInteraction()
+		}
+		
+		document.addEventListener('click', handleInteraction, { once: true })
+		document.addEventListener('touchstart', handleInteraction, { once: true })
+		document.addEventListener('keydown', handleInteraction, { once: true })
+		
+		return () => {
+			document.removeEventListener('click', handleInteraction)
+			document.removeEventListener('touchstart', handleInteraction)
+			document.removeEventListener('keydown', handleInteraction)
+		}
+	}, [userInteracted, handleUserInteraction])
+
+	// Expose tap handler to parent components (for compatibility)
 	useEffect(() => {
 		if (onTapHandlerReady) {
-			// Provide a handler that just attempts autoplay
 			onTapHandlerReady(() => {
-				if (playerRef.current) {
-					attemptAutoplay(playerRef.current)
-				}
+				handleUserInteraction()
 			})
 		}
-	}, [onTapHandlerReady, attemptAutoplay])
+	}, [onTapHandlerReady, handleUserInteraction])
+
+	// Effect: Control static video during loading/buffering
+	useEffect(() => {
+		const staticVideo = staticVideoRef.current
+		if (!staticVideo) return
+		
+		const shouldShowStatic = showStaticOverlay || isBuffering || isTransitioning
+		
+		if (shouldShowStatic) {
+			// Play static video during loading/buffering
+			staticVideo.play().catch(() => {
+				// Autoplay may be blocked, that's okay
+			})
+		} else {
+			// Pause and reset when not needed
+			staticVideo.pause()
+			staticVideo.currentTime = 0
+		}
+	}, [showStaticOverlay, isBuffering, isTransitioning])
+
+	// Effect: Play static video on initial mount (before YouTube loads)
+	useEffect(() => {
+		const staticVideo = staticVideoRef.current
+		if (staticVideo) {
+			staticVideo.play().catch(() => {})
+		}
+	}, [])
 
 	// Effect: Reset when channel changes
 	useEffect(() => {
@@ -198,6 +275,12 @@ export default function Player({
 			hasInitializedRef.current = false
 			videoLoadedRef.current = false
 			autoplayAttemptedRef.current = false
+			// Keep userInteracted across channel changes (SPA pattern)
+			// Only reset if it's a fresh page load
+			if (!wasChannelChange) {
+				setUserInteracted(false)
+				setIsMutedAutoplay(true)
+			}
 			
 			// Clear all timeouts and intervals
 			if (progressIntervalRef.current) {
@@ -208,11 +291,22 @@ export default function Player({
 				clearTimeout(retryTimeoutRef.current)
 				retryTimeoutRef.current = null
 			}
+			if (watchDogTimeOutIdRef.current) {
+				clearTimeout(watchDogTimeOutIdRef.current)
+				watchDogTimeOutIdRef.current = null
+			}
+			if (skipErrorTimeoutIdRef.current) {
+				clearTimeout(skipErrorTimeoutIdRef.current)
+				skipErrorTimeoutIdRef.current = null
+			}
 			
 			failedVideosRef.current.clear()
 			skipAttemptsRef.current = 0
 			setRetryCount(0)
 			setPlaybackHealth('healthy')
+			setShowStaticOverlay(true) // Show static when changing channels
+			e7Ref.current = false
+			clipSeekTimeRef.current = 0
 			
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
@@ -221,97 +315,81 @@ export default function Player({
 		}
 	}, [channel?._id, onChannelChange])
 
-	// Load YouTube IFrame API (like RetroTV)
+	// Load YouTube IFrame API (RetroTV exact pattern)
 	useEffect(() => {
-		if (window.YT && window.YT.Player) {
-			return
-		}
-		const existing = document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
-		if (existing) return
-		
-		const tag = document.createElement('script')
-		tag.src = 'https://www.youtube.com/iframe_api'
-		tag.async = true
-		document.body.appendChild(tag)
-		console.log('[Player] Loading YouTube IFrame API')
+		// RetroTV uses setTimeout wrapper for API loading
+		setTimeout(() => {
+			if (window.YT && window.YT.Player) {
+				// API already loaded
+				return
+			}
+			const existing = document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+			if (existing) return
+			
+			const tag = document.createElement('script')
+			tag.src = 'https://www.youtube.com/iframe_api'
+			tag.async = true
+			const firstScriptTag = document.getElementsByTagName('script')[0]
+			firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+			console.log('[Player] Loading YouTube IFrame API (RetroTV pattern)')
+		}, 2) // RetroTV uses 2ms delay
 	}, [])
 
-	// Direct YouTube API player initialization (RetroTV approach)
+	// RetroTV Pattern: Player initialization using window.onYouTubeIframeAPIReady
 	useEffect(() => {
 		if (!videoId || !channel?._id) {
-			console.log('[Player] No videoId or channel')
 			return
 		}
 
-		const initPlayer = () => {
+		// RetroTV pattern: Use window.onYouTubeIframeAPIReady callback
+		const initYouTubePlayer = () => {
 			if (!window.YT || !window.YT.Player) {
-				console.log('[Player] Waiting for YT API...')
 				return false
 			}
 
 			const container = document.getElementById('desitv-player-iframe')
 			if (!container) {
-				console.log('[Player] Container not found')
 				return false
 			}
 
-			// If player exists, load new video
+			// If player exists, just load new video (RetroTV pattern)
 			if (ytPlayerRef.current) {
-				console.log('[Player] Loading video:', videoId, 'at', startSeconds, 's')
-				try {
-					ytPlayerRef.current.loadVideoById({
-						videoId: videoId,
-						startSeconds: startSeconds
-					})
-					
-					// Attempt autoplay after loading
-					setTimeout(() => {
-						if (ytPlayerRef.current) {
-							attemptAutoplay(ytPlayerRef.current)
-						}
-					}, 300)
-				} catch (err) {
-					console.error('[Player] Error loading video:', err)
-				}
+				// Don't load here - will be triggered by useEffect dependency on videoId
 				return true
 			}
 
-			// Create new player
-			console.log('[Player] Creating player:', videoId, 'at', startSeconds, 's')
+			// Create new player (RetroTV exact pattern)
 			try {
+				const containerEl = document.getElementById('desitv-player-iframe')
+				if (!containerEl) return false
+
 				ytPlayerRef.current = new window.YT.Player('desitv-player-iframe', {
-					height: '100%',
 					width: '100%',
-					videoId: videoId,
+					height: '100%',
 					playerVars: {
-						autoplay: 0, // We'll control autoplay manually
+						autoplay: 0, // We control playback manually
 						playsinline: 1, // Critical for iOS
-						controls: 0,
-						modestbranding: 1,
-						rel: 0,
-						start: startSeconds,
-						iv_load_policy: 3,
-						mute: 1, // Start muted for iOS autoplay compatibility
+						controls: 0, // No controls
+						modestbranding: 1, // Minimal branding
+						rel: 0, // No related videos
+						iv_load_policy: 3, // No annotations
+						mute: userInteracted ? 0 : 1, // Start muted for autoplay unless user interacted
+						enablejsapi: 1, // Required for API control
 					},
 					events: {
 						onReady: (e) => {
-							// Use ref to call the callback (defined later)
 							if (onReadyRef.current) {
 								onReadyRef.current(e)
 							}
 						},
 						onStateChange: (e) => {
-							// Use ref to call the callback (defined later)
 							if (onStateChangeRef.current) {
 								onStateChangeRef.current(e)
 							}
 						},
 						onError: (e) => {
-							// Use ref to call the callback (defined later)
 							if (handleVideoErrorRef.current) {
 								handleVideoErrorRef.current(e)
-							} else {
-								console.error('[Player] Error:', e.data)
 							}
 						},
 					},
@@ -323,17 +401,63 @@ export default function Player({
 			}
 		}
 
-		// Try to initialize, poll if API not ready
-		if (!initPlayer()) {
-			const timer = setInterval(() => {
-				if (initPlayer()) {
-					clearInterval(timer)
+		// RetroTV pattern: Load video function
+		const loadVideoToPlayer = () => {
+			if (!ytPlayerRef.current || !videoId) return
+			
+			console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
+			e7Ref.current = true // Mark as loading initiated
+			
+			try {
+				// Load video starting at 0, then seek after ready
+				ytPlayerRef.current.loadVideoById({
+					videoId: videoId,
+					startSeconds: 0
+				})
+				
+				// Store seek time for after video loads
+				clipSeekTimeRef.current = startSeconds
+			} catch (err) {
+				console.error('[Player] Error loading video:', err)
+			}
+		}
+
+		// RetroTV pattern: Set up onYouTubeIframeAPIReady
+		if (window.YT && window.YT.Player) {
+			// API already loaded
+			if (ytPlayerRef.current) {
+				// Player exists, load new video
+				loadVideoToPlayer()
+			} else {
+				// Need to create player
+				if (!initYouTubePlayer()) {
+					const timer = setInterval(() => {
+						if (initYouTubePlayer()) {
+							clearInterval(timer)
+						}
+					}, 100)
+					return () => clearInterval(timer)
 				}
-			}, 100)
-			return () => clearInterval(timer)
+			}
+		} else {
+			// Wait for API to load - RetroTV pattern
+			const originalCallback = window.onYouTubeIframeAPIReady
+			window.onYouTubeIframeAPIReady = () => {
+				if (originalCallback) originalCallback()
+				initYouTubePlayer()
+				// Video will load in onReady callback
+			}
+		}
+
+		// Cleanup
+		return () => {
+			if (watchDogTimeOutIdRef.current) {
+				clearTimeout(watchDogTimeOutIdRef.current)
+				watchDogTimeOutIdRef.current = null
+			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [videoId, channel?._id, startSeconds, volume, attemptAutoplay])
+	}, [videoId, channel?._id, startSeconds, userInteracted])
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {
@@ -430,6 +554,12 @@ export default function Player({
 			if (retryTimeoutRef.current) {
 				clearTimeout(retryTimeoutRef.current)
 			}
+			if (watchDogTimeOutIdRef.current) {
+				clearTimeout(watchDogTimeOutIdRef.current)
+			}
+			if (skipErrorTimeoutIdRef.current) {
+				clearTimeout(skipErrorTimeoutIdRef.current)
+			}
 			LocalBroadcastStateManager.stopAutoSave()
 		}
 	}, [])
@@ -517,6 +647,7 @@ export default function Player({
 		if (!items || items.length === 0) return
 
 		isTransitioningRef.current = true
+		setShowStaticOverlay(true) // Show static during transition
 
 		// Stop progress monitoring
 		if (progressIntervalRef.current) {
@@ -526,9 +657,8 @@ export default function Player({
 
 		if (onVideoEnd) onVideoEnd()
 
-		// Calculate next index using broadcast position logic
-		const nextIdx = (currIndex + 1) % items.length
-		const nextVid = items[nextIdx]
+		// Use YouTubeRetryManager to find next healthy video (skips known failed)
+		const { video: nextVid, index: nextIdx } = YouTubeRetryManager.getNextHealthyVideo(items, currIndex)
 
 		if (nextVid?.youtubeId) {
 			console.log(`[Player] Switching from video ${currIndex} to ${nextIdx}: ${nextVid.youtubeId}`)
@@ -550,15 +680,32 @@ export default function Player({
 			}
 			
 			try {
+				// Load next video starting at 0
 				playerRef.current.loadVideoById({
 					videoId: nextVid.youtubeId,
-					startSeconds: 0,
+					startSeconds: 0
 				})
+				
+				// Reset seek time for new video
+				clipSeekTimeRef.current = 0
+				e7Ref.current = true
 				
 				// Attempt autoplay after switching
 				setTimeout(() => {
 					if (playerRef.current) {
-						attemptAutoplay(playerRef.current)
+						if (userInteracted) {
+							// User has interacted - can play with sound directly
+							try {
+								playerRef.current.unMute()
+								playerRef.current.setVolume(volume * 100)
+								playerRef.current.playVideo()
+							} catch (err) {
+								console.error('[Player] Error playing next video:', err)
+							}
+						} else {
+							// Start muted autoplay
+							attemptAutoplay(playerRef.current)
+						}
 					}
 				}, 300)
 			} catch (err) {
@@ -571,50 +718,73 @@ export default function Player({
 			isTransitioningRef.current = false
 			startProgressMonitoring()
 		}, 800)
-	}, [items, currIndex, onVideoEnd, startProgressMonitoring, channel, volume, attemptAutoplay])
+	}, [items, currIndex, onVideoEnd, startProgressMonitoring, channel, volume, attemptAutoplay, userInteracted])
 
 	// Keep ref updated
 	switchToNextVideoRef.current = switchToNextVideo
 
+	// Error handler - auto-skip unavailable/restricted videos
 	const handleVideoError = useCallback((error) => {
 		try {
 			const errorCode = error?.data
-			const isUnavailable = errorCode === 100 || errorCode === 101 || errorCode === 150 || errorCode === 2
+			console.error('[Player] onPlayerError:', errorCode)
+			
+			// Show static immediately on error
+			setIsBuffering(true)
+			setIsTransitioning(true)
+			setShowStaticOverlay(true)
+			
+			// Clear any existing error timeout
+			if (skipErrorTimeoutIdRef.current) {
+				clearTimeout(skipErrorTimeoutIdRef.current)
+			}
+			
+			// YouTube error codes:
+			// 2 - Invalid video ID
+			// 5 - HTML5 player error (can't play this video)
+			// 100 - Video not found (removed or private)
+			// 101 - Video owner doesn't allow embedding
+			// 150 - Same as 101 (geo-restricted or copyright)
+			const isUnavailable = [2, 5, 100, 101, 150].includes(errorCode)
 			
 			// Use YouTubeRetryManager for error handling
 			const errorResult = YouTubeRetryManager.handlePlayerError(error, current?.youtubeId)
 			
 			if (isUnavailable && current?.youtubeId) {
-				console.warn(`Video ${current.youtubeId} is unavailable (error ${errorCode}), skipping to next...`)
+				const errorMessages = {
+					2: 'INVALID VIDEO',
+					5: 'PLAYBACK ERROR',
+					100: 'VIDEO NOT FOUND',
+					101: 'EMBEDDING DISABLED',
+					150: 'VIDEO RESTRICTED'
+				}
+				const errorMsg = errorMessages[errorCode] || `ERROR ${errorCode}`
+				console.warn(`[Player] ${errorMsg} - Video ${current.youtubeId}, auto-skipping...`)
 				
 				if (onBufferingChange) {
-					const errorMessages = {
-						100: 'VIDEO NOT FOUND',
-						101: 'VIDEO EMBEDDING DISABLED - Skipping...',
-						150: 'VIDEO RESTRICTED (Geographic/Copyright) - Skipping...',
-						2: 'INVALID VIDEO ID'
-					}
-					onBufferingChange(true, errorMessages[errorCode] || `ERROR ${errorCode} - Skipping...`)
+					onBufferingChange(true, `${errorMsg} - Skipping...`)
 				}
 				
 				failedVideosRef.current.add(current.youtubeId)
 				skipAttemptsRef.current++
 				
 				if (skipAttemptsRef.current < MAX_SKIP_ATTEMPTS) {
-					if (errorTimeoutRef.current) {
-						clearTimeout(errorTimeoutRef.current)
-					}
-					
-					errorTimeoutRef.current = setTimeout(() => {
+					// Quick auto-skip to next video
+					skipErrorTimeoutIdRef.current = setTimeout(() => {
+						console.log('[Player] Auto-skipping to next video')
 						switchToNextVideo()
-					}, 1500) // Slightly longer delay for restricted videos
+						skipErrorTimeoutIdRef.current = null
+					}, ERROR_SKIP_DELAY)
 				} else {
-					console.error('Too many consecutive video errors, stopping auto-skip')
+					console.error('[Player] Too many consecutive errors, pausing auto-skip')
 					setIsBuffering(false)
 					setPlaybackHealth('failed')
+					// Reset after 5 seconds and try again
 					setTimeout(() => {
 						skipAttemptsRef.current = 0
+						failedVideosRef.current.clear()
 						setPlaybackHealth('healthy')
+						switchToNextVideo()
 					}, 5000)
 				}
 			} else if (!errorResult.isPermanent && retryCount < MAX_RETRY_ATTEMPTS) {
@@ -622,8 +792,9 @@ export default function Player({
 				console.log('[Player] Non-permanent error, attempting retry...')
 				attemptRetry()
 			} else {
-				console.error('YouTube player error:', error)
-				setIsBuffering(false)
+				// Unknown error - skip to next
+				console.error('[Player] Unknown error, skipping:', error)
+				setTimeout(() => switchToNextVideo(), ERROR_SKIP_DELAY)
 			}
 		} catch (err) {
 			console.error('[Player] Error in handleVideoError:', err)
@@ -631,39 +802,54 @@ export default function Player({
 		}
 	}, [current?.youtubeId, onBufferingChange, MAX_SKIP_ATTEMPTS, switchToNextVideo, retryCount, attemptRetry])
 
+	// RetroTV Pattern: State change handler
 	const onStateChange = useCallback((event) => {
 		try {
 			const state = event.data
-			playbackStateRef.current = state === 1 ? 'playing' : state === 3 ? 'buffering' : 'other'
+			playbackStateRef.current = state === STATE_PLAYING ? 'playing' : state === STATE_BUFFERING ? 'buffering' : 'other'
 			
-			if (state === 0) {
-				// Video ended - switch immediately
-				if (!isTransitioningRef.current) {
-					switchToNextVideo()
-				}
-			} else if (state === 3) {
-				// Buffering - only show indicator after 500ms to avoid flicker
-				if (bufferTimeoutRef.current) {
-					clearTimeout(bufferTimeoutRef.current)
-				}
-				bufferTimeoutRef.current = setTimeout(() => {
-					if (playbackStateRef.current === 'buffering') {
-						setIsBuffering(true)
-						setPlaybackHealth('buffering')
-						
-						if (staticAudioRef.current) {
-							try {
-								staticAudioRef.current.currentTime = 0
-								staticAudioRef.current.play().catch(() => {})
-							} catch (err) {}
-						}
+			// RetroTV pattern: Clear watchdog timer on any state change
+			if (watchDogTimeOutIdRef.current) {
+				clearTimeout(watchDogTimeOutIdRef.current)
+				watchDogTimeOutIdRef.current = null
+			}
+			
+			switch (state) {
+				case STATE_UNSTARTED:
+					// RetroTV: Known causes - seeking to time out of range
+					console.log('[Player] Video unstarted')
+					break
+					
+				case STATE_ENDED:
+					// RetroTV: Video ended - trigger transition
+					if (!isTransitioningRef.current) {
+						switchToNextVideo()
 					}
-				}, 500) // Only show buffering after 500ms
-			} else if (state === 1) {
-				// SUCCESS - Video is playing
+					break
+					
+			case STATE_PLAYING:
+				// RetroTV: Video is playing - hide static, start monitoring
 				setRetryCount(0)
 				setPlaybackHealth('healthy')
+				setShowStaticOverlay(false) // Hide static video overlay
 				lastPlayTimeRef.current = Date.now()
+				
+				// RetroTV pattern: Seek to correct position if needed
+				if (clipSeekTimeRef.current > 0 && event.target) {
+					try {
+						const currentTime = event.target.getCurrentTime()
+						if (currentTime < clipSeekTimeRef.current - 2) {
+							console.log(`[Player] Seeking from ${currentTime.toFixed(1)}s to ${clipSeekTimeRef.current.toFixed(1)}s`)
+							event.target.seekTo(clipSeekTimeRef.current, true)
+							clipSeekTimeRef.current = 0 // Reset after seeking
+						} else {
+							clipSeekTimeRef.current = 0
+						}
+					} catch (err) {
+						console.error('[Player] Error seeking:', err)
+						clipSeekTimeRef.current = 0
+					}
+				}
 				
 				if (bufferTimeoutRef.current) {
 					clearTimeout(bufferTimeoutRef.current)
@@ -682,20 +868,56 @@ export default function Player({
 					startProgressMonitoring()
 				}
 				
-				// Notify playback state change
 				if (onPlaybackStateChange) {
 					onPlaybackStateChange({ state: 'playing', videoId: current?.youtubeId })
 				}
 
-				// Emit progress snapshot on play start for menu sync
 				emitPlaybackProgress()
-			} else if (state === 5) {
-				if (!progressIntervalRef.current && !isTransitioningRef.current) {
-					setTimeout(() => startProgressMonitoring(), 1000)
-				}
-			} else if (state === -1) {
-				// Unstarted - might need retry
-				console.log('[Player] Video unstarted, monitoring...')
+				break
+				
+			case STATE_PAUSED:
+				// Don't auto-skip on pause - may be user interaction or loading issue
+				// RetroTV skips on pause but that's too aggressive for modern use
+				console.log('[Player] Video paused')
+				break
+				
+			case STATE_BUFFERING:
+					// RetroTV: Buffering with 8-second watchdog timer
+					if (bufferTimeoutRef.current) {
+						clearTimeout(bufferTimeoutRef.current)
+					}
+					bufferTimeoutRef.current = setTimeout(() => {
+						if (playbackStateRef.current === 'buffering') {
+							setIsBuffering(true)
+							setPlaybackHealth('buffering')
+							
+							if (staticAudioRef.current) {
+								try {
+									staticAudioRef.current.currentTime = 0
+									staticAudioRef.current.play().catch(() => {})
+								} catch (err) {}
+							}
+						}
+					}, 500)
+					
+					// RetroTV watchdog: 8 seconds max buffering
+					watchDogTimeOutIdRef.current = setTimeout(() => {
+						if (playbackStateRef.current === 'buffering' && isTransitioningRef.current === false) {
+							console.warn('[Player] Buffering watchdog triggered - attempting recovery')
+							handleVideoError({ data: 5 }) // Trigger error recovery
+						}
+					}, MAX_BUFFER_TIME)
+					break
+					
+				case STATE_VIDEO_CUED:
+					// RetroTV: Video cued - prepare for playback
+					if (!progressIntervalRef.current && !isTransitioningRef.current) {
+						setTimeout(() => startProgressMonitoring(), 1000)
+					}
+					break
+					
+				default:
+					break
 			}
 		} catch (err) {
 			console.error('[Player] Error in onStateChange:', err)
@@ -706,6 +928,7 @@ export default function Player({
 	onStateChangeRef.current = onStateChange
 	handleVideoErrorRef.current = handleVideoError
 
+	// RetroTV Pattern: onReady handler
 	const onReady = useCallback((e) => {
 		try {
 			// Prevent double initialization
@@ -717,27 +940,54 @@ export default function Player({
 			playerRef.current = e.target
 			hasInitializedRef.current = true
 			
-			// Mute first to allow autoplay (iOS requirement)
-			e.target.mute()
+			console.log('[Player] onReady (RetroTV pattern)')
+			
+			// RetroTV pattern: Set volume and mute state
 			e.target.setVolume(volume * 100)
-			
-			try {
-				e.target.setPlaybackQuality('medium')
-			} catch(err) {}
-			
-			// Use broadcast position offset directly - this is the single source of truth
-			console.log(`[Player] onReady - Seeking to: ${offset.toFixed(1)}s, videoIndex: ${currIndex}`)
-			
-			// Seek BEFORE playing to prevent flash of wrong position
-			if (offset > 0) {
-				e.target.seekTo(offset, true)
+			if (!userInteracted) {
+				e.target.mute() // Start muted for autoplay
+			} else {
+				e.target.unMute()
 			}
 			
-			// Small delay to ensure seek completes before play
+			// If video not loaded yet (first initialization), load it now
+			if (!videoLoadedRef.current && videoId) {
+				console.log('[Player] First initialization - loading video:', videoId)
+				clipSeekTimeRef.current = startSeconds || offset
+				videoLoadedRef.current = true // Mark as loading initiated
+				e.target.loadVideoById({
+					videoId: videoId,
+					startSeconds: 0
+				})
+				// Seek will happen in STATE_PLAYING handler
+				return
+			}
+			
+			// RetroTV pattern: Seek after ready (not before)
+			// We loaded with startSeconds=0, now seek to actual position
+			const seekTime = clipSeekTimeRef.current || offset
+			if (seekTime > 0) {
+				console.log(`[Player] Seeking to: ${seekTime.toFixed(1)}s (RetroTV pattern)`)
+				e.target.seekTo(seekTime, true)
+			}
+			
+			
+			// Small delay before autoplay
 			setTimeout(() => {
 				if (playerRef.current) {
-					// Attempt autoplay (muted, then unmute)
-					attemptAutoplay(playerRef.current)
+					if (userInteracted) {
+						// User has interacted - play with sound
+						try {
+							playerRef.current.unMute()
+							playerRef.current.setVolume(volume * 100)
+							playerRef.current.playVideo()
+						} catch (err) {
+							console.error('[Player] Error playing:', err)
+						}
+					} else {
+						// Start muted autoplay
+						attemptAutoplay(playerRef.current)
+					}
 					videoLoadedRef.current = true
 				}
 			}, 50)
@@ -746,7 +996,6 @@ export default function Player({
 			
 			if (channel?._id) {
 				try {
-					// Update state (auto-save is already running)
 					LocalBroadcastStateManager.updateChannelState(channel._id, {
 						channelName: channel.name,
 						currentVideoIndex: currIndex,
@@ -757,22 +1006,19 @@ export default function Player({
 				}
 			}
 
-			// Start progress monitoring after video is confirmed playing
-			setTimeout(() => {
-				startProgressMonitoring()
-			}, 200)
-			
 			// Mark video as healthy
 			if (current?.youtubeId) {
 				YouTubeRetryManager.healthyVideos?.add(current.youtubeId)
 			}
 
-			// Emit initial progress snapshot after ready
-			emitPlaybackProgress()
+			// Emit initial progress
+			setTimeout(() => {
+				emitPlaybackProgress()
+			}, 200)
 		} catch(err) {
 			console.error('[Player] Error in onReady:', err)
 		}
-	}, [volume, offset, currIndex, channel, startProgressMonitoring, current?.youtubeId, emitPlaybackProgress, attemptAutoplay])
+	}, [volume, offset, currIndex, channel, current?.youtubeId, emitPlaybackProgress, attemptAutoplay, userInteracted, videoId, startSeconds])
 
 	// Keep ref updated
 	onReadyRef.current = onReady
@@ -801,20 +1047,42 @@ export default function Player({
 				<div className="tv-off-message">LOADING VIDEO...</div>
 			</div>
 		)
-	}
+}
 
-	return (
+return (
 		<div className="player-wrapper">
+			{/* Static video for loading/buffering - plays on top to cover YouTube loading */}
+			<video
+				ref={staticVideoRef}
+				src="/sounds/alb_tvn0411_1080p.mp4"
+				preload="auto"
+				loop
+				muted
+				playsInline
+				style={{
+					position: 'absolute',
+					top: 0,
+					left: 0,
+					width: '100%',
+					height: '100%',
+					objectFit: 'cover',
+					zIndex: (showStaticOverlay || isBuffering || isTransitioning) ? 10 : -1,
+					opacity: (showStaticOverlay || isBuffering || isTransitioning) ? 1 : 0,
+					transition: 'opacity 0.3s ease-out',
+					pointerEvents: 'none',
+				}}
+			/>
+			{/* Static audio (separate for better control) */}
 			<audio
 				ref={staticAudioRef}
 				src="/sounds/tv-static-noise-291374.mp3"
 				preload="auto"
 				loop
 			/>
-			<div className="crt-scanlines"></div>
+			<div className="crt-scanlines" style={{ zIndex: 20, pointerEvents: 'none' }}></div>
 			{/* Direct YouTube IFrame API - iPhone compatible */}
-			<div 
-				id="desitv-player-iframe" 
+			<div
+				id="desitv-player-iframe"
 				className="youtube-player-container"
 				style={{
 					width: '100%',
@@ -824,21 +1092,59 @@ export default function Player({
 					left: 0
 				}}
 			/>
-			{(isBuffering || isTransitioning) && (
-				<div className="static-effect-tv">
-					<div className="static-noise-overlay" />
-					{retryCount > 0 && (
-						<div className="retry-indicator">
-							RETRY {retryCount}/{MAX_RETRY_ATTEMPTS}
-						</div>
-					)}
+			{/* Glass overlay - blocks all iframe interactions (RetroTV pattern) */}
+			<div
+				className="player-glass-overlay"
+				onClick={handleUserInteraction}
+				style={{
+					position: 'absolute',
+					top: 0,
+					left: 0,
+					width: '100%',
+					height: '100%',
+					zIndex: 5,
+					cursor: isMutedAutoplay ? 'pointer' : 'default',
+					background: 'transparent',
+				}}
+			/>
+			{/* Tap to unmute indicator - only show when muted autoplay is active */}
+			{isMutedAutoplay && !showStaticOverlay && !isBuffering && !isTransitioning && (
+				<div
+					className="tap-to-unmute"
+					onClick={handleUserInteraction}
+					style={{
+						position: 'absolute',
+						bottom: '20px',
+						left: '50%',
+						transform: 'translateX(-50%)',
+						zIndex: 15,
+						background: 'rgba(0, 0, 0, 0.7)',
+						color: '#fff',
+						padding: '8px 16px',
+						borderRadius: '20px',
+						fontSize: '12px',
+						fontFamily: 'monospace',
+						cursor: 'pointer',
+						animation: 'pulse 2s infinite',
+						pointerEvents: 'auto',
+					}}
+				>
+					🔇 TAP FOR SOUND
+				</div>
+			)}
+			{/* Retry indicator overlay */}
+			{(isBuffering || isTransitioning) && retryCount > 0 && (
+				<div className="static-effect-tv" style={{ background: 'transparent', pointerEvents: 'none' }}>
+					<div className="retry-indicator">
+						RETRY {retryCount}/{MAX_RETRY_ATTEMPTS}
+					</div>
 				</div>
 			)}
 			{playbackHealth === 'failed' && (
-				<div className="playback-error-overlay">
+				<div className="playback-error-overlay" style={{ pointerEvents: 'none' }}>
 					<div className="error-message">PLAYBACK ERROR - RECOVERING...</div>
 				</div>
 			)}
-		</div>
-	)
+</div>
+)
 }
