@@ -99,19 +99,22 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	50% { opacity: 1; }
 }
 
-/* Fullscreen styles */
+/* ===== FULLSCREEN STYLES - Clean, no decorations ===== */
+
+/* Fullscreen container - covers entire viewport */
 .tv-frame-container:fullscreen,
 .tv-frame-container:-webkit-full-screen,
 .tv-frame-container:-moz-full-screen,
-.tv-frame-container:-ms-fullscreen {
+.tv-frame-container:-ms-fullscreen,
+.tv-frame-container.is-fullscreen {
 	width: 100vw !important;
 	height: 100vh !important;
 	max-width: 100vw !important;
 	max-height: 100vh !important;
 	background: #000 !important;
 	display: flex !important;
-	align-items: stretch !important;
-	justify-content: stretch !important;
+	align-items: center !important;
+	justify-content: center !important;
 	padding: 0 !important;
 	margin: 0 !important;
 	position: fixed !important;
@@ -121,12 +124,16 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	bottom: 0 !important;
 	z-index: 9999 !important;
 	flex-direction: column !important;
+	transform: none !important;
+	border-radius: 0 !important;
 }
 
+/* Fullscreen TV frame - no decorations */
 .tv-frame-container:fullscreen .tv-frame,
 .tv-frame-container:-webkit-full-screen .tv-frame,
 .tv-frame-container:-moz-full-screen .tv-frame,
-.tv-frame-container:-ms-fullscreen .tv-frame {
+.tv-frame-container:-ms-fullscreen .tv-frame,
+.tv-frame.fullscreen-mode {
 	width: 100vw !important;
 	height: 100vh !important;
 	max-width: none !important;
@@ -138,6 +145,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	flex: 1 !important;
 	box-shadow: none !important;
 	background: #000 !important;
+	border: none !important;
 }
 
 .tv-frame {
@@ -209,14 +217,19 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	transform-style: preserve-3d;
 }
 
-/* Fullscreen tv-screen - remove all decorations but keep scanlines */
+/* Fullscreen tv-screen - remove all decorations, fill viewport */
 .tv-frame-container:fullscreen .tv-screen,
 .tv-frame-container:-webkit-full-screen .tv-screen,
 .tv-frame-container:-moz-full-screen .tv-screen,
-.tv-frame-container:-ms-fullscreen .tv-screen {
+.tv-frame-container:-ms-fullscreen .tv-screen,
+.tv-screen.fullscreen-mode {
+	width: 100vw !important;
+	height: 100vh !important;
 	border: none !important;
 	border-radius: 0 !important;
 	box-shadow: none !important;
+	background: #000 !important;
+	transform: none !important;
 	transform: none !important;
 	background: #000 !important;
 	width: 100vw !important;
@@ -291,6 +304,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	background: radial-gradient(ellipse at center, transparent 0%, rgba(74, 158, 255, 0.1) 100%);
 	pointer-events: none;
 	z-index: 5;
+}
+
+/* Hide glow in fullscreen */
+.tv-frame-container:fullscreen .tv-screen-glow,
+.tv-frame-container:-webkit-full-screen .tv-screen-glow,
+.tv-frame-container:-moz-full-screen .tv-screen-glow,
+.tv-frame-container:-ms-fullscreen .tv-screen-glow {
+	display: none !important;
 }
 
 /* Scanlines Effect */
@@ -370,8 +391,95 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	position: relative;
 	/* Convex CRT effect on video - subtle curve */
 	transform: perspective(1000px) rotateX(-0.4deg);
+}
+
+/* Fullscreen player - fill viewport, no CRT effects */
+.tv-frame-container:fullscreen .player-wrapper,
+.tv-frame-container:-webkit-full-screen .player-wrapper,
+.tv-frame-container:-moz-full-screen .player-wrapper,
+.tv-frame-container:-ms-fullscreen .player-wrapper {
+	width: 100vw !important;
+	height: 100vh !important;
+	transform: none !important;
+	animation: none !important;
+}
+
+/* Fullscreen YouTube iframe - fill entire screen */
+.tv-frame-container:fullscreen .youtube-player-container,
+.tv-frame-container:-webkit-full-screen .youtube-player-container,
+.tv-frame-container:-moz-full-screen .youtube-player-container,
+.tv-frame-container:-ms-fullscreen .youtube-player-container {
+	width: 100vw !important;
+	height: 100vh !important;
+}
+
+.tv-frame-container:fullscreen .youtube-player-container iframe,
+.tv-frame-container:-webkit-full-screen .youtube-player-container iframe,
+.tv-frame-container:-moz-full-screen .youtube-player-container iframe,
+.tv-frame-container:-ms-fullscreen .youtube-player-container iframe {
+	width: 100vw !important;
+	height: 100vh !important;
+}
+
+/* Hide scanlines in fullscreen for cleaner view */
+.tv-frame-container:fullscreen .scanlines,
+.tv-frame-container:-webkit-full-screen .scanlines,
+.tv-frame-container:-moz-full-screen .scanlines,
+.tv-frame-container:-ms-fullscreen .scanlines {
+	display: none !important;
+}
+
+/* Disable CRT flicker in fullscreen */
+.tv-frame-container:fullscreen .player-wrapper,
+.tv-frame-container:-webkit-full-screen .player-wrapper,
+.tv-frame-container:-moz-full-screen .player-wrapper,
+.tv-frame-container:-ms-fullscreen .player-wrapper {
+	animation: none !important;
 	transform-origin: center center;
 	overflow: hidden;
+}
+
+/* Hide all overlays and decorations in fullscreen */
+.tv-frame-container:fullscreen .crt-scanlines,
+.tv-frame-container:-webkit-full-screen .crt-scanlines,
+.tv-frame-container:-moz-full-screen .crt-scanlines,
+.tv-frame-container:-ms-fullscreen .crt-scanlines {
+	opacity: 0.3 !important;
+}
+
+/* Hide static overlay info in fullscreen */
+.tv-frame-container:fullscreen .static-effect-tv,
+.tv-frame-container:-webkit-full-screen .static-effect-tv,
+.tv-frame-container:-moz-full-screen .static-effect-tv,
+.tv-frame-container:-ms-fullscreen .static-effect-tv {
+	border-radius: 0 !important;
+}
+
+/* Hide tap-to-unmute in fullscreen */
+.tv-frame-container:fullscreen .tap-to-unmute,
+.tv-frame-container:-webkit-full-screen .tap-to-unmute,
+.tv-frame-container:-moz-full-screen .tap-to-unmute,
+.tv-frame-container:-ms-fullscreen .tap-to-unmute {
+	bottom: 50px !important;
+}
+
+/* Mobile fullscreen - ensure touch works */
+@media (max-width: 768px) {
+	.tv-frame-container:fullscreen,
+	.tv-frame-container:-webkit-full-screen {
+		touch-action: manipulation;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+	
+	/* Ensure fullscreen exit hint is visible on mobile */
+	.fullscreen-exit-hint {
+		font-size: 14px !important;
+		padding: 8px 16px;
+		background: rgba(0,0,0,0.5);
+		border-radius: 20px;
+	}
 }
 
 .youtube-player-container {

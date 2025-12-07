@@ -1,10 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import Player from './Player'
 import StaticEffect from './StaticEffect'
 import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
-import BlueRaysEffect from './BlueRaysEffect'
 
 export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null }) {
 	const tvFrameRef = useRef(null)
@@ -12,6 +11,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
 	const tapHandlerRef = useRef(null)
+	const lastTapRef = useRef(0)
+	const doubleTapTimeoutRef = useRef(null)
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -53,7 +54,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [])
 
-	const toggleFullscreen = () => {
+	const toggleFullscreen = useCallback(() => {
 		if (!tvFrameRef.current) return
 
 		const element = tvFrameRef.current
@@ -93,21 +94,48 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		} catch (error) {
 			console.error('Error toggling fullscreen:', error)
 		}
-	}
+	}, [])
+
+	// Handle double-tap for mobile fullscreen toggle
+	const handleTouchEnd = useCallback((e) => {
+		const now = Date.now()
+		const DOUBLE_TAP_DELAY = 300 // ms between taps
+		
+		if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+			// Double tap detected
+			e.preventDefault()
+			toggleFullscreen()
+			lastTapRef.current = 0 // Reset
+			if (doubleTapTimeoutRef.current) {
+				clearTimeout(doubleTapTimeoutRef.current)
+			}
+		} else {
+			// First tap - wait for potential second tap
+			lastTapRef.current = now
+			
+			// Clear previous timeout
+			if (doubleTapTimeoutRef.current) {
+				clearTimeout(doubleTapTimeoutRef.current)
+			}
+			
+			// Set timeout to reset if no second tap
+			doubleTapTimeoutRef.current = setTimeout(() => {
+				lastTapRef.current = 0
+			}, DOUBLE_TAP_DELAY)
+		}
+	}, [toggleFullscreen])
 
 	return (
 		<div 
-			className="tv-frame-container" 
+			className={`tv-frame-container ${isFullscreen ? 'is-fullscreen' : ''}`}
 			ref={tvFrameRef} 
 			onDoubleClick={toggleFullscreen}
+			onTouchEnd={handleTouchEnd}
 			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
 			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
-			{/* Blue Rays Effect - Positioned behind everything in fullscreen */}
-			{isFullscreen && <BlueRaysEffect isFullscreen={isFullscreen} volume={volume} />}
-			
-			<div className="tv-frame">
-				<div className="tv-screen" onClick={handleScreenClick}>
+			<div className={`tv-frame ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+				<div className={`tv-screen ${isFullscreen ? 'fullscreen-mode' : ''}`} onClick={handleScreenClick}>
 					{!power ? (
 						<div className="tv-off-screen">
 							<div className="scanlines" />
@@ -162,34 +190,49 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							/>
 						</div>
 					)}
-					<div className="tv-screen-glow" />
+					{/* Hide glow in fullscreen */}
+					{!isFullscreen && <div className="tv-screen-glow" />}
 				</div>
 			</div>
-			<div className="tv-status-indicator">
-				{statusMessage || "WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY."}
-			</div>
-			{/* Fullscreen hint outside TV box */}
-			{!isFullscreen && power && (
-				<div style={{
-					fontSize: '10px',
-					color: '#666',
-					marginTop: '10px',
-					textAlign: 'center',
-					opacity: showFullscreenHint ? 1 : 0.5,
-					transition: 'opacity 0.3s ease'
-				}}>
-					Double click for fullscreen
-				</div>
+			{/* Hide status and hints in fullscreen */}
+			{!isFullscreen && (
+				<>
+					<div className="tv-status-indicator">
+						{statusMessage || "WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY."}
+					</div>
+					{power && (
+						<div style={{
+							fontSize: '10px',
+							color: '#666',
+							marginTop: '10px',
+							textAlign: 'center',
+							opacity: showFullscreenHint ? 1 : 0.5,
+							transition: 'opacity 0.3s ease'
+						}}>
+							Double tap/click for fullscreen
+						</div>
+					)}
+				</>
 			)}
+			{/* Minimal exit hint in fullscreen - positioned at bottom */}
 			{isFullscreen && (
-				<div style={{
-					fontSize: '10px',
-					color: '#4a9eff',
-					marginTop: '10px',
-					textAlign: 'center',
-					textShadow: '0 0 5px #4a9eff'
-				}}>
-					Double click to exit fullscreen
+				<div 
+					className="fullscreen-exit-hint"
+					style={{
+						position: 'fixed',
+						bottom: '20px',
+						left: '50%',
+						transform: 'translateX(-50%)',
+						fontSize: '12px',
+						color: 'rgba(255,255,255,0.5)',
+						textAlign: 'center',
+						zIndex: 9999,
+						pointerEvents: 'none',
+						opacity: 0.7,
+						transition: 'opacity 0.3s ease'
+					}}
+				>
+					Double tap to exit
 				</div>
 			)}
 		</div>
