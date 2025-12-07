@@ -6,8 +6,8 @@
 
 body {
 	font-family: 'Press Start 2P', 'Courier New', monospace;
-	background: #0a0a0a;
-	color: #fff;
+	background: #1a1816;
+	color: #d4c4b0;
 	margin: 0;
 	padding: 0;
 	overflow-x: hidden;
@@ -30,7 +30,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 100%);
+	background: radial-gradient(ellipse at center, #2a2520 0%, #1a1816 100%);
 }
 
 /* Hide main container and remote when fullscreen is active */
@@ -68,12 +68,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	flex-direction: column;
 	align-items: center;
 	cursor: pointer;
-	transition: transform 0.2s ease;
+	transition: transform 0.2s ease, filter 0.2s ease;
 	position: relative;
+	filter: drop-shadow(0 0 40px rgba(128, 128, 128, 0.4));
 }
 
 .tv-frame-container:hover {
-	transform: scale(1.01);
+	transform: scale(1.02);
+	filter: drop-shadow(0 0 60px rgba(128, 128, 128, 0.5));
 }
 
 /* Fullscreen hint overlay */
@@ -159,17 +161,20 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: 100%;
 	max-width: 900px;
 	aspect-ratio: 16/10;
-	background: linear-gradient(145deg, #c0c0c0, #808080);
+	background: linear-gradient(145deg, #a0a0a0, #808080, #707070);
 	border-radius: 20px;
 	padding: 25px;
 	box-shadow: 
-		0 0 50px rgba(0, 0, 0, 0.8),
+		0 0 80px rgba(128, 128, 128, 0.5),
+		0 0 120px rgba(128, 128, 128, 0.3),
 		inset 0 0 30px rgba(255, 255, 255, 0.1),
-		0 20px 60px rgba(0, 0, 0, 0.9);
+		0 20px 60px rgba(0, 0, 0, 0.8),
+		inset 0 2px 4px rgba(255, 255, 255, 0.15);
 	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	border: 3px solid #909090;
 }
 
 
@@ -196,17 +201,18 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	z-index: 2;
 	width: 100%;
 	height: 100%;
-	background: #000;
-	border: 8px solid #1a1a1a;
+	background: #0a0806;
+	border: 8px solid #606060;
 	border-radius: 8px;
 	overflow: hidden;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	box-shadow: 
-		inset 0 0 100px rgba(0, 0, 0, 0.9),
-		0 0 20px rgba(0, 0, 0, 0.8),
-		inset 0 0 30px rgba(255, 255, 255, 0.05); /* Screen reflection */
+		inset 0 0 100px rgba(0, 0, 0, 0.95),
+		0 0 30px rgba(128, 128, 128, 0.3),
+		inset 0 0 30px rgba(255, 255, 255, 0.05),
+		inset 0 2px 4px rgba(255, 255, 255, 0.08); /* Screen reflection */
 	/* Convex CRT screen effect - subtle curve */
 	transform: perspective(1500px) rotateX(1.5deg);
 	transform-style: preserve-3d;
@@ -269,11 +275,11 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .tv-off-message {
 	font-size: 12px;
-	color: #4a9eff;
+	color: #b8956a;
 	text-shadow: 
-		0 0 10px #4a9eff,
-		0 0 20px #4a9eff,
-		0 0 30px #4a9eff;
+		0 0 8px rgba(184, 149, 106, 0.6),
+		0 0 15px rgba(184, 149, 106, 0.4),
+		0 0 25px rgba(184, 149, 106, 0.2);
 	animation: pulse-glow 2s ease-in-out infinite;
 	z-index: 10;
 }
@@ -286,7 +292,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .tv-screen-glow {
 	position: absolute;
 	inset: 0;
-	background: radial-gradient(ellipse at center, transparent 0%, rgba(74, 158, 255, 0.1) 100%);
+	background: radial-gradient(ellipse at center, transparent 0%, rgba(139, 115, 85, 0.08) 100%);
 	pointer-events: none;
 	z-index: 5;
 }
@@ -305,14 +311,15 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	inset: 0;
 	background: repeating-linear-gradient(
 		0deg,
-		rgba(0, 0, 0, 0.15) 0px,
-		rgba(0, 0, 0, 0.15) 1px,
+		rgba(139, 115, 85, 0.08) 0px,
+		rgba(139, 115, 85, 0.08) 1px,
 		transparent 1px,
 		transparent 2px
 	);
 	pointer-events: none;
 	z-index: 10;
 	animation: scanline-move 8s linear infinite;
+	mix-blend-mode: overlay;
 }
 
 @keyframes scanline-move {
@@ -430,6 +437,17 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .tv-frame-container:-webkit-full-screen .crt-scanlines {
 	opacity: 0.15 !important;
 	z-index: 10 !important;
+}
+
+/* Vintage TV sepia/brown tint overlay */
+.tv-screen::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(107, 93, 79, 0.03);
+	pointer-events: none;
+	z-index: 6;
+	mix-blend-mode: overlay;
 }
 
 /* Static overlay in fullscreen */
@@ -590,13 +608,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* Control Panel */
 .control-panel {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	border: 2px solid #444;
+	background: linear-gradient(145deg, #3a342f, #2a2520);
+	border: 2px solid #4a3f35;
 	border-radius: 12px;
 	padding: 20px;
 	box-shadow: 
 		0 4px 15px rgba(0, 0, 0, 0.5),
-		inset 0 1px 0 rgba(255, 255, 255, 0.1);
+		inset 0 1px 0 rgba(139, 115, 85, 0.08);
+	opacity: 0.85;
 }
 
 .control-btn {
@@ -703,13 +722,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* Category List */
 .category-list {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	border: 2px solid #444;
+	background: linear-gradient(145deg, #3a342f, #2a2520);
+	border: 2px solid #4a3f35;
 	border-radius: 12px;
 	padding: 20px;
 	box-shadow: 
 		0 4px 15px rgba(0, 0, 0, 0.5),
-		inset 0 1px 0 rgba(255, 255, 255, 0.1);
+		inset 0 1px 0 rgba(139, 115, 85, 0.08);
+	opacity: 0.85;
 }
 
 .category-header {
@@ -724,8 +744,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .category-header h3 {
 	margin: 0;
 	font-size: 12px;
-	color: #4a9eff;
-	text-shadow: 0 0 5px #4a9eff;
+	color: #b8956a;
+	text-shadow: 0 0 5px rgba(184, 149, 106, 0.5);
 }
 
 .category-actions {
@@ -782,10 +802,10 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .category-name {
 	font-size: 10px;
-	color: #39ff14;
+	color: #b8956a;
 	text-shadow: 
-		0 0 5px #39ff14,
-		0 0 10px #39ff14;
+		0 0 5px rgba(184, 149, 106, 0.5),
+		0 0 10px rgba(184, 149, 106, 0.3);
 	flex: 1;
 }
 
@@ -794,19 +814,19 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: 100%;
 	padding: 20px;
 	text-align: center;
-	background: rgba(0, 0, 0, 0.5);
-	border-top: 2px solid #333;
+	background: rgba(26, 24, 22, 0.7);
+	border-top: 2px solid #4a3f35;
 }
 
 .status-text {
-	font-size: 11px;
-	color: #4a9eff;
+	font-size: 7px;
+	color: #8b7355;
 	text-shadow: 
-		0 0 10px #4a9eff,
-		0 0 20px #4a9eff,
-		0 0 30px #4a9eff;
+		0 0 5px rgba(139, 115, 85, 0.5),
+		0 0 10px rgba(139, 115, 85, 0.3);
 	animation: status-pulse 3s ease-in-out infinite;
-	letter-spacing: 2px;
+	letter-spacing: 1px;
+	opacity: 0.7;
 }
 
 @keyframes status-pulse {
@@ -818,13 +838,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	margin-top: 20px;
 	padding: 15px;
 	text-align: center;
-	font-size: 10px;
-	color: #4a9eff;
+	font-size: 7px;
+	color: #8b7355;
 	text-shadow: 
-		0 0 10px #4a9eff,
-		0 0 20px #4a9eff;
+		0 0 5px rgba(139, 115, 85, 0.5),
+		0 0 10px rgba(139, 115, 85, 0.3);
 	animation: pulse-glow 2s ease-in-out infinite;
 	letter-spacing: 1px;
+	opacity: 0.7;
 }
 
 /* Hide status indicator in fullscreen */
@@ -845,16 +866,17 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-body {
-	background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 50%, #2a2a2a 100%);
+	background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 50%, #151515 100%);
 	border-radius: 20px 20px 30px 30px;
 	padding: 20px 15px 30px;
 	min-width: 220px;
 	box-shadow: 
 		0 10px 30px rgba(0, 0, 0, 0.8),
-		inset 0 1px 0 rgba(255, 255, 255, 0.1),
-		inset 0 -2px 5px rgba(0, 0, 0, 0.5);
-	border: 2px solid #444;
+		inset 0 1px 0 rgba(255, 255, 255, 0.03),
+		inset 0 -2px 5px rgba(0, 0, 0, 0.7);
+	border: 2px solid #0a0a0a;
 	position: relative;
+	opacity: 0.85;
 }
 
 .remote-body::before {
@@ -864,18 +886,19 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	left: 10px;
 	right: 10px;
 	height: 3px;
-	background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+	background: linear-gradient(90deg, transparent, rgba(255,255,255,0.02), transparent);
 	border-radius: 2px;
 }
 
 .remote-brand {
 	text-align: center;
 	font-size: 14px;
-	color: #c0c0c0;
-	text-shadow: 0 0 10px rgba(192, 192, 192, 0.5);
+	color: #666;
+	text-shadow: 0 0 3px rgba(102, 102, 102, 0.2);
 	margin-bottom: 15px;
 	font-weight: bold;
 	letter-spacing: 3px;
+	opacity: 0.6;
 }
 
 /* Power Section */
@@ -891,11 +914,11 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: 50px;
 	height: 50px;
 	border-radius: 50%;
-	background: linear-gradient(145deg, #ff4444, #aa0000);
-	border: 3px solid #660000;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	border: 3px solid #0a0a0a;
 	box-shadow: 
-		0 4px 15px rgba(255, 0, 0, 0.4),
-		inset 0 2px 0 rgba(255, 255, 255, 0.3);
+		0 4px 15px rgba(0, 0, 0, 0.5),
+		inset 0 2px 0 rgba(255, 255, 255, 0.02);
 	cursor: pointer;
 	transition: all 0.2s ease;
 }
@@ -908,11 +931,11 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-btn.power-btn.on {
-	background: linear-gradient(145deg, #44ff44, #00aa00);
-	border-color: #006600;
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+	border-color: #0a0a0a;
 	box-shadow: 
-		0 4px 15px rgba(0, 255, 0, 0.4),
-		inset 0 2px 0 rgba(255, 255, 255, 0.3);
+		0 4px 15px rgba(0, 0, 0, 0.6),
+		inset 0 2px 0 rgba(255, 255, 255, 0.03);
 }
 
 .power-icon {
@@ -958,17 +981,19 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .channel-label {
 	font-size: 10px;
-	color: #666;
+	color: #555;
+	opacity: 0.6;
 }
 
 .channel-number {
 	font-size: 24px;
-	color: #ff6600;
+	color: #666;
 	text-shadow: 
-		0 0 10px #ff6600,
-		0 0 20px #ff6600;
+		0 0 5px rgba(102, 102, 102, 0.3),
+		0 0 10px rgba(102, 102, 102, 0.2);
 	font-family: 'Courier New', monospace;
 	letter-spacing: 3px;
+	opacity: 0.7;
 }
 
 /* Number Pad */
@@ -980,22 +1005,22 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-btn.num-btn {
-	background: linear-gradient(145deg, #555, #333);
-	border: 2px solid #222;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	border: 2px solid #0a0a0a;
 	border-radius: 8px;
-	color: #fff;
+	color: #666;
 	font-size: 14px;
 	padding: 12px;
 	cursor: pointer;
 	transition: all 0.15s ease;
 	font-family: 'Press Start 2P', monospace;
 	box-shadow: 
-		0 3px 6px rgba(0,0,0,0.4),
-		inset 0 1px 0 rgba(255,255,255,0.1);
+		0 3px 6px rgba(0,0,0,0.6),
+		inset 0 1px 0 rgba(255,255,255,0.02);
 }
 
 .remote-btn.num-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #666, #444);
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 	transform: translateY(-2px);
 }
 
@@ -1031,15 +1056,15 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-btn.dpad-btn {
-	background: linear-gradient(145deg, #444, #222);
-	border: 2px solid #111;
-	color: #4a9eff;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	border: 2px solid #0a0a0a;
+	color: #666;
 	font-size: 9px;
 	padding: 10px 12px;
 	cursor: pointer;
 	transition: all 0.15s ease;
 	font-family: 'Press Start 2P', monospace;
-	text-shadow: 0 0 5px #4a9eff;
+	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
 	border-radius: 5px;
 }
 
@@ -1055,14 +1080,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .remote-btn.dpad-btn.center {
 	min-width: 60px;
-	background: linear-gradient(145deg, #1a3a5c, #0d1f33);
-	color: #4a9eff;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	color: #666;
 }
 
 .remote-btn.dpad-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #555, #333);
-	color: #6bb6ff;
-	text-shadow: 0 0 10px #6bb6ff;
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+	color: #888;
+	text-shadow: 0 0 3px rgba(136, 136, 136, 0.3);
 }
 
 .remote-btn.dpad-btn:disabled {
@@ -1077,9 +1102,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-btn.mute-btn {
-	background: linear-gradient(145deg, #444, #222);
-	border: 2px solid #111;
-	color: #fff;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	border: 2px solid #0a0a0a;
+	color: #666;
 	font-size: 10px;
 	padding: 10px 20px;
 	cursor: pointer;
@@ -1090,8 +1115,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-btn.mute-btn.active {
-	background: linear-gradient(145deg, #ff4444, #aa0000);
-	color: #fff;
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+	color: #888;
 }
 
 .remote-btn.mute-btn:hover:not(:disabled) {
@@ -1138,26 +1163,26 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .remote-btn.vcr-btn.record {
-	background: linear-gradient(145deg, #ff4444, #aa0000);
-	color: #fff;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	color: #666;
 }
 
 .remote-btn.vcr-btn.play {
-	background: linear-gradient(145deg, #44ff44, #00aa00);
-	color: #fff;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	color: #666;
 }
 
 .remote-btn.vcr-btn.stop {
-	background: linear-gradient(145deg, #555, #333);
-	color: #fff;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	color: #666;
 }
 
 .remote-btn.vcr-btn.small {
 	width: 35px;
 	height: 28px;
 	font-size: 10px;
-	background: linear-gradient(145deg, #444, #222);
-	color: #888;
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	color: #666;
 }
 
 .remote-btn.vcr-btn:hover:not(:disabled) {
@@ -1194,18 +1219,19 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .volume-fill {
 	height: 100%;
-	background: linear-gradient(90deg, #4a9eff, #00ff88);
+	background: linear-gradient(90deg, #666, #555);
 	border-radius: 4px;
 	transition: width 0.2s ease;
-	box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+	box-shadow: 0 0 5px rgba(102, 102, 102, 0.3);
 }
 
 .volume-percent {
 	font-size: 10px;
-	color: #4a9eff;
+	color: #666;
 	text-align: center;
 	margin-top: 5px;
-	text-shadow: 0 0 5px #4a9eff;
+	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
+	opacity: 0.6;
 }
 
 /* Keyboard Hints */
@@ -1221,8 +1247,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 .keyboard-hints .hint {
 	font-size: 7px;
-	color: #666;
+	color: #555;
 	text-align: center;
+	opacity: 0.5;
 }
 
 
@@ -2644,8 +2671,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	inset: 0;
 	background: repeating-linear-gradient(
 0deg,
-rgba(0, 0, 0, 0.12) 0px,
-rgba(0, 0, 0, 0.12) 1px,
+rgba(139, 115, 85, 0.1) 0px,
+rgba(139, 115, 85, 0.1) 1px,
 transparent 1px,
 transparent 2px
 );
@@ -2653,6 +2680,7 @@ transparent 2px
 	z-index: 9996;
 	opacity: 0.8;
 	animation: scanline-move 8s linear infinite;
+	mix-blend-mode: overlay;
 }
 
 /* Subtle CRT flicker on video content */

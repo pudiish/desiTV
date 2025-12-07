@@ -333,23 +333,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 
 			{/* Hide status and hints in fullscreen */}
 			{!isFullscreen && (
-				<>
-					<div className="tv-status-indicator">
-						{statusMessage || "WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY."}
-					</div>
-					{power && (
-						<div style={{
-							fontSize: '10px',
-							color: '#666',
-							marginTop: '10px',
-							textAlign: 'center',
-							opacity: showFullscreenHint ? 1 : 0.5,
-							transition: 'opacity 0.3s ease'
-						}}>
-							Double tap/click for fullscreen
-						</div>
-					)}
-				</>
+				<div className="tv-status-indicator">
+					{statusMessage || "WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY."}
+				</div>
 			)}
 			{/* Minimal exit hint in fullscreen - positioned at bottom */}
 			{isFullscreen && (
