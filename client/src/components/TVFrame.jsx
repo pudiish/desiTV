@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Player from './Player'
 import StaticEffect from './StaticEffect'
 import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -29,35 +30,10 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}
 
-	// Handle fullscreen change events
-	useEffect(() => {
-		const handleFullscreenChange = () => {
-			const isCurrentlyFullscreen = !!(
-				document.fullscreenElement ||
-				document.webkitFullscreenElement ||
-				document.mozFullScreenElement ||
-				document.msFullscreenElement
-			)
-			setIsFullscreen(isCurrentlyFullscreen)
-		}
-
-		document.addEventListener('fullscreenchange', handleFullscreenChange)
-		document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
-		document.addEventListener('mozfullscreenchange', handleFullscreenChange)
-		document.addEventListener('MSFullscreenChange', handleFullscreenChange)
-
-		return () => {
-			document.removeEventListener('fullscreenchange', handleFullscreenChange)
-			document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
-			document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
-			document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
-		}
-	}, [])
-
 	const toggleFullscreen = useCallback(() => {
-		if (!tvFrameRef.current) return
-
-		const element = tvFrameRef.current
+		// Detect mobile device
+		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+			(window.innerWidth <= 768 && 'ontouchstart' in window)
 
 		// Check if currently in fullscreen
 		const isCurrentlyFullscreen = !!(
@@ -80,21 +56,84 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					document.msExitFullscreen()
 				}
 			} else {
-				// Enter fullscreen
-				if (element.requestFullscreen) {
-					element.requestFullscreen()
-				} else if (element.webkitRequestFullscreen) {
-					element.webkitRequestFullscreen()
-				} else if (element.mozRequestFullScreen) {
-					element.mozRequestFullScreen()
-				} else if (element.msRequestFullscreen) {
-					element.msRequestFullscreen()
+				if (isMobile) {
+					// Mobile: Make iframe container fullscreen (simpler, no scale)
+					const iframeContainer = document.getElementById('desitv-player-iframe')
+					if (iframeContainer) {
+						if (iframeContainer.requestFullscreen) {
+							iframeContainer.requestFullscreen()
+						} else if (iframeContainer.webkitRequestFullscreen) {
+							iframeContainer.webkitRequestFullscreen()
+						} else if (iframeContainer.mozRequestFullScreen) {
+							iframeContainer.mozRequestFullScreen()
+						} else if (iframeContainer.msRequestFullscreen) {
+							iframeContainer.msRequestFullscreen()
+						}
+					}
+				} else {
+					// Desktop: Make CONTAINER fullscreen (allows overlays, with scale)
+					const element = tvFrameRef.current
+					if (element) {
+						if (element.requestFullscreen) {
+							element.requestFullscreen()
+						} else if (element.webkitRequestFullscreen) {
+							element.webkitRequestFullscreen()
+						} else if (element.mozRequestFullScreen) {
+							element.mozRequestFullScreen()
+						} else if (element.msRequestFullscreen) {
+							element.msRequestFullscreen()
+						}
+					}
 				}
 			}
 		} catch (error) {
 			console.error('Error toggling fullscreen:', error)
 		}
 	}, [])
+
+	// Handle fullscreen change events
+	useEffect(() => {
+		const handleFullscreenChange = () => {
+			// Check if container OR iframe container is fullscreen
+			const isCurrentlyFullscreen = !!(
+				document.fullscreenElement ||
+				document.webkitFullscreenElement ||
+				document.mozFullScreenElement ||
+				document.msFullscreenElement
+			)
+			setIsFullscreen(isCurrentlyFullscreen)
+			if (onFullscreenChange) {
+				onFullscreenChange(isCurrentlyFullscreen)
+			}
+		}
+
+		document.addEventListener('fullscreenchange', handleFullscreenChange)
+		document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+		document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+		document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+		// Allow double-click anywhere (document) to exit fullscreen when active
+		const handleDocDblClick = () => {
+			const isCurrentlyFullscreen = !!(
+				document.fullscreenElement ||
+				document.webkitFullscreenElement ||
+				document.mozFullScreenElement ||
+				document.msFullscreenElement
+			)
+			if (isCurrentlyFullscreen) {
+				toggleFullscreen()
+			}
+		}
+		document.addEventListener('dblclick', handleDocDblClick)
+
+		return () => {
+			document.removeEventListener('fullscreenchange', handleFullscreenChange)
+			document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+			document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+			document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+			document.removeEventListener('dblclick', handleDocDblClick)
+		}
+	}, [toggleFullscreen, onFullscreenChange])
 
 	// Handle double-tap for mobile fullscreen toggle
 	const handleTouchEnd = useCallback((e) => {
@@ -125,17 +164,17 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [toggleFullscreen])
 
-	return (
+		return (
 		<div 
-			className={`tv-frame-container ${isFullscreen ? 'is-fullscreen' : ''}`}
+			className="tv-frame-container"
 			ref={tvFrameRef} 
 			onDoubleClick={toggleFullscreen}
 			onTouchEnd={handleTouchEnd}
 			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
 			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
-			<div className={`tv-frame ${isFullscreen ? 'fullscreen-mode' : ''}`}>
-				<div className={`tv-screen ${isFullscreen ? 'fullscreen-mode' : ''}`} onClick={handleScreenClick}>
+			<div className="tv-frame">
+				<div className="tv-screen" onClick={handleScreenClick}>
 					{!power ? (
 						<div className="tv-off-screen">
 							<div className="scanlines" />
@@ -144,7 +183,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							</div>
 						</div>
 					) : (
-						<div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+						<div style={{ 
+							position: 'relative', 
+							width: '100%', 
+							height: '100%', 
+							display: 'flex', 
+							alignItems: 'center', 
+							justifyContent: 'center' 
+						}}>
 							{activeChannel ? (
 								<Player 
 									channel={activeChannel} 
@@ -165,7 +211,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									</div>
 								</div>
 							)}
-							<div className="scanlines" />
+							{/* Hide scanlines in fullscreen */}
+							{!isFullscreen && <div className="scanlines" />}
 							{/* Static effect inside TV screen */}
 							<StaticEffect active={staticActive} />
 							{/* Buffering overlay positioned absolutely over the player */}
@@ -175,25 +222,49 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 								videoPath="/sounds/alb_tvn0411_1080p.mp4"
 								errorMessage={bufferErrorMessage}
 							/>
-							{/* What's Next Preview on hover */}
-							<WhatsNextPreview 
-								channel={activeChannel}
-								isVisible={showPreview && !isBuffering && !staticActive}
-								playbackInfo={playbackInfo}
-							/>
-							{/* CRT Info Overlay - Channel and Volume Display */}
-							<CRTInfoOverlay 
-								activeChannelIndex={activeChannelIndex}
-								channels={channels}
-								volume={volume}
-								isMuted={volume === 0}
-							/>
+							{/* What's Next Preview on hover - hide in fullscreen */}
+							{!isFullscreen && (
+								<WhatsNextPreview 
+									channel={activeChannel}
+									isVisible={showPreview && !isBuffering && !staticActive}
+									playbackInfo={playbackInfo}
+								/>
+							)}
+							{/* CRT Info Overlay - Channel and Volume Display - hide in fullscreen */}
+							{!isFullscreen && (
+								<CRTInfoOverlay 
+									activeChannelIndex={activeChannelIndex}
+									channels={channels}
+									volume={volume}
+									isMuted={volume === 0}
+								/>
+							)}
 						</div>
 					)}
 					{/* Hide glow in fullscreen */}
 					{!isFullscreen && <div className="tv-screen-glow" />}
 				</div>
 			</div>
+			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}
+			{isFullscreen && (
+				<div
+					style={{
+						position: 'fixed',
+						top: 0,
+						right: 0,
+						width: '80px',
+						height: '100vh',
+						zIndex: 10002,
+						pointerEvents: 'auto',
+						background: 'transparent',
+					}}
+					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onTouchStart={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onTouchMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+				/>
+			)}
+
 			{/* Hide status and hints in fullscreen */}
 			{!isFullscreen && (
 				<>
@@ -234,6 +305,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				>
 					Double tap to exit
 				</div>
+			)}
+			
+			{/* Remote overlay portal - renders inside fullscreen container */}
+			{isFullscreen && tvFrameRef.current && remoteOverlayComponent && createPortal(
+				<div className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}>
+					{remoteOverlayComponent}
+				</div>,
+				tvFrameRef.current
 			)}
 		</div>
 	)

@@ -26,16 +26,31 @@ export default function Home() {
 	const [playbackInfo, setPlaybackInfo] = useState(null) // Live playback snapshot from Player
 	const [crtVolume, setCrtVolume] = useState(null) // CRT overlay volume trigger
 	const [crtIsMuted, setCrtIsMuted] = useState(false) // CRT overlay muted state
+	const [isFullscreen, setIsFullscreen] = useState(false) // Track fullscreen for overlay remote
+	const [remoteOverlayVisible, setRemoteOverlayVisible] = useState(false) // Slide-up remote visibility
 	const lastPlaybackInfoRef = useRef(null) // Throttle updates to UI
 	// NOTE: DO NOT use uiLoadTime - broadcast epoch is the single source of truth
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
+	const remoteHideTimeoutRef = useRef(null) // Auto-hide timer for overlay remote
 
 	// Store tap handler from Player (passed through TVFrame)
 	const handleTapHandlerReady = (handler) => {
 		tapTriggerRef.current = handler
 	}
+
+	// Callback to show remote overlay (triggered from TVFrame sensor)
+	const handleRemoteEdgeHover = useCallback(() => {
+		if (!isFullscreen) return
+		setRemoteOverlayVisible(true)
+		if (remoteHideTimeoutRef.current) {
+			clearTimeout(remoteHideTimeoutRef.current)
+		}
+		remoteHideTimeoutRef.current = setTimeout(() => {
+			setRemoteOverlayVisible(false)
+		}, 2500)
+	}, [isFullscreen])
 
 	// Trigger tap for remote buttons and screen clicks
 	const handleTapTrigger = () => {
@@ -422,6 +437,27 @@ export default function Home() {
 			bufferErrorMessage={bufferErrorMessage}
 			playbackInfo={playbackInfo}
 			onTapHandlerReady={handleTapHandlerReady}
+			onFullscreenChange={setIsFullscreen}
+			onRemoteEdgeHover={handleRemoteEdgeHover}
+			remoteOverlayVisible={remoteOverlayVisible}
+			remoteOverlayComponent={isFullscreen ? (
+				<TVRemote
+					power={power}
+					onPowerToggle={handlePowerToggle}
+					onChannelUp={handleChannelUp}
+					onChannelDown={handleChannelDown}
+					onChannelDirect={handleChannelDirect}
+					volume={volume}
+					onVolumeUp={handleVolumeUp}
+					onVolumeDown={handleVolumeDown}
+					onMute={handleMute}
+					onMenuToggle={handleMenuToggle}
+					activeChannelIndex={activeChannelIndex}
+					totalChannels={filteredChannels.length}
+					menuOpen={menuOpen}
+					onTapTrigger={handleTapTrigger}
+				/>
+			) : null}
 				onBufferingChange={(isBuffering, errorMsg) => {
 						setIsBuffering(isBuffering)
 						setBufferErrorMessage(errorMsg || '')
@@ -447,35 +483,39 @@ export default function Home() {
 					lastPlaybackInfoRef.current = info
 					setPlaybackInfo(info)
 				}}
+				onFullscreenChange={setIsFullscreen}
+				onRemoteEdgeHover={handleRemoteEdgeHover}
 				/>
 
-				{/* Right Side - Remote Control and Categories */}
-				<div className="right-panel">
-					<TVRemote
-						power={power}
-						onPowerToggle={handlePowerToggle}
-						onChannelUp={handleChannelUp}
-						onChannelDown={handleChannelDown}
-						onChannelDirect={handleChannelDirect}
-						volume={volume}
-						onVolumeUp={handleVolumeUp}
-						onVolumeDown={handleVolumeDown}
-						onMute={handleMute}
-						onMenuToggle={handleMenuToggle}
-						activeChannelIndex={activeChannelIndex}
-						totalChannels={filteredChannels.length}
-						menuOpen={menuOpen}
-						onTapTrigger={handleTapTrigger}
-					/>
+				{/* Right Side - Remote Control and Categories (hidden in fullscreen) */}
+				{!isFullscreen && (
+					<div className="right-panel">
+						<TVRemote
+							power={power}
+							onPowerToggle={handlePowerToggle}
+							onChannelUp={handleChannelUp}
+							onChannelDown={handleChannelDown}
+							onChannelDirect={handleChannelDirect}
+							volume={volume}
+							onVolumeUp={handleVolumeUp}
+							onVolumeDown={handleVolumeDown}
+							onMute={handleMute}
+							onMenuToggle={handleMenuToggle}
+							activeChannelIndex={activeChannelIndex}
+							totalChannels={filteredChannels.length}
+							menuOpen={menuOpen}
+							onTapTrigger={handleTapTrigger}
+						/>
 
-					<CategoryList
-						channels={channels}
-						selectedChannels={selectedChannels}
-						onToggleChannel={handleToggleChannel}
-						onSelectAll={handleSelectAll}
-						onSelectNone={handleSelectNone}
-					/>
-				</div>
+						<CategoryList
+							channels={channels}
+							selectedChannels={selectedChannels}
+							onToggleChannel={handleToggleChannel}
+							onSelectAll={handleSelectAll}
+							onSelectNone={handleSelectNone}
+						/>
+					</div>
+				)}
 			</div>
 
 		{/* TV Menu Overlay */}
@@ -496,6 +536,7 @@ export default function Home() {
 			volume={crtVolume}
 			isMuted={crtIsMuted}
 		/>
+
 
 		{/* Footer / Status Text */}
 			<div className="footer-status">
