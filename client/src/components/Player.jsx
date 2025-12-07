@@ -3,6 +3,7 @@ import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
 import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
+import youtubePeakTimestamp from '../utils/YouTubePeakTimestamp'
 
 /**
  * Enhanced Player Component with:
@@ -102,7 +103,48 @@ onBufferingChange = null,
 
 	// Get current video ID and start time
 	const videoId = current?.youtubeId
-	const startSeconds = Math.floor(offset)
+	
+	// State for YouTube's peak timestamp (most replayed segment)
+	const [youtubePeakTime, setYoutubePeakTime] = useState(null)
+	const [isLoadingPeak, setIsLoadingPeak] = useState(false)
+	
+	// Fetch YouTube peak timestamp when video changes
+	useEffect(() => {
+		if (!videoId) {
+			setYoutubePeakTime(null)
+			return
+		}
+
+		let cancelled = false
+		setIsLoadingPeak(true)
+
+		// Fetch peak timestamp from YouTube platform
+		youtubePeakTimestamp.getPeakTimestamp(videoId)
+			.then(peakTime => {
+				if (!cancelled) {
+					setYoutubePeakTime(peakTime)
+					setIsLoadingPeak(false)
+					if (peakTime) {
+						console.log(`[Player] YouTube peak timestamp: ${peakTime}s for video ${videoId}`)
+					}
+				}
+			})
+			.catch(err => {
+				if (!cancelled) {
+					console.warn('[Player] Error fetching YouTube peak timestamp:', err)
+					setYoutubePeakTime(null)
+					setIsLoadingPeak(false)
+				}
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [videoId])
+
+	// Use YouTube's peak timestamp if available, otherwise use calculated offset
+	const usePeakTimestamp = youtubePeakTime !== null && youtubePeakTime > 0
+	const startSeconds = usePeakTimestamp ? Math.floor(youtubePeakTime) : Math.floor(offset)
 
 	// Use ref to avoid stale closure in interval
 	const switchToNextVideoRef = useRef(null)
@@ -405,7 +447,13 @@ onBufferingChange = null,
 		const loadVideoToPlayer = () => {
 			if (!ytPlayerRef.current || !videoId) return
 			
-			console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
+			// Log if using peak timestamp
+			if (usePeakTimestamp && youtubePeakTime) {
+				console.log('[Player] Loading video with YouTube peak timestamp:', videoId, 'at', startSeconds, 's (most replayed)')
+			} else {
+				console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
+			}
+			
 			e7Ref.current = true // Mark as loading initiated
 			
 			try {
@@ -457,7 +505,7 @@ onBufferingChange = null,
 			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [videoId, channel?._id, startSeconds, userInteracted])
+	}, [videoId, channel?._id, startSeconds, userInteracted, youtubePeakTime])
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {
@@ -579,7 +627,7 @@ onBufferingChange = null,
 
 	// ===== CALLBACKS =====
 
-	const emitPlaybackProgress = useCallback(() => {
+		const emitPlaybackProgress = useCallback(() => {
 		if (!onPlaybackProgress || !playerRef.current) return
 
 		const player = playerRef.current
