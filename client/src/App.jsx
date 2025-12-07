@@ -91,7 +91,37 @@ function TVView() {
 }
 
 /**
- * App Routes - TV routes are independent, Admin routes are separate
+ * Admin Routes Wrapper - Single AuthProvider for all admin routes
+ * This ensures authentication state is shared across all admin routes
+ */
+function AdminRoutesWrapper() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="login" element={<AdminLogin />} />
+        <Route
+          path=""
+          element={
+            <ProtectedRoute>
+              <AdminView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminView />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </AuthProvider>
+  );
+}
+
+/**
+ * App Routes - TV routes are independent, Admin routes share single AuthProvider
  */
 function AppRoutes() {
   return (
@@ -109,35 +139,8 @@ function AppRoutes() {
         {/* YouTube Autoplay Test - Reference Script Pattern */}
         <Route path="/autoplay-test" element={<YouTubeAutoplayTest />} />
         
-        {/* Admin Routes - Separate module with auth */}
-        <Route
-          path="/admin/login"
-          element={
-            <AuthProvider>
-              <AdminLogin />
-            </AuthProvider>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <AuthProvider>
-              <ProtectedRoute>
-                <AdminView />
-              </ProtectedRoute>
-            </AuthProvider>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <AuthProvider>
-              <ProtectedRoute>
-                <AdminView />
-              </ProtectedRoute>
-            </AuthProvider>
-          }
-        />
+        {/* Admin Routes - Single AuthProvider for all admin routes */}
+        <Route path="/admin/*" element={<AdminRoutesWrapper />} />
         
         {/* Fallback to TV */}
         <Route path="*" element={<Navigate to="/tv" replace />} />

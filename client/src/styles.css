@@ -101,7 +101,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* ===== FULLSCREEN STYLES - Simple, just iframe fills screen ===== */
 
-/* Fullscreen container - make it bigger (30% larger than current) */
+/* Fullscreen container - Desktop: make it bigger, Mobile: normal size */
 .tv-frame-container:fullscreen,
 .tv-frame-container:-webkit-full-screen,
 .tv-frame-container:-moz-full-screen,
@@ -110,9 +110,32 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	padding: 0 !important;
 	margin: 0 !important;
 	overflow: hidden !important;
-	/* Scale up the entire container - 30% larger (1.2 * 1.3 = 1.56) */
+	/* Desktop: Scale up the entire container - 30% larger (1.2 * 1.3 = 1.56) */
+	/* Mobile: No scale, just fill screen */
 	transform: scale(1.56) !important;
 	transform-origin: center center !important;
+}
+
+/* Mobile fullscreen - no scale, just fill */
+@media (max-width: 768px) {
+	.tv-frame-container:fullscreen,
+	.tv-frame-container:-webkit-full-screen {
+		transform: scale(1) !important;
+	}
+	
+	/* If iframe container goes fullscreen on mobile */
+	#desitv-player-iframe:fullscreen,
+	#desitv-player-iframe:-webkit-full-screen {
+		width: 100vw !important;
+		height: 100vh !important;
+		background: #000 !important;
+	}
+	
+	#desitv-player-iframe:fullscreen iframe,
+	#desitv-player-iframe:-webkit-full-screen iframe {
+		width: 100vw !important;
+		height: 100vh !important;
+	}
 }
 
 /* Hide TV frame completely in fullscreen */

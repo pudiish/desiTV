@@ -31,10 +31,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 	}
 
 	const toggleFullscreen = useCallback(() => {
-		// Make the CONTAINER fullscreen, not the iframe
-		// This allows our overlays to work on top
-		const element = tvFrameRef.current
-		if (!element) return
+		// Detect mobile device
+		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+			(window.innerWidth <= 768 && 'ontouchstart' in window)
 
 		// Check if currently in fullscreen
 		const isCurrentlyFullscreen = !!(
@@ -57,16 +56,34 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					document.msExitFullscreen()
 				}
 			} else {
-				// Enter fullscreen on CONTAINER (not iframe)
-				// This way we can still show overlays
-				if (element.requestFullscreen) {
-					element.requestFullscreen()
-				} else if (element.webkitRequestFullscreen) {
-					element.webkitRequestFullscreen()
-				} else if (element.mozRequestFullScreen) {
-					element.mozRequestFullScreen()
-				} else if (element.msRequestFullscreen) {
-					element.msRequestFullscreen()
+				if (isMobile) {
+					// Mobile: Make iframe container fullscreen (simpler, no scale)
+					const iframeContainer = document.getElementById('desitv-player-iframe')
+					if (iframeContainer) {
+						if (iframeContainer.requestFullscreen) {
+							iframeContainer.requestFullscreen()
+						} else if (iframeContainer.webkitRequestFullscreen) {
+							iframeContainer.webkitRequestFullscreen()
+						} else if (iframeContainer.mozRequestFullScreen) {
+							iframeContainer.mozRequestFullScreen()
+						} else if (iframeContainer.msRequestFullscreen) {
+							iframeContainer.msRequestFullscreen()
+						}
+					}
+				} else {
+					// Desktop: Make CONTAINER fullscreen (allows overlays, with scale)
+					const element = tvFrameRef.current
+					if (element) {
+						if (element.requestFullscreen) {
+							element.requestFullscreen()
+						} else if (element.webkitRequestFullscreen) {
+							element.webkitRequestFullscreen()
+						} else if (element.mozRequestFullScreen) {
+							element.mozRequestFullScreen()
+						} else if (element.msRequestFullscreen) {
+							element.msRequestFullscreen()
+						}
+					}
 				}
 			}
 		} catch (error) {
@@ -77,6 +94,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 	// Handle fullscreen change events
 	useEffect(() => {
 		const handleFullscreenChange = () => {
+			// Check if container OR iframe container is fullscreen
 			const isCurrentlyFullscreen = !!(
 				document.fullscreenElement ||
 				document.webkitFullscreenElement ||
