@@ -5,7 +5,7 @@ import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import youtubePeakTimestamp from '../utils/YouTubePeakTimestamp'
 import mediaSessionManager from '../utils/MediaSessionManager'
-import playbackWatchdog from '../utils/PlaybackWatchdog'
+import fastRecoveryManager from '../utils/FastRecoveryManager'
 
 /**
  * Enhanced Player Component with:
@@ -775,94 +775,54 @@ onBufferingChange = null,
 		}
 	}, [current, power])
 
-	// Effect: Periodic health check and position state update - RESTRUCTURED for robustness
+	// Effect: Update MediaSession position state periodically (simplified - no health check)
+	// Fast recovery manager handles all recovery, this just updates position
 	useEffect(() => {
 		if (!playerRef.current || !current || !power) return
 
-		let consecutiveFailures = 0
-		const maxFailures = 3
-
-		const healthCheck = () => {
-			// Only check if power is on
+		const updatePositionState = () => {
+			// Only update if power is on and playing
 			if (!powerRef.current) return
 			
 			try {
 				const state = playerRef.current.getPlayerState?.()
-				
-				// Health check: if we should be playing but aren't, try to recover
-				if (shouldPlayRef.current && powerRef.current && !isTransitioningRef.current) {
-					if (state === STATE_PAUSED || state === STATE_UNSTARTED) {
-						consecutiveFailures++
-						console.warn(`[Player] Health check: Should be playing but state is ${state} (failure ${consecutiveFailures}/${maxFailures})`)
-						
-						if (consecutiveFailures >= maxFailures) {
-							console.error('[Player] Multiple health check failures - attempting recovery')
-							try {
-								playerRef.current.playVideo()
-								consecutiveFailures = 0
-							} catch (err) {
-								console.error('[Player] Health check recovery failed:', err)
-								// Last resort: reload video
-								if (current?.youtubeId) {
-									try {
-										const currentTime = typeof playerRef.current.getCurrentTime === 'function'
-											? (typeof playerRef.current.getCurrentTime() === 'number' ? playerRef.current.getCurrentTime() : 0)
-											: 0
-										playerRef.current.loadVideoById({
-											videoId: current.youtubeId,
-											startSeconds: Math.max(0, currentTime)
-										})
-										setTimeout(() => {
-											if (playerRef.current && powerRef.current) {
-												playerRef.current.playVideo()
-											}
-										}, 500)
-									} catch (reloadErr) {
-										console.error('[Player] Video reload failed:', reloadErr)
-									}
-								}
-							}
-						}
-					} else if (state === STATE_PLAYING) {
-						consecutiveFailures = 0 // Reset on successful playback
-						
-						// Update MediaSession position state when playing
-						const duration = playerRef.current.getDuration?.() || 0
-						const currentTime = playerRef.current.getCurrentTime?.() || 0
-						
-						if (typeof duration === 'number' && typeof currentTime === 'number') {
-							mediaSessionManager.setPositionState({
-								duration: duration || 0,
-								playbackRate: 1.0,
-								position: currentTime || 0,
-							})
-						} else {
-							// Handle promises
-							Promise.resolve(duration).then((dur) => {
-								Promise.resolve(currentTime).then((time) => {
-									mediaSessionManager.setPositionState({
-										duration: dur || 0,
-										playbackRate: 1.0,
-										position: time || 0,
-									})
-								}).catch(() => {})
+				if (state === STATE_PLAYING) {
+					// Update MediaSession position state when playing
+					const duration = playerRef.current.getDuration?.() || 0
+					const currentTime = playerRef.current.getCurrentTime?.() || 0
+					
+					if (typeof duration === 'number' && typeof currentTime === 'number') {
+						mediaSessionManager.setPositionState({
+							duration: duration || 0,
+							playbackRate: 1.0,
+							position: currentTime || 0,
+						})
+					} else {
+						// Handle promises
+						Promise.resolve(duration).then((dur) => {
+							Promise.resolve(currentTime).then((time) => {
+								mediaSessionManager.setPositionState({
+									duration: dur || 0,
+									playbackRate: 1.0,
+									position: time || 0,
+								})
 							}).catch(() => {})
-						}
+						}).catch(() => {})
 					}
 				}
 			} catch (err) {
-				// Silently fail - health checks are non-critical
+				// Silently fail - position updates are non-critical
 			}
 		}
 
-		const interval = setInterval(healthCheck, 5000) // Check every 5 seconds
+		const interval = setInterval(updatePositionState, 10000) // Update every 10 seconds
 		return () => clearInterval(interval)
 	}, [current?.youtubeId, power])
 
 	// Effect: Cleanup
 	useEffect(() => {
 		return () => {
-			playbackWatchdog.stop()
+			fastRecoveryManager.stop()
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current)
 				progressIntervalRef.current = null
@@ -909,41 +869,29 @@ onBufferingChange = null,
 		shouldPlayRef.current = power && userInteracted
 	}, [power, userInteracted])
 
-	// Effect: Start/stop playback watchdog based on power state - RESTRUCTURED
+	// Effect: Start/stop fast recovery manager based on power state
 	useEffect(() => {
 		if (power && playerRef.current && hasInitializedRef.current) {
-			// Start watchdog when power is on
-			playbackWatchdog.start(playerRef, {
-				shouldAutoResume: () => {
+			// Start fast recovery when power is on
+			fastRecoveryManager.start(playerRef, {
+				shouldPlay: () => {
 					// Only auto-resume if power is on, user has interacted, and not transitioning
 					return powerRef.current && shouldPlayRef.current && !isTransitioningRef.current
 				},
 				onRecovery: (type) => {
-					console.log(`[Player] Playback recovered: ${type}`)
+					console.log(`[Player] Fast recovery successful: ${type}`)
 					mediaSessionManager.setPlaybackState('playing')
 					setPlaybackHealth('healthy')
 					lastPlayTimeRef.current = Date.now()
 				},
-				onMaxRecoveryAttempts: () => {
-					console.error('[Player] Max recovery attempts reached - switching video')
-					// Try to switch to next video as last resort
-					if (switchToNextVideoRef.current && !isTransitioningRef.current) {
-						setTimeout(() => {
-							if (switchToNextVideoRef.current) {
-								switchToNextVideoRef.current()
-							}
-						}, 500)
-					}
-				},
-				checkInterval: 2000, // Check every 2 seconds
 			})
 		} else {
-			// Stop watchdog when power is off
-			playbackWatchdog.stop()
+			// Stop fast recovery when power is off
+			fastRecoveryManager.stop()
 		}
 		
 		return () => {
-			playbackWatchdog.stop()
+			fastRecoveryManager.stop()
 		}
 	}, [power, hasInitializedRef.current])
 
@@ -965,11 +913,11 @@ onBufferingChange = null,
 							console.log('[Player] Power ON - resuming playback, state:', state)
 							playerRef.current.playVideo()
 							mediaSessionManager.setPlaybackState('playing')
-							playbackWatchdog.reset()
+							fastRecoveryManager.reset()
 						} else if (state === STATE_PLAYING) {
 							// Already playing, just update state
 							mediaSessionManager.setPlaybackState('playing')
-							playbackWatchdog.reset()
+							fastRecoveryManager.reset()
 						}
 					} catch (err) {
 						console.error('[Player] Error resuming on power on:', err)
@@ -1020,14 +968,14 @@ onBufferingChange = null,
 				
 				// If paused, unstarted, or cued, and we should be playing, start playback
 				if ((state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) && shouldPlayRef.current) {
-					console.log('[Player] Channel/video changed - resuming playback, state:', state)
-					playerRef.current.playVideo()
-					mediaSessionManager.setPlaybackState('playing')
-					playbackWatchdog.reset()
-				} else if (state === STATE_PLAYING) {
-					// Already playing, just ensure state is correct
-					mediaSessionManager.setPlaybackState('playing')
-					playbackWatchdog.reset()
+							console.log('[Player] Channel/video changed - resuming playback, state:', state)
+							playerRef.current.playVideo()
+							mediaSessionManager.setPlaybackState('playing')
+							fastRecoveryManager.reset()
+						} else if (state === STATE_PLAYING) {
+							// Already playing, just ensure state is correct
+							mediaSessionManager.setPlaybackState('playing')
+							fastRecoveryManager.reset()
 				} else if (state === STATE_BUFFERING) {
 					// Buffering - wait a bit and check again
 					setTimeout(() => {
@@ -1199,7 +1147,7 @@ onBufferingChange = null,
 									playerRef.current.playVideo()
 								}
 								shouldPlayRef.current = true
-								playbackWatchdog.reset()
+								fastRecoveryManager.reset()
 							} else {
 								// Start muted autoplay
 								if (state !== STATE_PLAYING) {
@@ -1347,22 +1295,8 @@ onBufferingChange = null,
 			switch (state) {
 				case STATE_UNSTARTED:
 					console.log('[Player] Video unstarted')
-					// If power is on and user has interacted, try to play
-					if (powerRef.current && shouldPlayRef.current && !isTransitioningRef.current && player) {
-						setTimeout(() => {
-							if (player && powerRef.current && shouldPlayRef.current) {
-								try {
-									const currentState = player.getPlayerState?.()
-									if (currentState === STATE_UNSTARTED || currentState === STATE_PAUSED) {
-										console.log('[Player] Auto-playing from unstarted state')
-										player.playVideo()
-									}
-								} catch (err) {
-									console.error('[Player] Error playing from unstarted:', err)
-								}
-							}
-						}, 200)
-					}
+					// Fast recovery manager will handle this automatically
+					// No need for manual recovery here to avoid conflicts
 					break
 					
 				case STATE_ENDED:
@@ -1383,8 +1317,8 @@ onBufferingChange = null,
 				// Update MediaSession
 				mediaSessionManager.setPlaybackState('playing')
 				
-				// Reset watchdog on successful playback
-				playbackWatchdog.reset()
+				// Reset fast recovery on successful playback
+				fastRecoveryManager.reset()
 				
 				// RetroTV pattern: Seek to correct position if needed
 				if (clipSeekTimeRef.current > 0 && player) {
@@ -1435,13 +1369,12 @@ onBufferingChange = null,
 			case STATE_PAUSED:
 				console.log('[Player] Video paused')
 				// Only update MediaSession if power is off or user explicitly paused
-				// If power is on and we should be playing, watchdog will handle recovery
+				// If power is on and we should be playing, fast recovery will handle it
 				if (!powerRef.current || !shouldPlayRef.current) {
 					mediaSessionManager.setPlaybackState('paused')
 				} else {
-					// Power is on but paused - this might be a glitch, let watchdog handle it
-					// Don't auto-resume here - let the watchdog do it to avoid conflicts
-					console.log('[Player] Paused but should be playing - watchdog will recover')
+					// Power is on but paused - fast recovery will detect and fix this quickly
+					// No manual intervention needed to avoid conflicts
 				}
 				break
 				
@@ -1496,7 +1429,8 @@ onBufferingChange = null,
 					
 				case STATE_VIDEO_CUED:
 					// RetroTV: Video cued - prepare for playback
-					// If power is on, start playing
+					// Fast recovery manager will handle playback automatically
+					// Manual play attempt here to start immediately
 					if (powerRef.current && shouldPlayRef.current && !isTransitioningRef.current && player) {
 						setTimeout(() => {
 							if (player && powerRef.current && shouldPlayRef.current) {
@@ -1508,9 +1442,10 @@ onBufferingChange = null,
 									}
 								} catch (err) {
 									console.error('[Player] Error playing from cued:', err)
+									// Fast recovery will handle retry
 								}
 							}
-						}, 300)
+						}, 100) // Faster initial attempt
 					}
 					break
 					
@@ -1580,7 +1515,7 @@ onBufferingChange = null,
 							playerRef.current.setVolume(volume * 100)
 							playerRef.current.playVideo()
 							shouldPlayRef.current = true
-							playbackWatchdog.reset()
+							fastRecoveryManager.reset()
 						} catch (err) {
 							console.error('[Player] Error playing:', err)
 							// Retry once
