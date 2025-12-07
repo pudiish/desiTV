@@ -135,7 +135,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
-	// Handle orientation change - auto fullscreen on landscape
+	// Handle orientation change - auto fullscreen on landscape (mobile only, iframe fullscreen)
 	useEffect(() => {
 		// Detect mobile device
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -155,11 +155,38 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				)
 
 				if (isLandscape && !isCurrentlyFullscreen && power) {
-					// Rotated to landscape - enter fullscreen
-					toggleFullscreen()
+					// Rotated to landscape - enter iframe fullscreen (mobile only)
+					const iframeContainer = document.getElementById('desitv-player-iframe')
+					if (iframeContainer) {
+						try {
+							if (iframeContainer.requestFullscreen) {
+								iframeContainer.requestFullscreen()
+							} else if (iframeContainer.webkitRequestFullscreen) {
+								iframeContainer.webkitRequestFullscreen()
+							} else if (iframeContainer.mozRequestFullScreen) {
+								iframeContainer.mozRequestFullScreen()
+							} else if (iframeContainer.msRequestFullscreen) {
+								iframeContainer.msRequestFullscreen()
+							}
+						} catch (error) {
+							console.error('Error entering iframe fullscreen on orientation change:', error)
+						}
+					}
 				} else if (!isLandscape && isCurrentlyFullscreen) {
 					// Rotated to portrait - exit fullscreen
-					toggleFullscreen()
+					try {
+						if (document.exitFullscreen) {
+							document.exitFullscreen()
+						} else if (document.webkitExitFullscreen) {
+							document.webkitExitFullscreen()
+						} else if (document.mozCancelFullScreen) {
+							document.mozCancelFullScreen()
+						} else if (document.msExitFullscreen) {
+							document.msExitFullscreen()
+						}
+					} catch (error) {
+						console.error('Error exiting fullscreen on orientation change:', error)
+					}
 				}
 			}, 100) // Small delay to ensure dimensions are updated
 		}
@@ -172,7 +199,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			window.removeEventListener('orientationchange', handleOrientationChange)
 			window.removeEventListener('resize', handleOrientationChange)
 		}
-	}, [toggleFullscreen, power])
+	}, [power])
 
 	// Handle double-tap for mobile fullscreen toggle
 	const handleTouchEnd = useCallback((e) => {
