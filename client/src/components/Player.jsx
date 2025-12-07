@@ -4,6 +4,7 @@ import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
 import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
 import youtubePeakTimestamp from '../utils/YouTubePeakTimestamp'
+import mediaSessionManager from '../utils/MediaSessionManager'
 
 /**
  * Enhanced Player Component with:
@@ -583,6 +584,80 @@ onBufferingChange = null,
 		}
 	}, [isBuffering, handleBufferingTimeout])
 
+	// Effect: Update MediaSession metadata when video changes
+	useEffect(() => {
+		if (current && playerRef.current) {
+			mediaSessionManager.updateMetadata({
+				title: current.title || 'DesiTV',
+				artist: channel?.name || 'DesiTV Channel',
+				album: 'Live TV',
+				channelName: channel?.name,
+			})
+			
+			// Update position state
+			playerRef.current.getDuration().then((duration) => {
+				playerRef.current.getCurrentTime().then((currentTime) => {
+					mediaSessionManager.setPositionState({
+						duration: duration || 0,
+						playbackRate: 1.0,
+						position: currentTime || 0,
+					})
+				})
+			}).catch(() => {})
+		}
+	}, [current?.youtubeId, current?.title, channel?.name])
+
+	// Effect: Handle page visibility for background playback
+	useEffect(() => {
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'hidden') {
+				// Page is in background - maintain playback
+				console.log('[Player] Page went to background - maintaining playback')
+				// MediaSession will handle controls in lock screen/notification
+			} else {
+				// Page is visible again
+				console.log('[Player] Page is visible again')
+				// Update position state when returning to foreground
+				if (playerRef.current && current) {
+					playerRef.current.getDuration().then((duration) => {
+						playerRef.current.getCurrentTime().then((currentTime) => {
+							mediaSessionManager.setPositionState({
+								duration: duration || 0,
+								playbackRate: 1.0,
+								position: currentTime || 0,
+							})
+						})
+					}).catch(() => {})
+				}
+			}
+		}
+
+		document.addEventListener('visibilitychange', handleVisibilityChange)
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange)
+		}
+	}, [current])
+
+	// Effect: Update position state periodically during playback
+	useEffect(() => {
+		if (!playerRef.current || !current) return
+
+		const updatePositionState = () => {
+			playerRef.current.getDuration().then((duration) => {
+				playerRef.current.getCurrentTime().then((currentTime) => {
+					mediaSessionManager.setPositionState({
+						duration: duration || 0,
+						playbackRate: 1.0,
+						position: currentTime || 0,
+					})
+				})
+			}).catch(() => {})
+		}
+
+		const interval = setInterval(updatePositionState, 5000) // Update every 5 seconds
+		return () => clearInterval(interval)
+	}, [current?.youtubeId])
+
 	// Effect: Cleanup
 	useEffect(() => {
 		return () => {
@@ -609,6 +684,7 @@ onBufferingChange = null,
 				clearTimeout(skipErrorTimeoutIdRef.current)
 			}
 			LocalBroadcastStateManager.stopAutoSave()
+			mediaSessionManager.clear()
 		}
 	}, [])
 
@@ -882,6 +958,9 @@ onBufferingChange = null,
 				setShowStaticOverlay(false) // Hide static video overlay
 				lastPlayTimeRef.current = Date.now()
 				
+				// Update MediaSession playback state for background playback
+				mediaSessionManager.setPlaybackState('playing')
+				
 				// RetroTV pattern: Seek to correct position if needed
 				if (clipSeekTimeRef.current > 0 && event.target) {
 					try {
@@ -927,6 +1006,8 @@ onBufferingChange = null,
 				// Don't auto-skip on pause - may be user interaction or loading issue
 				// RetroTV skips on pause but that's too aggressive for modern use
 				console.log('[Player] Video paused')
+				// Update MediaSession playback state
+				mediaSessionManager.setPlaybackState('paused')
 				break
 				
 			case STATE_BUFFERING:
@@ -1063,10 +1144,76 @@ onBufferingChange = null,
 			setTimeout(() => {
 				emitPlaybackProgress()
 			}, 200)
+			
+			// Initialize MediaSession for background playback
+			if (current) {
+				mediaSessionManager.init(
+					{
+						title: current.title || 'DesiTV',
+						artist: channel?.name || 'DesiTV Channel',
+						album: 'Live TV',
+						channelName: channel?.name,
+					},
+					{
+						play: () => {
+							if (playerRef.current) {
+								playerRef.current.playVideo()
+							}
+						},
+						pause: () => {
+							if (playerRef.current) {
+								playerRef.current.pauseVideo()
+							}
+						},
+						previoustrack: () => {
+							// Switch to previous video
+							if (items.length > 0) {
+								const prevIndex = currIndex === 0 ? items.length - 1 : currIndex - 1
+								if (channel?._id) {
+									try {
+										LocalBroadcastStateManager.jumpToVideo(
+											channel._id,
+											prevIndex,
+											0,
+											items
+										)
+									} catch (err) {
+										console.error('[Player] Error jumping to previous video:', err)
+									}
+								}
+							}
+						},
+						nexttrack: () => {
+							// Switch to next video
+							if (switchToNextVideoRef.current) {
+								switchToNextVideoRef.current()
+							}
+						},
+						seekbackward: (details) => {
+							if (playerRef.current) {
+								const seekOffset = details.seekOffset || 10
+								playerRef.current.getCurrentTime().then((currentTime) => {
+									playerRef.current.seekTo(Math.max(0, currentTime - seekOffset), true)
+								})
+							}
+						},
+						seekforward: (details) => {
+							if (playerRef.current) {
+								const seekOffset = details.seekOffset || 10
+								playerRef.current.getCurrentTime().then((currentTime) => {
+									playerRef.current.getDuration().then((duration) => {
+										playerRef.current.seekTo(Math.min(duration, currentTime + seekOffset), true)
+									})
+								})
+							}
+						},
+					}
+				)
+			}
 		} catch(err) {
 			console.error('[Player] Error in onReady:', err)
 		}
-	}, [volume, offset, currIndex, channel, current?.youtubeId, emitPlaybackProgress, attemptAutoplay, userInteracted, videoId, startSeconds])
+	}, [volume, offset, currIndex, channel, current, items, switchToNextVideo, emitPlaybackProgress, attemptAutoplay, userInteracted, videoId, startSeconds])
 
 	// Keep ref updated
 	onReadyRef.current = onReady
