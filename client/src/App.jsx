@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Landing from './pages/Landing';
 import RetroTVTest from './pages/RetroTVTest';
+import YouTubeAutoplayTest from './pages/YouTubeAutoplayTest';
 import AdminDashboard from './admin/AdminDashboard';
 import AdminLogin from './pages/AdminLoginNew';
 import './App.css';
@@ -104,6 +105,9 @@ function AppRoutes() {
         
         {/* RetroTV Test - iPhone Compatible Version */}
         <Route path="/retro" element={<RetroTVTest />} />
+        
+        {/* YouTube Autoplay Test - Reference Script Pattern */}
+        <Route path="/autoplay-test" element={<YouTubeAutoplayTest />} />
         
         {/* Admin Routes - Separate module with auth */}
         <Route
