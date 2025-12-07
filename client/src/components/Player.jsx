@@ -584,28 +584,126 @@ onBufferingChange = null,
 		}
 	}, [isBuffering, handleBufferingTimeout])
 
-	// Effect: Update MediaSession metadata when video changes
+	// Effect: Re-initialize MediaSession when channel/video changes
 	useEffect(() => {
-		if (current && playerRef.current) {
-			mediaSessionManager.updateMetadata({
-				title: current.title || 'DesiTV',
-				artist: channel?.name || 'DesiTV Channel',
-				album: 'Live TV',
-				channelName: channel?.name,
-			})
+		if (current && playerRef.current && hasInitializedRef.current) {
+			// Re-initialize MediaSession with new video metadata
+			mediaSessionManager.init(
+				{
+					title: current.title || 'DesiTV',
+					artist: channel?.name || 'DesiTV Channel',
+					album: 'Live TV',
+					channelName: channel?.name,
+				},
+				{
+					play: () => {
+						if (playerRef.current) {
+							playerRef.current.playVideo()
+						}
+					},
+					pause: () => {
+						if (playerRef.current) {
+							playerRef.current.pauseVideo()
+						}
+					},
+					previoustrack: () => {
+						// Switch to previous video
+						if (items.length > 0) {
+							const prevIndex = currIndex === 0 ? items.length - 1 : currIndex - 1
+							if (channel?._id) {
+								try {
+									LocalBroadcastStateManager.jumpToVideo(
+										channel._id,
+										prevIndex,
+										0,
+										items
+									)
+								} catch (err) {
+									console.error('[Player] Error jumping to previous video:', err)
+								}
+							}
+						}
+					},
+					nexttrack: () => {
+						// Switch to next video
+						if (switchToNextVideoRef.current) {
+							switchToNextVideoRef.current()
+						}
+					},
+					seekbackward: (details) => {
+						if (playerRef.current) {
+							try {
+								const seekOffset = details.seekOffset || 10
+								const currentTime = playerRef.current.getCurrentTime?.() || 0
+								if (typeof currentTime === 'number') {
+									playerRef.current.seekTo(Math.max(0, currentTime - seekOffset), true)
+								} else if (currentTime && typeof currentTime.then === 'function') {
+									currentTime.then((time) => {
+										playerRef.current.seekTo(Math.max(0, time - seekOffset), true)
+									}).catch(() => {})
+								}
+							} catch (err) {
+								console.error('[Player] Error seeking backward:', err)
+							}
+						}
+					},
+					seekforward: (details) => {
+						if (playerRef.current) {
+							try {
+								const seekOffset = details.seekOffset || 10
+								const currentTime = playerRef.current.getCurrentTime?.() || 0
+								const duration = playerRef.current.getDuration?.() || 0
+								
+								if (typeof currentTime === 'number' && typeof duration === 'number') {
+									playerRef.current.seekTo(Math.min(duration, currentTime + seekOffset), true)
+								} else {
+									// Handle promises
+									Promise.resolve(currentTime).then((time) => {
+										Promise.resolve(duration).then((dur) => {
+											playerRef.current.seekTo(Math.min(dur, time + seekOffset), true)
+										}).catch(() => {})
+									}).catch(() => {})
+								}
+							} catch (err) {
+								console.error('[Player] Error seeking forward:', err)
+							}
+						}
+					},
+				}
+			)
 			
-			// Update position state
-			playerRef.current.getDuration().then((duration) => {
-				playerRef.current.getCurrentTime().then((currentTime) => {
-					mediaSessionManager.setPositionState({
-						duration: duration || 0,
-						playbackRate: 1.0,
-						position: currentTime || 0,
-					})
-				})
-			}).catch(() => {})
+			// Update position state safely
+			setTimeout(() => {
+				if (playerRef.current) {
+					try {
+						const duration = playerRef.current.getDuration?.() || 0
+						const currentTime = playerRef.current.getCurrentTime?.() || 0
+						
+						if (typeof duration === 'number' && typeof currentTime === 'number') {
+							mediaSessionManager.setPositionState({
+								duration: duration || 0,
+								playbackRate: 1.0,
+								position: currentTime || 0,
+							})
+						} else {
+							// Handle promises
+							Promise.resolve(duration).then((dur) => {
+								Promise.resolve(currentTime).then((time) => {
+									mediaSessionManager.setPositionState({
+										duration: dur || 0,
+										playbackRate: 1.0,
+										position: time || 0,
+									})
+								}).catch(() => {})
+							}).catch(() => {})
+						}
+					} catch (err) {
+						// Silently fail
+					}
+				}
+			}, 1000) // Delay to ensure video is loaded
 		}
-	}, [current?.youtubeId, current?.title, channel?.name])
+	}, [current?.youtubeId, current?.title, channel?.name, channel?._id, currIndex, items])
 
 	// Effect: Handle page visibility for background playback
 	useEffect(() => {
@@ -614,20 +712,47 @@ onBufferingChange = null,
 				// Page is in background - maintain playback
 				console.log('[Player] Page went to background - maintaining playback')
 				// MediaSession will handle controls in lock screen/notification
+				// Ensure video continues playing
+				if (playerRef.current) {
+					try {
+						const state = playerRef.current.getPlayerState?.()
+						if (state === STATE_PAUSED) {
+							// If paused, resume playback for background
+							playerRef.current.playVideo()
+						}
+					} catch (err) {
+						console.error('[Player] Error checking playback state:', err)
+					}
+				}
 			} else {
 				// Page is visible again
 				console.log('[Player] Page is visible again')
 				// Update position state when returning to foreground
 				if (playerRef.current && current) {
-					playerRef.current.getDuration().then((duration) => {
-						playerRef.current.getCurrentTime().then((currentTime) => {
+					try {
+						const duration = playerRef.current.getDuration?.() || 0
+						const currentTime = playerRef.current.getCurrentTime?.() || 0
+						
+						if (typeof duration === 'number' && typeof currentTime === 'number') {
 							mediaSessionManager.setPositionState({
 								duration: duration || 0,
 								playbackRate: 1.0,
 								position: currentTime || 0,
 							})
-						})
-					}).catch(() => {})
+						} else {
+							Promise.resolve(duration).then((dur) => {
+								Promise.resolve(currentTime).then((time) => {
+									mediaSessionManager.setPositionState({
+										duration: dur || 0,
+										playbackRate: 1.0,
+										position: time || 0,
+									})
+								}).catch(() => {})
+							}).catch(() => {})
+						}
+					} catch (err) {
+						console.error('[Player] Error updating position on visibility change:', err)
+					}
 				}
 			}
 		}
@@ -643,15 +768,31 @@ onBufferingChange = null,
 		if (!playerRef.current || !current) return
 
 		const updatePositionState = () => {
-			playerRef.current.getDuration().then((duration) => {
-				playerRef.current.getCurrentTime().then((currentTime) => {
+			try {
+				const duration = playerRef.current.getDuration?.() || 0
+				const currentTime = playerRef.current.getCurrentTime?.() || 0
+				
+				if (typeof duration === 'number' && typeof currentTime === 'number') {
 					mediaSessionManager.setPositionState({
 						duration: duration || 0,
 						playbackRate: 1.0,
 						position: currentTime || 0,
 					})
-				})
-			}).catch(() => {})
+				} else {
+					// Handle promises
+					Promise.resolve(duration).then((dur) => {
+						Promise.resolve(currentTime).then((time) => {
+							mediaSessionManager.setPositionState({
+								duration: dur || 0,
+								playbackRate: 1.0,
+								position: time || 0,
+							})
+						}).catch(() => {})
+					}).catch(() => {})
+				}
+			} catch (err) {
+				// Silently fail - position updates are not critical
+			}
 		}
 
 		const interval = setInterval(updatePositionState, 5000) // Update every 5 seconds
@@ -700,6 +841,31 @@ onBufferingChange = null,
 			}
 		}
 	}, [current?.youtubeId, currIndex])
+
+	// Effect: Ensure playback continues after channel/video change
+	useEffect(() => {
+		if (current && playerRef.current && hasInitializedRef.current && !isTransitioningRef.current) {
+			// Small delay to ensure video is loaded
+			const timeoutId = setTimeout(() => {
+				if (playerRef.current && !isTransitioningRef.current) {
+					try {
+						const state = playerRef.current.getPlayerState?.()
+						// If paused or unstarted, resume playback
+						if (state === STATE_PAUSED || state === STATE_UNSTARTED) {
+							console.log('[Player] Resuming playback after channel/video change')
+							playerRef.current.playVideo()
+							// Update MediaSession state
+							mediaSessionManager.setPlaybackState('playing')
+						}
+					} catch (err) {
+						console.error('[Player] Error resuming playback:', err)
+					}
+				}
+			}, 500)
+			
+			return () => clearTimeout(timeoutId)
+		}
+	}, [current?.youtubeId, channel?._id])
 
 	// ===== CALLBACKS =====
 
@@ -1191,20 +1357,41 @@ onBufferingChange = null,
 						},
 						seekbackward: (details) => {
 							if (playerRef.current) {
-								const seekOffset = details.seekOffset || 10
-								playerRef.current.getCurrentTime().then((currentTime) => {
-									playerRef.current.seekTo(Math.max(0, currentTime - seekOffset), true)
-								})
+								try {
+									const seekOffset = details.seekOffset || 10
+									const currentTime = playerRef.current.getCurrentTime?.() || 0
+									if (typeof currentTime === 'number') {
+										playerRef.current.seekTo(Math.max(0, currentTime - seekOffset), true)
+									} else if (currentTime && typeof currentTime.then === 'function') {
+										currentTime.then((time) => {
+											playerRef.current.seekTo(Math.max(0, time - seekOffset), true)
+										}).catch(() => {})
+									}
+								} catch (err) {
+									console.error('[Player] Error seeking backward:', err)
+								}
 							}
 						},
 						seekforward: (details) => {
 							if (playerRef.current) {
-								const seekOffset = details.seekOffset || 10
-								playerRef.current.getCurrentTime().then((currentTime) => {
-									playerRef.current.getDuration().then((duration) => {
+								try {
+									const seekOffset = details.seekOffset || 10
+									const currentTime = playerRef.current.getCurrentTime?.() || 0
+									const duration = playerRef.current.getDuration?.() || 0
+									
+									if (typeof currentTime === 'number' && typeof duration === 'number') {
 										playerRef.current.seekTo(Math.min(duration, currentTime + seekOffset), true)
-									})
-								})
+									} else {
+										// Handle promises
+										Promise.resolve(currentTime).then((time) => {
+											Promise.resolve(duration).then((dur) => {
+												playerRef.current.seekTo(Math.min(dur, time + seekOffset), true)
+											}).catch(() => {})
+										}).catch(() => {})
+									}
+								} catch (err) {
+									console.error('[Player] Error seeking forward:', err)
+								}
 							}
 						},
 					}
