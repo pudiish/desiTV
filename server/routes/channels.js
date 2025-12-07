@@ -93,6 +93,210 @@ router.get('/:id/current', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/channels/:channelId/bulk-upload
+ * Bulk upload videos from file content (admin - protected)
+ * Accepts fileContent as string in formats:
+ * - JSON array: [{"youtubeId": "...", "title": "..."}, ...]
+ * - CSV: url,title (header row optional)
+ * - TXT: Newline-separated YouTube URLs or video IDs
+ * 
+ * NOTE: This route must be defined before other /:id routes to ensure proper matching
+ */
+router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const { fileContent } = req.body;
+
+    if (!fileContent || typeof fileContent !== 'string') {
+      return res.status(400).json({ 
+        message: 'Missing or invalid fileContent' 
+      });
+    }
+
+    // Find the channel
+    const channel = await Channel.findById(channelId);
+    if (!channel) {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+
+    // Helper function to extract YouTube video ID
+    function extractVideoId(urlOrId) {
+      if (!urlOrId) return null;
+      // If it's already an 11-character ID, return it
+      if (/^[a-zA-Z0-9_-]{11}$/.test(urlOrId)) {
+        return urlOrId;
+      }
+      // Try to extract from URL patterns
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/
+      ];
+      for (const pattern of patterns) {
+        const match = urlOrId.match(pattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+      return null;
+    }
+
+    // Parse file content based on format
+    const videos = [];
+    const lines = fileContent.trim().split('\n').filter(line => line.trim());
+
+    // Try JSON format first
+    if (fileContent.trim().startsWith('[') || fileContent.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(fileContent);
+        const array = Array.isArray(parsed) ? parsed : [parsed];
+        for (const item of array) {
+          if (item.youtubeId || item.videoId || item.url) {
+            const videoId = item.youtubeId || item.videoId || extractVideoId(item.url);
+            if (videoId) {
+              videos.push({
+                youtubeId: videoId,
+                title: item.title || 'Untitled',
+                duration: item.duration || 30,
+                year: item.year,
+                tags: item.tags || [],
+                category: item.category
+              });
+            }
+          }
+        }
+      } catch (jsonErr) {
+        // Not JSON, continue to other formats
+      }
+    }
+
+    // If no videos parsed yet, try CSV or TXT format
+    if (videos.length === 0) {
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue; // Skip empty lines and comments
+
+        // Try CSV format: url,title
+        if (trimmed.includes(',')) {
+          const parts = trimmed.split(',').map(p => p.trim());
+          if (parts.length >= 1) {
+            const urlOrId = parts[0];
+            const videoId = extractVideoId(urlOrId) || urlOrId;
+            if (videoId && videoId.length === 11) { // YouTube IDs are 11 chars
+              videos.push({
+                youtubeId: videoId,
+                title: parts[1] || 'Untitled',
+                duration: 30
+              });
+            }
+          }
+        } else {
+          // Plain URL or video ID
+          const videoId = extractVideoId(trimmed) || trimmed;
+          if (videoId && videoId.length === 11) {
+            videos.push({
+              youtubeId: videoId,
+              title: 'Untitled',
+              duration: 30
+            });
+          }
+        }
+      }
+    }
+
+    if (videos.length === 0) {
+      return res.status(400).json({ 
+        message: 'No valid videos found in file. Expected JSON array, CSV (url,title), or newline-separated YouTube URLs/IDs' 
+      });
+    }
+
+    // Fetch metadata for videos without titles (optional, uses YouTube API if available)
+    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+    const axios = require('axios');
+
+    let addedCount = 0;
+    let skippedCount = 0;
+    let errors = [];
+
+    for (const video of videos) {
+      try {
+        // Check if video already exists
+        const exists = channel.items.some(item => item.youtubeId === video.youtubeId);
+        if (exists) {
+          skippedCount++;
+          continue;
+        }
+
+        // If title is "Untitled" and we have YouTube API key, try to fetch metadata
+        if (video.title === 'Untitled' && YOUTUBE_API_KEY) {
+          try {
+            const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
+            const metadataRes = await axios.get(metadataUrl, { timeout: 5000 });
+            if (metadataRes.data.items && metadataRes.data.items[0]) {
+              video.title = metadataRes.data.items[0].snippet.title;
+              // Parse duration if available
+              const durationStr = metadataRes.data.items[0].contentDetails?.duration;
+              if (durationStr) {
+                const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+                if (match) {
+                  const hours = parseInt(match[1] || 0, 10);
+                  const minutes = parseInt(match[2] || 0, 10);
+                  const seconds = parseInt(match[3] || 0, 10);
+                  video.duration = hours * 3600 + minutes * 60 + seconds;
+                }
+              }
+            }
+          } catch (metadataErr) {
+            // Continue with default title if metadata fetch fails
+            console.warn(`[Bulk Upload] Failed to fetch metadata for ${video.youtubeId}:`, metadataErr.message);
+          }
+        }
+
+        // Add video to channel
+        channel.items.push({
+          title: video.title,
+          youtubeId: video.youtubeId,
+          duration: video.duration || 30,
+          year: video.year,
+          tags: video.tags || [],
+          category: video.category
+        });
+
+        addedCount++;
+      } catch (videoErr) {
+        errors.push(`Error processing ${video.youtubeId}: ${videoErr.message}`);
+      }
+    }
+
+    // Save channel if any videos were added
+    if (addedCount > 0) {
+      await channel.save();
+
+      // Invalidate caches
+      cache.delete('channels:all');
+      cache.deletePattern(`channel:${channelId}`);
+
+      // Regenerate channels.json
+      try {
+        await regenerateChannelsJSON();
+      } catch (jsonErr) {
+        console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+      }
+    }
+
+    res.json({ 
+      message: `Successfully added ${addedCount} video(s)${skippedCount > 0 ? `, skipped ${skippedCount} duplicate(s)` : ''}`,
+      count: addedCount,
+      skipped: skippedCount,
+      total: videos.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    console.error('POST /api/channels/:channelId/bulk-upload error:', err.message);
+    res.status(500).json({ message: err.message || 'Failed to bulk upload videos' });
+  }
+});
+
 // Create channel (admin - protected)
 router.post('/', requireAuth, async (req, res) => {
   try {
