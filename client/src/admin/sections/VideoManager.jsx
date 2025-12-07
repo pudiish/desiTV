@@ -292,16 +292,40 @@ function VideoManagerContent() {
 				body: JSON.stringify({ fileContent: bulkFileContent })
 			})
 
+			// Check if response is JSON
+			const contentType = response.headers.get('content-type')
+			if (!contentType || !contentType.includes('application/json')) {
+				const text = await response.text()
+				console.error('[Bulk Upload] Non-JSON response:', text.substring(0, 200))
+				setBulkMessage({ 
+					type: 'error', 
+					text: `❌ Server error (${response.status}). Please check server logs.` 
+				})
+				return
+			}
+
 			const data = await response.json()
 			if (response.ok) {
-				setBulkMessage({ type: 'success', text: data.message || '✅ Bulk upload completed' })
+				const message = data.message || '✅ Bulk upload completed'
+				const details = data.count !== undefined 
+					? ` (${data.count} added${data.skipped ? `, ${data.skipped} skipped` : ''})`
+					: ''
+				setBulkMessage({ type: 'success', text: `${message}${details}` })
 				setBulkFileName('')
 				setBulkFileContent('')
 			} else {
 				setBulkMessage({ type: 'error', text: `❌ ${data.message || 'Bulk upload failed'}` })
 			}
 		} catch (err) {
-			setBulkMessage({ type: 'error', text: `❌ ${err.message}` })
+			console.error('[Bulk Upload] Error:', err)
+			if (err.message.includes('JSON')) {
+				setBulkMessage({ 
+					type: 'error', 
+					text: '❌ Server returned invalid response. Please check server is running and endpoint exists.' 
+				})
+			} else {
+				setBulkMessage({ type: 'error', text: `❌ ${err.message}` })
+			}
 		} finally {
 			setBulkUploading(false)
 		}

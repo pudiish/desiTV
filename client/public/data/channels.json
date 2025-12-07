@@ -1,6 +1,6 @@
 {
-  "version": 1765107466203,
-  "generatedAt": "2025-12-07T11:37:46.203Z",
+  "version": 1765109416716,
+  "generatedAt": "2025-12-07T12:10:16.716Z",
   "channels": [
     {
       "_id": "6932ae9db0fc9c17cbe43a98",
@@ -32,87 +32,6 @@
       "name": "Music",
       "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
       "items": [
-        {
-          "_id": "6932ae9db0fc9c17cbe43a9f",
-          "title": "LOVE DOSE Full Video Song | #90s Version | Honey Singh | Desi Kalakaar | AI Song, #honeysingh",
-          "youtubeId": "72b1cEME4xs",
-          "duration": 209,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6932ae9db0fc9c17cbe43aa0",
-          "title": "Socha Hai Lyrical | Baadshaho | Emraan Hashmi, Esha Gupta |Tanishk Bagchi Jubin Nautiyal Neeti Mohan",
-          "youtubeId": "N3QcCHaoIF0",
-          "duration": 168,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6932ae9db0fc9c17cbe43aa2",
-          "title": "OFFICIAL: 'Manwa Laage' FULL VIDEO Song | Happy New Year | Shah Rukh Khan | Arijit Singh",
-          "youtubeId": "d8IT-16kA8M",
-          "duration": 269,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6932c90b2b06e6d56e997b9e",
-          "title": "Khiladi 786 Lonely Song | Akshay Kumar, Asin Feat. Yo Yo Honey Singh",
-          "youtubeId": "Ffs-tQd5Ihs",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6933d13cb38f1e1fbba7c1c5",
-          "title": "Ichu Ichu - Video Song 8K | Vedi | Vishal, Sameera Reddy | Vijay Antony | Prabhu Deva",
-          "youtubeId": "bE0fhtiE65g",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6933d54878e75b7a157b70ab",
-          "title": "Azhagiya Theeye 4k Video Song - Minnale | Harris Jayaraj | Madhavan | Gautham V Menon",
-          "youtubeId": "h3AkAdfxOHI",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6933d7fa78e75b7a157b7102",
-          "title": "Aaj Ki Raat - Don (2006) *HQ*",
-          "youtubeId": "ue3MSprH0kU",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6933d7fa78e75b7a157b7103",
-          "title": "Bheegey Hont (From \"Murder\")",
-          "youtubeId": "EzqJ6wkZL_o",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "6933d7fa78e75b7a157b7104",
-          "title": "\"Dus Bahane Karke Le Gaye Dil\" Lyrical Video | Dus | Sanjay Dutt, Abhishek Bacchan",
-          "youtubeId": "64qzsIwtvhY",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
         {
           "_id": "6933d7fa78e75b7a157b7105",
           "title": "Falak Dekhun (From \"Garam Masala\")",
@@ -436,6 +355,220 @@
           "title": "2000 | NZ v IND - ICC Knockout trophy final",
           "youtubeId": "fMr-wfvVLMw",
           "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "69356abdf542b73ba6e22630",
+      "name": "Cult",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "69356ea61473a9072a712ae2",
+          "title": "Minnale - Vaseegara Official Video | Full HD | Harris Jayaraj | Madhavan | Gautham V Menon",
+          "youtubeId": "ew1fKCWb_M4",
+          "duration": 296,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae3",
+          "title": "Tu Hi Meri Shab Hai - K.K | Gangster | Emraan Hashmi, Kangna Ranaut | Full 4K Video Song",
+          "youtubeId": "mWBvudKcByg",
+          "duration": 402,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae4",
+          "title": "FULL VIDEO: \"Pee Loon\" | Once Upon A Time in Mumbai | Emraan Hashmi, Prachi  | Pritam| Mohit Chauhan",
+          "youtubeId": "D8XFTglfSMg",
+          "duration": 256,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae5",
+          "title": "Tu Bin Bataye - Rang De Basanti | R. Madhavan | Soha Ali Khan",
+          "youtubeId": "UqblLzBwlns",
+          "duration": 236,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae6",
+          "title": "Pachai Nirame | Alaiypayudhey HD Video Song | Madhavan, Shalini | AR Rahman",
+          "youtubeId": "4NwJivvXmbg",
+          "duration": 308,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae7",
+          "title": "Tu Hi Meri Shab Hai 4K Video Song | Gangster | Emraan Hashmi, Kangana Ranaut | Krishnakumar Kunnath",
+          "youtubeId": "9I1nWD3TMXg",
+          "duration": 404,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae8",
+          "title": "Tu Hi Mera - Full Video | Jannat 2 | Emraan Hashmi | Esha Gupta | Pritam | Romantic Bollywood Song",
+          "youtubeId": "BLxI_1iKYgc",
+          "duration": 158,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712ae9",
+          "title": "Vaseegara 4K Official Video | Minnale | Harris Jayaraj | Madhavan | Gautham V Menon",
+          "youtubeId": "Yx5OFFDihvI",
+          "duration": 296,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aea",
+          "title": "Vaseegara Video Song - Minnale | Madhavan | Abbas | Reemasen | Harris Jayaraj | Gautham Menon",
+          "youtubeId": "MTVaOzx-YRM",
+          "duration": 285,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aeb",
+          "title": "Tuhi Meri Shab Hai - Gangster [2006]",
+          "youtubeId": "32f9ZQ9eCxE",
+          "duration": 367,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aec",
+          "title": "🌟 Tu Hi Mera | 4K Video | Jannat 2 | Emraan Hashmi, Esha Gupta | Shafqat Amanat Ali | Pritam 🎶",
+          "youtubeId": "-4iOdsEarNQ",
+          "duration": 296,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aed",
+          "title": "Tu hi meri shab hai - Gangster",
+          "youtubeId": "TrupdvVQnpM",
+          "duration": 397,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aee",
+          "title": "Tu Hi Meri Shab Hai (From \"Gangster\")",
+          "youtubeId": "LzHK9TeMXz4",
+          "duration": 388,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aef",
+          "title": "Zara Sa - Full Video | Jannat | Emraan Hashmi, Sonal | KK | Pritam | Sayeed Quadri | Mahesh Bhatt",
+          "youtubeId": "5IY4BNj0-10",
+          "duration": 224,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712af0",
+          "title": "Tu Bin Bataye | Full Song | Rang De Basanti | A.R. RAHMAN | High volume | High quality",
+          "youtubeId": "mT9GKs0K91g",
+          "duration": 356,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712af1",
+          "title": "Behti Hawa Sa Tha Woh (3 Idiots)..song video in HD",
+          "youtubeId": "Q3xmlwI4iyw",
+          "duration": 97,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712af2",
+          "title": "Zara Zara - Rehnaa Hai Terre Dil Mein - *HQ* Music Video - Full Song",
+          "youtubeId": "JgKw2UF821A",
+          "duration": 267,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea81473a9072a712af3",
+          "title": "Zara Sa Full Video 💞Jannat 💔Emraan Hashmi Songs 🎶KK Songs 💕 Heart Touching Love Story 💕✈️Love Book",
+          "youtubeId": "3_M-ZoHb_pw",
+          "duration": 199,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea81473a9072a712af4",
+          "title": "Zara Zara | Rehnaa Hai Terre Dil Mein Movie Song | 2001",
+          "youtubeId": "tMRY_4gSPyo",
+          "duration": 256,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea81473a9072a712af5",
+          "title": "Zara Zara - RHTDM Full Song - Dia Mirza",
+          "youtubeId": "0kKMLZALH18",
+          "duration": 268,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea81473a9072a712af6",
+          "title": "Zara Zara Behekta Hai {HD} Video Song | Rehna Hai Tere Dil Mein | Dia Mirza, R. Madhavan | Bombay",
+          "youtubeId": "xPtr_osD6yg",
+          "duration": 296,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea81473a9072a712af7",
+          "title": "Zara Zara",
+          "youtubeId": "2YhWwNLoL7I",
+          "duration": 299,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea81473a9072a712af8",
+          "title": "Zara Zara I RHTDM I R Madhavan, Dia Mirza I Romantic Song I Iman Chakraborty Live On Concert",
+          "youtubeId": "4YodVqyvFt4",
+          "duration": 430,
           "year": null,
           "tags": [],
           "category": null

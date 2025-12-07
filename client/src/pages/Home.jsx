@@ -483,9 +483,7 @@ export default function Home() {
 					lastPlaybackInfoRef.current = info
 					setPlaybackInfo(info)
 				}}
-				onFullscreenChange={setIsFullscreen}
-				onRemoteEdgeHover={handleRemoteEdgeHover}
-				/>
+			/>
 
 				{/* Right Side - Remote Control and Categories (hidden in fullscreen) */}
 				{!isFullscreen && (
