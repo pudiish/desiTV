@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
+import { broadcastStateManager } from '../logic/broadcast'
 
 /**
  * TVMenuV2 - Unified with BroadcastPosition
@@ -28,6 +29,50 @@ export default function TVMenuV2({
 	const activeChannelItems = activeChannel?.items || []
 	const hasActivePlaylist = activeChannelItems.length > 0
 	const activeBroadcast = useBroadcastPosition(activeChannel)
+
+	// State to store positions for all channels (for TV guide display)
+	const [allChannelPositions, setAllChannelPositions] = useState({})
+
+	// Calculate positions for all channels periodically (sync with remote menu)
+	useEffect(() => {
+		if (!isOpen) return
+
+		const updateAllPositions = () => {
+			const positions = {}
+			channels.forEach((channel) => {
+				if (channel && channel.items && channel.items.length > 0) {
+					try {
+						// Initialize if needed
+						if (!broadcastStateManager.getChannelState(channel._id)) {
+							broadcastStateManager.initializeChannel(channel)
+						}
+						// Calculate position
+						const position = broadcastStateManager.calculateCurrentPosition(channel)
+						if (position && position.videoIndex >= 0) {
+							const currentVideo = channel.items[position.videoIndex]
+							const nextIdx = (position.videoIndex + 1) % channel.items.length
+							const nextVideo = channel.items[nextIdx]
+							positions[channel._id] = {
+								now: currentVideo,
+								next: nextVideo,
+								videoIndex: position.videoIndex,
+							}
+						}
+					} catch (err) {
+						console.error(`[TVMenu] Error calculating position for channel ${channel._id}:`, err)
+					}
+				}
+			})
+			setAllChannelPositions(positions)
+		}
+
+		// Update immediately
+		updateAllPositions()
+
+		// Update every second to keep in sync
+		const interval = setInterval(updateAllPositions, 1000)
+		return () => clearInterval(interval)
+	}, [isOpen, channels])
 
 	// Reset selected index when menu opens
 	useEffect(() => {
@@ -182,9 +227,14 @@ export default function TVMenuV2({
 							const isActive = idx === activeChannelIndex
 							const isSelected = idx === selectedIndex
 							
-							// Only show live info for active channel
-							const displayTitle = isActive ? nowTitle : null
-							const displayNext = isActive ? computedNextVideo : null
+							// Get position for this channel (from allChannelPositions or activeBroadcast)
+							const channelPosition = allChannelPositions[channel._id]
+							const displayTitle = isActive 
+								? nowTitle 
+								: (channelPosition?.now?.title || null)
+							const displayNext = isActive 
+								? computedNextVideo 
+								: (channelPosition?.next || null)
 
 							return (
 									<div

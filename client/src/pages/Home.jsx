@@ -6,8 +6,8 @@ import CategoryList from '../components/CategoryList'
 import StaticEffect from '../components/StaticEffect'
 import CRTInfoOverlay from '../components/CRTInfoOverlay'
 import SessionManager from '../utils/SessionManager'
-import channelManager from '../logic/channelManager'
-import { channelSwitchPipeline } from '../logic/effects'
+import { channelManager } from '../logic/channel/index.js'
+import { channelSwitchPipeline } from '../logic/effects/index.js'
 
 export default function Home() {
 	const [channels, setChannels] = useState([])

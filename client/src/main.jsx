@@ -3,6 +3,40 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import './styles.css'
 
+// Suppress browser extension errors (harmless but annoying)
+if (typeof window !== 'undefined') {
+	// Suppress runtime.lastError from browser extensions
+	const originalError = console.error
+	console.error = (...args) => {
+		const message = args.join(' ')
+		// Suppress browser extension errors
+		if (
+			message.includes('runtime.lastError') ||
+			message.includes('Could not establish connection') ||
+			message.includes('Receiving end does not exist') ||
+			message.includes('content-script') ||
+			message.includes('AdUnit')
+		) {
+			return // Suppress these harmless extension errors
+		}
+		originalError.apply(console, args)
+	}
+
+	// Suppress extension warnings
+	const originalWarn = console.warn
+	console.warn = (...args) => {
+		const message = args.join(' ')
+		if (
+			message.includes('runtime.lastError') ||
+			message.includes('content-script') ||
+			message.includes('AdUnit')
+		) {
+			return
+		}
+		originalWarn.apply(console, args)
+	}
+}
+
 // Preload YouTube iframe API to prevent 404 errors
 const loadYouTubeAPI = () => {
 	if (window.YT && window.YT.Player) {

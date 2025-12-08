@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
-import YouTubeRetryManager from '../utils/YouTubeRetryManager'
 import YouTubeUIRemover from '../utils/YouTubeUIRemover'
-import youtubePeakTimestamp from '../utils/YouTubePeakTimestamp'
 import mediaSessionManager from '../utils/MediaSessionManager'
-import fastRecoveryManager from '../utils/FastRecoveryManager'
+import { unifiedPlaybackManager } from '../logic/playback'
+import { broadcastStateManager } from '../logic/broadcast'
+import { PLAYBACK_THRESHOLDS } from '../config/thresholds'
+import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../config/constants/youtube'
+import { PLAYBACK_CONSTANTS } from '../config/constants/playback'
 
 /**
  * Enhanced Player Component with:
@@ -74,20 +75,20 @@ onBufferingChange = null,
 	const playAttemptInProgressRef = useRef(false) // Prevent multiple simultaneous play attempts
 	const lastPlayAttemptRef = useRef(0) // Track last play attempt time for debouncing
 
-	// ===== CONSTANTS =====
-	// RetroTV state constants
-	const STATE_UNSTARTED = -1
-	const STATE_ENDED = 0
-	const STATE_PLAYING = 1
-	const STATE_PAUSED = 2
-	const STATE_BUFFERING = 3
-	const STATE_VIDEO_CUED = 5
+	// ===== CONSTANTS FROM CONFIG =====
+	// Use constants from config files for easy tweaking
+	const STATE_UNSTARTED = YOUTUBE_STATES.UNSTARTED
+	const STATE_ENDED = YOUTUBE_STATES.ENDED
+	const STATE_PLAYING = YOUTUBE_STATES.PLAYING
+	const STATE_PAUSED = YOUTUBE_STATES.PAUSED
+	const STATE_BUFFERING = YOUTUBE_STATES.BUFFERING
+	const STATE_VIDEO_CUED = YOUTUBE_STATES.VIDEO_CUED
 	
-	const SWITCH_BEFORE_END = 2 // Switch 2 seconds before end for smoother transition
-	const MAX_BUFFER_TIME = 8000 // 8 seconds max buffering before retry (RetroTV watchdog)
-	const MAX_RETRY_ATTEMPTS = 5
-	const RETRY_BACKOFF_BASE = 1000 // 1 second base
-	const ERROR_SKIP_DELAY = 1500 // 1.5 seconds before auto-skip on error (faster than RetroTV's 3s)
+	const SWITCH_BEFORE_END = PLAYBACK_THRESHOLDS.SWITCH_BEFORE_END
+	const MAX_BUFFER_TIME = PLAYBACK_THRESHOLDS.MAX_BUFFER_TIME
+	const MAX_RETRY_ATTEMPTS = PLAYBACK_THRESHOLDS.MAX_RETRY_ATTEMPTS
+	const RETRY_BACKOFF_BASE = PLAYBACK_THRESHOLDS.RETRY_BACKOFF_BASE
+	const ERROR_SKIP_DELAY = PLAYBACK_THRESHOLDS.ERROR_SKIP_DELAY
 
 	// ===== COMPUTED VALUES =====
 	const items = useMemo(() => {
@@ -111,47 +112,8 @@ onBufferingChange = null,
 	// Get current video ID and start time
 	const videoId = current?.youtubeId
 	
-	// State for YouTube's peak timestamp (most replayed segment)
-	const [youtubePeakTime, setYoutubePeakTime] = useState(null)
-	const [isLoadingPeak, setIsLoadingPeak] = useState(false)
-	
-	// Fetch YouTube peak timestamp when video changes
-	useEffect(() => {
-		if (!videoId) {
-			setYoutubePeakTime(null)
-			return
-		}
-
-		let cancelled = false
-		setIsLoadingPeak(true)
-
-		// Fetch peak timestamp from YouTube platform
-		youtubePeakTimestamp.getPeakTimestamp(videoId)
-			.then(peakTime => {
-				if (!cancelled) {
-					setYoutubePeakTime(peakTime)
-					setIsLoadingPeak(false)
-					if (peakTime) {
-						console.log(`[Player] YouTube peak timestamp: ${peakTime}s for video ${videoId}`)
-					}
-				}
-			})
-			.catch(err => {
-				if (!cancelled) {
-					console.warn('[Player] Error fetching YouTube peak timestamp:', err)
-					setYoutubePeakTime(null)
-					setIsLoadingPeak(false)
-				}
-			})
-
-		return () => {
-			cancelled = true
-		}
-	}, [videoId])
-
-	// Use YouTube's peak timestamp if available, otherwise use calculated offset
-	const usePeakTimestamp = youtubePeakTime !== null && youtubePeakTime > 0
-	const startSeconds = usePeakTimestamp ? Math.floor(youtubePeakTime) : Math.floor(offset)
+	// Calculate start seconds from broadcast position offset
+	const startSeconds = Math.floor(offset)
 
 	// Use ref to avoid stale closure in interval
 	const switchToNextVideoRef = useRef(null)
@@ -364,24 +326,25 @@ onBufferingChange = null,
 		}
 	}, [channel?._id, onChannelChange])
 
-	// Load YouTube IFrame API (RetroTV exact pattern)
+	// Suppress console errors for YouTube postMessage origin warnings in development
+	// Note: YouTube API is loaded in main.jsx, so we don't need to load it here
 	useEffect(() => {
-		// RetroTV uses setTimeout wrapper for API loading
-		setTimeout(() => {
-			if (window.YT && window.YT.Player) {
-				// API already loaded
-				return
+		if (import.meta.env?.DEV) {
+			const originalError = console.error
+			console.error = (...args) => {
+				const message = args.join(' ')
+				// Suppress YouTube postMessage origin warnings (harmless in development)
+				if (message.includes('Failed to execute \'postMessage\'') && 
+				    message.includes('www-widgetapi.js')) {
+					return // Suppress this specific error
+				}
+				originalError.apply(console, args)
 			}
-			const existing = document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
-			if (existing) return
-			
-			const tag = document.createElement('script')
-			tag.src = 'https://www.youtube.com/iframe_api'
-			tag.async = true
-			const firstScriptTag = document.getElementsByTagName('script')[0]
-			firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
-			console.log('[Player] Loading YouTube IFrame API (RetroTV pattern)')
-		}, 2) // RetroTV uses 2ms delay
+
+			return () => {
+				console.error = originalError
+			}
+		}
 	}, [])
 
 	// RetroTV Pattern: Player initialization using window.onYouTubeIframeAPIReady
@@ -454,12 +417,19 @@ onBufferingChange = null,
 		const loadVideoToPlayer = () => {
 			if (!ytPlayerRef.current || !videoId) return
 			
-			// Log if using peak timestamp
-			if (usePeakTimestamp && youtubePeakTime) {
-				console.log('[Player] Loading video with YouTube peak timestamp:', videoId, 'at', startSeconds, 's (most replayed)')
-			} else {
-				console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
+			// Ensure player is fully initialized with loadVideoById method
+			if (typeof ytPlayerRef.current.loadVideoById !== 'function') {
+				console.warn('[Player] Player not ready, waiting for initialization...')
+				// Retry after a short delay
+				setTimeout(() => {
+					if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
+						loadVideoToPlayer()
+					}
+				}, 100)
+				return
 			}
+			
+			console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
 			
 			e7Ref.current = true // Mark as loading initiated
 			
@@ -512,7 +482,7 @@ onBufferingChange = null,
 			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [videoId, channel?._id, startSeconds, userInteracted, youtubePeakTime])
+	}, [videoId, channel?._id, startSeconds, userInteracted])
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {
@@ -522,15 +492,15 @@ onBufferingChange = null,
 		try {
 			console.log(`[Player] Initializing state for channel ${channel._id}...`)
 			
-			LocalBroadcastStateManager.initializeChannel(channel)
+			broadcastStateManager.initializeChannel(channel)
 			
 			// Start auto-save if not already started
-			if (!LocalBroadcastStateManager.saveInterval) {
-				LocalBroadcastStateManager.startAutoSave()
+			if (!broadcastStateManager.saveInterval) {
+				broadcastStateManager.startAutoSave()
 			}
 
 			// Position is calculated by useBroadcastPosition hook
-			// which uses LocalBroadcastStateManager internally
+			// which uses broadcastStateManager internally
 		} catch (err) {
 			console.error('[Player] Error initializing state:', err)
 		}
@@ -541,7 +511,7 @@ onBufferingChange = null,
 		const handleBeforeUnload = () => {
 			try {
 				// Force save to localStorage
-				LocalBroadcastStateManager.saveToStorage()
+				broadcastStateManager.saveToStorage()
 				console.log('[Player] State saved to localStorage on unload')
 			} catch (err) {
 				console.error('[Player] Error saving on unload:', err)
@@ -552,7 +522,7 @@ onBufferingChange = null,
 		return () => {
 			window.removeEventListener('beforeunload', handleBeforeUnload)
 			// Cleanup: stop auto-save when component unmounts
-			LocalBroadcastStateManager.stopAutoSave()
+			broadcastStateManager.stopAutoSave()
 		}
 	}, [channel?._id])
 
@@ -623,7 +593,7 @@ onBufferingChange = null,
 							const prevIndex = currIndex === 0 ? items.length - 1 : currIndex - 1
 							if (channel?._id) {
 								try {
-									LocalBroadcastStateManager.jumpToVideo(
+									broadcastStateManager.jumpToVideo(
 										channel._id,
 										prevIndex,
 										0,
@@ -814,7 +784,7 @@ onBufferingChange = null,
 	// Effect: Cleanup
 	useEffect(() => {
 		return () => {
-			fastRecoveryManager.stop()
+			unifiedPlaybackManager.stop()
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current)
 				progressIntervalRef.current = null
@@ -837,7 +807,7 @@ onBufferingChange = null,
 			if (skipErrorTimeoutIdRef.current) {
 				clearTimeout(skipErrorTimeoutIdRef.current)
 			}
-			LocalBroadcastStateManager.stopAutoSave()
+			broadcastStateManager.stopAutoSave()
 			mediaSessionManager.clear()
 		}
 	}, [])
@@ -861,66 +831,38 @@ onBufferingChange = null,
 		shouldPlayRef.current = power && userInteracted
 	}, [power, userInteracted])
 
-	// Effect: Start/stop fast recovery manager based on power state
+	// Effect: Start/stop unified playback manager based on power state
 	useEffect(() => {
 		if (power && playerRef.current && hasInitializedRef.current) {
-			// Start fast recovery when power is on
-			fastRecoveryManager.start(playerRef, {
+			// Start unified playback manager when power is on
+			unifiedPlaybackManager.start(playerRef, {
 				shouldPlay: () => {
 					// Only auto-resume if power is on, user has interacted, and not transitioning
 					return powerRef.current && shouldPlayRef.current && !isTransitioningRef.current
 				},
 				onRecovery: (type) => {
-					console.log(`[Player] Fast recovery successful: ${type}`)
+					console.log(`[Player] Playback recovery successful: ${type}`)
 					mediaSessionManager.setPlaybackState('playing')
 					setPlaybackHealth('healthy')
 					lastPlayTimeRef.current = Date.now()
 				},
+				onStateChange: (newState, oldState) => {
+					// Optional: Handle state changes if needed
+				},
 			})
 		} else {
-			// Stop fast recovery when power is off
-			fastRecoveryManager.stop()
+			// Stop unified playback manager when power is off
+			unifiedPlaybackManager.stop()
 		}
 		
 		return () => {
-			fastRecoveryManager.stop()
+			unifiedPlaybackManager.stop()
 		}
 	}, [power, hasInitializedRef.current])
 
-	// Safe play function with debouncing and conflict prevention
+	// Use unified playback manager's safe play function
 	const safePlayVideo = useCallback(() => {
-		if (!playerRef.current || playAttemptInProgressRef.current) {
-			return false
-		}
-
-		const now = Date.now()
-		// Debounce: Don't attempt play if last attempt was less than 500ms ago
-		if (now - lastPlayAttemptRef.current < 500) {
-			return false
-		}
-
-		playAttemptInProgressRef.current = true
-		lastPlayAttemptRef.current = now
-
-		try {
-			const state = playerRef.current.getPlayerState?.()
-			// Only play if actually paused/unstarted/cued, not if already playing
-			if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
-				playerRef.current.playVideo()
-				// Reset flag after a short delay
-				setTimeout(() => {
-					playAttemptInProgressRef.current = false
-				}, 1000)
-				return true
-			} else {
-				playAttemptInProgressRef.current = false
-				return false
-			}
-		} catch (err) {
-			console.error('[Player] Error in safePlayVideo:', err)
-			playAttemptInProgressRef.current = false
-			return false
-		}
+		return unifiedPlaybackManager.safePlayVideo()
 	}, [])
 
 	// Effect: Handle power on/off - RESTRUCTURED for robustness
@@ -941,11 +883,11 @@ onBufferingChange = null,
 							console.log('[Player] Power ON - resuming playback, state:', state)
 							safePlayVideo()
 							mediaSessionManager.setPlaybackState('playing')
-							fastRecoveryManager.reset()
+							unifiedPlaybackManager.reset()
 						} else if (state === STATE_PLAYING) {
 							// Already playing, just update state
 							mediaSessionManager.setPlaybackState('playing')
-							fastRecoveryManager.reset()
+							unifiedPlaybackManager.reset()
 						}
 					} catch (err) {
 						console.error('[Player] Error resuming on power on:', err)
@@ -990,11 +932,11 @@ onBufferingChange = null,
 					console.log('[Player] Channel/video changed - resuming playback, state:', state)
 					safePlayVideo()
 					mediaSessionManager.setPlaybackState('playing')
-					fastRecoveryManager.reset()
+					unifiedPlaybackManager.reset()
 				} else if (state === STATE_PLAYING) {
 					// Already playing, just ensure state is correct
 					mediaSessionManager.setPlaybackState('playing')
-					fastRecoveryManager.reset()
+					unifiedPlaybackManager.reset()
 				} else if (state === STATE_BUFFERING) {
 					// Buffering - let fast recovery handle it, don't interfere
 					// Fast recovery will check and resume if needed
@@ -1096,8 +1038,9 @@ onBufferingChange = null,
 
 		if (onVideoEnd) onVideoEnd()
 
-		// Use YouTubeRetryManager to find next healthy video (skips known failed)
-		const { video: nextVid, index: nextIdx } = YouTubeRetryManager.getNextHealthyVideo(items, currIndex)
+		// Find next video (simple sequential, no retry manager needed - unified manager handles recovery)
+		const nextIdx = (currIndex + 1) % items.length
+		const nextVid = items[nextIdx]
 
 		if (nextVid?.youtubeId) {
 			console.log(`[Player] Switching from video ${currIndex} to ${nextIdx}: ${nextVid.youtubeId}`)
@@ -1106,7 +1049,7 @@ onBufferingChange = null,
 			if (channel?._id) {
 				try {
 					// Jump to next video - this adjusts the epoch for correct timeline calculation
-					LocalBroadcastStateManager.jumpToVideo(
+					broadcastStateManager.jumpToVideo(
 						channel._id,
 						nextIdx,
 						0, // Start at beginning of video
@@ -1149,7 +1092,7 @@ onBufferingChange = null,
 									playerRef.current.playVideo()
 								}
 								shouldPlayRef.current = true
-								fastRecoveryManager.reset()
+								unifiedPlaybackManager.reset()
 							} else {
 								// Start muted autoplay
 								if (state !== STATE_PLAYING) {
@@ -1204,7 +1147,7 @@ onBufferingChange = null,
 	// Error handler - auto-skip unavailable/restricted videos
 	const handleVideoError = useCallback((error) => {
 		try {
-			const errorCode = error?.data
+			const errorCode = error?.data || error
 			console.error('[Player] onPlayerError:', errorCode)
 			
 			// Show static immediately on error
@@ -1217,18 +1160,10 @@ onBufferingChange = null,
 				clearTimeout(skipErrorTimeoutIdRef.current)
 			}
 			
-			// YouTube error codes:
-			// 2 - Invalid video ID
-			// 5 - HTML5 player error (can't play this video)
-			// 100 - Video not found (removed or private)
-			// 101 - Video owner doesn't allow embedding
-			// 150 - Same as 101 (geo-restricted or copyright)
-			const isUnavailable = [2, 5, 100, 101, 150].includes(errorCode)
+			// Check if error is permanent
+			const isPermanent = YOUTUBE_PERMANENT_ERRORS.includes(errorCode)
 			
-			// Use YouTubeRetryManager for error handling
-			const errorResult = YouTubeRetryManager.handlePlayerError(error, current?.youtubeId)
-			
-			if (isUnavailable && current?.youtubeId) {
+			if (isPermanent && current?.youtubeId) {
 				const errorMessages = {
 					2: 'INVALID VIDEO',
 					5: 'PLAYBACK ERROR',
@@ -1319,8 +1254,8 @@ onBufferingChange = null,
 				// Update MediaSession
 				mediaSessionManager.setPlaybackState('playing')
 				
-				// Reset fast recovery on successful playback
-				fastRecoveryManager.reset()
+				// Reset unified playback manager on successful playback
+				unifiedPlaybackManager.reset()
 				
 				// RetroTV pattern: Seek to correct position if needed
 				if (clipSeekTimeRef.current > 0 && player) {
@@ -1517,7 +1452,7 @@ onBufferingChange = null,
 							playerRef.current.setVolume(volume * 100)
 							playerRef.current.playVideo()
 							shouldPlayRef.current = true
-							fastRecoveryManager.reset()
+							unifiedPlaybackManager.reset()
 						} catch (err) {
 							console.error('[Player] Error playing:', err)
 							// Retry once
@@ -1543,7 +1478,7 @@ onBufferingChange = null,
 			
 			if (channel?._id) {
 				try {
-					LocalBroadcastStateManager.updateChannelState(channel._id, {
+					broadcastStateManager.updateChannelState(channel._id, {
 						channelName: channel.name,
 						currentVideoIndex: currIndex,
 						currentTime: offset || 0,
@@ -1555,7 +1490,7 @@ onBufferingChange = null,
 
 			// Mark video as healthy
 			if (current?.youtubeId) {
-				YouTubeRetryManager.healthyVideos?.add(current.youtubeId)
+				// Video played successfully - unified manager tracks this internally
 			}
 
 			// Emit initial progress
@@ -1589,7 +1524,7 @@ onBufferingChange = null,
 								const prevIndex = currIndex === 0 ? items.length - 1 : currIndex - 1
 								if (channel?._id) {
 									try {
-										LocalBroadcastStateManager.jumpToVideo(
+										broadcastStateManager.jumpToVideo(
 											channel._id,
 											prevIndex,
 											0,

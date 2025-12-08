@@ -1,33 +1,38 @@
 /**
+ * PseudoLiveCalculator.js
+ * 
+ * Calculates pseudo-live position in playlist
+ * Moved from utils/pseudoLive.js for better organization
+ */
+
+import BROADCAST_THRESHOLDS from '../../config/thresholds/broadcast.js'
+
+/**
  * Calculate which item in a playlist should be playing at a given time
  * Simulates a continuous TV broadcast where time keeps moving regardless of viewer
- * @param {Array} playlist - Array of video items with duration property
- * @param {Date|number} startEpoch - When the playlist started broadcasting
- * @returns {Object} { item, offset, videoIndex, totalElapsed, cyclePosition }
  */
-export function getPseudoLiveItem(playlist, startEpoch){
-	if (!playlist || playlist.length === 0) return { 
-		item: null, 
-		offset: 0, 
-		videoIndex: -1,
-		totalElapsed: 0,
-		cyclePosition: 0
+export function getPseudoLiveItem(playlist, startEpoch) {
+	if (!playlist || playlist.length === 0) {
+		return { 
+			item: null, 
+			offset: 0, 
+			videoIndex: -1,
+			totalElapsed: 0,
+			cyclePosition: 0
+		}
 	}
 
-	const durations = playlist.map(p => p.duration || 30)
+	const durations = playlist.map(p => p.duration || BROADCAST_THRESHOLDS.DEFAULT_VIDEO_DURATION)
 	const total = durations.reduce((a, b) => a + b, 0) || 1
 	const start = new Date(startEpoch).getTime()
 	const now = Date.now()
 	
-	// Total seconds elapsed since the broadcast started
 	const totalElapsed = Math.floor((now - start) / 1000)
-	
-	// Position within the current cycle (repeating playlist)
 	const cyclePosition = totalElapsed % total
 	
 	let cumulative = 0
 	for (let i = 0; i < playlist.length; i++) {
-		const d = playlist[i].duration || 30
+		const d = durations[i]
 		if (cumulative + d > cyclePosition) {
 			return {
 				item: playlist[i],
@@ -52,25 +57,21 @@ export function getPseudoLiveItem(playlist, startEpoch){
 
 /**
  * Calculate next video to play based on current position
- * @param {Array} playlist - Array of video items
- * @param {number} currentIndex - Current video index
- * @param {number} cyclePosition - Current position in cycle
- * @returns {Object} { nextIndex, nextOffset, switchTime }
  */
 export function getNextVideoInSequence(playlist, currentIndex, cyclePosition) {
-	if (!playlist || playlist.length === 0) return {
-		nextIndex: 0,
-		nextOffset: 0,
-		switchTime: 0
+	if (!playlist || playlist.length === 0) {
+		return {
+			nextIndex: 0,
+			nextOffset: 0,
+			switchTime: 0
+		}
 	}
 
-	const durations = playlist.map(p => p.duration || 30)
+	const durations = playlist.map(p => p.duration || BROADCAST_THRESHOLDS.DEFAULT_VIDEO_DURATION)
 	const total = durations.reduce((a, b) => a + b, 0) || 1
 	
-	// Get the duration of current video
-	const currentDuration = durations[currentIndex] || 30
+	const currentDuration = durations[currentIndex] || BROADCAST_THRESHOLDS.DEFAULT_VIDEO_DURATION
 	
-	// Get current offset in the video
 	let cumulative = 0
 	let currentVideoStart = 0
 	for (let i = 0; i <= currentIndex; i++) {
@@ -81,11 +82,9 @@ export function getNextVideoInSequence(playlist, currentIndex, cyclePosition) {
 		cumulative += durations[i]
 	}
 	
-	// Time until current video ends
 	const currentVideoEnd = currentVideoStart + currentDuration
 	const timeUntilSwitch = currentVideoEnd - cyclePosition
 	
-	// Next video index
 	const nextIndex = (currentIndex + 1) % playlist.length
 	
 	return {
@@ -94,3 +93,4 @@ export function getNextVideoInSequence(playlist, currentIndex, cyclePosition) {
 		switchTime: timeUntilSwitch
 	}
 }
+

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
+import { broadcastStateManager } from '../logic/broadcast'
 
 /**
  * useBroadcastPosition - Single source of truth for broadcast position
@@ -13,7 +13,7 @@ import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 export function useBroadcastPosition(channel) {
 	// Get state timestamp to trigger recalculation on epoch changes
 	const stateTimestamp = channel?._id 
-		? LocalBroadcastStateManager.getChannelState(channel._id)?.lastAccessTime
+		? broadcastStateManager.getChannelState(channel._id)?.lastAccessTime
 		: null
 
 	return useMemo(() => {
@@ -34,12 +34,12 @@ export function useBroadcastPosition(channel) {
 
 		try {
 			// Initialize channel state if needed
-			if (!LocalBroadcastStateManager.getChannelState(channel._id)) {
-				LocalBroadcastStateManager.initializeChannel(channel)
+			if (!broadcastStateManager.getChannelState(channel._id)) {
+				broadcastStateManager.initializeChannel(channel)
 			}
 
-			// Calculate broadcast position using LocalBroadcastStateManager
-			const position = LocalBroadcastStateManager.calculateCurrentPosition(channel)
+			// Calculate broadcast position using broadcastStateManager
+			const position = broadcastStateManager.calculateCurrentPosition(channel)
 			
 			if (!position || position.videoIndex === -1) {
 				return {
