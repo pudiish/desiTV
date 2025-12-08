@@ -8,6 +8,7 @@ import CRTInfoOverlay from '../components/CRTInfoOverlay'
 import SessionManager from '../utils/SessionManager'
 import channelManager from '../logic/channelManager'
 import { channelSwitchPipeline } from '../logic/effects'
+import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 
 export default function Home() {
 	const [channels, setChannels] = useState([])
@@ -150,6 +151,11 @@ export default function Home() {
 					setSessionRestored(true)
 					return
 				}
+
+				// Initialize global timeline and all channels in background
+				// This starts the timeline for ALL channels when TV loads
+				LocalBroadcastStateManager.initializeAllChannels(allChannels)
+				console.log('[Home] Initialized global timeline for all channels')
 				
 				// If session was restored, use saved state
 				if (sessionResult.restored && sessionResult.state) {

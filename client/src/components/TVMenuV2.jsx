@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
+import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 
 /**
  * TVMenuV2 - Unified with BroadcastPosition
@@ -23,11 +24,42 @@ export default function TVMenuV2({
 	const menuRef = useRef(null)
 	const itemRefs = useRef([])
 
-	// Get position for ACTIVE channel only (this is what's ACTUALLY playing)
+	// Get position for ACTIVE channel (for detailed info)
 	const activeChannel = channels[activeChannelIndex]
 	const activeChannelItems = activeChannel?.items || []
 	const hasActivePlaylist = activeChannelItems.length > 0
 	const activeBroadcast = useBroadcastPosition(activeChannel)
+
+	// Calculate positions for ALL channels using global timeline
+	// Use useMemo to avoid recalculating on every render
+	// Add timestamp to force refresh every second to keep positions updated
+	const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now())
+	
+	useEffect(() => {
+		if (!isOpen) return
+		
+		// Update positions every second when menu is open
+		const interval = setInterval(() => {
+			setRefreshTimestamp(Date.now())
+		}, 1000)
+		
+		return () => clearInterval(interval)
+	}, [isOpen])
+
+	const channelPositions = useMemo(() => {
+		return channels.map(channel => {
+			if (!channel || !channel.items || channel.items.length === 0) {
+				return { channel, position: null }
+			}
+			try {
+				const position = LocalBroadcastStateManager.calculateCurrentPosition(channel)
+				return { channel, position }
+			} catch (err) {
+				console.error(`[TVMenuV2] Error calculating position for ${channel._id}:`, err)
+				return { channel, position: null }
+			}
+		})
+	}, [channels, refreshTimestamp])
 
 	// Reset selected index when menu opens
 	useEffect(() => {
@@ -182,9 +214,26 @@ export default function TVMenuV2({
 							const isActive = idx === activeChannelIndex
 							const isSelected = idx === selectedIndex
 							
-							// Only show live info for active channel
-							const displayTitle = isActive ? nowTitle : null
-							const displayNext = isActive ? computedNextVideo : null
+							// Get broadcast position for this channel
+							const channelPos = channelPositions[idx]?.position
+							const channelItems = channel.items || []
+							
+							// For active channel, use live playback info if available
+							// For other channels, use calculated position from global timeline
+							let displayTitle = null
+							let displayNext = null
+							
+							if (isActive) {
+								// Active channel: prefer live playback info
+								displayTitle = nowTitle
+								displayNext = computedNextVideo
+							} else if (channelPos && channelItems.length > 0) {
+								// Other channels: use calculated position from global timeline
+								const videoIndex = channelPos.videoIndex
+								const nextIndex = (videoIndex + 1) % channelItems.length
+								displayTitle = channelItems[videoIndex]?.title || null
+								displayNext = channelItems[nextIndex] || null
+							}
 
 							return (
 									<div

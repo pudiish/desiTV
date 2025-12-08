@@ -5,12 +5,14 @@
  * 
  * Core Principle: "THE BROADCAST NEVER STOPS"
  * 
- * Algorithm:
- * =========
- * 1. TIMELINE EPOCH: When user first starts watching a channel (stored in localStorage)
- * 2. VIRTUAL ELAPSED TIME: Total seconds elapsed since epoch to NOW
+ * GLOBAL TIMELINE SYSTEM:
+ * ======================
+ * 1. GLOBAL EPOCH: Single timestamp when user first starts TV (stored in localStorage)
+ *    - Set once when TV starts, never changes
+ *    - Shared by ALL channels - common timeline for everything
+ * 2. VIRTUAL ELAPSED TIME: Total seconds elapsed since global epoch to NOW
  *    - Accounts for app being closed, reloaded, or crashed
- *    - Calculated from: now - playlistStartEpoch
+ *    - Calculated from: now - globalEpoch
  * 3. CYCLE POSITION: Where we are in current playlist cycle
  *    - Calculated from: virtualElapsedTime % totalPlaylistDuration
  * 4. VIDEO INDEX & OFFSET: Which video + where in that video
@@ -21,17 +23,20 @@
  * 
  * Storage:
  * - All state saved to localStorage
- * - Each channel has its own state
+ * - Global epoch shared by all channels
+ * - Each channel stores only playlist metadata (durations, etc.)
  * - Auto-saves every 5 seconds
  */
 
 class LocalBroadcastStateManager {
 	constructor() {
-		this.state = {} // { channelId: state }
+		this.state = {} // { channelId: channelState }
+		this.globalEpoch = null // Single global timeline epoch
 		this.listeners = []
 		this.saveInterval = null
 		this.saveIntervalMs = 5000 // Save every 5 seconds
 		this.storageKey = 'desitv-broadcast-state'
+		this.globalEpochKey = 'desitv-global-epoch'
 	}
 
 	/**
@@ -39,6 +44,14 @@ class LocalBroadcastStateManager {
 	 */
 	loadFromStorage() {
 		try {
+			// Load global epoch
+			const epochStored = localStorage.getItem(this.globalEpochKey)
+			if (epochStored) {
+				this.globalEpoch = new Date(epochStored)
+				console.log(`[LBSM] Loaded global epoch: ${this.globalEpoch.toISOString()}`)
+			}
+
+			// Load channel states
 			const stored = localStorage.getItem(this.storageKey)
 			if (stored) {
 				const data = JSON.parse(stored)
@@ -57,6 +70,12 @@ class LocalBroadcastStateManager {
 	 */
 	saveToStorage() {
 		try {
+			// Save global epoch
+			if (this.globalEpoch) {
+				localStorage.setItem(this.globalEpochKey, this.globalEpoch.toISOString())
+			}
+
+			// Save channel states
 			localStorage.setItem(this.storageKey, JSON.stringify(this.state))
 			return true
 		} catch (err) {
@@ -65,6 +84,9 @@ class LocalBroadcastStateManager {
 			if (err.name === 'QuotaExceededError') {
 				this.cleanupOldStates()
 				try {
+					if (this.globalEpoch) {
+						localStorage.setItem(this.globalEpochKey, this.globalEpoch.toISOString())
+					}
 					localStorage.setItem(this.storageKey, JSON.stringify(this.state))
 					return true
 				} catch (retryErr) {
@@ -95,11 +117,38 @@ class LocalBroadcastStateManager {
 	}
 
 	/**
+	 * INITIALIZE GLOBAL EPOCH
+	 * Sets the global timeline epoch when TV first starts
+	 * This is called once when channels are loaded, not per-channel
+	 */
+	initializeGlobalEpoch() {
+		// Load from storage first
+		if (this.globalEpoch === null) {
+			this.loadFromStorage()
+		}
+
+		// If no global epoch exists, create one now
+		if (!this.globalEpoch) {
+			this.globalEpoch = new Date()
+			console.log(`[LBSM] Global epoch initialized: ${this.globalEpoch.toISOString()}`)
+			this.saveToStorage()
+		}
+
+		return this.globalEpoch
+	}
+
+	/**
 	 * INITIALIZE CHANNEL STATE
-	 * Sets up state for a channel - either from localStorage or fresh
+	 * Sets up playlist metadata for a channel (uses global epoch)
+	 * Called for all channels when TV starts
 	 */
 	initializeChannel(channel) {
 		if (!channel || !channel._id) return null
+
+		// Ensure global epoch is initialized
+		if (!this.globalEpoch) {
+			this.initializeGlobalEpoch()
+		}
 
 		// Load from storage first
 		if (Object.keys(this.state).length === 0) {
@@ -112,27 +161,26 @@ class LocalBroadcastStateManager {
 		// Check if we have saved state for this channel
 		const savedState = this.state[channelId]
 
-		if (savedState && savedState.playlistStartEpoch) {
-			// Use saved state
+		if (savedState) {
+			// Use saved state, but update metadata if playlist changed
 			this.state[channelId] = {
 				...savedState,
+				channelName: channel.name, // Update name in case it changed
+				playlistTotalDuration: this.calculateTotalDuration(channel.items),
+				videoDurations: channel.items.map((v) => v.duration || 300),
 				lastAccessTime: now,
 			}
 			console.log(`[LBSM] Channel ${channelId} initialized from localStorage`)
 		} else {
-			// Create fresh state - this is when user first watches this channel
+			// Create fresh state - channel metadata only (no epoch, uses global)
 			this.state[channelId] = {
 				channelId,
 				channelName: channel.name,
-				playlistStartEpoch: now.toISOString(), // Start timeline NOW
-				currentVideoIndex: 0,
-				currentTime: 0,
 				lastAccessTime: now,
 				playlistTotalDuration: this.calculateTotalDuration(channel.items),
 				videoDurations: channel.items.map((v) => v.duration || 300),
-				playbackRate: 1.0,
 			}
-			console.log(`[LBSM] Channel ${channelId} initialized as new (timeline starts now)`)
+			console.log(`[LBSM] Channel ${channelId} initialized (using global timeline)`)
 			this.saveToStorage()
 		}
 
@@ -140,7 +188,30 @@ class LocalBroadcastStateManager {
 	}
 
 	/**
+	 * INITIALIZE ALL CHANNELS
+	 * Called when TV starts to initialize all channels in background
+	 */
+	initializeAllChannels(channels) {
+		if (!channels || !Array.isArray(channels)) return
+
+		// Initialize global epoch first
+		this.initializeGlobalEpoch()
+
+		// Initialize all channels
+		channels.forEach(channel => {
+			if (channel && channel._id) {
+				this.initializeChannel(channel)
+			}
+		})
+
+		console.log(`[LBSM] Initialized ${channels.length} channels with global timeline`)
+		this.saveToStorage()
+	}
+
+	/**
 	 * CORE ALGORITHM: Calculate current position in broadcast timeline
+	 * 
+	 * Uses GLOBAL EPOCH - all channels share the same timeline
 	 * 
 	 * Handles TWO cases:
 	 * 1. SINGLE VIDEO: Loop the same video continuously
@@ -158,20 +229,24 @@ class LocalBroadcastStateManager {
 			}
 		}
 
+		// Ensure global epoch is initialized
+		if (!this.globalEpoch) {
+			this.initializeGlobalEpoch()
+		}
+
 		const channelId = channel._id
 		const savedState = this.state[channelId]
 
-		if (!savedState || !savedState.playlistStartEpoch) {
+		if (!savedState) {
 			// No state yet - initialize it
 			this.initializeChannel(channel)
 			return this.calculateCurrentPosition(channel)
 		}
 
 		const now = new Date()
-		const playlistStartEpoch = new Date(savedState.playlistStartEpoch)
 
-		// Calculate total elapsed time since broadcast started
-		const totalElapsedMs = now.getTime() - playlistStartEpoch.getTime()
+		// Calculate total elapsed time since GLOBAL epoch (shared by all channels)
+		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
 
 		// Calculate video durations
@@ -296,13 +371,19 @@ class LocalBroadcastStateManager {
 
 	/**
 	 * JUMP TO SPECIFIC VIDEO
-	 * Adjusts the epoch so the timeline calculation lands on the specified video
+	 * Adjusts the GLOBAL epoch so the timeline calculation lands on the specified video
+	 * NOTE: This affects ALL channels since they share the global timeline
 	 */
 	jumpToVideo(channelId, targetVideoIndex, targetOffset = 0, items) {
 		const state = this.state[channelId]
 		if (!state || !items || items.length === 0) {
 			console.warn(`[LBSM] Cannot jump - no state for channel ${channelId}`)
 			return false
+		}
+
+		// Ensure global epoch exists
+		if (!this.globalEpoch) {
+			this.initializeGlobalEpoch()
 		}
 
 		// Calculate cumulative time up to target video
@@ -318,15 +399,13 @@ class LocalBroadcastStateManager {
 		// Get current cycle position
 		const cyclePosition = cumulativeTime % totalDuration
 
-		// Adjust epoch: now - cyclePosition = new epoch
+		// Adjust GLOBAL epoch: now - cyclePosition = new epoch
+		// WARNING: This affects ALL channels since they share the global timeline
 		const now = new Date()
-		const newEpoch = new Date(now.getTime() - (cyclePosition * 1000))
+		this.globalEpoch = new Date(now.getTime() - (cyclePosition * 1000))
 
 		this.state[channelId] = {
 			...state,
-			playlistStartEpoch: newEpoch,
-			currentVideoIndex: targetVideoIndex,
-			currentTime: targetOffset,
 			lastAccessTime: now,
 		}
 
@@ -337,7 +416,7 @@ class LocalBroadcastStateManager {
 			offset: targetOffset,
 		})
 
-		console.log(`[LBSM] Jumped to video ${targetVideoIndex} at ${targetOffset}s, adjusted epoch`)
+		console.log(`[LBSM] Jumped to video ${targetVideoIndex} at ${targetOffset}s, adjusted global epoch`)
 		return true
 	}
 
@@ -376,14 +455,35 @@ class LocalBroadcastStateManager {
 	}
 
 	/**
+	 * GET GLOBAL EPOCH
+	 */
+	getGlobalEpoch() {
+		if (!this.globalEpoch) {
+			this.initializeGlobalEpoch()
+		}
+		return this.globalEpoch
+	}
+
+	/**
+	 * RESET GLOBAL EPOCH (start fresh timeline for all channels)
+	 */
+	resetGlobalEpoch() {
+		this.globalEpoch = new Date()
+		this.saveToStorage()
+		console.log('[LBSM] Global epoch reset to:', this.globalEpoch.toISOString())
+	}
+
+	/**
 	 * CLEAR ALL STATE
 	 */
 	clearAll() {
 		this.state = {}
+		this.globalEpoch = null
 		localStorage.removeItem(this.storageKey)
+		localStorage.removeItem(this.globalEpochKey)
 		this.stopAutoSave()
 		this.listeners = []
-		console.log('[LBSM] All state cleared')
+		console.log('[LBSM] All state cleared (including global epoch)')
 	}
 }
 
