@@ -71,6 +71,8 @@ onBufferingChange = null,
 	const e7Ref = useRef(false) // RetroTV pattern: track if video loading was initiated
 	const powerRef = useRef(power) // Track power state
 	const shouldPlayRef = useRef(false) // Track if we should be playing
+	const playAttemptInProgressRef = useRef(false) // Prevent multiple simultaneous play attempts
+	const lastPlayAttemptRef = useRef(0) // Track last play attempt time for debouncing
 
 	// ===== CONSTANTS =====
 	// RetroTV state constants
@@ -723,21 +725,11 @@ onBufferingChange = null,
 				// Page is in background - maintain playback
 				console.log('[Player] Page went to background - maintaining playback')
 				// MediaSession will handle controls in lock screen/notification
-				// Ensure video continues playing if power is on
-				if (playerRef.current && powerRef.current && shouldPlayRef.current) {
-					try {
-						const state = playerRef.current.getPlayerState?.()
-						if (state === STATE_PAUSED || state === STATE_UNSTARTED) {
-							// Resume playback for background
-							console.log('[Player] Resuming playback for background')
-							playerRef.current.playVideo()
-						}
-					} catch (err) {
-						console.error('[Player] Error checking playback state:', err)
-					}
-				}
+				// Let fast recovery handle playback resumption to avoid conflicts
+				// Don't manually call playVideo here to prevent pause/resume loops
 			} else {
-				// Page is visible again - update position state
+				// Page is visible again - update position state only, don't interfere with playback
+				// Fast recovery manager will handle any playback issues if needed
 				if (playerRef.current && current && powerRef.current) {
 					setTimeout(() => {
 						try {
@@ -895,6 +887,42 @@ onBufferingChange = null,
 		}
 	}, [power, hasInitializedRef.current])
 
+	// Safe play function with debouncing and conflict prevention
+	const safePlayVideo = useCallback(() => {
+		if (!playerRef.current || playAttemptInProgressRef.current) {
+			return false
+		}
+
+		const now = Date.now()
+		// Debounce: Don't attempt play if last attempt was less than 500ms ago
+		if (now - lastPlayAttemptRef.current < 500) {
+			return false
+		}
+
+		playAttemptInProgressRef.current = true
+		lastPlayAttemptRef.current = now
+
+		try {
+			const state = playerRef.current.getPlayerState?.()
+			// Only play if actually paused/unstarted/cued, not if already playing
+			if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
+				playerRef.current.playVideo()
+				// Reset flag after a short delay
+				setTimeout(() => {
+					playAttemptInProgressRef.current = false
+				}, 1000)
+				return true
+			} else {
+				playAttemptInProgressRef.current = false
+				return false
+			}
+		} catch (err) {
+			console.error('[Player] Error in safePlayVideo:', err)
+			playAttemptInProgressRef.current = false
+			return false
+		}
+	}, [])
+
 	// Effect: Handle power on/off - RESTRUCTURED for robustness
 	useEffect(() => {
 		if (!hasInitializedRef.current) return
@@ -904,14 +932,14 @@ onBufferingChange = null,
 			shouldPlayRef.current = userInteracted // Only auto-play if user has interacted
 			
 			const timeoutId = setTimeout(() => {
-				if (playerRef.current && powerRef.current && !isTransitioningRef.current) {
+				if (playerRef.current && powerRef.current && !isTransitioningRef.current && shouldPlayRef.current) {
 					try {
 						const state = playerRef.current.getPlayerState?.()
 						
-						// If paused, unstarted, or cued, try to play
-						if ((state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) && shouldPlayRef.current) {
+						// If paused, unstarted, or cued, try to play (using safe function)
+						if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
 							console.log('[Player] Power ON - resuming playback, state:', state)
-							playerRef.current.playVideo()
+							safePlayVideo()
 							mediaSessionManager.setPlaybackState('playing')
 							fastRecoveryManager.reset()
 						} else if (state === STATE_PLAYING) {
@@ -921,16 +949,6 @@ onBufferingChange = null,
 						}
 					} catch (err) {
 						console.error('[Player] Error resuming on power on:', err)
-						// Retry once after a delay
-						setTimeout(() => {
-							if (playerRef.current && powerRef.current) {
-								try {
-									playerRef.current.playVideo()
-								} catch (retryErr) {
-									console.error('[Player] Retry failed:', retryErr)
-								}
-							}
-						}, 1000)
 					}
 				}
 			}, 300)
@@ -939,6 +957,7 @@ onBufferingChange = null,
 		} else {
 			// Power OFF - pause playback
 			shouldPlayRef.current = false
+			playAttemptInProgressRef.current = false // Clear play attempt flag
 			
 			if (playerRef.current) {
 				try {
@@ -949,7 +968,7 @@ onBufferingChange = null,
 				}
 			}
 		}
-	}, [power, hasInitializedRef.current, userInteracted])
+	}, [power, hasInitializedRef.current, userInteracted, safePlayVideo])
 
 	// Effect: Ensure playback continues after channel/video change - RESTRUCTURED
 	useEffect(() => {
@@ -959,51 +978,34 @@ onBufferingChange = null,
 
 		// Wait for video to load before attempting playback
 		const timeoutId = setTimeout(() => {
-			if (!playerRef.current || isTransitioningRef.current || !powerRef.current) {
+			if (!playerRef.current || isTransitioningRef.current || !powerRef.current || !shouldPlayRef.current) {
 				return
 			}
 
 			try {
 				const state = playerRef.current.getPlayerState?.()
 				
-				// If paused, unstarted, or cued, and we should be playing, start playback
-				if ((state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) && shouldPlayRef.current) {
-							console.log('[Player] Channel/video changed - resuming playback, state:', state)
-							playerRef.current.playVideo()
-							mediaSessionManager.setPlaybackState('playing')
-							fastRecoveryManager.reset()
-						} else if (state === STATE_PLAYING) {
-							// Already playing, just ensure state is correct
-							mediaSessionManager.setPlaybackState('playing')
-							fastRecoveryManager.reset()
+				// If paused, unstarted, or cued, and we should be playing, start playback (using safe function)
+				if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
+					console.log('[Player] Channel/video changed - resuming playback, state:', state)
+					safePlayVideo()
+					mediaSessionManager.setPlaybackState('playing')
+					fastRecoveryManager.reset()
+				} else if (state === STATE_PLAYING) {
+					// Already playing, just ensure state is correct
+					mediaSessionManager.setPlaybackState('playing')
+					fastRecoveryManager.reset()
 				} else if (state === STATE_BUFFERING) {
-					// Buffering - wait a bit and check again
-					setTimeout(() => {
-						if (playerRef.current && powerRef.current && shouldPlayRef.current) {
-							const newState = playerRef.current.getPlayerState?.()
-							if (newState === STATE_PAUSED || newState === STATE_UNSTARTED) {
-								playerRef.current.playVideo()
-							}
-						}
-					}, 1000)
+					// Buffering - let fast recovery handle it, don't interfere
+					// Fast recovery will check and resume if needed
 				}
 			} catch (err) {
 				console.error('[Player] Error resuming playback after change:', err)
-				// Retry once
-				setTimeout(() => {
-					if (playerRef.current && powerRef.current && shouldPlayRef.current) {
-						try {
-							playerRef.current.playVideo()
-						} catch (retryErr) {
-							console.error('[Player] Retry failed:', retryErr)
-						}
-					}
-				}, 1000)
 			}
 		}, 800) // Increased delay to ensure video is loaded
 		
 		return () => clearTimeout(timeoutId)
-	}, [current?.youtubeId, channel?._id, power])
+	}, [current?.youtubeId, channel?._id, power, safePlayVideo])
 
 	// ===== CALLBACKS =====
 

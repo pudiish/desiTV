@@ -105,10 +105,10 @@ class FastRecoveryManager {
 				const timeSinceStateChange = this.lastStateTime ? now - this.lastStateTime : Infinity
 				
 				// Recover if:
-				// 1. State has been paused/unstarted for > 300ms (fast detection)
+				// 1. State has been paused/unstarted for > 500ms (increased from 300ms to reduce conflicts)
 				// 2. Enough time has passed since last recovery (debounce)
 				// 3. Not already recovering
-				if (timeSinceStateChange > 300 && 
+				if (timeSinceStateChange > 500 && 
 				    (now - this.lastRecoveryTime) > this.minRecoveryInterval &&
 				    !this.recoveryInProgress) {
 					this.attemptRecovery('paused_or_unstarted', state)
@@ -153,15 +153,30 @@ class FastRecoveryManager {
 			return
 		}
 
+		// Additional debounce: Don't recover if last recovery was too recent
+		const now = Date.now()
+		if ((now - this.lastRecoveryTime) < this.minRecoveryInterval) {
+			return
+		}
+
 		this.recoveryInProgress = true
 		this.recoveryAttempts++
-		this.lastRecoveryTime = Date.now()
+		this.lastRecoveryTime = now
 
 		const player = this.playerRef.current
 
 		console.log(`[FastRecovery] Attempting recovery (${this.recoveryAttempts}/${this.maxRecoveryAttempts}): ${reason}, state: ${currentState}`)
 
 		try {
+			// Double-check state before attempting recovery
+			const currentStateCheck = player.getPlayerState?.()
+			// Only recover if actually paused/unstarted, not if already playing
+			if (currentStateCheck === 1) { // Already playing
+				this.recoveryInProgress = false
+				this.recoveryAttempts = 0
+				return
+			}
+
 			// Try to play
 			player.playVideo?.()
 
