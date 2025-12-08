@@ -167,7 +167,7 @@ class LocalBroadcastStateManager {
 				...savedState,
 				channelName: channel.name, // Update name in case it changed
 				playlistTotalDuration: this.calculateTotalDuration(channel.items),
-				videoDurations: channel.items.map((v) => v.duration || 300),
+				videoDurations: channel.items.map((v) => (typeof v.duration === 'number' && v.duration > 0) ? v.duration : 300),
 				lastAccessTime: now,
 			}
 			console.log(`[LBSM] Channel ${channelId} initialized from localStorage`)
@@ -178,7 +178,7 @@ class LocalBroadcastStateManager {
 				channelName: channel.name,
 				lastAccessTime: now,
 				playlistTotalDuration: this.calculateTotalDuration(channel.items),
-				videoDurations: channel.items.map((v) => v.duration || 300),
+				videoDurations: channel.items.map((v) => (typeof v.duration === 'number' && v.duration > 0) ? v.duration : 300),
 			}
 			console.log(`[LBSM] Channel ${channelId} initialized (using global timeline)`)
 			this.saveToStorage()
@@ -249,9 +249,27 @@ class LocalBroadcastStateManager {
 		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
 
-		// Calculate video durations
-		const videoDurations = channel.items.map((v) => v.duration || 300)
-		const totalDurationSec = videoDurations.reduce((sum, d) => sum + d, 0) || 3600
+		// Calculate video durations - use actual durations from channel items
+		// IMPORTANT: Use consistent fallback (300 seconds = 5 minutes) for missing durations
+		const videoDurations = channel.items.map((v) => {
+			const duration = v.duration
+			if (typeof duration === 'number' && duration > 0) {
+				return duration
+			}
+			// Default to 5 minutes (300 seconds) if duration is missing or invalid
+			console.warn(`[LBSM] Video ${v.youtubeId || v.title || 'unknown'} missing duration, using 300s default`)
+			return 300
+		})
+		const totalDurationSec = videoDurations.reduce((sum, d) => sum + d, 0)
+		
+		if (totalDurationSec === 0) {
+			console.error(`[LBSM] Channel ${channelId} has zero total duration, using default 3600s`)
+			return {
+				videoIndex: 0,
+				offset: 0,
+				debugInfo: 'Zero total duration',
+			}
+		}
 
 		let videoIndex = 0
 		let offsetInVideo = 0
@@ -261,6 +279,14 @@ class LocalBroadcastStateManager {
 		// CASE 1: SINGLE VIDEO - Loop it continuously
 		if (channel.items.length === 1) {
 			const singleVideoDuration = videoDurations[0]
+			if (singleVideoDuration <= 0) {
+				console.error(`[LBSM] Single video has invalid duration: ${singleVideoDuration}`)
+				return {
+					videoIndex: 0,
+					offset: 0,
+					debugInfo: 'Invalid single video duration',
+				}
+			}
 			cyclePosition = totalElapsedSec % singleVideoDuration
 			offsetInVideo = cyclePosition
 			videoIndex = 0
@@ -272,22 +298,53 @@ class LocalBroadcastStateManager {
 			cyclePosition = totalElapsedSec % totalDurationSec
 			cycleCount = Math.floor(totalElapsedSec / totalDurationSec)
 
-			// Find which video we're in
+			// Find which video we're in using sequential time ranges
+			// Each video has a time range: [accumulatedTime, accumulatedTime + videoDuration)
 			let accumulatedTime = 0
+			let found = false
+			
 			for (let i = 0; i < videoDurations.length; i++) {
 				const videoDuration = videoDurations[i]
-				if (accumulatedTime + videoDuration > cyclePosition) {
+				const videoEndTime = accumulatedTime + videoDuration
+				
+				// Check if cyclePosition falls within this video's time range
+				// Use >= for start and < for end to handle boundaries correctly
+				if (cyclePosition >= accumulatedTime && cyclePosition < videoEndTime) {
 					videoIndex = i
 					offsetInVideo = cyclePosition - accumulatedTime
+					found = true
 					break
 				}
-				accumulatedTime += videoDuration
+				
+				accumulatedTime = videoEndTime
 			}
+			
+			// Fallback: if cyclePosition is exactly at the end (shouldn't happen due to modulo, but safety check)
+			if (!found) {
+				// This means cyclePosition equals totalDurationSec (exact end of playlist)
+				// Wrap to first video at start
+				videoIndex = 0
+				offsetInVideo = 0
+			}
+		}
+
+		// Validate calculated position
+		if (videoIndex < 0 || videoIndex >= channel.items.length) {
+			console.error(`[LBSM] Invalid videoIndex ${videoIndex} for channel with ${channel.items.length} items`)
+			videoIndex = 0
+			offsetInVideo = 0
+		}
+		
+		// Ensure offset doesn't exceed video duration
+		const currentVideoDuration = videoDurations[videoIndex] || 300
+		if (offsetInVideo >= currentVideoDuration) {
+			console.warn(`[LBSM] Offset ${offsetInVideo}s exceeds video duration ${currentVideoDuration}s, clamping`)
+			offsetInVideo = Math.max(0, currentVideoDuration - 1)
 		}
 
 		const position = {
 			videoIndex,
-			offset: Math.max(0, offsetInVideo),
+			offset: Math.max(0, Math.min(offsetInVideo, currentVideoDuration)),
 			cyclePosition,
 			totalDuration: totalDurationSec,
 			totalElapsedSec,
@@ -296,15 +353,33 @@ class LocalBroadcastStateManager {
 			isSingleVideo: channel.items.length === 1,
 		}
 
+		// Debug logging for timeline calculation
+		if (process.env.NODE_ENV === 'development') {
+			console.log(`[LBSM] Position calculated for ${channel.name}:`, {
+				videoIndex,
+				offset: position.offset.toFixed(1),
+				cyclePosition: cyclePosition.toFixed(1),
+				totalElapsedSec: totalElapsedSec.toFixed(1),
+				totalDuration: totalDurationSec.toFixed(1),
+			})
+		}
+
 		return position
 	}
 
 	/**
 	 * Calculate total playlist duration
+	 * Uses consistent 300s (5 min) default for missing durations
 	 */
 	calculateTotalDuration(items) {
 		if (!items || items.length === 0) return 3600
-		return items.reduce((sum, item) => sum + (item.duration || 300), 0)
+		return items.reduce((sum, item) => {
+			const duration = item.duration
+			if (typeof duration === 'number' && duration > 0) {
+				return sum + duration
+			}
+			return sum + 300 // Consistent default: 5 minutes
+		}, 0)
 	}
 
 	/**

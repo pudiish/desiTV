@@ -147,9 +147,9 @@ onBufferingChange = null,
 		}
 	}, [videoId])
 
-	// Use YouTube's peak timestamp if available, otherwise use calculated offset
-	const usePeakTimestamp = youtubePeakTime !== null && youtubePeakTime > 0
-	const startSeconds = usePeakTimestamp ? Math.floor(youtubePeakTime) : Math.floor(offset)
+	// ALWAYS use calculated offset from global timeline - no peak timestamp override
+	// Peak timestamp conflicts with synchronized timeline across channels
+	const startSeconds = Math.floor(offset)
 
 	// Use ref to avoid stale closure in interval
 	const switchToNextVideoRef = useRef(null)
@@ -452,12 +452,7 @@ onBufferingChange = null,
 		const loadVideoToPlayer = () => {
 			if (!ytPlayerRef.current || !videoId) return
 			
-			// Log if using peak timestamp
-			if (usePeakTimestamp && youtubePeakTime) {
-				console.log('[Player] Loading video with YouTube peak timestamp:', videoId, 'at', startSeconds, 's (most replayed)')
-			} else {
-				console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
-			}
+			console.log('[Player] Loading video from global timeline:', videoId, 'at', startSeconds, 's (offset:', offset.toFixed(1), 's)')
 			
 			e7Ref.current = true // Mark as loading initiated
 			
@@ -510,7 +505,7 @@ onBufferingChange = null,
 			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [videoId, channel?._id, startSeconds, userInteracted, youtubePeakTime])
+	}, [videoId, channel?._id, startSeconds, userInteracted])
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {

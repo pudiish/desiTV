@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
 
 /**
@@ -7,14 +7,25 @@ import LocalBroadcastStateManager from '../utils/LocalBroadcastStateManager'
  * Uses LocalBroadcastStateManager for localStorage-based timeline
  * All components (Player, TVMenu, etc) use this hook to stay perfectly synced.
  * 
+ * Recalculates position every second to keep timeline synchronized.
+ * 
  * @param {Object} channel - Channel with items array
  * @returns {Object} Complete broadcast position state
  */
 export function useBroadcastPosition(channel) {
-	// Get state timestamp to trigger recalculation on epoch changes
-	const stateTimestamp = channel?._id 
-		? LocalBroadcastStateManager.getChannelState(channel._id)?.lastAccessTime
-		: null
+	// Force recalculation every second to keep timeline synchronized
+	const [refreshTrigger, setRefreshTrigger] = useState(Date.now())
+	
+	useEffect(() => {
+		if (!channel?._id) return
+		
+		// Update every second to recalculate position from global timeline
+		const interval = setInterval(() => {
+			setRefreshTrigger(Date.now())
+		}, 1000)
+		
+		return () => clearInterval(interval)
+	}, [channel?._id])
 
 	return useMemo(() => {
 		if (!channel?.items || channel.items.length === 0) {
@@ -91,5 +102,5 @@ export function useBroadcastPosition(channel) {
 				isValid: false
 			}
 		}
-	}, [channel?._id, channel?.items, stateTimestamp])
+	}, [channel?._id, channel?.items, refreshTrigger])
 }
