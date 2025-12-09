@@ -5,7 +5,7 @@
  * Extracted from LocalBroadcastStateManager for better organization
  */
 
-import BROADCAST_THRESHOLDS from '../../config/thresholds/broadcast.js'
+import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
 
 class BroadcastStateManager {
 	constructor() {

@@ -5,7 +5,7 @@
  * Moved from utils/pseudoLive.js for better organization
  */
 
-import BROADCAST_THRESHOLDS from '../../config/thresholds/broadcast.js'
+import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
 
 /**
  * Calculate which item in a playlist should be playing at a given time

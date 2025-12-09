@@ -12,7 +12,7 @@
  * - Clean separation of concerns
  */
 
-import PLAYBACK_THRESHOLDS from '../../config/thresholds/playback.js'
+import { PLAYBACK_THRESHOLDS } from '../../config/thresholds/index.js'
 import { YOUTUBE_STATES } from '../../config/constants/youtube.js'
 
 class UnifiedPlaybackManager {

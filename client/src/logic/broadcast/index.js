@@ -4,6 +4,7 @@
  * Export all broadcast-related logic modules
  */
 
-export { default as broadcastStateManager } from './BroadcastStateManager.js'
+import broadcastStateManager from './BroadcastStateManager.js'
+export { broadcastStateManager }
 export * from './PseudoLiveCalculator.js'
 

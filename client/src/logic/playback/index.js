@@ -4,5 +4,6 @@
  * Export all playback-related logic modules
  */
 
-export { default as unifiedPlaybackManager } from './UnifiedPlaybackManager.js'
+import unifiedPlaybackManager from './UnifiedPlaybackManager.js'
+export { unifiedPlaybackManager }
 
