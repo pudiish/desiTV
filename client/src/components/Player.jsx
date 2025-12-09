@@ -560,6 +560,12 @@ onBufferingChange = null,
 		}
 	}, [isBuffering, handleBufferingTimeout])
 
+	// Use unified playback manager's safe play function
+	// Defined early so it can be used in dependency arrays
+	const safePlayVideo = useCallback(() => {
+		return unifiedPlaybackManager.safePlayVideo()
+	}, [])
+
 	// Effect: Re-initialize MediaSession when channel/video changes (debounced)
 	useEffect(() => {
 		if (!current || !playerRef.current || !hasInitializedRef.current) return
@@ -892,11 +898,6 @@ onBufferingChange = null,
 			unifiedPlaybackManager.stop()
 		}
 	}, [power, hasInitializedRef.current])
-
-	// Use unified playback manager's safe play function
-	const safePlayVideo = useCallback(() => {
-		return unifiedPlaybackManager.safePlayVideo()
-	}, [])
 
 	// Effect: Handle power on/off - RESTRUCTURED for robustness
 	useEffect(() => {
