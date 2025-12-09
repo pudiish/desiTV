@@ -653,12 +653,20 @@ onBufferingChange = null,
 				}
 			)
 			
-			// Update position state safely
+			// Update position state and playback state safely
 			setTimeout(() => {
 				if (playerRef.current) {
 					try {
+						const state = playerRef.current.getPlayerState?.()
 						const duration = playerRef.current.getDuration?.() || 0
 						const currentTime = playerRef.current.getCurrentTime?.() || 0
+						
+						// Set playback state based on current player state (critical for iOS background playback)
+						if (state === STATE_PLAYING || state === STATE_BUFFERING) {
+							mediaSessionManager.setPlaybackState('playing')
+						} else if (state === STATE_PAUSED) {
+							mediaSessionManager.setPlaybackState('paused')
+						}
 						
 						if (typeof duration === 'number' && typeof currentTime === 'number') {
 							mediaSessionManager.setPositionState({
@@ -692,20 +700,35 @@ onBufferingChange = null,
 	useEffect(() => {
 		const handleVisibilityChange = () => {
 			if (document.visibilityState === 'hidden') {
-				// Page is in background - maintain playback
-				console.log('[Player] Page went to background - maintaining playback')
-				// MediaSession will handle controls in lock screen/notification
-				// Let fast recovery handle playback resumption to avoid conflicts
-				// Don't manually call playVideo here to prevent pause/resume loops
+				// Page is in background - maintain playback state for iOS/mobile
+				console.log('[Player] Page went to background - maintaining playback state')
+				
+				// CRITICAL for iOS: Set MediaSession playback state to 'playing' BEFORE going to background
+				// This tells iOS to keep audio playing even if video pauses
+				if (playerRef.current && powerRef.current) {
+					try {
+						const state = playerRef.current.getPlayerState?.()
+						if (state === STATE_PLAYING || state === STATE_BUFFERING) {
+							// Set MediaSession to 'playing' - this is key for iOS background audio
+							mediaSessionManager.setPlaybackState('playing')
+							console.log('[Player] MediaSession set to playing for background playback')
+						}
+					} catch (err) {
+						console.error('[Player] Error setting MediaSession state on background:', err)
+					}
+				}
 			} else {
-				// Page is visible again - update position state only, don't interfere with playback
-				// Fast recovery manager will handle any playback issues if needed
-				if (playerRef.current && current && powerRef.current) {
+				// Page is visible again - resume playback if it was paused by iOS
+				console.log('[Player] Page became visible - checking playback state')
+				
+				if (playerRef.current && current && powerRef.current && shouldPlayRef.current) {
 					setTimeout(() => {
 						try {
+							const state = playerRef.current.getPlayerState?.()
 							const duration = playerRef.current.getDuration?.() || 0
 							const currentTime = playerRef.current.getCurrentTime?.() || 0
 							
+							// Update position state
 							if (typeof duration === 'number' && typeof currentTime === 'number') {
 								mediaSessionManager.setPositionState({
 									duration: duration || 0,
@@ -723,10 +746,20 @@ onBufferingChange = null,
 									}).catch(() => {})
 								}).catch(() => {})
 							}
+							
+							// If iOS paused the video, resume it
+							if (state === STATE_PAUSED && userInteracted) {
+								console.log('[Player] Resuming playback after returning from background')
+								safePlayVideo()
+								mediaSessionManager.setPlaybackState('playing')
+							} else if (state === STATE_PLAYING) {
+								// Ensure MediaSession state matches
+								mediaSessionManager.setPlaybackState('playing')
+							}
 						} catch (err) {
 							console.error('[Player] Error updating position on visibility change:', err)
 						}
-					}, 500)
+					}, 300)
 				}
 			}
 		}
@@ -735,7 +768,7 @@ onBufferingChange = null,
 		return () => {
 			document.removeEventListener('visibilitychange', handleVisibilityChange)
 		}
-	}, [current, power])
+	}, [current, power, userInteracted, safePlayVideo])
 
 	// Effect: Update MediaSession position state periodically (simplified - no health check)
 	// Fast recovery manager handles all recovery, this just updates position
