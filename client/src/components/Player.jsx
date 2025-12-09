@@ -43,7 +43,7 @@ onBufferingChange = null,
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
 	const [userInteracted, setUserInteracted] = useState(false) // RetroTV pattern: track user interaction
 	const [isMutedAutoplay, setIsMutedAutoplay] = useState(true) // Track if in muted autoplay mode
-	const [showStaticOverlay, setShowStaticOverlay] = useState(true) // Show static on initial load
+	const [showStaticOverlay, setShowStaticOverlay] = useState(true) // Show static on initial load only
 	const ytPlayerRef = useRef(null) // Direct YouTube API player reference
 
 	// ===== REFS =====
@@ -60,6 +60,7 @@ onBufferingChange = null,
 	const skipAttemptsRef = useRef(0)
 	const staticAudioRef = useRef(null)
 	const staticVideoRef = useRef(null) // Static video for loading/buffering
+	const staticShownRef = useRef(false) // Track if static has been shown for current video
 	const lastPlayTimeRef = useRef(Date.now())
 	const bufferingStartTimeRef = useRef(null)
 	const playbackStateRef = useRef('idle') // idle, loading, playing, buffering, error
@@ -169,17 +170,20 @@ onBufferingChange = null,
 	}, [attemptRetry, retryCount])
 
 	// ===== AUTOPLAY HELPER (RetroTV Pattern) =====
-	// Strategy: Start muted autoplay, then on user interaction reload video to enable sound
+	// Strategy: Start muted autoplay, then on user interaction unmute to enable sound
 	const attemptAutoplay = useCallback(async (player) => {
 		if (!player || autoplayAttemptedRef.current) return
 		
 		try {
 			autoplayAttemptedRef.current = true
-			console.log('[Player] Attempting muted autoplay (iOS compatible)')
+			console.log('[Player] Attempting muted autoplay (mobile compatible)')
 			
-			// Start muted - this is allowed on iOS
+			// Start muted - this is allowed on mobile/iOS
 			player.mute()
 			player.setVolume(volume * 100)
+			
+			// Set shouldPlay to true for autoplay
+			shouldPlayRef.current = true
 			
 			// Try to play muted
 			await player.playVideo()
@@ -315,7 +319,8 @@ onBufferingChange = null,
 			skipAttemptsRef.current = 0
 			setRetryCount(0)
 			setPlaybackHealth('healthy')
-			setShowStaticOverlay(true) // Show static when changing channels
+			setShowStaticOverlay(true) // Show static when changing channels (intentional transition)
+			staticShownRef.current = true
 			e7Ref.current = false
 			clipSeekTimeRef.current = 0
 			
@@ -702,21 +707,36 @@ onBufferingChange = null,
 		return () => clearTimeout(timeoutId)
 	}, [current?.youtubeId, current?.title, channel?.name, channel?._id, currIndex, items])
 
-	// Effect: Handle page visibility for background playback
+	// Effect: Handle page visibility for background playback (retro-tv org pattern)
 	useEffect(() => {
 		const handleVisibilityChange = () => {
 			if (document.visibilityState === 'hidden') {
 				// Page is in background - maintain playback state for iOS/mobile
 				console.log('[Player] Page went to background - maintaining playback state')
 				
-				// CRITICAL for iOS: Set MediaSession playback state to 'playing' BEFORE going to background
+				// CRITICAL for iOS background playback: Set MediaSession state BEFORE going to background
 				// This tells iOS to keep audio playing even if video pauses
 				if (playerRef.current && powerRef.current) {
 					try {
 						const state = playerRef.current.getPlayerState?.()
-						if (state === STATE_PLAYING || state === STATE_BUFFERING) {
-							// Set MediaSession to 'playing' - this is key for iOS background audio
+						
+						// Always set MediaSession to 'playing' if we should be playing
+						// This is key for iOS background audio continuation
+						if (state === STATE_PLAYING || state === STATE_BUFFERING || shouldPlayRef.current) {
 							mediaSessionManager.setPlaybackState('playing')
+							
+							// Update position state for lock screen controls
+							const duration = playerRef.current.getDuration?.() || 0
+							const currentTime = playerRef.current.getCurrentTime?.() || 0
+							
+							if (typeof duration === 'number' && typeof currentTime === 'number' && duration > 0) {
+								mediaSessionManager.setPositionState({
+									duration: duration,
+									playbackRate: 1.0,
+									position: currentTime,
+								})
+							}
+							
 							console.log('[Player] MediaSession set to playing for background playback')
 						}
 					} catch (err) {
@@ -728,6 +748,7 @@ onBufferingChange = null,
 				console.log('[Player] Page became visible - checking playback state')
 				
 				if (playerRef.current && current && powerRef.current && shouldPlayRef.current) {
+					// Small delay to ensure player is ready
 					setTimeout(() => {
 						try {
 							const state = playerRef.current.getPlayerState?.()
@@ -735,28 +756,26 @@ onBufferingChange = null,
 							const currentTime = playerRef.current.getCurrentTime?.() || 0
 							
 							// Update position state
-							if (typeof duration === 'number' && typeof currentTime === 'number') {
+							if (typeof duration === 'number' && typeof currentTime === 'number' && duration > 0) {
 								mediaSessionManager.setPositionState({
-									duration: duration || 0,
+									duration: duration,
 									playbackRate: 1.0,
-									position: currentTime || 0,
+									position: currentTime,
 								})
-							} else {
-								Promise.resolve(duration).then((dur) => {
-									Promise.resolve(currentTime).then((time) => {
-										mediaSessionManager.setPositionState({
-											duration: dur || 0,
-											playbackRate: 1.0,
-											position: time || 0,
-										})
-									}).catch(() => {})
-								}).catch(() => {})
 							}
 							
-							// If iOS paused the video, resume it
-							if (state === STATE_PAUSED && userInteracted) {
+							// If iOS paused the video, resume it (muted autoplay or with sound based on user interaction)
+							if (state === STATE_PAUSED) {
 								console.log('[Player] Resuming playback after returning from background')
-								safePlayVideo()
+								if (userInteracted) {
+									// User has interacted - resume with sound
+									playerRef.current.unMute()
+									playerRef.current.setVolume(volume * 100)
+									playerRef.current.playVideo()
+								} else {
+									// No user interaction - resume muted autoplay
+									attemptAutoplay(playerRef.current)
+								}
 								mediaSessionManager.setPlaybackState('playing')
 							} else if (state === STATE_PLAYING) {
 								// Ensure MediaSession state matches
@@ -765,7 +784,7 @@ onBufferingChange = null,
 						} catch (err) {
 							console.error('[Player] Error updating position on visibility change:', err)
 						}
-					}, 300)
+					}, 200) // Reduced delay for faster resume
 				}
 			}
 		}
@@ -774,7 +793,7 @@ onBufferingChange = null,
 		return () => {
 			document.removeEventListener('visibilitychange', handleVisibilityChange)
 		}
-	}, [current, power, userInteracted, safePlayVideo])
+	}, [current, power, userInteracted, attemptAutoplay, volume])
 
 	// Effect: Update MediaSession position state periodically (simplified - no health check)
 	// Fast recovery manager handles all recovery, this just updates position
@@ -867,8 +886,9 @@ onBufferingChange = null,
 	// Effect: Update power ref
 	useEffect(() => {
 		powerRef.current = power
-		shouldPlayRef.current = power && userInteracted
-	}, [power, userInteracted])
+		// Allow autoplay even without user interaction (muted autoplay)
+		shouldPlayRef.current = power
+	}, [power])
 
 	// Effect: Start/stop unified playback manager based on power state
 	useEffect(() => {
@@ -876,7 +896,7 @@ onBufferingChange = null,
 			// Start unified playback manager when power is on
 			unifiedPlaybackManager.start(playerRef, {
 				shouldPlay: () => {
-					// Only auto-resume if power is on, user has interacted, and not transitioning
+					// Allow autoplay if power is on and not transitioning (muted autoplay is allowed)
 					return powerRef.current && shouldPlayRef.current && !isTransitioningRef.current
 				},
 				onRecovery: (type) => {
@@ -904,18 +924,26 @@ onBufferingChange = null,
 		if (!hasInitializedRef.current) return
 
 		if (power) {
-			// Power ON - ensure playback starts
-			shouldPlayRef.current = userInteracted // Only auto-play if user has interacted
+			// Power ON - allow autoplay (muted if no user interaction)
+			shouldPlayRef.current = true
 			
 			const timeoutId = setTimeout(() => {
-				if (playerRef.current && powerRef.current && !isTransitioningRef.current && shouldPlayRef.current) {
+				if (playerRef.current && powerRef.current && !isTransitioningRef.current) {
 					try {
 						const state = playerRef.current.getPlayerState?.()
 						
-						// If paused, unstarted, or cued, try to play (using safe function)
+						// If paused, unstarted, or cued, try to play
 						if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
 							console.log('[Player] Power ON - resuming playback, state:', state)
-							safePlayVideo()
+							if (userInteracted) {
+								// User has interacted - play with sound
+								playerRef.current.unMute()
+								playerRef.current.setVolume(volume * 100)
+								playerRef.current.playVideo()
+							} else {
+								// No user interaction - muted autoplay
+								attemptAutoplay(playerRef.current)
+							}
 							mediaSessionManager.setPlaybackState('playing')
 							unifiedPlaybackManager.reset()
 						} else if (state === STATE_PLAYING) {
@@ -944,7 +972,7 @@ onBufferingChange = null,
 				}
 			}
 		}
-	}, [power, hasInitializedRef.current, userInteracted, safePlayVideo])
+	}, [power, hasInitializedRef.current, userInteracted, attemptAutoplay, volume])
 
 	// Effect: Ensure playback continues after channel/video change - RESTRUCTURED
 	useEffect(() => {
@@ -954,17 +982,25 @@ onBufferingChange = null,
 
 		// Wait for video to load before attempting playback
 		const timeoutId = setTimeout(() => {
-			if (!playerRef.current || isTransitioningRef.current || !powerRef.current || !shouldPlayRef.current) {
+			if (!playerRef.current || isTransitioningRef.current || !powerRef.current) {
 				return
 			}
 
 			try {
 				const state = playerRef.current.getPlayerState?.()
 				
-				// If paused, unstarted, or cued, and we should be playing, start playback (using safe function)
+				// If paused, unstarted, or cued, start playback
 				if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
 					console.log('[Player] Channel/video changed - resuming playback, state:', state)
-					safePlayVideo()
+					if (userInteracted) {
+						// User has interacted - play with sound
+						playerRef.current.unMute()
+						playerRef.current.setVolume(volume * 100)
+						playerRef.current.playVideo()
+					} else {
+						// No user interaction - muted autoplay
+						attemptAutoplay(playerRef.current)
+					}
 					mediaSessionManager.setPlaybackState('playing')
 					unifiedPlaybackManager.reset()
 				} else if (state === STATE_PLAYING) {
@@ -972,8 +1008,7 @@ onBufferingChange = null,
 					mediaSessionManager.setPlaybackState('playing')
 					unifiedPlaybackManager.reset()
 				} else if (state === STATE_BUFFERING) {
-					// Buffering - let fast recovery handle it, don't interfere
-					// Fast recovery will check and resume if needed
+					// Buffering - let unified playback manager handle it
 				}
 			} catch (err) {
 				console.error('[Player] Error resuming playback after change:', err)
@@ -981,7 +1016,7 @@ onBufferingChange = null,
 		}, 800) // Increased delay to ensure video is loaded
 		
 		return () => clearTimeout(timeoutId)
-	}, [current?.youtubeId, channel?._id, power, safePlayVideo])
+	}, [current?.youtubeId, channel?._id, power, userInteracted, attemptAutoplay, volume])
 
 	// ===== CALLBACKS =====
 
@@ -1062,7 +1097,8 @@ onBufferingChange = null,
 		}
 
 		isTransitioningRef.current = true
-		setShowStaticOverlay(true) // Show static during transition
+		setShowStaticOverlay(true) // Show static during intentional video transition
+		staticShownRef.current = true
 
 		// Stop progress monitoring
 		if (progressIntervalRef.current) {
@@ -1184,10 +1220,11 @@ onBufferingChange = null,
 			const errorCode = error?.data || error
 			console.error('[Player] onPlayerError:', errorCode)
 			
-			// Show static immediately on error
+			// Show static immediately on error (only for actual errors, not normal buffering)
 			setIsBuffering(true)
 			setIsTransitioning(true)
 			setShowStaticOverlay(true)
+			staticShownRef.current = true
 			
 			// Clear any existing error timeout
 			if (skipErrorTimeoutIdRef.current) {
@@ -1278,14 +1315,16 @@ onBufferingChange = null,
 					break
 					
 			case STATE_PLAYING:
-				// RetroTV: Video is playing - hide static, start monitoring
+				// RetroTV: Video is playing - hide static immediately, start monitoring
 				setRetryCount(0)
 				setPlaybackHealth('healthy')
-				setShowStaticOverlay(false)
+				setShowStaticOverlay(false) // Hide static immediately when playing
+				setIsBuffering(false) // Clear buffering state immediately
+				staticShownRef.current = false // Reset static shown flag
 				lastPlayTimeRef.current = Date.now()
 				shouldPlayRef.current = true
 				
-				// Update MediaSession
+				// Update MediaSession - CRITICAL for background playback
 				mediaSessionManager.setPlaybackState('playing')
 				
 				// Reset unified playback manager on successful playback
@@ -1311,19 +1350,17 @@ onBufferingChange = null,
 					}
 				}
 				
-				// Clear buffering state
+				// Clear buffering timeout and static audio immediately
 				if (bufferTimeoutRef.current) {
 					clearTimeout(bufferTimeoutRef.current)
+					bufferTimeoutRef.current = null
 				}
-				bufferTimeoutRef.current = setTimeout(() => {
-					setIsBuffering(false)
-					if (staticAudioRef.current) {
-						try {
-							staticAudioRef.current.pause()
-							staticAudioRef.current.currentTime = 0
-						} catch (err) {}
-					}
-				}, 200)
+				if (staticAudioRef.current) {
+					try {
+						staticAudioRef.current.pause()
+						staticAudioRef.current.currentTime = 0
+					} catch (err) {}
+				}
 
 				// Start progress monitoring if not already running
 				if (!progressIntervalRef.current && !isTransitioningRef.current) {
@@ -1350,12 +1387,14 @@ onBufferingChange = null,
 				break
 				
 			case STATE_BUFFERING:
-					// RetroTV: Buffering with 8-second watchdog timer
+					// RetroTV: Buffering - only show static after 3 seconds (not immediately)
+					// This prevents static from showing during normal brief buffering
 					if (bufferTimeoutRef.current) {
 						clearTimeout(bufferTimeoutRef.current)
 					}
 					bufferTimeoutRef.current = setTimeout(() => {
-						if (playbackStateRef.current === 'buffering') {
+						if (playbackStateRef.current === 'buffering' && !isTransitioningRef.current) {
+							// Only show buffering UI after 3 seconds of continuous buffering
 							setIsBuffering(true)
 							setPlaybackHealth('buffering')
 							
@@ -1366,7 +1405,7 @@ onBufferingChange = null,
 								} catch (err) {}
 							}
 						}
-					}, 500)
+					}, 3000) // Increased from 500ms to 3 seconds to reduce static frequency
 					
 					// RetroTV watchdog: 8 seconds max buffering
 					watchDogTimeOutIdRef.current = setTimeout(() => {
