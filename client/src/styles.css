@@ -78,9 +78,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	transition: filter 0.2s ease;
 	position: relative;
 	filter: drop-shadow(0 0 30px rgba(128, 128, 128, 0.4));
-	height: 100%;
-	min-height: 0;
-	overflow: hidden;
+	min-height: 200px; /* Ensure minimum height on mobile */
+	overflow: visible;
 }
 
 .tv-frame-container:hover {
@@ -1860,17 +1859,28 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* Tablet Portrait / Large Mobile (600px - 767px) - Stack vertically */
 @media (max-width: 767px) {
+	.main-container {
+		height: auto;
+		min-height: 100vh;
+		min-height: 100dvh;
+		overflow-y: auto;
+	}
+	
 	.content-wrapper {
 		flex-direction: column;
 		gap: 15px;
 		padding: 10px;
 		justify-content: flex-start;
 		align-items: center;
+		overflow: visible;
+		min-height: auto;
 	}
 	
 	.tv-frame-container {
 		width: 100%;
 		max-width: 100%;
+		order: 1; /* TV shows first */
+		flex-shrink: 0;
 	}
 	
 	.tv-frame {
@@ -1878,44 +1888,47 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		width: 100%;
 		max-width: 100%;
 		aspect-ratio: 16/10;
-		padding: 10px;
-		border-radius: 10px;
+		padding: 8px;
+		border-radius: 8px;
 	}
 	
 	.right-panel {
 		width: 100%;
-		max-width: 300px;
+		max-width: 280px;
 		height: auto;
 		max-height: none;
+		order: 2; /* Remote shows second */
+		flex-shrink: 0;
+		margin-bottom: 60px; /* Space for footer */
 	}
 	
 	.remote-body {
 		width: 100%;
-		max-width: 280px;
-		padding: 14px 12px 18px;
+		max-width: 260px;
+		padding: 12px 10px 14px;
 	}
 	
 	.remote-brand {
-		font-size: 10px;
-		margin-bottom: 10px;
+		font-size: 9px;
+		margin-bottom: 8px;
 	}
 	
 	.remote-btn.power-btn {
-		width: 40px;
-		height: 40px;
+		width: 36px;
+		height: 36px;
 	}
 	
 	.power-icon {
-		font-size: 16px;
+		font-size: 14px;
 	}
 	
 	.channel-display {
-		padding: 6px 12px;
-		margin: 8px auto 10px;
+		padding: 5px 10px;
+		margin: 6px auto 8px;
 	}
 	
 	.channel-number {
-		font-size: 20px;
+		font-size: 18px;
 	}
 	
 	.number-pad {
@@ -1948,6 +1961,11 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	
 	.footer-status {
 		padding: 8px 10px;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
 	}
 	
 	.status-text {
@@ -1959,168 +1977,57 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 @media (max-width: 599px) {
 	.main-container {
 		min-height: 100vh;
-		min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
+		min-height: 100dvh;
+		height: auto;
+		overflow-y: auto;
 	}
 	
 	.content-wrapper {
 		padding: 8px;
-		gap: 12px;
+		gap: 10px;
+		flex-direction: column;
+		overflow: visible;
+	}
+	
+	.tv-frame-container {
+		order: 1;
+		width: 100%;
+		flex-shrink: 0;
 	}
 	
 	.tv-frame {
-		padding: 8px;
-		border-radius: 8px;
+		width: 100%;
+		height: auto;
+		aspect-ratio: 16/10;
+		padding: 6px;
+		border-radius: 6px;
 		border-width: 2px;
 	}
 	
 	.tv-screen {
 		border-radius: 4px;
-		border-width: 4px;
+		border-width: 3px;
 	}
 	
 	.right-panel {
-		max-width: 260px;
-	}
-	
-	.remote-body {
+		order: 2;
 		max-width: 240px;
-		padding: 12px 10px 16px;
-	}
-	
-	.remote-brand {
-		font-size: 9px;
-		margin-bottom: 8px;
-	}
-	
-	.power-section {
-		gap: 10px;
-		margin-bottom: 10px;
-	}
-	
-	.remote-btn.power-btn {
-		width: 36px;
-		height: 36px;
-	}
-	
-	.power-icon {
-		font-size: 14px;
-	}
-	
-	.channel-display {
-		padding: 5px 10px;
-		margin: 6px auto 8px;
-	}
-	
-	.channel-label {
-		font-size: 8px;
-	}
-	
-	.channel-number {
-		font-size: 18px;
-	}
-	
-	.number-pad {
-		gap: 5px;
-		margin-bottom: 8px;
-	}
-	
-	.remote-btn.num-btn {
-		padding: 8px;
-		font-size: 11px;
-	}
-	
-	.dpad-section {
-		margin: 8px 0;
-	}
-	
-	.remote-btn.dpad-btn {
-		padding: 6px 8px;
-		font-size: 7px;
-	}
-	
-	.mute-section {
-		margin: 8px 0;
-	}
-	
-	.remote-btn.mute-btn {
-		font-size: 8px;
-		padding: 6px 12px;
-	}
-	
-	.vcr-section {
-		margin-top: 8px;
-		padding-top: 8px;
-	}
-	
-	.vcr-label {
-		font-size: 6px;
-		margin-bottom: 6px;
-	}
-	
-	.vcr-buttons {
-		gap: 5px;
-	}
-	
-	.remote-btn.vcr-btn {
-		width: 30px;
-		height: 26px;
-		font-size: 10px;
-	}
-	
-	.remote-btn.vcr-btn.small {
-		width: 26px;
-		height: 22px;
-		font-size: 8px;
-	}
-	
-	.volume-bar-section {
-		margin-top: 8px;
-		padding: 6px;
-	}
-	
-	.volume-label {
-		font-size: 6px;
-	}
-	
-	.volume-bar {
-		height: 6px;
-	}
-	
-	.volume-percent {
-		font-size: 8px;
-	}
-	
-	.footer-status {
-		padding: 6px 8px;
-	}
-	
-	.status-text {
-		font-size: 6px;
-	}
-}
-
-/* Extra Small Mobile (< 400px) */
-@media (max-width: 399px) {
-	.content-wrapper {
-		padding: 5px;
-		gap: 10px;
-	}
-	
-	.tv-frame {
-		padding: 6px;
-	}
-	
-	.right-panel {
-		max-width: 220px;
+		margin-bottom: 50px;
 	}
 	
 	.remote-body {
-		max-width: 200px;
+		max-width: 220px;
 		padding: 10px 8px 14px;
 	}
 	
 	.remote-brand {
 		font-size: 8px;
+		margin-bottom: 6px;
+	}
+	
+	.power-section {
+		gap: 8px;
+		margin-bottom: 8px;
 	}
 	
 	.remote-btn.power-btn {
@@ -2132,8 +2039,27 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		font-size: 12px;
 	}
 	
+	.led {
+		width: 6px;
+		height: 6px;
+	}
+	
+	.channel-display {
+		padding: 4px 8px;
+		margin: 5px auto 6px;
+	}
+	
+	.channel-label {
+		font-size: 7px;
+	}
+	
 	.channel-number {
 		font-size: 16px;
+	}
+	
+	.number-pad {
+		gap: 4px;
+		margin-bottom: 6px;
 	}
 	
 	.remote-btn.num-btn {
@@ -2141,15 +2067,213 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		font-size: 10px;
 	}
 	
+	.dpad-section {
+		margin: 6px 0;
+	}
+	
 	.remote-btn.dpad-btn {
-		padding: 5px 6px;
+		padding: 5px 7px;
 		font-size: 6px;
+	}
+	
+	.mute-section {
+		margin: 6px 0;
+	}
+	
+	.remote-btn.mute-btn {
+		font-size: 7px;
+		padding: 5px 10px;
+	}
+	
+	.vcr-section {
+		margin-top: 6px;
+		padding-top: 6px;
+	}
+	
+	.vcr-label {
+		font-size: 5px;
+		margin-bottom: 4px;
+	}
+	
+	.vcr-buttons {
+		gap: 4px;
 	}
 	
 	.remote-btn.vcr-btn {
 		width: 26px;
 		height: 22px;
 		font-size: 9px;
+	}
+	
+	.remote-btn.vcr-btn.small {
+		width: 22px;
+		height: 18px;
+		font-size: 7px;
+	}
+	
+	.volume-bar-section {
+		margin-top: 6px;
+		padding: 5px;
+	}
+	
+	.volume-label {
+		font-size: 5px;
+	}
+	
+	.volume-bar {
+		height: 5px;
+	}
+	
+	.volume-percent {
+		font-size: 7px;
+	}
+	
+	.footer-status {
+		padding: 5px 8px;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+	}
+	
+	.status-text {
+		font-size: 6px;
+	}
+}
+
+/* Extra Small Mobile (< 400px) */
+@media (max-width: 399px) {
+	.content-wrapper {
+		padding: 4px;
+		gap: 8px;
+	}
+	
+	.tv-frame-container {
+		min-height: 180px;
+	}
+	
+	.tv-frame {
+		padding: 4px;
+		border-radius: 4px;
+	}
+	
+	.right-panel {
+		max-width: 200px;
+		margin-bottom: 45px;
+	}
+	
+	.remote-body {
+		max-width: 180px;
+		padding: 8px 6px 12px;
+	}
+	
+	.remote-brand {
+		font-size: 7px;
+		margin-bottom: 5px;
+	}
+	
+	.power-section {
+		gap: 6px;
+		margin-bottom: 6px;
+	}
+	
+	.remote-btn.power-btn {
+		width: 28px;
+		height: 28px;
+	}
+	
+	.power-icon {
+		font-size: 10px;
+	}
+	
+	.led {
+		width: 5px;
+		height: 5px;
+	}
+	
+	.channel-display {
+		padding: 3px 6px;
+		margin: 4px auto 5px;
+	}
+	
+	.channel-label {
+		font-size: 6px;
+	}
+	
+	.channel-number {
+		font-size: 14px;
+	}
+	
+	.number-pad {
+		gap: 3px;
+		margin-bottom: 5px;
+	}
+	
+	.remote-btn.num-btn {
+		padding: 5px;
+		font-size: 9px;
+	}
+	
+	.dpad-section {
+		margin: 5px 0;
+	}
+	
+	.remote-btn.dpad-btn {
+		padding: 4px 5px;
+		font-size: 5px;
+	}
+	
+	.mute-section {
+		margin: 5px 0;
+	}
+	
+	.remote-btn.mute-btn {
+		font-size: 6px;
+		padding: 4px 8px;
+	}
+	
+	.vcr-section {
+		margin-top: 5px;
+		padding-top: 5px;
+	}
+	
+	.vcr-label {
+		font-size: 4px;
+		margin-bottom: 3px;
+	}
+	
+	.vcr-buttons {
+		gap: 3px;
+	}
+	
+	.remote-btn.vcr-btn {
+		width: 22px;
+		height: 18px;
+		font-size: 8px;
+	}
+	
+	.remote-btn.vcr-btn.small {
+		width: 18px;
+		height: 14px;
+		font-size: 6px;
+	}
+	
+	.volume-bar-section {
+		margin-top: 5px;
+		padding: 4px;
+	}
+	
+	.volume-label {
+		font-size: 4px;
+	}
+	
+	.volume-bar {
+		height: 4px;
+	}
+	
+	.volume-percent {
+		font-size: 6px;
 	}
 }
 
