@@ -2343,103 +2343,6 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* CRT Info Overlay - Channel and Volume Display */
 
-/* Channel Display - Top Right Corner (Inside TV Frame) */
-.crt-channel-display {
-	position: absolute;
-	top: 20px;
-	right: 20px;
-	z-index: 1000;
-	pointer-events: none;
-	opacity: 1;
-	transform: translateX(0) translateY(0) scale(1);
-	filter: blur(0px) brightness(1);
-	transition: 
-		opacity 0.5s ease-out,
-		transform 0.5s ease-out,
-		filter 0.5s ease-out;
-	animation: channel-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-.crt-channel-display.fade-out {
-	opacity: 0;
-	transform: translateY(-10px) scale(0.95);
-	filter: blur(2px) brightness(1.5);
-	animation: channel-fade-out 0.5s ease-out forwards;
-}
-
-@keyframes channel-slide-in {
-	0% {
-		transform: translateX(30px);
-		opacity: 0;
-		filter: blur(3px) brightness(1.5);
-	}
-	50% {
-		filter: blur(1px) brightness(1.2);
-	}
-	100% {
-		transform: translateX(0);
-		opacity: 1;
-		filter: blur(0px) brightness(1);
-	}
-}
-
-@keyframes channel-fade-out {
-	0% {
-		transform: translateY(0) scale(1);
-		opacity: 1;
-		filter: blur(0px) brightness(1);
-	}
-	30% {
-		filter: blur(1px) brightness(1.3);
-	}
-	100% {
-		transform: translateY(-15px) scale(0.9);
-		opacity: 0;
-		filter: blur(4px) brightness(2);
-	}
-}
-
-.channel-box {
-	background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(13, 21, 32, 0.85) 100%);
-	border: 2px solid #4a9eff;
-	border-radius: 6px;
-	padding: 12px 14px;
-	box-shadow: 
-		0 0 25px rgba(74, 158, 255, 0.4),
-		0 0 50px rgba(74, 158, 255, 0.15),
-		inset 0 0 15px rgba(74, 158, 255, 0.1);
-	position: relative;
-	min-width: 90px;
-	text-align: center;
-	font-family: 'Press Start 2P', monospace;
-}
-
-.channel-label {
-	font-size: 7px;
-	color: #4a9eff;
-	text-shadow: 0 0 8px #4a9eff;
-	margin-bottom: 6px;
-	letter-spacing: 1px;
-	opacity: 0.7;
-}
-
-.channel-number {
-	font-size: 32px;
-	color: #4a9eff;
-	text-shadow: 0 0 15px #4a9eff, 0 0 30px rgba(74, 158, 255, 0.5);
-	line-height: 1;
-	font-weight: bold;
-	margin-bottom: 4px;
-}
-
-.channel-name-small {
-	font-size: 7px;
-	color: #ff6600;
-	text-shadow: 0 0 10px #ff6600;
-	letter-spacing: 0.5px;
-	text-transform: uppercase;
-}
-
 /* Volume Display - Right Side Vertical (Inside TV Frame) */
 .crt-volume-display {
 	position: absolute;
@@ -2457,9 +2360,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .crt-volume-display.fade-out {
-	opacity: 0;
-	filter: blur(3px) brightness(1.5);
-	animation: volume-fade-out 0.4s ease-out forwards;
+	animation: volume-fade-out 0.5s ease-out forwards !important;
 }
 
 @keyframes volume-slide-in {
@@ -2484,13 +2385,14 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		opacity: 1;
 		filter: blur(0px) brightness(1);
 	}
-	30% {
-		filter: blur(1px) brightness(1.3);
+	40% {
+		opacity: 0.7;
+		filter: blur(2px) brightness(1.5);
 	}
 	100% {
-		transform: translateY(-50%) translateX(20px);
+		transform: translateY(-50%) translateX(15px);
 		opacity: 0;
-		filter: blur(4px) brightness(2);
+		filter: blur(5px) brightness(2.5);
 	}
 }
 
@@ -2572,31 +2474,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	border-radius: 6px;
 }
 
-/* Responsive adjustments for channel and volume displays */
+/* Responsive adjustments for volume display */
 @media (max-width: 1024px) {
-	.crt-channel-display {
-		top: 15px;
-		right: 15px;
-	}
-
-	.channel-box {
-		padding: 10px 12px;
-		min-width: 85px;
-	}
-
-	.channel-number {
-		font-size: 28px;
-	}
-
-	.channel-label {
-		font-size: 6px;
-		margin-bottom: 5px;
-	}
-
-	.channel-name-small {
-		font-size: 6px;
-	}
-
 	.crt-volume-display {
 		right: 15px;
 	}
@@ -2629,31 +2508,6 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 @media (max-width: 768px) {
-	.crt-channel-display {
-		top: 12px;
-		right: 12px;
-	}
-
-	.channel-box {
-		padding: 9px 11px;
-		min-width: 78px;
-		border: 1px solid #4a9eff;
-		border-radius: 5px;
-	}
-
-	.channel-number {
-		font-size: 24px;
-	}
-
-	.channel-label {
-		font-size: 5px;
-		margin-bottom: 4px;
-	}
-
-	.channel-name-small {
-		font-size: 5px;
-	}
-
 	.crt-volume-display {
 		right: 12px;
 	}
@@ -2693,30 +2547,6 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 @media (max-width: 480px) {
-	.crt-channel-display {
-		top: 10px;
-		right: 10px;
-	}
-
-	.channel-box {
-		padding: 8px 9px;
-		min-width: 70px;
-		border-radius: 4px;
-	}
-
-	.channel-number {
-		font-size: 20px;
-	}
-
-	.channel-label {
-		font-size: 4px;
-		margin-bottom: 3px;
-	}
-
-	.channel-name-small {
-		font-size: 4px;
-	}
-
 	.crt-volume-display {
 		right: 10px;
 	}

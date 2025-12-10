@@ -296,11 +296,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									playbackInfo={playbackInfo}
 								/>
 							)}
-							{/* CRT Info Overlay - Channel and Volume Display - hide in fullscreen */}
+							{/* CRT Volume Overlay - hide in fullscreen */}
 							{!isFullscreen && (
 								<CRTInfoOverlay 
-									activeChannelIndex={activeChannelIndex}
-									channels={channels}
 									volume={crtVolume !== null ? crtVolume : volume}
 									isMuted={crtIsMuted}
 								/>

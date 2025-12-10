@@ -1,365 +1,302 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
+import React, { useState, useEffect, useRef } from 'react'
 import { broadcastStateManager } from '../logic/broadcast'
 
 /**
- * TVMenuV2 - Unified with BroadcastPosition
+ * TVMenuV2 - Category/Playlist selector menu
  * 
- * No longer calculates anything. All info comes from:
- * - broadcastPosition hook (contains current video, offset, timeRemaining)
- * - channels prop (for channel list and next videos)
- * - YouTube player state (only for error recovery)
+ * SINGLE SOURCE OF TRUTH:
+ * - For ACTIVE category: ONLY use playbackInfo (live YouTube data)
+ * - For OTHER categories: Calculate from broadcastStateManager
+ * 
+ * This prevents the conflict where broadcastStateManager overwrites
+ * the actual playing video with its calculated position.
  */
 export default function TVMenuV2({
-	isOpen,
-	onClose,
-	channels,
-	activeChannelIndex,
-	onChannelSelect,
-	power,
-	playbackInfo = null
+  isOpen,
+  onClose,
+  channels: categories,
+  activeChannelIndex: activeCategoryIndex,
+  onChannelSelect: onCategorySelect,
+  power,
+  playbackInfo = null
 }) {
-	const [selectedIndex, setSelectedIndex] = useState(activeChannelIndex)
-	const [activeTab, setActiveTab] = useState('channels')
-	const menuRef = useRef(null)
-	const itemRefs = useRef([])
+  const [selectedIndex, setSelectedIndex] = useState(activeCategoryIndex)
+  const [activeTab, setActiveTab] = useState('channels')
+  const menuRef = useRef(null)
+  const itemRefs = useRef([])
 
-	// Get position for ACTIVE channel only (this is what's ACTUALLY playing)
-	const activeChannel = channels[activeChannelIndex]
-	const activeChannelItems = activeChannel?.items || []
-	const hasActivePlaylist = activeChannelItems.length > 0
-	const activeBroadcast = useBroadcastPosition(activeChannel)
+  // Active category data
+  const activeCategory = categories[activeCategoryIndex]
+  const activeCategoryItems = activeCategory?.items || []
+  const hasActivePlaylist = activeCategoryItems.length > 0
 
-	// State to store positions for all channels (for TV guide display)
-	const [allChannelPositions, setAllChannelPositions] = useState({})
+  // Positions for NON-ACTIVE categories only
+  const [otherCategoryPositions, setOtherCategoryPositions] = useState({})
 
-	// Calculate positions for all channels periodically (sync with remote menu)
-	useEffect(() => {
-		if (!isOpen) return
+  // Calculate positions for NON-ACTIVE categories only
+  useEffect(() => {
+    if (!isOpen) return
 
-		const updateAllPositions = () => {
-			const positions = {}
-			channels.forEach((channel) => {
-				if (channel && channel.items && channel.items.length > 0) {
-					try {
-						// Initialize if needed
-						if (!broadcastStateManager.getChannelState(channel._id)) {
-							broadcastStateManager.initializeChannel(channel)
-						}
-						// Calculate position
-						const position = broadcastStateManager.calculateCurrentPosition(channel)
-						if (position && position.videoIndex >= 0) {
-							const currentVideo = channel.items[position.videoIndex]
-							const nextIdx = (position.videoIndex + 1) % channel.items.length
-							const nextVideo = channel.items[nextIdx]
-							positions[channel._id] = {
-								now: currentVideo,
-								next: nextVideo,
-								videoIndex: position.videoIndex,
-							}
-						}
-					} catch (err) {
-						console.error(`[TVMenu] Error calculating position for channel ${channel._id}:`, err)
-					}
-				}
-			})
-			setAllChannelPositions(positions)
-		}
+    const updateOtherPositions = () => {
+      const positions = {}
+      categories.forEach((category, idx) => {
+        // SKIP active category - we use playbackInfo for that
+        if (idx === activeCategoryIndex) return
 
-		// Update immediately
-		updateAllPositions()
+        if (category && category.items && category.items.length > 0) {
+          try {
+            if (!broadcastStateManager.getChannelState(category._id)) {
+              broadcastStateManager.initializeChannel(category)
+            }
+            const position = broadcastStateManager.calculateCurrentPosition(category)
+            if (position && position.videoIndex >= 0) {
+              const currentVideo = category.items[position.videoIndex]
+              const nextIdx = (position.videoIndex + 1) % category.items.length
+              const nextVideo = category.items[nextIdx]
+              positions[category._id] = {
+                now: currentVideo,
+                next: nextVideo,
+                videoIndex: position.videoIndex
+              }
+            }
+          } catch (err) {
+            // Silent fail for non-active categories
+          }
+        }
+      })
+      setOtherCategoryPositions(positions)
+    }
 
-		// Update every second to keep in sync
-		const interval = setInterval(updateAllPositions, 1000)
-		return () => clearInterval(interval)
-	}, [isOpen, channels])
+    updateOtherPositions()
+    const interval = setInterval(updateOtherPositions, 2000)
+    return () => clearInterval(interval)
+  }, [isOpen, categories, activeCategoryIndex])
 
-	// Reset selected index when menu opens
-	useEffect(() => {
-		if (isOpen) {
-			setSelectedIndex(activeChannelIndex)
-		}
-	}, [isOpen, activeChannelIndex])
+  // Reset selected index when menu opens
+  useEffect(() => {
+    if (isOpen) setSelectedIndex(activeCategoryIndex)
+  }, [isOpen, activeCategoryIndex])
 
-	// Auto-scroll to selected item
-	useEffect(() => {
-		if (itemRefs.current[selectedIndex]) {
-			itemRefs.current[selectedIndex].scrollIntoView({
-				behavior: 'smooth',
-				block: 'nearest'
-			})
-		}
-	}, [selectedIndex])
+  // Auto-scroll to selected item
+  useEffect(() => {
+    if (itemRefs.current[selectedIndex]) {
+      itemRefs.current[selectedIndex].scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      })
+    }
+  }, [selectedIndex])
 
-	// Keyboard navigation
-	useEffect(() => {
-		if (!isOpen) return
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return
 
-		const handleKeyDown = (e) => {
-			switch (e.key) {
-				case 'ArrowUp':
-					e.preventDefault()
-					setSelectedIndex(prev => Math.max(0, prev - 1))
-					break
-				case 'ArrowDown':
-					e.preventDefault()
-					setSelectedIndex(prev => Math.min(channels.length - 1, prev + 1))
-					break
-				case 'ArrowLeft':
-					e.preventDefault()
-					setActiveTab(prev => {
-						const tabs = ['channels', 'queue', 'settings']
-						const idx = tabs.indexOf(prev)
-						return tabs[Math.max(0, idx - 1)]
-					})
-					break
-				case 'ArrowRight':
-					e.preventDefault()
-					setActiveTab(prev => {
-						const tabs = ['channels', 'queue', 'settings']
-						const idx = tabs.indexOf(prev)
-						return tabs[Math.min(tabs.length - 1, idx + 1)]
-					})
-					break
-				case 'Enter':
-					e.preventDefault()
-					if (activeTab === 'channels' && channels[selectedIndex]) {
-						onChannelSelect(selectedIndex)
-						onClose()
-					}
-					break
-				case 'Escape':
-					e.preventDefault()
-					onClose()
-					break
-				default:
-					break
-			}
-		}
+    const handleKeyDown = (e) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault()
+          setSelectedIndex(prev => Math.max(0, prev - 1))
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelectedIndex(prev => Math.min(categories.length - 1, prev + 1))
+          break
+        case 'Enter':
+          e.preventDefault()
+          if (activeTab === 'channels' && categories[selectedIndex]) {
+            onCategorySelect(selectedIndex)
+            onClose()
+          }
+          break
+        case 'Escape':
+          e.preventDefault()
+          onClose()
+          break
+        default:
+          break
+      }
+    }
 
-		window.addEventListener('keydown', handleKeyDown)
-		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [isOpen, selectedIndex, channels, activeTab, onChannelSelect, onClose])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, selectedIndex, categories, activeTab, onCategorySelect, onClose])
 
-	const formatTime = (seconds) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = Math.floor(seconds % 60)
-		return `${mins}:${String(secs).padStart(2, '0')}`
-	}
+  // Format time helper
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${String(secs).padStart(2, '0')}`
+  }
 
-	// Always prefer live playback info when available and matching active channel
-	const playbackMatchesActive = playbackInfo?.channelId && playbackInfo.channelId === activeChannel?._id
-	
-	// Use live YouTube metadata when available
-	const nowTitle = playbackMatchesActive && playbackInfo?.videoTitle 
-		? playbackInfo.videoTitle 
-		: activeBroadcast.video?.title || 'Unknown'
-	
-	const nowVideoId = playbackMatchesActive && playbackInfo?.videoId
-		? playbackInfo.videoId
-		: activeBroadcast.video?.youtubeId
-	
-	const nowDuration = playbackMatchesActive && playbackInfo?.duration 
-		? playbackInfo.duration 
-		: activeBroadcast.video?.duration || 0
-	
-	const nowOffset = playbackMatchesActive && typeof playbackInfo?.currentTime === 'number'
-		? playbackInfo.currentTime
-		: activeBroadcast.offset
-	
-	const nowTimeRemaining = nowDuration ? Math.max(0, nowDuration - nowOffset) : activeBroadcast.timeRemaining
-	
-	const currentVideoIndex = playbackMatchesActive && typeof playbackInfo?.videoIndex === 'number'
-		? playbackInfo.videoIndex
-		: activeBroadcast.videoIndex
-	
-	const computedNextIndex = hasActivePlaylist && currentVideoIndex >= 0
-		? (currentVideoIndex + 1) % activeChannelItems.length
-		: activeBroadcast.nextVideoIndex
-	
-	const computedNextVideo = hasActivePlaylist ? activeChannelItems[computedNextIndex] : null
+  // ===== ACTIVE CATEGORY DATA (from playbackInfo ONLY) =====
+  const nowTitle = playbackInfo?.videoTitle || 'Loading...'
+  const nowDuration = playbackInfo?.duration || 0
+  const nowOffset = playbackInfo?.currentTime || 0
+  const currentVideoIndex = playbackInfo?.videoIndex ?? 0
 
-	if (!isOpen || !power) return null
+  // Next video for active category
+  const computedNextIndex = hasActivePlaylist && currentVideoIndex >= 0
+    ? (currentVideoIndex + 1) % activeCategoryItems.length
+    : 0
+  const computedNextVideo = hasActivePlaylist ? activeCategoryItems[computedNextIndex] : null
 
-	return (
-		<div className="tv-menu-overlay" onClick={onClose}>
-			<div className="tv-menu" ref={menuRef} onClick={e => e.stopPropagation()}>
-				{/* Menu Header */}
-				<div className="tv-menu-header">
-					<div className="menu-logo">
-						<span className="logo-text">DesiTV™</span>
-						<span className="logo-guide">GUIDE</span>
-					</div>
-					<div className="menu-time">
-						{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-					</div>
-					<button className="menu-close-btn" onClick={onClose}>✕</button>
-				</div>
+  if (!isOpen || !power) return null
 
-				{/* Tab Navigation */}
-				<div className="menu-tabs">
-					<button 
-						className={`tab-btn ${activeTab === 'channels' ? 'active' : ''}`}
-						onClick={() => setActiveTab('channels')}
-					>
-						📺 CATEGORIES
-					</button>
-					<button 
-						className={`tab-btn ${activeTab === 'queue' ? 'active' : ''}`}
-						onClick={() => setActiveTab('queue')}
-					>
-						📋 UP NEXT
-					</button>
-					<button 
-						className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
-						onClick={() => setActiveTab('settings')}
-					>
-						⚙️ SETTINGS
-					</button>
-				</div>
+  return (
+    <div className="tv-menu-overlay" onClick={onClose}>
+      <div className="tv-menu" ref={menuRef} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="tv-menu-header">
+          <div className="menu-logo">
+            <span className="logo-text">DesiTV™</span>
+            <span className="logo-guide">GUIDE</span>
+          </div>
+          <div className="menu-time">
+            {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          <button className="menu-close-btn" onClick={onClose}>✕</button>
+        </div>
 
-				{/* Menu Content */}
-				<div className="menu-content">
-					{/* Channels Tab */}
-					{activeTab === 'channels' && (
-						<div className="channels-grid">
-							{channels.map((channel, idx) => {
-							const isActive = idx === activeChannelIndex
-							const isSelected = idx === selectedIndex
-							
-							// Get position for this channel (from allChannelPositions or activeBroadcast)
-							const channelPosition = allChannelPositions[channel._id]
-							const displayTitle = isActive 
-								? nowTitle 
-								: (channelPosition?.now?.title || null)
-							const displayNext = isActive 
-								? computedNextVideo 
-								: (channelPosition?.next || null)
+        {/* Tabs */}
+        <div className="menu-tabs">
+          <button
+            className={`tab-btn ${activeTab === 'channels' ? 'active' : ''}`}
+            onClick={() => setActiveTab('channels')}
+          >
+            📺 CATEGORIES
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'queue' ? 'active' : ''}`}
+            onClick={() => setActiveTab('queue')}
+          >
+            📋 UP NEXT
+          </button>
+        </div>
 
-							return (
-									<div
-										key={channel._id}
-										ref={el => itemRefs.current[idx] = el}
-										className={`channel-card ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
-										onClick={() => {
-											onChannelSelect(idx)
-											onClose()
-										}}
-										onMouseEnter={() => setSelectedIndex(idx)}
-									>
-										<div className="channel-num">{String(idx + 1).padStart(2, '0')}</div>
-										<div className="channel-info">
-											<div className="channel-name">{channel.name}</div>
-											<div className="now-playing">
-												{displayTitle ? (
-													<>
-														<span className="now-label">NOW:</span>
-														<span className="now-title">{displayTitle.substring(0, 30)}...</span>
-													</>
-												) : (
-													<span className="no-content">No content</span>
-												)}
-											</div>
-											<div className="next-up">
-												{displayNext && (
-													<>
-														<span className="next-label">NEXT:</span>
-														<span className="next-title">{displayNext.title?.substring(0, 25)}...</span>
-													</>
-												)}
-											</div>
-										</div>
-										<div className="channel-meta">
-											<span className="video-count">{channel.items?.length || 0} videos</span>
-											{isActive && <span className="live-badge">● LIVE</span>}
-										</div>
-									</div>
-								)
-							})}
-						</div>
-					)}
+        {/* Content */}
+        <div className="menu-content">
+          {/* Categories Tab */}
+          {activeTab === 'channels' && (
+            <div className="channels-grid">
+              {categories.map((category, idx) => {
+                const isActive = idx === activeCategoryIndex
+                const isSelected = idx === selectedIndex
 
-					{/* Queue Tab - Shows what's actually playing on current channel */}
-					{activeTab === 'queue' && (
-						<div className="queue-view">
-							<div className="queue-header">
-								<h3>📺 {activeChannel?.name || 'No Channel'}</h3>
-								<span className="queue-subtitle">What's Playing</span>
-							</div>
+                // For active: use playbackInfo
+                // For others: use calculated position
+                let displayTitle, displayNext
 
-							{!hasActivePlaylist && (
-								<div className="queue-empty">No playlist available for this channel.</div>
-							)}
+                if (isActive) {
+                  displayTitle = nowTitle
+                  displayNext = computedNextVideo
+                } else {
+                  const pos = otherCategoryPositions[category._id]
+                  displayTitle = pos?.now?.title || 'Loading...'
+                  displayNext = pos?.next
+                }
 
-					{/* Now Playing - Always use live data */}
-					{hasActivePlaylist && nowTitle && (
-							<div className="queue-item now-playing-item">
-								<div className="queue-badge now">▶ NOW</div>
-								<div className="queue-info">
-									<div className="queue-title">{nowTitle}</div>
-								</div>
-							</div>
-						)}
+                return (
+                  <div
+                    key={category._id}
+                    ref={el => itemRefs.current[idx] = el}
+                    className={`channel-card ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      onCategorySelect(idx)
+                      onClose()
+                    }}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                  >
+                    <div className="channel-num">{String(idx + 1).padStart(2, '0')}</div>
+                    <div className="channel-info">
+                      <div className="channel-name">{category.name}</div>
+                      <div className="now-playing">
+                        <span className="now-label">NOW:</span>
+                        <span className="now-title">
+                          {displayTitle ? displayTitle.substring(0, 35) : 'No content'}
+                          {displayTitle && displayTitle.length > 35 ? '...' : ''}
+                        </span>
+                      </div>
+                      {displayNext && (
+                        <div className="next-up">
+                          <span className="next-label">NEXT:</span>
+                          <span className="next-title">
+                            {displayNext.title?.substring(0, 30)}
+                            {displayNext.title?.length > 30 ? '...' : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="channel-meta">
+                      <span className="video-count">{category.items?.length || 0} videos</span>
+                      {isActive && <span className="live-badge">● LIVE</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
-						{/* Up Next */}
-						{hasActivePlaylist && computedNextVideo && (
-							<div className="queue-item next-item">
-								<div className="queue-badge next">⏭ NEXT</div>
-								<div className="queue-info">
-									<div className="queue-title">{computedNextVideo.title}</div>
-								</div>
-							</div>
-						)}
+          {/* Queue Tab */}
+          {activeTab === 'queue' && (
+            <div className="queue-view">
+              <div className="queue-header">
+                <h3>📺 {activeCategory?.name || 'No Category'}</h3>
+                <span className="queue-subtitle">What's Playing</span>
+              </div>
 
-						{/* Upcoming (next 3 after next) */}
-						{hasActivePlaylist && (
-								<>
-									<div className="queue-divider">UPCOMING</div>
-									{Array.from({ length: 3 }).map((_, i) => {
-										const itemsLength = activeChannelItems.length
-										if (itemsLength === 0) return null
-										const idx = (computedNextIndex + 1 + i) % itemsLength
-										const video = activeChannelItems[idx]
-										return video ? (
-											<div key={`upcoming-${i}`} className="queue-item upcoming-item">
-												<div className="queue-badge upcoming">#{i + 3}</div>
-												<div className="queue-info">
-													<div className="queue-title">{video.title}</div>
-												</div>
-											</div>
-										) : null
-									})}
-								</>
-							)}
-						</div>
-					)}
+              {!hasActivePlaylist && (
+                <div className="queue-empty">No playlist available.</div>
+              )}
 
-					{/* Settings Tab */}
-					{activeTab === 'settings' && (
-						<div className="settings-view">
-							<div className="settings-item">
-								<span>📡 Broadcast Info</span>
-							<div className="settings-value">
-								Total Channels: {channels.length}
-								<br />
-								Playlist Duration: {formatTime(activeBroadcast.totalPlaylistDuration)}
-								<br />
-								Current Position: {formatTime(activeBroadcast.cyclePosition)}
-								<br />
-								{playbackMatchesActive && (
-									<>
-										<br />
-										<span style={{color: '#4a9eff'}}>● LIVE SYNC ACTIVE</span>
-										<br />
-										Video ID: {nowVideoId?.substring(0, 11)}
-									</>
-								)}
-							</div>
-							</div>
-						</div>
-					)}
-				</div>
-			</div>
-		</div>
-	)
+              {/* Now Playing */}
+              {hasActivePlaylist && (
+                <div className="queue-item now-playing-item">
+                  <div className="queue-badge now">▶ NOW</div>
+                  <div className="queue-info">
+                    <div className="queue-title">{nowTitle}</div>
+                    <div className="queue-progress">
+                      {formatTime(nowOffset)} / {formatTime(nowDuration)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Up Next */}
+              {computedNextVideo && (
+                <div className="queue-item next-item">
+                  <div className="queue-badge next">⏭ NEXT</div>
+                  <div className="queue-info">
+                    <div className="queue-title">{computedNextVideo.title}</div>
+                    <div className="queue-duration">{formatTime(computedNextVideo.duration)}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Upcoming */}
+              {hasActivePlaylist && activeCategoryItems.length > 2 && (
+                <>
+                  <div className="queue-divider">UPCOMING</div>
+                  {[1, 2, 3].map((offset) => {
+                    const idx = (computedNextIndex + offset) % activeCategoryItems.length
+                    const video = activeCategoryItems[idx]
+                    if (!video || idx === currentVideoIndex) return null
+                    return (
+                      <div key={`upcoming-${offset}`} className="queue-item upcoming-item">
+                        <div className="queue-badge upcoming">#{offset + 2}</div>
+                        <div className="queue-info">
+                          <div className="queue-title">{video.title}</div>
+                          <div className="queue-duration">{formatTime(video.duration)}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }

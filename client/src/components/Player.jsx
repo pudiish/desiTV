@@ -1078,28 +1078,51 @@ onBufferingChange = null,
 
 	// ===== CALLBACKS =====
 
-		const emitPlaybackProgress = useCallback(() => {
+	const emitPlaybackProgress = useCallback(() => {
 		if (!onPlaybackProgress || !playerRef.current) return
 
 		const player = playerRef.current
 		const videoData = player.getVideoData ? player.getVideoData() : {}
+		const actualVideoId = videoData?.video_id
 		const currentPromise = player.getCurrentTime ? Promise.resolve(player.getCurrentTime()) : Promise.resolve(0)
 		const durationPromise = player.getDuration ? Promise.resolve(player.getDuration()) : Promise.resolve(current?.duration || 0)
 
 		Promise.all([currentPromise, durationPromise])
 			.then(([currentTime, duration]) => {
+				// CRITICAL: Find the ACTUAL video index from what YouTube is playing
+				// NOT from broadcastPosition which can be wrong
+				let actualVideoIndex = currIndex
+				let actualVideo = current
+				let actualTitle = current?.title || ''
+
+				if (actualVideoId && items.length > 0) {
+					// Find the video in items by YouTube ID
+					const foundIndex = items.findIndex(v => v.youtubeId === actualVideoId)
+					if (foundIndex !== -1) {
+						actualVideoIndex = foundIndex
+						actualVideo = items[foundIndex]
+						actualTitle = videoData?.title || items[foundIndex]?.title || ''
+					} else {
+						// Video not in items - use YouTube data
+						actualTitle = videoData?.title || current?.title || ''
+					}
+				} else if (videoData?.title) {
+					// No video_id but have title from YouTube
+					actualTitle = videoData.title
+				}
+
 				onPlaybackProgress({
 					channelId: channel?._id,
-					videoIndex: currIndex,
-					video: current,
-					videoId: videoData?.video_id || current?.youtubeId,
-					videoTitle: videoData?.title || current?.title,
+					videoIndex: actualVideoIndex,
+					video: actualVideo,
+					videoId: actualVideoId || current?.youtubeId,
+					videoTitle: actualTitle,
 					currentTime: currentTime || 0,
 					duration: duration || current?.duration || 0,
 				})
 			})
 			.catch(() => {})
-	}, [channel?._id, currIndex, current, onPlaybackProgress])
+	}, [channel?._id, currIndex, current, items, onPlaybackProgress])
 
 	const startProgressMonitoring = useCallback(() => {
 		if (progressIntervalRef.current) {
