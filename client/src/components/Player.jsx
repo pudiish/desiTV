@@ -173,7 +173,14 @@ onBufferingChange = null,
 	// ===== AUTOPLAY HELPER (RetroTV Pattern) =====
 	// Strategy: Start muted autoplay, then on user interaction unmute to enable sound
 	const attemptAutoplay = useCallback(async (player) => {
-		if (!player || autoplayAttemptedRef.current) return
+		if (!player) return
+		
+		// Reset autoplay attempted flag if player state is unstarted (stuck state)
+		if (player.getPlayerState?.() === STATE_UNSTARTED) {
+			autoplayAttemptedRef.current = false
+		}
+		
+		if (autoplayAttemptedRef.current) return
 		
 		try {
 			autoplayAttemptedRef.current = true
@@ -187,7 +194,35 @@ onBufferingChange = null,
 			shouldPlayRef.current = true
 			
 			// Try to play muted
-			await player.playVideo()
+			player.playVideo()
+			
+			// Mobile fix: Check if playback actually started after delays
+			// First quick check at 500ms
+			setTimeout(() => {
+				if (player && powerRef.current) {
+					const state = player.getPlayerState?.()
+					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
+						console.log('[Player] Mobile: Playback stuck at 500ms, retrying...')
+						autoplayAttemptedRef.current = false // Allow retry
+						player.playVideo()
+					} else if (state === STATE_PLAYING) {
+						setIsMutedAutoplay(true)
+						console.log('[Player] Muted autoplay confirmed playing')
+					}
+				}
+			}, 500)
+			
+			// Second check at 2 seconds - if still not playing, show tap overlay
+			setTimeout(() => {
+				if (player && powerRef.current) {
+					const state = player.getPlayerState?.()
+					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
+						console.log('[Player] Mobile: Playback still stuck at 2s, showing tap overlay')
+						setNeedsUserInteraction(true)
+					}
+				}
+			}, 2000)
+			
 			setIsMutedAutoplay(true)
 			console.log('[Player] Muted autoplay started')
 		} catch (err) {
@@ -202,23 +237,34 @@ onBufferingChange = null,
 		if (userInteracted) return
 		
 		const player = playerRef.current
-		if (!player) return
 		
 		try {
-			console.log('[Player] User interaction detected - enabling sound')
+			console.log('[Player] User interaction detected - enabling playback/sound')
+			
+			// Mark as interacted first to prevent duplicate calls
+			setUserInteracted(true)
+			setNeedsUserInteraction(false)
+			
+			if (!player) {
+				console.log('[Player] No player yet - will start playing when ready')
+				return
+			}
 			
 			// Simply unmute and set volume - no reload needed
 			player.unMute()
 			player.setVolume(volume * 100)
 			
-			// Ensure video is playing
+			// Ensure video is playing (critical for mobile first-load)
 			const state = player.getPlayerState?.()
-			if (state !== 1) { // Not playing
+			console.log('[Player] Current player state:', state)
+			
+			if (state === -1 || state === 0 || state === 2 || state === 5) {
+				// -1: UNSTARTED, 0: ENDED, 2: PAUSED, 5: CUED
+				console.log('[Player] Starting playback after user tap')
 				player.playVideo()
 			}
 			
 			setIsMutedAutoplay(false)
-			setUserInteracted(true)
 			console.log('[Player] Sound enabled smoothly')
 		} catch (err) {
 			console.error('[Player] Error enabling sound:', err)
@@ -967,6 +1013,31 @@ onBufferingChange = null,
 					// Optional: Handle state changes if needed
 				},
 			})
+			
+			// Mobile startup watchdog: Check if playback started within 5 seconds
+			// This catches cases where mobile browsers block initial playback silently
+			const mobileWatchdog = setTimeout(() => {
+				if (playerRef.current && powerRef.current) {
+					const state = playerRef.current.getPlayerState?.()
+					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
+						console.log('[Player] Mobile startup watchdog triggered - forcing play attempt')
+						autoplayAttemptedRef.current = false // Reset to allow retry
+						
+						if (userInteracted) {
+							playerRef.current.unMute()
+							playerRef.current.setVolume(volume * 100)
+						} else {
+							playerRef.current.mute()
+						}
+						playerRef.current.playVideo()
+					}
+				}
+			}, 5000)
+			
+			return () => {
+				clearTimeout(mobileWatchdog)
+				unifiedPlaybackManager.stop()
+			}
 		} else {
 			// Stop unified playback manager when power is off
 			unifiedPlaybackManager.stop()
@@ -975,7 +1046,7 @@ onBufferingChange = null,
 		return () => {
 			unifiedPlaybackManager.stop()
 		}
-	}, [power, hasInitializedRef.current])
+	}, [power, hasInitializedRef.current, userInteracted, volume])
 
 	// Effect: Handle power on/off - RESTRUCTURED for robustness
 	useEffect(() => {
@@ -1374,8 +1445,26 @@ onBufferingChange = null,
 			switch (state) {
 				case STATE_UNSTARTED:
 					console.log('[Player] Video unstarted')
-					// Fast recovery manager will handle this automatically
-					// No need for manual recovery here to avoid conflicts
+					// Mobile fix: Set watchdog timer for stuck unstarted state
+					// If still unstarted after 3 seconds, force play attempt
+					if (powerRef.current && shouldPlayRef.current) {
+						watchDogTimeOutIdRef.current = setTimeout(() => {
+							if (player && powerRef.current) {
+								const currentState = player.getPlayerState?.()
+								if (currentState === STATE_UNSTARTED || currentState === STATE_VIDEO_CUED) {
+									console.log('[Player] Mobile watchdog: Still unstarted, forcing play')
+									autoplayAttemptedRef.current = false // Reset to allow retry
+									if (userInteracted) {
+										player.unMute()
+										player.setVolume(volume * 100)
+									} else {
+										player.mute()
+									}
+									player.playVideo()
+								}
+							}
+						}, 3000)
+					}
 					break
 					
 				case STATE_ENDED:
@@ -1820,6 +1909,49 @@ return (
 					background: 'transparent',
 				}}
 			/>
+			{/* Tap to START overlay - show when autoplay fails completely on mobile */}
+			{needsUserInteraction && !userInteracted && !isMutedAutoplay && (
+				<div
+					className="tap-to-start-overlay"
+					onClick={handleUserInteraction}
+					style={{
+						position: 'absolute',
+						top: 0,
+						left: 0,
+						width: '100%',
+						height: '100%',
+						zIndex: 30,
+						background: 'rgba(0, 0, 0, 0.85)',
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						justifyContent: 'center',
+						cursor: 'pointer',
+						pointerEvents: 'auto',
+					}}
+				>
+					<div style={{ fontSize: '48px', marginBottom: '16px' }}>📺</div>
+					<h2 style={{ 
+						color: '#00ff00', 
+						fontFamily: 'monospace',
+						fontSize: '24px',
+						textShadow: '0 0 10px #00ff00',
+						marginBottom: '8px'
+					}}>TAP TO START TV</h2>
+					<p style={{ 
+						color: '#888', 
+						fontFamily: 'monospace',
+						fontSize: '14px',
+						marginBottom: '16px'
+					}}>Experience retro television</p>
+					<div style={{ 
+						color: '#fff', 
+						fontFamily: 'monospace',
+						fontSize: '16px',
+						animation: 'pulse 2s infinite'
+					}}>👆 Tap anywhere</div>
+				</div>
+			)}
 			{/* Tap to unmute indicator - only show when muted autoplay is active */}
 			{isMutedAutoplay && !showStaticOverlay && !isBuffering && !isTransitioning && (
 				<div
