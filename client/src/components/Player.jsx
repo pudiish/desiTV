@@ -224,6 +224,65 @@ onBufferingChange = null,
 		}
 	}, [volume])
 
+	/* ===== BACKUP: MUTED AUTOPLAY APPROACH =====
+	 * To restore this approach:
+	 * 1. Replace attemptAutoplay above with this version
+	 * 2. Change initial state: isMutedAutoplay to useState(true)
+	 * 3. In Home.jsx, restore session power state restoration
+	 * 4. Remove the power ON = userInteracted logic in the power effect
+	 *
+	const attemptAutoplay = useCallback(async (player) => {
+		if (!player) return
+		
+		if (player.getPlayerState?.() === STATE_UNSTARTED) {
+			autoplayAttemptedRef.current = false
+		}
+		
+		if (autoplayAttemptedRef.current) return
+		
+		try {
+			autoplayAttemptedRef.current = true
+			console.log('[Player] Attempting muted autoplay (mobile compatible)')
+			
+			// Start muted - this is allowed on mobile/iOS
+			player.mute()
+			player.setVolume(volume * 100)
+			shouldPlayRef.current = true
+			player.playVideo()
+			
+			// Check if playback started
+			setTimeout(() => {
+				if (player && powerRef.current) {
+					const state = player.getPlayerState?.()
+					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
+						console.log('[Player] Mobile: Playback stuck, retrying...')
+						autoplayAttemptedRef.current = false
+						player.playVideo()
+					} else if (state === STATE_PLAYING) {
+						setIsMutedAutoplay(true)
+					}
+				}
+			}, 500)
+			
+			setTimeout(() => {
+				if (player && powerRef.current) {
+					const state = player.getPlayerState?.()
+					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
+						console.log('[Player] Mobile: Playback stuck, showing tap overlay')
+						setNeedsUserInteraction(true)
+					}
+				}
+			}, 2000)
+			
+			setIsMutedAutoplay(true)
+		} catch (err) {
+			console.warn('[Player] Autoplay failed:', err)
+			autoplayAttemptedRef.current = false
+			setNeedsUserInteraction(true)
+		}
+	}, [volume])
+	===== END BACKUP ===== */
+
 	// Handle user interaction - unmute smoothly without reload
 	const handleUserInteraction = useCallback(() => {
 		if (userInteracted) return
