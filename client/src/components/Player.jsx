@@ -40,8 +40,8 @@ onBufferingChange = null,
 	const [retryCount, setRetryCount] = useState(0)
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
-	const [userInteracted, setUserInteracted] = useState(false) // RetroTV pattern: track user interaction
-	const [isMutedAutoplay, setIsMutedAutoplay] = useState(true) // Track if in muted autoplay mode
+	const [userInteracted, setUserInteracted] = useState(false) // Track user interaction (power ON counts as interaction)
+	const [isMutedAutoplay, setIsMutedAutoplay] = useState(false) // Not using muted autoplay anymore - power ON = user interaction
 	const [showStaticOverlay, setShowStaticOverlay] = useState(true) // Show static on initial load only
 	const ytPlayerRef = useRef(null) // Direct YouTube API player reference
 
@@ -170,8 +170,8 @@ onBufferingChange = null,
 		}
 	}, [attemptRetry, retryCount])
 
-	// ===== AUTOPLAY HELPER (RetroTV Pattern) =====
-	// Strategy: Start muted autoplay, then on user interaction unmute to enable sound
+	// ===== AUTOPLAY HELPER (Power ON = User Interaction) =====
+	// Strategy: Power button click IS user interaction, so start with sound directly
 	const attemptAutoplay = useCallback(async (player) => {
 		if (!player) return
 		
@@ -184,51 +184,43 @@ onBufferingChange = null,
 		
 		try {
 			autoplayAttemptedRef.current = true
-			console.log('[Player] Attempting muted autoplay (mobile compatible)')
 			
-			// Start muted - this is allowed on mobile/iOS
-			player.mute()
+			// Power ON = user clicked power button = user interaction
+			// So we start WITH sound directly!
+			console.log('[Player] Starting playback with sound (power ON = user interaction)')
+			
+			player.unMute()
 			player.setVolume(volume * 100)
 			
-			// Set shouldPlay to true for autoplay
+			// Set shouldPlay to true
 			shouldPlayRef.current = true
 			
-			// Try to play muted
+			// Play with sound
 			player.playVideo()
 			
-			// Mobile fix: Check if playback actually started after delays
-			// First quick check at 500ms
-			setTimeout(() => {
-				if (player && powerRef.current) {
-					const state = player.getPlayerState?.()
-					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
-						console.log('[Player] Mobile: Playback stuck at 500ms, retrying...')
-						autoplayAttemptedRef.current = false // Allow retry
-						player.playVideo()
-					} else if (state === STATE_PLAYING) {
-						setIsMutedAutoplay(true)
-						console.log('[Player] Muted autoplay confirmed playing')
-					}
-				}
-			}, 500)
+			setIsMutedAutoplay(false)
+			setUserInteracted(true)
+			console.log('[Player] Playback started with sound')
 			
-			// Second check at 2 seconds - if still not playing, show tap overlay
+			// Mobile fix: Check if playback actually started after delay
 			setTimeout(() => {
 				if (player && powerRef.current) {
 					const state = player.getPlayerState?.()
 					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
-						console.log('[Player] Mobile: Playback still stuck at 2s, showing tap overlay')
-						setNeedsUserInteraction(true)
+						console.log('[Player] Mobile: Playback stuck, retrying with sound...')
+						autoplayAttemptedRef.current = false // Allow retry
+						player.unMute()
+						player.setVolume(volume * 100)
+						player.playVideo()
 					}
 				}
-			}, 2000)
+			}, 1000)
 			
-			setIsMutedAutoplay(true)
-			console.log('[Player] Muted autoplay started')
 		} catch (err) {
-			console.warn('[Player] Autoplay failed (may need user interaction):', err)
+			console.warn('[Player] Autoplay failed:', err)
 			autoplayAttemptedRef.current = false
-			setNeedsUserInteraction(true)
+			// Even on failure, power ON means user interacted
+			setUserInteracted(true)
 		}
 	}, [volume])
 
@@ -987,11 +979,19 @@ onBufferingChange = null,
 		}
 	}, [current?.youtubeId, currIndex])
 
-	// Effect: Update power ref
+	// Effect: Update power ref and treat power ON as user interaction
 	useEffect(() => {
+		const wasPoweredOff = !powerRef.current
 		powerRef.current = power
-		// Allow autoplay even without user interaction (muted autoplay)
 		shouldPlayRef.current = power
+		
+		// If power just turned ON, treat it as user interaction (they clicked the power button)
+		if (power && wasPoweredOff) {
+			console.log('[Player] Power turned ON - treating as user interaction')
+			setUserInteracted(true)
+			setIsMutedAutoplay(false)
+			setNeedsUserInteraction(false)
+		}
 	}, [power])
 
 	// Effect: Start/stop unified playback manager based on power state
@@ -1000,7 +1000,7 @@ onBufferingChange = null,
 			// Start unified playback manager when power is on
 			unifiedPlaybackManager.start(playerRef, {
 				shouldPlay: () => {
-					// Allow autoplay if power is on and not transitioning (muted autoplay is allowed)
+					// Power ON = user interacted, so always allow playback
 					return powerRef.current && shouldPlayRef.current && !isTransitioningRef.current
 				},
 				onRecovery: (type) => {
@@ -1015,20 +1015,17 @@ onBufferingChange = null,
 			})
 			
 			// Mobile startup watchdog: Check if playback started within 5 seconds
-			// This catches cases where mobile browsers block initial playback silently
+			// Power ON = user interaction, so we start WITH sound
 			const mobileWatchdog = setTimeout(() => {
 				if (playerRef.current && powerRef.current) {
 					const state = playerRef.current.getPlayerState?.()
 					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
-						console.log('[Player] Mobile startup watchdog triggered - forcing play attempt')
+						console.log('[Player] Mobile startup watchdog triggered - starting with sound (power ON = user interaction)')
 						autoplayAttemptedRef.current = false // Reset to allow retry
 						
-						if (userInteracted) {
-							playerRef.current.unMute()
-							playerRef.current.setVolume(volume * 100)
-						} else {
-							playerRef.current.mute()
-						}
+						// Power ON means user clicked power button - start with sound
+						playerRef.current.unMute()
+						playerRef.current.setVolume(volume * 100)
 						playerRef.current.playVideo()
 					}
 				}
@@ -1046,7 +1043,7 @@ onBufferingChange = null,
 		return () => {
 			unifiedPlaybackManager.stop()
 		}
-	}, [power, hasInitializedRef.current, userInteracted, volume])
+	}, [power, hasInitializedRef.current, volume])
 
 	// Effect: Handle power on/off - RESTRUCTURED for robustness
 	useEffect(() => {

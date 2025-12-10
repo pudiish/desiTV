@@ -264,14 +264,10 @@ export default function Home() {
 						setPrevVolume(savedState.volume)
 					}
 					
-					// Restore power state (auto-start if was on)
-					if (savedState.isPowerOn) {
-						setPower(true)
-						setStatusMessage('SESSION RESTORED. RESUMING PLAYBACK...')
-					} else {
-						const categoryName = savedState.activeCategoryName || allCategories[0]?.name || 'CATEGORY'
-						setStatusMessage(`SESSION RESTORED. ${categoryName} READY.`)
-					}
+					// Always start with TV OFF - user must click power to start (enables sound properly)
+					// This follows the MyRetroTVs pattern - power button click = user interaction
+					const categoryName = savedState.activeCategoryName || allCategories[0]?.name || 'CATEGORY'
+					setStatusMessage(`WELCOME BACK! CLICK POWER TO WATCH ${categoryName}.`)
 					
 					setSessionRestored(true)
 				} else {
