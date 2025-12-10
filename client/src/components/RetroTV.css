@@ -1,15 +1,16 @@
 /* RetroTV.css - minimal CRT look + static effect */
 .retro-tv-wrapper { 
-  width: 640px; 
-  margin: 24px auto; 
+  width: 100%;
+  max-width: 1280px; 
+  margin: 0 auto; 
   font-family: monospace; 
 }
 
 .tv-frame { 
   background: #010101; 
-  border: 10px solid #222; 
-  border-radius: 12px; 
-  padding: 8px; 
+  border: 8px solid #222; 
+  border-radius: 10px; 
+  padding: 6px; 
   position: relative; 
   box-shadow: 0 10px 40px rgba(0,0,0,.8); 
 }
@@ -17,7 +18,7 @@
 .tv-viewport { 
   position: relative; 
   width: 100%; 
-  aspect-ratio: 16/9; 
+  aspect-ratio: 16/10; 
   overflow: hidden; 
   background: #000; 
 }

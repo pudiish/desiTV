@@ -28,15 +28,15 @@ export default function AdminDashboard() {
 			icon: '📹',
 			component: <VideoManager />,
 			category: 'Content',
-			description: 'Add new videos to channels'
+			description: 'Add YouTube videos to categories'
 		},
 		{
 			id: 'channels',
-			label: 'Channels',
-			icon: '📺',
+			label: 'Categories',
+			icon: '📂',
 			component: <ChannelManager />,
 			category: 'Content',
-			description: 'Manage TV channels'
+			description: 'Manage playlist categories'
 		},
 		// Tools
 		{

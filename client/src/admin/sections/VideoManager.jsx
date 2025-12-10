@@ -100,7 +100,7 @@ function VideoManagerContent() {
 	const handleAddChannel = async (e) => {
 		e.preventDefault()
 		if (!newChannelName.trim()) {
-			setMessage({ type: 'error', text: '❌ Channel name is required' })
+			setMessage({ type: 'error', text: '❌ Category name is required' })
 			return
 		}
 
@@ -121,9 +121,9 @@ function VideoManagerContent() {
 				setSelectedChannel(data._id)
 				setNewChannelName('')
 				setShowAddChannel(false)
-				setMessage({ type: 'success', text: '✅ Channel created!' })
+				setMessage({ type: 'success', text: '✅ Category created!' })
 			} else {
-				setMessage({ type: 'error', text: `❌ ${data.message || 'Failed to create channel'}` })
+				setMessage({ type: 'error', text: `❌ ${data.message || 'Failed to create category'}` })
 			}
 		} catch (err) {
 			setMessage({ type: 'error', text: `❌ ${err.message}` })
@@ -186,7 +186,7 @@ function VideoManagerContent() {
 		e.preventDefault()
 
 		if (!selectedChannel) {
-			setMessage({ type: 'error', text: '❌ Select a channel' })
+			setMessage({ type: 'error', text: '❌ Select a category' })
 			return
 		}
 		if (!videoId) {
@@ -273,7 +273,7 @@ function VideoManagerContent() {
 		e.preventDefault()
 
 		if (!selectedChannel) {
-			setBulkMessage({ type: 'error', text: '❌ Select a channel first' })
+			setBulkMessage({ type: 'error', text: '❌ Select a category first' })
 			return
 		}
 		if (!bulkFileContent) {
@@ -333,8 +333,8 @@ function VideoManagerContent() {
 
 	return (
 		<div className="section">
-			<div className="section-title">📹 Add Video to Channel</div>
-			<div className="section-subtitle">Paste YouTube link, fetch details automatically, customize if needed</div>
+			<div className="section-title">📹 Add Video to Category</div>
+			<div className="section-subtitle">Paste YouTube link, fetch details automatically, add to a playlist category</div>
 
 			{message.text && (
 				<div className={`alert alert-${message.type}`}>
@@ -351,13 +351,13 @@ function VideoManagerContent() {
 			<form onSubmit={handleAddVideo}>
 				{/* Channel Selector */}
 				<div className="form-group">
-					<label className="form-label">SELECT CHANNEL * <button type="button" onClick={() => setShowAddChannel(true)} className="btn btn-small" style={{marginLeft: '8px', padding: '2px 6px', fontSize: '11px'}}>➕ New</button></label>
+					<label className="form-label">SELECT CATEGORY * <button type="button" onClick={() => setShowAddChannel(true)} className="btn btn-small" style={{marginLeft: '8px', padding: '2px 6px', fontSize: '11px'}}>➕ New</button></label>
 					<select
 						value={selectedChannel}
 						onChange={(e) => setSelectedChannel(e.target.value)}
 						disabled={loading}
 					>
-						<option value="">-- Choose a channel --</option>
+						<option value="">-- Choose a category --</option>
 						{channels.map(ch => (
 							<option key={ch._id} value={ch._id}>
 								{ch.name}
@@ -548,7 +548,7 @@ function VideoManagerContent() {
 				</button>
 			</form>
 
-			{/* Add Channel Modal */}
+			{/* Add Category Modal */}
 			{showAddChannel && (
 				<div style={{
 					position: 'fixed',
@@ -570,13 +570,13 @@ function VideoManagerContent() {
 						minWidth: '400px',
 						boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)'
 					}}>
-						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Channel</h2>
+						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Category</h2>
 						<form onSubmit={handleAddChannel}>
 							<div className="form-group">
-								<label className="form-label">CHANNEL NAME *</label>
+								<label className="form-label">CATEGORY NAME *</label>
 								<input
 									type="text"
-									placeholder="e.g., Music Videos, Comedy"
+									placeholder="e.g., 90s Music, Comedy Shows, Classic Movies"
 									value={newChannelName}
 									onChange={(e) => setNewChannelName(e.target.value)}
 									disabled={addingChannel}
@@ -590,7 +590,7 @@ function VideoManagerContent() {
 									className="btn btn-success"
 									style={{ flex: 1 }}
 								>
-									{addingChannel ? '⏳ Creating...' : '✓ Create Channel'}
+									{addingChannel ? '⏳ Creating...' : '✓ Create Category'}
 								</button>
 								<button
 									type="button"

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
 import TVMenuV2 from '../components/TVMenuV2'
-import CategoryList from '../components/CategoryList'
 import SessionManager from '../utils/SessionManager'
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
@@ -694,22 +693,6 @@ export default function Home() {
 							totalChannels={videosInCategory.length}
 							menuOpen={menuOpen}
 							onTapTrigger={handleTapTrigger}
-						/>
-
-						<CategoryList
-							channels={categories}
-							selectedChannels={selectedCategory ? [selectedCategory.name] : []}
-							onToggleChannel={handleSelectCategory}
-							onSelectAll={() => {
-								if (categories.length > 0) {
-									handleSelectCategory(categories[0].name)
-								}
-							}}
-							onSelectNone={() => {
-								setSelectedCategory(null)
-								setVideosInCategory([])
-								setActiveVideoIndex(0)
-							}}
 						/>
 					</div>
 				)}

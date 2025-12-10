@@ -156,7 +156,7 @@ function ChannelManagerContent() {
 	const handleAddChannel = async (e) => {
 		e.preventDefault()
 		if (!newChannelName.trim()) {
-			setError('Channel name is required')
+			setError('Category name is required')
 			return
 		}
 
@@ -178,7 +178,7 @@ function ChannelManagerContent() {
 				setShowAddChannel(false)
 				setError(null)
 			} else {
-				setError(data.message || 'Failed to create channel')
+				setError(data.message || 'Failed to create category')
 			}
 		} catch (err) {
 			setError(err.message)
@@ -189,8 +189,8 @@ function ChannelManagerContent() {
 
 	return (
 		<div className="section">
-			<div className="section-title">📺 Manage Channels</div>
-			<div className="section-subtitle">View and manage all channels with their videos</div>
+			<div className="section-title">📂 Manage Categories</div>
+			<div className="section-subtitle">View and manage playlist categories and their videos</div>
 
 			{error && (
 				<div className="alert alert-error" style={{ marginBottom: '16px' }}>
@@ -210,14 +210,14 @@ function ChannelManagerContent() {
 					padding: '40px',
 					color: '#888'
 				}}>
-					{loading ? '🔄 Loading channels...' : '📭 No channels found'}
+					{loading ? '🔄 Loading categories...' : '📭 No categories found'}
 					<br />
 					<button
 						onClick={() => setShowAddChannel(true)}
 						className="btn btn-success"
 						style={{ marginTop: '16px' }}
 					>
-						➕ Create First Channel
+						➕ Create First Category
 					</button>
 				</div>
 			) : (
@@ -239,7 +239,7 @@ function ChannelManagerContent() {
 							color: '#00d4ff',
 							fontSize: '13px'
 						}}>
-							CHANNELS ({channels.length})
+							CATEGORIES ({channels.length})
 						</div>
 						<div style={{ overflow: 'auto', flex: 1 }}>
 							{channels.map((channel) => (
@@ -322,7 +322,7 @@ function ChannelManagerContent() {
 							}}>
 								{selectedChannel.items?.length === 0 ? (
 									<div style={{ textAlign: 'center', color: '#888', padding: '40px 20px' }}>
-										📭 No videos in this channel
+										📭 No videos in this category
 									</div>
 								) : (
 									<div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -426,7 +426,7 @@ function ChannelManagerContent() {
 							textAlign: 'center',
 							padding: '40px'
 						}}>
-							👈 Select a channel to view videos
+							👈 Select a category to view videos
 						</div>
 					)}
 				</div>
@@ -454,13 +454,13 @@ function ChannelManagerContent() {
 						minWidth: '400px',
 						boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)'
 					}}>
-						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Channel</h2>
+						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Category</h2>
 						<form onSubmit={handleAddChannel}>
 							<div className="form-group">
-								<label className="form-label">CHANNEL NAME *</label>
+								<label className="form-label">CATEGORY NAME *</label>
 								<input
 									type="text"
-									placeholder="e.g., Music Videos, Comedy"
+									placeholder="e.g., 90s Music, Comedy Shows, Classic Movies"
 									value={newChannelName}
 									onChange={(e) => setNewChannelName(e.target.value)}
 									disabled={addingChannel}
@@ -474,7 +474,7 @@ function ChannelManagerContent() {
 									className="btn btn-success"
 									style={{ flex: 1 }}
 								>
-									{addingChannel ? '⏳ Creating...' : '✓ Create Channel'}
+									{addingChannel ? '⏳ Creating...' : '✓ Create Category'}
 								</button>
 								<button
 									type="button"
