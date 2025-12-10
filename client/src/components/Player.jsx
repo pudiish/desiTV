@@ -170,8 +170,9 @@ onBufferingChange = null,
 		}
 	}, [attemptRetry, retryCount])
 
-	// ===== AUTOPLAY HELPER (Power ON = User Interaction) =====
-	// Strategy: Power button click IS user interaction, so start with sound directly
+	// ===== AUTOPLAY HELPER (Mobile-compatible with power ON = user interaction) =====
+	// Strategy: On mobile, start muted for autoplay compatibility, then unmute once playing
+	// Power ON sets userInteracted=true which triggers immediate unmute after playback starts
 	const attemptAutoplay = useCallback(async (player) => {
 		if (!player) return
 		
@@ -185,44 +186,67 @@ onBufferingChange = null,
 		try {
 			autoplayAttemptedRef.current = true
 			
-			// Power ON = user clicked power button = user interaction
-			// So we start WITH sound directly!
-			console.log('[Player] Starting playback with sound (power ON = user interaction)')
+			// MOBILE FIX: Always start muted for autoplay compatibility
+			// Even if user clicked power button, the gesture context is lost by the time YT player loads
+			console.log('[Player] Attempting muted autoplay (mobile compatible)')
 			
-			player.unMute()
-			player.setVolume(volume * 100)
+			player.mute()
+			player.setVolume(volume * 100) // Set volume for when we unmute later
 			
 			// Set shouldPlay to true
 			shouldPlayRef.current = true
 			
-			// Play with sound
+			// Play muted first (this works on all browsers/mobile)
 			player.playVideo()
 			
-			setIsMutedAutoplay(false)
-			setUserInteracted(true)
-			console.log('[Player] Playback started with sound')
+			setIsMutedAutoplay(true)
 			
 			// Mobile fix: Check if playback actually started after delay
 			setTimeout(() => {
 				if (player && powerRef.current) {
 					const state = player.getPlayerState?.()
-					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
-						console.log('[Player] Mobile: Playback stuck, retrying with sound...')
+					if (state === STATE_PLAYING) {
+						// Playback started! Now unmute if user has interacted (power ON)
+						if (userInteracted) {
+							console.log('[Player] Playback started - unmuting (user interacted via power ON)')
+							player.unMute()
+							player.setVolume(volume * 100)
+							setIsMutedAutoplay(false)
+						}
+					} else if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
+						console.log('[Player] Mobile: Playback stuck, retrying muted...')
 						autoplayAttemptedRef.current = false // Allow retry
-						player.unMute()
-						player.setVolume(volume * 100)
+						player.mute()
 						player.playVideo()
 					}
 				}
 			}, 1000)
 			
+			// Second check at 2s for stubborn mobile browsers
+			setTimeout(() => {
+				if (player && powerRef.current) {
+					const state = player.getPlayerState?.()
+					if (state === STATE_PLAYING) {
+						// Unmute if user has interacted
+						if (userInteracted && isMutedAutoplay) {
+							console.log('[Player] Late unmute after power ON interaction')
+							player.unMute()
+							player.setVolume(volume * 100)
+							setIsMutedAutoplay(false)
+						}
+					} else if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
+						console.log('[Player] Mobile: Still stuck, showing tap overlay')
+						setNeedsUserInteraction(true)
+					}
+				}
+			}, 2500)
+			
 		} catch (err) {
 			console.warn('[Player] Autoplay failed:', err)
 			autoplayAttemptedRef.current = false
-			// Even on failure, power ON means user interacted
-			setUserInteracted(true)
+			setNeedsUserInteraction(true)
 		}
-	}, [volume])
+	}, [volume, userInteracted, isMutedAutoplay])
 
 	/* ===== BACKUP: MUTED AUTOPLAY APPROACH =====
 	 * To restore this approach:
@@ -1540,6 +1564,18 @@ onBufferingChange = null,
 				lastPlayTimeRef.current = Date.now()
 				shouldPlayRef.current = true
 				
+				// MOBILE FIX: Unmute now that playback has started (if user interacted via power ON)
+				if (userInteracted && isMutedAutoplay && player) {
+					console.log('[Player] Playback started - unmuting (user interacted)')
+					try {
+						player.unMute()
+						player.setVolume(volume * 100)
+						setIsMutedAutoplay(false)
+					} catch (err) {
+						console.warn('[Player] Error unmuting:', err)
+					}
+				}
+				
 				// Update MediaSession - CRITICAL for background playback
 				mediaSessionManager.setPlaybackState('playing')
 				
@@ -1681,7 +1717,7 @@ onBufferingChange = null,
 		} catch (err) {
 			console.error('[Player] Error in onStateChange:', err)
 		}
-	}, [switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange, emitPlaybackProgress, handleVideoError])
+	}, [switchToNextVideo, startProgressMonitoring, current?.youtubeId, onPlaybackStateChange, emitPlaybackProgress, handleVideoError, userInteracted, isMutedAutoplay, volume])
 
 	// Keep refs updated
 	onStateChangeRef.current = onStateChange
@@ -1701,13 +1737,10 @@ onBufferingChange = null,
 			
 			console.log('[Player] onReady (RetroTV pattern)')
 			
-			// RetroTV pattern: Set volume and mute state
+			// MOBILE FIX: Always start muted for autoplay compatibility
+			// Even with userInteracted=true, we mute initially and unmute in STATE_PLAYING
 			e.target.setVolume(volume * 100)
-			if (!userInteracted) {
-				e.target.mute() // Start muted for autoplay
-			} else {
-				e.target.unMute()
-			}
+			e.target.mute() // Always start muted - unmute happens in STATE_PLAYING when playback starts
 			
 			// If video not loaded yet (first initialization), load it now
 			if (!videoLoadedRef.current && videoId) {
@@ -1731,34 +1764,13 @@ onBufferingChange = null,
 			}
 			
 			
-			// Small delay before autoplay - RESTRUCTURED for robustness
+			// Small delay before autoplay - MOBILE FIX: Always use attemptAutoplay (muted first)
+			// Unmuting happens in STATE_PLAYING handler when playback actually starts
 			setTimeout(() => {
 				if (playerRef.current && powerRef.current) {
-					if (userInteracted) {
-						// User has interacted - play with sound
-						try {
-							playerRef.current.unMute()
-							playerRef.current.setVolume(volume * 100)
-							playerRef.current.playVideo()
-							shouldPlayRef.current = true
-							unifiedPlaybackManager.reset()
-						} catch (err) {
-							console.error('[Player] Error playing:', err)
-							// Retry once
-							setTimeout(() => {
-								if (playerRef.current && powerRef.current) {
-									try {
-										playerRef.current.playVideo()
-									} catch (retryErr) {
-										console.error('[Player] Retry failed:', retryErr)
-									}
-								}
-							}, 500)
-						}
-					} else {
-						// Start muted autoplay
-						attemptAutoplay(playerRef.current)
-					}
+					// MOBILE FIX: Always use muted autoplay strategy
+					// Unmute will happen in STATE_PLAYING once playback starts
+					attemptAutoplay(playerRef.current)
 					videoLoadedRef.current = true
 				}
 			}, 50)
