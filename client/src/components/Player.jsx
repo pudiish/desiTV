@@ -794,8 +794,7 @@ onBufferingChange = null,
 										channel._id,
 										prevIndex,
 										0,
-										items,
-										channel
+										items
 									)
 								} catch (err) {
 									console.error('[Player] Error jumping to previous video:', err)
@@ -1848,8 +1847,7 @@ onBufferingChange = null,
 											channel._id,
 											prevIndex,
 											0,
-											items,
-											channel
+											items
 										)
 									} catch (err) {
 										console.error('[Player] Error jumping to previous video:', err)
