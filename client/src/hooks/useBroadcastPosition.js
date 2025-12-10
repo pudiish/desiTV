@@ -15,6 +15,9 @@ export function useBroadcastPosition(channel) {
 	const stateTimestamp = channel?._id 
 		? broadcastStateManager.getChannelState(channel._id)?.lastAccessTime
 		: null
+	
+	// Also use video switch timestamp if provided (for manual video switching)
+	const videoSwitchTimestamp = channel?._videoSwitchTimestamp || null
 
 	return useMemo(() => {
 		if (!channel?.items || channel.items.length === 0) {
@@ -91,5 +94,5 @@ export function useBroadcastPosition(channel) {
 				isValid: false
 			}
 		}
-	}, [channel?._id, channel?.items, stateTimestamp])
+	}, [channel?._id, channel?.items, stateTimestamp, videoSwitchTimestamp])
 }

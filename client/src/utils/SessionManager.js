@@ -80,11 +80,11 @@ class SessionManager {
 	 */
 	getDefaultState() {
 		return {
-			activeChannelId: null,
-			activeChannelIndex: 0,
+			activeCategoryId: null,
+			activeCategoryName: null,
+			activeVideoIndex: 0,
 			volume: 0.5,
 			isPowerOn: false,
-			selectedChannels: [],
 			// NOTE: Do NOT persist currentVideoIndex or currentPlaybackPosition
 			// Video playback is determined by the pseudo-live timeline, not saved state
 			// When user returns, the timeline calculates which video should play based on time

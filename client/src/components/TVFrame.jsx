@@ -6,7 +6,7 @@ import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, staticActive, allChannels, onVideoEnd, shouldAdvanceVideo, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -264,7 +264,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 									onChannelChange={onStaticTrigger}
 									volume={volume}
 									allChannels={allChannels}
-									shouldAdvanceVideo={shouldAdvanceVideo}
 									onBufferingChange={onBufferingChange}
 									onPlaybackProgress={onPlaybackProgress}
 									onTapHandlerReady={handleTapHandlerReady}
@@ -302,8 +301,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 								<CRTInfoOverlay 
 									activeChannelIndex={activeChannelIndex}
 									channels={channels}
-									volume={volume}
-									isMuted={volume === 0}
+									volume={crtVolume !== null ? crtVolume : volume}
+									isMuted={crtIsMuted}
 								/>
 							)}
 						</div>
@@ -365,6 +364,12 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				<div className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}>
 					{remoteOverlayComponent}
 				</div>,
+				tvFrameRef.current
+			)}
+			
+			{/* Menu portal - renders inside fullscreen container */}
+			{tvFrameRef.current && menuComponent && createPortal(
+				menuComponent,
 				tvFrameRef.current
 			)}
 		</div>

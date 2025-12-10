@@ -202,7 +202,7 @@ export default function TVMenuV2({
 						className={`tab-btn ${activeTab === 'channels' ? 'active' : ''}`}
 						onClick={() => setActiveTab('channels')}
 					>
-						📺 CHANNELS
+						📺 CATEGORIES
 					</button>
 					<button 
 						className={`tab-btn ${activeTab === 'queue' ? 'active' : ''}`}

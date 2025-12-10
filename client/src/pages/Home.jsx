@@ -3,17 +3,17 @@ import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
 import TVMenuV2 from '../components/TVMenuV2'
 import CategoryList from '../components/CategoryList'
-import StaticEffect from '../components/StaticEffect'
-import CRTInfoOverlay from '../components/CRTInfoOverlay'
 import SessionManager from '../utils/SessionManager'
 import { channelManager } from '../logic/channel/index.js'
 import { channelSwitchPipeline } from '../logic/effects/index.js'
+import { broadcastStateManager } from '../logic/broadcast/index.js'
 
 export default function Home() {
-	const [channels, setChannels] = useState([])
-	const [selectedChannels, setSelectedChannels] = useState([])
-	const [filteredChannels, setFilteredChannels] = useState([])
-	const [activeChannelIndex, setActiveChannelIndex] = useState(0)
+	// RESTRUCTURED: Categories are playlists, videos are channels
+	const [categories, setCategories] = useState([]) // All categories (playlists)
+	const [selectedCategory, setSelectedCategory] = useState(null) // Currently selected category/playlist
+	const [videosInCategory, setVideosInCategory] = useState([]) // Videos in selected category (these are the "channels")
+	const [activeVideoIndex, setActiveVideoIndex] = useState(0) // Index of current video within category
 	const [power, setPower] = useState(false)
 	const [volume, setVolume] = useState(0.5)
 	const [prevVolume, setPrevVolume] = useState(0.5) // For mute toggle
@@ -34,6 +34,8 @@ export default function Home() {
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
 	const remoteHideTimeoutRef = useRef(null) // Auto-hide timer for overlay remote
+	// Track video switch timestamp to force Player recalculation
+	const [videoSwitchTimestamp, setVideoSwitchTimestamp] = useState(Date.now())
 
 	// Store tap handler from Player (passed through TVFrame)
 	const handleTapHandlerReady = (handler) => {
@@ -69,21 +71,50 @@ export default function Home() {
 		}
 		
 		sessionSaveTimeoutRef.current = setTimeout(() => {
-			const activeChannel = filteredChannels[activeChannelIndex]
+			// Get current video index from broadcast position (more accurate than state)
+			let currentVideoIndex = activeVideoIndex
+			if (selectedCategory) {
+				try {
+					const position = broadcastStateManager.calculateCurrentPosition(selectedCategory)
+					if (position && position.videoIndex >= 0) {
+						currentVideoIndex = position.videoIndex
+					}
+				} catch (err) {
+					console.warn('[Home] Could not calculate position for save, using state index')
+				}
+			}
+			
 			SessionManager.updateState({
-				activeChannelId: activeChannel?._id,
-				activeChannelIndex,
+				activeCategoryId: selectedCategory?._id,
+				activeCategoryName: selectedCategory?.name,
+				activeVideoIndex: currentVideoIndex, // Save calculated position
 				volume,
 				isPowerOn: power,
-				selectedChannels,
 			})
+			
+			// Also ensure broadcast state is saved
+			try {
+				broadcastStateManager.saveToStorage()
+			} catch (err) {
+				console.error('[Home] Error saving broadcast state:', err)
+			}
 		}, 500) // 500ms debounce
-	}, [filteredChannels, activeChannelIndex, volume, power, selectedChannels])
+	}, [videosInCategory, activeVideoIndex, selectedCategory, volume, power])
 
 	// Save session on page unload
 	useEffect(() => {
 		const handleBeforeUnload = () => {
+			// Save session state
 			SessionManager.forceSave()
+			
+			// CRITICAL: Save broadcast state (global epoch and channel states)
+			// This ensures playback continues from correct position on reload
+			try {
+				broadcastStateManager.saveToStorage()
+				console.log('[Home] Broadcast state saved on unload')
+			} catch (err) {
+				console.error('[Home] Error saving broadcast state on unload:', err)
+			}
 		}
 		
 		window.addEventListener('beforeunload', handleBeforeUnload)
@@ -100,7 +131,7 @@ export default function Home() {
 		if (sessionRestored) {
 			saveSessionState()
 		}
-	}, [power, volume, activeChannelIndex, selectedChannels, sessionRestored, saveSessionState])
+	}, [power, volume, activeVideoIndex, selectedCategory, sessionRestored, saveSessionState])
 
 	// Initialize shutdown sound
 	useEffect(() => {
@@ -108,45 +139,67 @@ export default function Home() {
 		shutdownSoundRef.current.volume = 0.5
 	}, [])
 
-	// NOTE: Broadcast epoch (stored in channel) is the timing reference
+	// NOTE: Broadcast epoch (stored in category) is the timing reference
 	// Do NOT create any local timing references - they break on reload
 
-	function filterChannelsBySelection(channelList, selectedChannelNames) {
-		// If no channels selected, show all channels
-		if (selectedChannelNames.length === 0) {
-			setFilteredChannels(channelList)
-			if (activeChannelIndex >= channelList.length) {
-				setActiveChannelIndex(0)
-			}
+	// Set selected category and load its videos
+	function setCategory(categoryName) {
+		const category = categories.find(cat => cat.name === categoryName)
+		if (!category) {
+			console.warn(`[Home] Category not found: ${categoryName}`)
 			return
 		}
-
-		// Filter channels: show only selected channels
-		const filtered = channelList.filter(channel => {
-			return selectedChannelNames.includes(channel.name)
-		})
-
-		setFilteredChannels(filtered)
 		
-		// Reset to first channel if current index is out of bounds
-		if (activeChannelIndex >= filtered.length) {
-			setActiveChannelIndex(0)
+		setSelectedCategory(category)
+		setVideosInCategory(category.items || [])
+		
+		// Initialize broadcast state for this category
+		try {
+			broadcastStateManager.initializeChannel(category)
+		} catch (err) {
+			console.error('[Home] Error initializing category state:', err)
 		}
+		
+		// Reset video index when switching categories and jump to first video
+		setActiveVideoIndex(0)
+		
+		// Jump to first video in the category
+		if (category.items && category.items.length > 0) {
+			try {
+				broadcastStateManager.jumpToVideo(
+					category._id,
+					0,
+					0,
+					category.items
+				)
+				// Force Player to recalculate by updating timestamp
+				setVideoSwitchTimestamp(Date.now())
+			} catch (err) {
+				console.error('[Home] Error jumping to first video:', err)
+			}
+		}
+		
+		console.log(`[Home] Selected category: ${categoryName} with ${category.items?.length || 0} videos`)
 	}
 
-	// Load channels and restore session
+	// Load categories and restore session
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
+				// CRITICAL: Load broadcast state FIRST (loads global epoch from localStorage)
+				// This must happen before initializing channels so the epoch is preserved
+				broadcastStateManager.loadFromStorage()
+				console.log('[Home] Broadcast state loaded, global epoch:', broadcastStateManager.getGlobalEpoch()?.toISOString())
+				
 				// Initialize session manager (loads from localStorage)
 				const sessionResult = await SessionManager.initialize()
 				
-				// Load channels from JSON only (no server dependency)
-				const allChannels = await channelManager.loadChannels()
-				setChannels(allChannels)
+				// Load categories (playlists) from JSON
+				const allCategories = await channelManager.loadChannels()
+				setCategories(allCategories)
 				
-				if (allChannels.length === 0) {
-					setStatusMessage('NO CHANNELS FOUND. PLEASE CHECK CHANNELS.JSON FILE.')
+				if (allCategories.length === 0) {
+					setStatusMessage('NO CATEGORIES FOUND. PLEASE CHECK CHANNELS.JSON FILE.')
 					setSessionRestored(true)
 					return
 				}
@@ -156,14 +209,54 @@ export default function Home() {
 					const savedState = sessionResult.state
 					console.log('[Home] Restoring session from localStorage:', savedState)
 					
-					// Restore selected channels
-					if (savedState.selectedChannels && savedState.selectedChannels.length > 0) {
-						setSelectedChannels(savedState.selectedChannels)
-						filterChannelsBySelection(allChannels, savedState.selectedChannels)
-					} else {
-						const allChannelNames = allChannels.map(ch => ch.name)
-						setSelectedChannels(allChannelNames)
-						filterChannelsBySelection(allChannels, allChannelNames)
+					// Restore selected category
+					let restoredCategory = null
+					if (savedState.activeCategoryName) {
+						restoredCategory = allCategories.find(cat => cat.name === savedState.activeCategoryName)
+					}
+					
+					// Fallback to first category if not found
+					if (!restoredCategory && allCategories.length > 0) {
+						restoredCategory = allCategories[0]
+					}
+					
+					if (restoredCategory) {
+						setSelectedCategory(restoredCategory)
+						setVideosInCategory(restoredCategory.items || [])
+						
+						// Initialize broadcast state for restored category
+						// This will use the loaded global epoch (preserved across reloads)
+						try {
+							broadcastStateManager.initializeChannel(restoredCategory)
+							
+							// CRITICAL: Don't jump to saved video index - let pseudolive algorithm calculate
+							// The pseudolive algorithm will calculate the correct position based on elapsed time
+							// from the global epoch. This ensures playback continues from where it should be
+							// based on the timeline, not from a potentially stale saved index.
+							
+							// Calculate current position using pseudolive algorithm
+							const position = broadcastStateManager.calculateCurrentPosition(restoredCategory)
+							if (position && position.videoIndex >= 0 && position.videoIndex < restoredCategory.items.length) {
+								// Set the video index based on calculated position (not saved index)
+								setActiveVideoIndex(position.videoIndex)
+								setVideoSwitchTimestamp(Date.now()) // Force Player recalculation
+								console.log(`[Home] Restored to video ${position.videoIndex} at ${position.offset.toFixed(1)}s (calculated from timeline)`)
+							} else {
+								// Fallback to saved index if calculation fails
+								if (typeof savedState.activeVideoIndex === 'number' && 
+								    savedState.activeVideoIndex < restoredCategory.items.length) {
+									setActiveVideoIndex(savedState.activeVideoIndex)
+									setVideoSwitchTimestamp(Date.now())
+								}
+							}
+						} catch (err) {
+							console.error('[Home] Error initializing restored category state:', err)
+							// Fallback: use saved index
+							if (typeof savedState.activeVideoIndex === 'number' && 
+							    savedState.activeVideoIndex < restoredCategory.items.length) {
+								setActiveVideoIndex(savedState.activeVideoIndex)
+							}
+						}
 					}
 					
 					// Restore volume
@@ -172,51 +265,57 @@ export default function Home() {
 						setPrevVolume(savedState.volume)
 					}
 					
-					// Restore active channel index
-					if (typeof savedState.activeChannelIndex === 'number' && savedState.activeChannelIndex < allChannels.length) {
-						setActiveChannelIndex(savedState.activeChannelIndex)
-					}
-					
 					// Restore power state (auto-start if was on)
 					if (savedState.isPowerOn) {
 						setPower(true)
 						setStatusMessage('SESSION RESTORED. RESUMING PLAYBACK...')
 					} else {
-						setStatusMessage(`SESSION RESTORED. ${allChannels.length} CHANNELS READY.`)
+						const categoryName = savedState.activeCategoryName || allCategories[0]?.name || 'CATEGORY'
+						setStatusMessage(`SESSION RESTORED. ${categoryName} READY.`)
 					}
 					
 					setSessionRestored(true)
 				} else {
-					// Fresh start - auto-select all channels
-					const allChannelNames = allChannels.map(ch => ch.name)
-					setSelectedChannels(allChannelNames)
-					filterChannelsBySelection(allChannels, allChannelNames)
+					// Fresh start - select first category
+					const firstCategory = allCategories[0]
+					if (firstCategory) {
+						setSelectedCategory(firstCategory)
+						setVideosInCategory(firstCategory.items || [])
+						
+						// Initialize broadcast state for first category
+						// This will create a new global epoch if none exists
+						try {
+							broadcastStateManager.initializeChannel(firstCategory)
+						} catch (err) {
+							console.error('[Home] Error initializing first category state:', err)
+						}
+					}
 					
-					setStatusMessage(`LOADED ${allChannels.length} CHANNELS. READY TO PLAY.`)
+					setStatusMessage(`LOADED ${allCategories.length} CATEGORIES. SELECT A CATEGORY TO START.`)
 					setSessionRestored(true)
 				}
 			} catch (err) {
 				console.error('Error initializing app:', err)
 				setStatusMessage('ERROR LOADING. PLEASE REFRESH.')
 				
-				// Try to load channels anyway
+				// Try to load categories anyway
 				try {
-					const allChannels = await channelManager.loadChannels()
-					setChannels(allChannels)
+					const allCategories = await channelManager.loadChannels()
+					setCategories(allCategories)
 					
-					if (allChannels.length > 0) {
-						const allChannelNames = allChannels.map(ch => ch.name)
-						setSelectedChannels(allChannelNames)
-						filterChannelsBySelection(allChannels, allChannelNames)
-						setStatusMessage(`LOADED ${allChannels.length} CHANNELS.`)
+					if (allCategories.length > 0) {
+						const firstCategory = allCategories[0]
+						setSelectedCategory(firstCategory)
+						setVideosInCategory(firstCategory.items || [])
+						setStatusMessage(`LOADED ${allCategories.length} CATEGORIES.`)
 					} else {
-						setStatusMessage('NO CHANNELS FOUND IN JSON FILE.')
+						setStatusMessage('NO CATEGORIES FOUND IN JSON FILE.')
 					}
 					
 					setSessionRestored(true)
 				} catch (loadErr) {
-					console.error('Failed to load channels:', loadErr)
-					setStatusMessage('ERROR LOADING CHANNELS FROM JSON FILE.')
+					console.error('Failed to load categories:', loadErr)
+					setStatusMessage('ERROR LOADING CATEGORIES FROM JSON FILE.')
 				}
 			}
 		}
@@ -224,13 +323,24 @@ export default function Home() {
 		initializeApp()
 	}, [])
 
-	// Filter channels when selection changes
-	useEffect(() => {
-		filterChannelsBySelection(channels, selectedChannels)
-	}, [selectedChannels, channels])
-
-	// Active channel - simply the filtered channel at current index
-	const activeChannel = filteredChannels[activeChannelIndex] || null
+	// Active video - current video in selected category
+	// This is what gets passed to Player as the "channel"
+	const activeVideo = videosInCategory[activeVideoIndex] || null
+	
+	// Create a channel-like object for Player component (backward compatibility)
+	// The "channel" is actually the selected category with current video
+	// Include videoSwitchTimestamp to force recalculation when video changes
+	const activeChannel = selectedCategory ? {
+		_id: selectedCategory._id,
+		name: selectedCategory.name,
+		playlistStartEpoch: selectedCategory.playlistStartEpoch,
+		items: videosInCategory, // All videos in this category
+		// Current video info for display
+		currentVideo: activeVideo,
+		currentVideoIndex: activeVideoIndex,
+		// Force recalculation when video switches
+		_videoSwitchTimestamp: videoSwitchTimestamp
+	} : null
 
 	function handlePowerToggle() {
 		const newPower = !power
@@ -251,7 +361,9 @@ export default function Home() {
 				setIsBuffering(false)
 				setBufferErrorMessage('')
 			}, 2000)
-			setStatusMessage(`TV ON. PLAYING ${activeChannel?.name || 'CHANNEL'}.`)
+			const categoryName = selectedCategory?.name || 'CATEGORY'
+			const videoTitle = activeVideo?.title?.substring(0, 20) || 'VIDEO'
+			setStatusMessage(`TV ON. ${categoryName} - ${videoTitle}...`)
 			
 			// Auto-trigger tap overlay after 2.5 seconds delay
 			setTimeout(() => {
@@ -269,21 +381,53 @@ export default function Home() {
 	}
 
 	function handleChannelUp() {
-		if (!power || filteredChannels.length === 0) return
+		if (!power || videosInCategory.length === 0 || !selectedCategory) return
 		
-		const nextIndex = (activeChannelIndex + 1) % filteredChannels.length
-		setActiveChannelIndex(nextIndex)
-		switchChannel(nextIndex)
+		// Switch to next video within the selected category
+		const nextIndex = (activeVideoIndex + 1) % videosInCategory.length
+		
+		// Jump to this video in broadcast state (so Player plays it)
+		try {
+			broadcastStateManager.jumpToVideo(
+				selectedCategory._id,
+				nextIndex,
+				0, // Start at beginning of video
+				videosInCategory
+			)
+			// Force Player to recalculate by updating timestamp
+			setVideoSwitchTimestamp(Date.now())
+		} catch (err) {
+			console.error('[Home] Error jumping to video:', err)
+		}
+		
+		setActiveVideoIndex(nextIndex)
+		switchVideo(nextIndex)
 	}
 
 	function handleChannelDown() {
-		if (!power || filteredChannels.length === 0) return
+		if (!power || videosInCategory.length === 0 || !selectedCategory) return
 		
-		const newIndex = activeChannelIndex === 0 
-			? filteredChannels.length - 1 
-			: activeChannelIndex - 1
-		setActiveChannelIndex(newIndex)
-		switchChannel(newIndex)
+		// Switch to previous video within the selected category
+		const newIndex = activeVideoIndex === 0 
+			? videosInCategory.length - 1 
+			: activeVideoIndex - 1
+		
+		// Jump to this video in broadcast state (so Player plays it)
+		try {
+			broadcastStateManager.jumpToVideo(
+				selectedCategory._id,
+				newIndex,
+				0, // Start at beginning of video
+				videosInCategory
+			)
+			// Force Player to recalculate by updating timestamp
+			setVideoSwitchTimestamp(Date.now())
+		} catch (err) {
+			console.error('[Home] Error jumping to video:', err)
+		}
+		
+		setActiveVideoIndex(newIndex)
+		switchVideo(newIndex)
 	}
 
 	function handleVolumeUp() {
@@ -322,14 +466,64 @@ export default function Home() {
 	}
 
 	function handleChannelDirect(index) {
-		if (!power || filteredChannels.length === 0) return
-		if (index < 0 || index >= filteredChannels.length) {
-			setStatusMessage(`CHANNEL ${index + 1} NOT AVAILABLE`)
+		if (!power || videosInCategory.length === 0 || !selectedCategory) return
+		if (index < 0 || index >= videosInCategory.length) {
+			setStatusMessage(`VIDEO ${index + 1} NOT AVAILABLE`)
 			return
 		}
 		
-		setActiveChannelIndex(index)
-		switchChannel(index)
+		// Jump to this video in broadcast state (so Player plays it)
+		try {
+			broadcastStateManager.jumpToVideo(
+				selectedCategory._id,
+				index,
+				0, // Start at beginning of video
+				videosInCategory
+			)
+			// Force Player to recalculate by updating timestamp
+			setVideoSwitchTimestamp(Date.now())
+		} catch (err) {
+			console.error('[Home] Error jumping to video:', err)
+		}
+		
+		setActiveVideoIndex(index)
+		switchVideo(index)
+	}
+
+	function handleCategoryUp() {
+		if (!power || categories.length === 0) return
+		
+		// Find current category index
+		const currentIndex = categories.findIndex(cat => cat._id === selectedCategory?._id)
+		if (currentIndex === -1) return
+		
+		// Switch to next category (wrap around)
+		const nextIndex = (currentIndex + 1) % categories.length
+		const nextCategory = categories[nextIndex]
+		
+		if (nextCategory) {
+			setCategory(nextCategory.name)
+			setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
+		}
+	}
+
+	function handleCategoryDown() {
+		if (!power || categories.length === 0) return
+		
+		// Find current category index
+		const currentIndex = categories.findIndex(cat => cat._id === selectedCategory?._id)
+		if (currentIndex === -1) return
+		
+		// Switch to previous category (wrap around)
+		const prevIndex = currentIndex === 0 
+			? categories.length - 1 
+			: currentIndex - 1
+		const prevCategory = categories[prevIndex]
+		
+		if (prevCategory) {
+			setCategory(prevCategory.name)
+			setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
+		}
 	}
 
 	function handleMenuToggle() {
@@ -339,15 +533,6 @@ export default function Home() {
 	function triggerStatic() {
 		setStaticActive(true)
 		setTimeout(() => setStaticActive(false), 300)
-	}
-
-	function triggerBuffering(errorMsg = '') {
-		setIsBuffering(true)
-		setBufferErrorMessage(errorMsg)
-		setTimeout(() => {
-			setIsBuffering(false)
-			setBufferErrorMessage('')
-		}, 2000)
 	}
 
 	function handleVideoEnd() {
@@ -360,13 +545,13 @@ export default function Home() {
 	}
 
 	/**
-	 * Channel switching with Retro-TV animation pipeline
+	 * Video switching within category (Retro-TV animation pipeline)
 	 */
-	async function switchChannel(index) {
-		if (index < 0 || index >= filteredChannels.length) return
+	async function switchVideo(index) {
+		if (index < 0 || index >= videosInCategory.length) return
 		
-		const channel = filteredChannels[index]
-		if (!channel) return
+		const video = videosInCategory[index]
+		if (!video) return
 
 		// Execute channel switch pipeline
 		channelSwitchPipeline.on('onStaticStart', () => {
@@ -379,7 +564,7 @@ export default function Home() {
 		
 		channelSwitchPipeline.on('onBlackScreen', () => {
 			setIsBuffering(true)
-			setBufferErrorMessage(`SWITCHING TO ${channel.name}...`)
+			setBufferErrorMessage(`SWITCHING TO VIDEO ${index + 1}...`)
 		})
 		
 		channelSwitchPipeline.on('onVideoLoad', () => {
@@ -393,29 +578,17 @@ export default function Home() {
 		channelSwitchPipeline.on('onComplete', () => {
 			setIsBuffering(false)
 			setBufferErrorMessage('')
-			setStatusMessage(`CHANNEL ${index + 1}: ${channel.name}`)
+			const videoTitle = video.title || `Video ${index + 1}`
+			setStatusMessage(`${selectedCategory?.name || 'CATEGORY'} - ${videoTitle.substring(0, 30)}...`)
 		})
 
 		await channelSwitchPipeline.execute()
 	}
 
-	function handleToggleChannel(channelName) {
-		setSelectedChannels(prev => 
-			prev.includes(channelName)
-				? prev.filter(c => c !== channelName)
-				: [...prev, channelName]
-		)
-	}
-
-	function handleSelectAll() {
-		const allNames = channels.map(c => c.name)
-		setSelectedChannels(allNames)
-		setStatusMessage('ALL CHANNELS SELECTED.')
-	}
-
-	function handleSelectNone() {
-		setSelectedChannels([])
-		setStatusMessage('NO CHANNELS SELECTED.')
+	// Handle category selection (this becomes the active playlist)
+	function handleSelectCategory(categoryName) {
+		setCategory(categoryName)
+		setStatusMessage(`SELECTED: ${categoryName}. CHANNEL UP/DOWN TO SWITCH VIDEOS.`)
 	}
 
 		return (
@@ -425,13 +598,15 @@ export default function Home() {
 		<TVFrame 
 			power={power}
 			activeChannel={activeChannel}
-			activeChannelIndex={activeChannelIndex}
-			channels={filteredChannels}
+			activeChannelIndex={activeVideoIndex}
+			channels={videosInCategory.map((v, i) => ({ ...v, _id: v._id || `video-${i}`, name: v.title }))}
 			onStaticTrigger={handleChannelChange}
 			statusMessage={statusMessage}
 			volume={volume}
+			crtVolume={crtVolume}
+			crtIsMuted={crtIsMuted}
 			staticActive={staticActive}
-			allChannels={channels}
+			allChannels={categories}
 			onVideoEnd={handleVideoEnd}
 			isBuffering={isBuffering}
 			bufferErrorMessage={bufferErrorMessage}
@@ -447,15 +622,34 @@ export default function Home() {
 					onChannelUp={handleChannelUp}
 					onChannelDown={handleChannelDown}
 					onChannelDirect={handleChannelDirect}
+					onCategoryUp={handleCategoryUp}
+					onCategoryDown={handleCategoryDown}
 					volume={volume}
 					onVolumeUp={handleVolumeUp}
 					onVolumeDown={handleVolumeDown}
 					onMute={handleMute}
 					onMenuToggle={handleMenuToggle}
-					activeChannelIndex={activeChannelIndex}
-					totalChannels={filteredChannels.length}
+					activeChannelIndex={activeVideoIndex}
+					totalChannels={videosInCategory.length}
 					menuOpen={menuOpen}
 					onTapTrigger={handleTapTrigger}
+				/>
+			) : null}
+			menuComponent={menuOpen ? (
+				<TVMenuV2
+					isOpen={menuOpen}
+					onClose={() => setMenuOpen(false)}
+					channels={categories}
+					activeChannelIndex={categories.findIndex(cat => cat._id === selectedCategory?._id)}
+					onChannelSelect={(index) => {
+						const category = categories[index]
+						if (category) {
+							setCategory(category.name)
+							setMenuOpen(false)
+						}
+					}}
+					power={power}
+					playbackInfo={playbackInfo}
 				/>
 			) : null}
 				onBufferingChange={(isBuffering, errorMsg) => {
@@ -494,46 +688,56 @@ export default function Home() {
 							onChannelUp={handleChannelUp}
 							onChannelDown={handleChannelDown}
 							onChannelDirect={handleChannelDirect}
+							onCategoryUp={handleCategoryUp}
+							onCategoryDown={handleCategoryDown}
 							volume={volume}
 							onVolumeUp={handleVolumeUp}
 							onVolumeDown={handleVolumeDown}
 							onMute={handleMute}
 							onMenuToggle={handleMenuToggle}
-							activeChannelIndex={activeChannelIndex}
-							totalChannels={filteredChannels.length}
+							activeChannelIndex={activeVideoIndex}
+							totalChannels={videosInCategory.length}
 							menuOpen={menuOpen}
 							onTapTrigger={handleTapTrigger}
 						/>
 
 						<CategoryList
-							channels={channels}
-							selectedChannels={selectedChannels}
-							onToggleChannel={handleToggleChannel}
-							onSelectAll={handleSelectAll}
-							onSelectNone={handleSelectNone}
+							channels={categories}
+							selectedChannels={selectedCategory ? [selectedCategory.name] : []}
+							onToggleChannel={handleSelectCategory}
+							onSelectAll={() => {
+								if (categories.length > 0) {
+									handleSelectCategory(categories[0].name)
+								}
+							}}
+							onSelectNone={() => {
+								setSelectedCategory(null)
+								setVideosInCategory([])
+								setActiveVideoIndex(0)
+							}}
 						/>
 					</div>
 				)}
 			</div>
 
-		{/* TV Menu Overlay */}
-		<TVMenuV2
-			isOpen={menuOpen}
-			onClose={() => setMenuOpen(false)}
-			channels={filteredChannels}
-			activeChannelIndex={activeChannelIndex}
-			onChannelSelect={handleChannelDirect}
-			power={power}
-			playbackInfo={playbackInfo}
-		/>
-
-		{/* CRT Info Overlay - Volume and Channel Display */}
-		<CRTInfoOverlay 
-			activeChannelIndex={activeChannelIndex}
-			channels={filteredChannels}
-			volume={crtVolume}
-			isMuted={crtIsMuted}
-		/>
+		{/* TV Menu Overlay - Only render outside fullscreen (inside fullscreen it's rendered via portal in TVFrame) */}
+		{!isFullscreen && (
+			<TVMenuV2
+				isOpen={menuOpen}
+				onClose={() => setMenuOpen(false)}
+				channels={categories}
+				activeChannelIndex={categories.findIndex(cat => cat._id === selectedCategory?._id)}
+				onChannelSelect={(index) => {
+					const category = categories[index]
+					if (category) {
+						setCategory(category.name)
+						setMenuOpen(false)
+					}
+				}}
+				power={power}
+				playbackInfo={playbackInfo}
+			/>
+		)}
 
 
 		{/* Footer / Status Text */}

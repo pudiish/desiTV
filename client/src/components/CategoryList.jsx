@@ -20,17 +20,17 @@ export default function CategoryList({
 	return (
 		<div className="category-list">
 			<div className="category-header">
-				<h3>CHANNELS</h3>
+				<h3>CATEGORIES</h3>
 				<div className="category-actions">
-					<button className="category-link" onClick={onSelectAll}>Select All</button>
+					<button className="category-link" onClick={onSelectAll}>Select</button>
 					<span> | </span>
-					<button className="category-link" onClick={onSelectNone}>None</button>
+					<button className="category-link" onClick={onSelectNone}>Clear</button>
 				</div>
 			</div>
 			<div className="category-items">
 				{channelList.length === 0 ? (
 					<div className="category-name" style={{color: '#888', fontSize: '9px'}}>
-						No channels available
+						No categories available
 					</div>
 				) : (
 					channelList.map(channel => (
