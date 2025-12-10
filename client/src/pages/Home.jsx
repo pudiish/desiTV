@@ -168,7 +168,8 @@ export default function Home() {
 					category._id,
 					0,
 					0,
-					category.items
+					category.items,
+					category
 				)
 				// Force Player to recalculate by updating timestamp
 				setVideoSwitchTimestamp(Date.now())
@@ -386,7 +387,8 @@ export default function Home() {
 				selectedCategory._id,
 				nextIndex,
 				0, // Start at beginning of video
-				videosInCategory
+				videosInCategory,
+				selectedCategory
 			)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
@@ -412,7 +414,8 @@ export default function Home() {
 				selectedCategory._id,
 				newIndex,
 				0, // Start at beginning of video
-				videosInCategory
+				videosInCategory,
+				selectedCategory
 			)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
@@ -472,7 +475,8 @@ export default function Home() {
 				selectedCategory._id,
 				index,
 				0, // Start at beginning of video
-				videosInCategory
+				videosInCategory,
+				selectedCategory
 			)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())

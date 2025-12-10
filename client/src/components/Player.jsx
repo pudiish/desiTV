@@ -308,26 +308,34 @@ onBufferingChange = null,
 	===== END BACKUP ===== */
 
 	// Handle user interaction - unmute smoothly without reload
+	// CRITICAL: This must be called synchronously from a user gesture (click/tap) to work on mobile
 	const handleUserInteraction = useCallback(() => {
-		if (userInteracted) return
-		
-		const player = playerRef.current
+		// Always try to unmute even if userInteracted is already true
+		// This ensures we catch the gesture context
+		const player = playerRef.current || ytPlayerRef.current
 		
 		try {
 			console.log('[Player] User interaction detected - enabling playback/sound')
 			
-			// Mark as interacted first to prevent duplicate calls
+			// Mark as interacted
 			setUserInteracted(true)
 			setNeedsUserInteraction(false)
+			setIsMutedAutoplay(false) // Mark that we're no longer in muted autoplay mode
 			
 			if (!player) {
-				console.log('[Player] No player yet - will start playing when ready')
+				console.log('[Player] No player yet - will unmute when ready')
 				return
 			}
 			
-			// Simply unmute and set volume - no reload needed
-			player.unMute()
-			player.setVolume(volume * 100)
+			// CRITICAL: Unmute IMMEDIATELY while we have user gesture context
+			// This is the key to getting sound on mobile without additional taps
+			try {
+				player.unMute()
+				player.setVolume(volume * 100)
+				console.log('[Player] Unmuted successfully in user gesture context')
+			} catch (unmuteErr) {
+				console.warn('[Player] Could not unmute:', unmuteErr)
+			}
 			
 			// Ensure video is playing (critical for mobile first-load)
 			const state = player.getPlayerState?.()
@@ -339,12 +347,11 @@ onBufferingChange = null,
 				player.playVideo()
 			}
 			
-			setIsMutedAutoplay(false)
-			console.log('[Player] Sound enabled smoothly')
+			console.log('[Player] Sound enabled via user gesture')
 		} catch (err) {
 			console.error('[Player] Error enabling sound:', err)
 		}
-	}, [userInteracted, volume])
+	}, [volume]) // Removed userInteracted dependency so it always runs
 
 	// Listen for user interaction (click, touch, keydown)
 	useEffect(() => {
@@ -787,7 +794,8 @@ onBufferingChange = null,
 										channel._id,
 										prevIndex,
 										0,
-										items
+										items,
+										channel
 									)
 								} catch (err) {
 									console.error('[Player] Error jumping to previous video:', err)
@@ -1840,7 +1848,8 @@ onBufferingChange = null,
 											channel._id,
 											prevIndex,
 											0,
-											items
+											items,
+											channel
 										)
 									} catch (err) {
 										console.error('[Player] Error jumping to previous video:', err)

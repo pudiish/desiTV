@@ -193,8 +193,52 @@ class BroadcastStateManager {
 	}
 
 	/**
+	 * Check if channel uses global sync mode (00s.myretrotvs.com style)
+	 * Global sync: Uses channel's fixed playlistStartEpoch (all users synchronized)
+	 * Local sync: Uses per-session epoch (current behavior)
+	 */
+	isGlobalSyncChannel(channel) {
+		if (!channel || !channel.playlistStartEpoch) {
+			return false
+		}
+		
+		const channelEpoch = new Date(channel.playlistStartEpoch)
+		// If epoch is a fixed date (like 2020-01-01), it's global sync
+		// If epoch is recent (within last 24 hours), it's likely per-session
+		const epochAge = Date.now() - channelEpoch.getTime()
+		const oneDayMs = 24 * 60 * 60 * 1000
+		
+		// Global sync if epoch is older than 1 day (fixed date)
+		// OR if it's exactly '2020-01-01T00:00:00Z' (common default)
+		const isFixedDate = epochAge > oneDayMs || 
+			channelEpoch.getTime() === new Date('2020-01-01T00:00:00Z').getTime()
+		
+		return isFixedDate
+	}
+
+	/**
+	 * Get the appropriate epoch for a channel
+	 * Returns channel's playlistStartEpoch for global sync, or session epoch for local sync
+	 */
+	getChannelEpoch(channel) {
+		if (this.isGlobalSyncChannel(channel)) {
+			// Global sync: Use channel's fixed epoch (all users see same content)
+			const channelEpoch = new Date(channel.playlistStartEpoch)
+			console.log(`[BroadcastState] Using GLOBAL SYNC epoch for channel ${channel.name}: ${channelEpoch.toISOString()}`)
+			return channelEpoch
+		} else {
+			// Local sync: Use per-session epoch (current behavior)
+			if (!this.globalEpoch) {
+				this.initializeGlobalEpoch()
+			}
+			return this.globalEpoch
+		}
+	}
+
+	/**
 	 * Calculate current position in broadcast timeline
-	 * Uses immutable global epoch + per-channel offset (for manual seeking)
+	 * Supports both global sync (channel epoch) and local sync (session epoch)
+	 * Uses immutable epoch + per-channel offset (for manual seeking in local mode only)
 	 */
 	calculateCurrentPosition(channel) {
 		if (!channel || !channel.items || channel.items.length === 0) {
@@ -205,10 +249,6 @@ class BroadcastStateManager {
 			}
 		}
 
-		if (!this.globalEpoch) {
-			this.initializeGlobalEpoch()
-		}
-
 		const channelId = channel._id
 		const savedState = this.state[channelId]
 
@@ -217,13 +257,18 @@ class BroadcastStateManager {
 			return this.calculateCurrentPosition(channel)
 		}
 
+		// Get appropriate epoch (global or local)
+		const epoch = this.getChannelEpoch(channel)
+		const isGlobalSync = this.isGlobalSyncChannel(channel)
+
 		const now = new Date()
-		// Calculate elapsed time from immutable global epoch
-		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
+		// Calculate elapsed time from epoch (global or local)
+		const totalElapsedMs = now.getTime() - epoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
 
-		// Apply per-channel offset (for manual seeking - doesn't affect global epoch)
-		const channelOffset = savedState.channelOffset || 0
+		// Apply per-channel offset ONLY for local sync (global sync disables seeking)
+		// In global sync mode, all users must see the same content at the same time
+		const channelOffset = (isGlobalSync ? 0 : (savedState.channelOffset || 0))
 		const adjustedElapsedSec = totalElapsedSec + channelOffset
 
 		const videoDurations = channel.items.map((v) => {
@@ -328,6 +373,8 @@ class BroadcastStateManager {
 			cycleCount,
 			videoDurations,
 			isSingleVideo: channel.items.length === 1,
+			isGlobalSync, // Flag indicating if this is globally synchronized
+			epoch: epoch.toISOString(), // The epoch being used (for debugging)
 		}
 
 		return position
@@ -408,20 +455,28 @@ class BroadcastStateManager {
 	}
 
 	/**
-	 * Jump to specific video (adjusts per-channel offset, NOT global epoch)
-	 * Global epoch is immutable - this only affects the current channel
+	 * Jump to specific video (adjusts per-channel offset, NOT epoch)
+	 * Only works for local sync channels - global sync channels cannot seek
 	 */
-	jumpToVideo(channelId, targetVideoIndex, targetOffset = 0, items) {
+	jumpToVideo(channelId, targetVideoIndex, targetOffset = 0, items, channel = null) {
 		const state = this.state[channelId]
 		if (!state || !items || items.length === 0) {
 			console.warn(`[BroadcastState] Cannot jump - no state for channel ${channelId}`)
 			return false
 		}
 
-		// Ensure global epoch is initialized
+		// Check if this is a global sync channel - if so, disable seeking
+		if (channel && this.isGlobalSyncChannel(channel)) {
+			console.warn(`[BroadcastState] Cannot jump - channel ${channel.name} uses global sync (no seeking allowed)`)
+			return false
+		}
+
+		// Ensure epoch is initialized (for local sync)
 		if (!this.globalEpoch) {
 			this.initializeGlobalEpoch()
 		}
+		
+		const epoch = channel ? this.getChannelEpoch(channel) : this.globalEpoch
 
 		// Calculate cumulative time up to target video
 		let cumulativeTime = 0
@@ -436,9 +491,9 @@ class BroadcastStateManager {
 		// Get target cycle position
 		const targetCyclePosition = cumulativeTime % totalDuration
 
-		// Calculate what the current cycle position would be from global epoch
+		// Calculate what the current cycle position would be from epoch
 		const now = new Date()
-		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
+		const totalElapsedMs = now.getTime() - epoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
 		const currentCyclePosition = totalElapsedSec % totalDuration
 
