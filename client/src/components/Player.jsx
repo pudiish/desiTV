@@ -41,7 +41,7 @@ onBufferingChange = null,
 	const [playbackHealth, setPlaybackHealth] = useState('healthy') // healthy, buffering, retrying, failed
 	const [needsUserInteraction, setNeedsUserInteraction] = useState(false)
 	const [userInteracted, setUserInteracted] = useState(false) // Track user interaction (power ON counts as interaction)
-	const [isMutedAutoplay, setIsMutedAutoplay] = useState(false) // Not using muted autoplay anymore - power ON = user interaction
+	const [isMutedAutoplay, setIsMutedAutoplay] = useState(true) // Always start muted for mobile autoplay compatibility
 	const [showStaticOverlay, setShowStaticOverlay] = useState(true) // Show static on initial load only
 	const ytPlayerRef = useRef(null) // Direct YouTube API player reference
 
@@ -600,13 +600,13 @@ onBufferingChange = null,
 					width: '100%',
 					height: '100%',
 					playerVars: {
-						autoplay: 0, // We control playback manually
+						autoplay: 1, // Enable autoplay (muted for mobile compatibility)
 						playsinline: 1, // Critical for iOS
 						controls: 0, // No controls
 						modestbranding: 1, // Minimal branding
 						rel: 0, // No related videos
 						iv_load_policy: 3, // No annotations
-						mute: userInteracted ? 0 : 1, // Start muted for autoplay unless user interacted
+						mute: 1, // ALWAYS start muted for mobile autoplay - unmute happens after playback starts
 						enablejsapi: 1, // Required for API control
 					},
 					events: {
@@ -1097,25 +1097,38 @@ onBufferingChange = null,
 				},
 			})
 			
-			// Mobile startup watchdog: Check if playback started within 5 seconds
-			// Power ON = user interaction, so we start WITH sound
+			// Mobile startup watchdog: Check if playback started within 3 seconds
+			// MOBILE FIX: Always try muted first - unmute happens in STATE_PLAYING
 			const mobileWatchdog = setTimeout(() => {
 				if (playerRef.current && powerRef.current) {
 					const state = playerRef.current.getPlayerState?.()
 					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
-						console.log('[Player] Mobile startup watchdog triggered - starting with sound (power ON = user interaction)')
+						console.log('[Player] Mobile startup watchdog triggered - forcing muted playback')
 						autoplayAttemptedRef.current = false // Reset to allow retry
 						
-						// Power ON means user clicked power button - start with sound
-						playerRef.current.unMute()
-						playerRef.current.setVolume(volume * 100)
+						// MOBILE FIX: Start muted - unmute will happen in STATE_PLAYING if userInteracted
+						playerRef.current.mute()
+						playerRef.current.playVideo()
+						setIsMutedAutoplay(true)
+					}
+				}
+			}, 3000)
+			
+			// Second watchdog at 6 seconds for very stubborn cases
+			const mobileWatchdog2 = setTimeout(() => {
+				if (playerRef.current && powerRef.current) {
+					const state = playerRef.current.getPlayerState?.()
+					if (state === STATE_UNSTARTED || state === STATE_VIDEO_CUED || state === STATE_PAUSED) {
+						console.log('[Player] Mobile startup watchdog 2 triggered - final muted playback attempt')
+						playerRef.current.mute()
 						playerRef.current.playVideo()
 					}
 				}
-			}, 5000)
+			}, 6000)
 			
 			return () => {
 				clearTimeout(mobileWatchdog)
+				clearTimeout(mobileWatchdog2)
 				unifiedPlaybackManager.stop()
 			}
 		} else {
@@ -1133,7 +1146,8 @@ onBufferingChange = null,
 		if (!hasInitializedRef.current) return
 
 		if (power) {
-			// Power ON - allow autoplay (muted if no user interaction)
+			// Power ON - MOBILE FIX: Always use muted autoplay strategy
+			// Unmuting happens in STATE_PLAYING when playback actually starts
 			shouldPlayRef.current = true
 			
 			const timeoutId = setTimeout(() => {
@@ -1141,22 +1155,21 @@ onBufferingChange = null,
 					try {
 						const state = playerRef.current.getPlayerState?.()
 						
-						// If paused, unstarted, or cued, try to play
+						// If paused, unstarted, or cued, try to play (muted first for mobile)
 						if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
-							console.log('[Player] Power ON - resuming playback, state:', state)
-							if (userInteracted) {
-								// User has interacted - play with sound
-								playerRef.current.unMute()
-								playerRef.current.setVolume(volume * 100)
-								playerRef.current.playVideo()
-							} else {
-								// No user interaction - muted autoplay
-								attemptAutoplay(playerRef.current)
-							}
+							console.log('[Player] Power ON - starting muted autoplay, state:', state)
+							// MOBILE FIX: Always use attemptAutoplay which starts muted
+							// This ensures playback works on mobile after reload
+							attemptAutoplay(playerRef.current)
 							mediaSessionManager.setPlaybackState('playing')
 							unifiedPlaybackManager.reset()
 						} else if (state === STATE_PLAYING) {
-							// Already playing, just update state
+							// Already playing - unmute if user interacted
+							if (userInteracted && isMutedAutoplay) {
+								playerRef.current.unMute()
+								playerRef.current.setVolume(volume * 100)
+								setIsMutedAutoplay(false)
+							}
 							mediaSessionManager.setPlaybackState('playing')
 							unifiedPlaybackManager.reset()
 						}
@@ -1181,7 +1194,7 @@ onBufferingChange = null,
 				}
 			}
 		}
-	}, [power, hasInitializedRef.current, userInteracted, attemptAutoplay, volume])
+	}, [power, hasInitializedRef.current, userInteracted, attemptAutoplay, volume, isMutedAutoplay])
 
 	// Effect: Ensure playback continues after channel/video change - RESTRUCTURED
 	useEffect(() => {
@@ -1198,22 +1211,20 @@ onBufferingChange = null,
 			try {
 				const state = playerRef.current.getPlayerState?.()
 				
-				// If paused, unstarted, or cued, start playback
+				// If paused, unstarted, or cued, start playback (muted first for mobile)
 				if (state === STATE_PAUSED || state === STATE_UNSTARTED || state === STATE_VIDEO_CUED) {
-					console.log('[Player] Channel/video changed - resuming playback, state:', state)
-					if (userInteracted) {
-						// User has interacted - play with sound
-						playerRef.current.unMute()
-						playerRef.current.setVolume(volume * 100)
-						playerRef.current.playVideo()
-					} else {
-						// No user interaction - muted autoplay
-						attemptAutoplay(playerRef.current)
-					}
+					console.log('[Player] Channel/video changed - starting muted autoplay, state:', state)
+					// MOBILE FIX: Always use attemptAutoplay (muted first)
+					attemptAutoplay(playerRef.current)
 					mediaSessionManager.setPlaybackState('playing')
 					unifiedPlaybackManager.reset()
 				} else if (state === STATE_PLAYING) {
-					// Already playing, just ensure state is correct
+					// Already playing - unmute if user interacted
+					if (userInteracted && isMutedAutoplay) {
+						playerRef.current.unMute()
+						playerRef.current.setVolume(volume * 100)
+						setIsMutedAutoplay(false)
+					}
 					mediaSessionManager.setPlaybackState('playing')
 					unifiedPlaybackManager.reset()
 				} else if (state === STATE_BUFFERING) {
@@ -1225,7 +1236,7 @@ onBufferingChange = null,
 		}, 800) // Increased delay to ensure video is loaded
 		
 		return () => clearTimeout(timeoutId)
-	}, [current?.youtubeId, channel?._id, power, userInteracted, attemptAutoplay, volume])
+	}, [current?.youtubeId, channel?._id, power, userInteracted, attemptAutoplay, volume, isMutedAutoplay])
 
 	// ===== CALLBACKS =====
 
