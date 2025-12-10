@@ -131,6 +131,44 @@ export default function Home() {
 		}
 	}, [power, volume, activeVideoIndex, selectedCategory, sessionRestored, saveSessionState])
 
+	// Periodic check for manual mode expiration and timeline return
+	useEffect(() => {
+		if (!power || !selectedCategory) return
+
+		const checkManualMode = setInterval(() => {
+			if (!selectedCategory?._id) return
+
+			// Check if should return to timeline
+			if (broadcastStateManager.shouldReturnToTimeline(selectedCategory._id)) {
+				// Start gradual reset
+				broadcastStateManager.gradualOffsetReset(selectedCategory._id)
+				setStatusMessage('RETURNING TO LIVE TIMELINE...')
+			} else {
+				// Update status message based on mode (only if not already set by other handlers)
+				const mode = broadcastStateManager.getMode(selectedCategory._id)
+				const state = broadcastStateManager.getChannelState(selectedCategory._id)
+				
+				// Only update if status doesn't contain manual/timeline indicators
+				const currentStatus = statusMessage || ''
+				if (!currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING') && !currentStatus.includes('LIVE')) {
+					if (mode === 'manual' && state?.manualModeUntil) {
+						const timeRemaining = Math.max(0, Math.ceil((state.manualModeUntil - Date.now()) / 1000))
+						if (timeRemaining > 0 && timeRemaining <= 30) {
+							setStatusMessage(`MANUAL MODE - Returning to LIVE in ${timeRemaining}s`)
+						}
+					} else if (mode === 'timeline') {
+						// Calculate activeVideo here to avoid temporal dead zone
+						const currentVideo = videosInCategory[activeVideoIndex] || null
+						const videoTitle = currentVideo?.title?.substring(0, 30) || 'VIDEO'
+						setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
+					}
+				}
+			}
+		}, 1000) // Check every second
+
+		return () => clearInterval(checkManualMode)
+	}, [power, selectedCategory, videosInCategory, activeVideoIndex])
+
 	// Initialize shutdown sound
 	useEffect(() => {
 		shutdownSoundRef.current = new Audio('/sounds/tv-shutdown-386167.mp3')
@@ -158,22 +196,49 @@ export default function Home() {
 			console.error('[Home] Error initializing category state:', err)
 		}
 		
-		// Reset video index when switching categories and jump to first video
-		setActiveVideoIndex(0)
+		// Calculate timeline position for new category (pseudo-live)
+		let targetIndex = 0
+		let shouldUseTimeline = true
 		
-		// Jump to first video in the category
+		try {
+			const timelinePosition = broadcastStateManager.calculateCurrentPosition(category)
+			targetIndex = timelinePosition.videoIndex
+			shouldUseTimeline = true
+		} catch (err) {
+			console.error('[Home] Error calculating timeline position, starting from beginning:', err)
+			targetIndex = 0
+			shouldUseTimeline = false
+		}
+		
+		setActiveVideoIndex(targetIndex)
+		
+		// Jump to timeline position (or first video if calculation failed)
 		if (category.items && category.items.length > 0) {
 			try {
-				broadcastStateManager.jumpToVideo(
-					category._id,
-					0,
-					0,
-					category.items
-				)
+				if (shouldUseTimeline) {
+					const timelinePosition = broadcastStateManager.calculateCurrentPosition(category)
+					broadcastStateManager.jumpToVideo(
+						category._id,
+						timelinePosition.videoIndex,
+						timelinePosition.offset,
+						category.items
+					)
+					setStatusMessage(`● LIVE - ${categoryName} - Video ${timelinePosition.videoIndex + 1}`)
+				} else {
+					broadcastStateManager.jumpToVideo(
+						category._id,
+						0,
+						0,
+						category.items
+					)
+					setStatusMessage(`${categoryName} - Video 1`)
+				}
+				// Reset manual mode when switching categories (start fresh)
+				broadcastStateManager.setManualMode(category._id, false)
 				// Force Player to recalculate by updating timestamp
 				setVideoSwitchTimestamp(Date.now())
 			} catch (err) {
-				console.error('[Home] Error jumping to first video:', err)
+				console.error('[Home] Error jumping to video:', err)
 			}
 		}
 		
@@ -388,6 +453,8 @@ export default function Home() {
 				0, // Start at beginning of video
 				videosInCategory
 			)
+			// Enable manual mode (user manually switched)
+			broadcastStateManager.setManualMode(selectedCategory._id, true)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
 		} catch (err) {
@@ -395,6 +462,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(nextIndex)
+		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${nextIndex + 1}`)
 		switchVideo(nextIndex)
 	}
 
@@ -414,6 +482,8 @@ export default function Home() {
 				0, // Start at beginning of video
 				videosInCategory
 			)
+			// Enable manual mode (user manually switched)
+			broadcastStateManager.setManualMode(selectedCategory._id, true)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
 		} catch (err) {
@@ -421,6 +491,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(newIndex)
+		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${newIndex + 1}`)
 		switchVideo(newIndex)
 	}
 
@@ -474,6 +545,8 @@ export default function Home() {
 				0, // Start at beginning of video
 				videosInCategory
 			)
+			// Enable manual mode (user manually switched)
+			broadcastStateManager.setManualMode(selectedCategory._id, true)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
 		} catch (err) {
@@ -481,6 +554,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(index)
+		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${index + 1}`)
 		switchVideo(index)
 	}
 
@@ -670,6 +744,17 @@ export default function Home() {
 
 					lastPlaybackInfoRef.current = info
 					setPlaybackInfo(info)
+					
+					// Update status message to show LIVE indicator if in timeline mode
+					if (selectedCategory?._id) {
+						const mode = broadcastStateManager.getMode(selectedCategory._id)
+						const currentStatus = statusMessage || ''
+						// Only update if not in manual mode and not showing manual/returning message
+						if (mode === 'timeline' && !currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING')) {
+							const videoTitle = info.videoTitle?.substring(0, 30) || 'VIDEO'
+							setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
+						}
+					}
 				}}
 			/>
 

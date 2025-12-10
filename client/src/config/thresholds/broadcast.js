@@ -21,6 +21,13 @@ export const BROADCAST_THRESHOLDS = {
 
 	// Storage
 	MAX_CHANNEL_STATES: 10, // maximum channel states to keep in localStorage
+
+	// Manual mode settings (hybrid pseudo-live + manual controls)
+	MANUAL_MODE_AUTO_RETURN_DELAY: 30000, // milliseconds - 30 seconds before auto-return to timeline
+	MANUAL_MODE_GRADUAL_RESET_DURATION: 5000, // milliseconds - 5 seconds for gradual reset
+	MANUAL_MODE_GRADUAL_RESET_STEPS: 10, // Number of steps for gradual reset
+	TIMELINE_AUTO_ADVANCE: true, // Auto-advance videos based on timeline
+	TIMELINE_SYNC_ON_CATEGORY_SWITCH: true, // Sync to timeline on category change
 }
 
 export default BROADCAST_THRESHOLDS

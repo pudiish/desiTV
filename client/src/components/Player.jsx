@@ -1358,26 +1358,44 @@ onBufferingChange = null,
 
 		if (onVideoEnd) onVideoEnd()
 
-		// Find next video (simple sequential, no retry manager needed - unified manager handles recovery)
-		const nextIdx = (currIndex + 1) % items.length
-		const nextVid = items[nextIdx]
+		// Check if should return to timeline mode (manual mode expired)
+		let nextVid = null
+		let targetOffset = 0
+		let nextIdx = (currIndex + 1) % items.length
+		
+		if (channel?._id && broadcastStateManager.checkAndReturnToTimeline(channel._id)) {
+			// Manual mode expired - return to timeline position
+			const timelinePosition = broadcastStateManager.calculateCurrentPosition(channel)
+			nextIdx = timelinePosition.videoIndex
+			nextVid = items[nextIdx]
+			targetOffset = timelinePosition.offset
+			console.log(`[Player] Returning to timeline mode - video ${nextIdx} at ${targetOffset.toFixed(1)}s`)
+		} else if (channel?._id && broadcastStateManager.getMode(channel._id) === 'manual') {
+			// Still in manual mode - continue sequential progression
+			nextVid = items[nextIdx]
+			targetOffset = 0
+			console.log(`[Player] Manual mode - continuing sequential to video ${nextIdx}`)
+		} else {
+			// Timeline mode - calculate from timeline
+			const timelinePosition = broadcastStateManager.calculateCurrentPosition(channel)
+			nextIdx = timelinePosition.videoIndex
+			nextVid = items[nextIdx]
+			targetOffset = timelinePosition.offset
+			console.log(`[Player] Timeline mode - video ${nextIdx} at ${targetOffset.toFixed(1)}s`)
+		}
 
 		if (nextVid?.youtubeId) {
 			console.log(`[Player] Switching from video ${currIndex} to ${nextIdx}: ${nextVid.youtubeId}`)
 			
-			// NOTE: Don't call jumpToVideo here - the timeline will naturally progress
-			// jumpToVideo should only be called for manual user actions (previous/next buttons)
-			// The timeline calculation will automatically handle video progression
-			
 			try {
-				// Load next video starting at 0
+				// Load next video starting at target offset
 				playerRef.current.loadVideoById({
 					videoId: nextVid.youtubeId,
-					startSeconds: 0
+					startSeconds: targetOffset
 				})
 				
 			// Reset seek time for new video
-			clipSeekTimeRef.current = 0
+			clipSeekTimeRef.current = targetOffset
 			e7Ref.current = true
 			// Clear loaded video cache to force reload of next video
 			loadedVideoRef.current = null

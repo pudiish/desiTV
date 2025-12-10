@@ -16,6 +16,7 @@ class BroadcastStateManager {
 		this.saveInterval = null
 		this.storageKey = 'desitv-broadcast-state'
 		this.globalEpochKey = 'desitv-global-epoch'
+		this.gradualResetIntervals = {} // Track gradual reset intervals per channel
 		
 		// Configuration from thresholds
 		this.config = {
@@ -23,6 +24,9 @@ class BroadcastStateManager {
 			defaultVideoDuration: BROADCAST_THRESHOLDS.DEFAULT_VIDEO_DURATION,
 			defaultPlaylistDuration: BROADCAST_THRESHOLDS.DEFAULT_PLAYLIST_DURATION,
 			maxChannelStates: BROADCAST_THRESHOLDS.MAX_CHANNEL_STATES,
+			manualModeAutoReturnDelay: BROADCAST_THRESHOLDS.MANUAL_MODE_AUTO_RETURN_DELAY,
+			manualModeGradualResetDuration: BROADCAST_THRESHOLDS.MANUAL_MODE_GRADUAL_RESET_DURATION,
+			manualModeGradualResetSteps: BROADCAST_THRESHOLDS.MANUAL_MODE_GRADUAL_RESET_STEPS,
 		}
 	}
 
@@ -156,6 +160,9 @@ class BroadcastStateManager {
 				lastAccessTime: now,
 				// Preserve channelOffset if it exists (for manual seeking)
 				channelOffset: savedState.channelOffset || 0,
+				// Preserve manual mode state
+				manualMode: savedState.manualMode || false,
+				manualModeUntil: savedState.manualModeUntil || null,
 			}
 		} else {
 			this.state[channelId] = {
@@ -167,6 +174,8 @@ class BroadcastStateManager {
 					(typeof v.duration === 'number' && v.duration > 0) ? v.duration : this.config.defaultVideoDuration
 				),
 				channelOffset: 0, // Per-channel offset for manual seeking (doesn't affect global epoch)
+				manualMode: false, // Whether user has manually switched (temporarily overrides timeline)
+				manualModeUntil: null, // Timestamp when manual mode should expire
 			}
 			this.saveToStorage()
 		}
@@ -474,15 +483,165 @@ class BroadcastStateManager {
 			return false
 		}
 
+		// Clear any gradual reset in progress
+		if (this.gradualResetIntervals[channelId]) {
+			clearInterval(this.gradualResetIntervals[channelId])
+			delete this.gradualResetIntervals[channelId]
+		}
+
 		this.state[channelId] = {
 			...state,
 			channelOffset: 0,
+			manualMode: false,
+			manualModeUntil: null,
 			lastAccessTime: new Date(),
 		}
 
 		this.saveToStorage()
 		console.log(`[BroadcastState] Reset channel offset for ${channelId}`)
 		return true
+	}
+
+	/**
+	 * Set manual mode (user has manually switched videos)
+	 * @param {string} channelId - Channel ID
+	 * @param {boolean} isManual - Whether to enable manual mode
+	 * @param {number} autoReturnDelay - Delay before auto-return (optional, uses config default)
+	 */
+	setManualMode(channelId, isManual, autoReturnDelay = null) {
+		const state = this.state[channelId]
+		if (!state) {
+			console.warn(`[BroadcastState] Cannot set manual mode - no state for channel ${channelId}`)
+			return false
+		}
+
+		const delay = autoReturnDelay || this.config.manualModeAutoReturnDelay
+
+		// Clear any existing gradual reset
+		if (this.gradualResetIntervals[channelId]) {
+			clearInterval(this.gradualResetIntervals[channelId])
+			delete this.gradualResetIntervals[channelId]
+		}
+
+		this.state[channelId] = {
+			...state,
+			manualMode: isManual,
+			manualModeUntil: isManual ? Date.now() + delay : null,
+			lastAccessTime: new Date(),
+		}
+
+		this.saveToStorage()
+		console.log(`[BroadcastState] Manual mode ${isManual ? 'enabled' : 'disabled'} for ${channelId}${isManual ? ` (auto-return in ${delay/1000}s)` : ''}`)
+		return true
+	}
+
+	/**
+	 * Check if should return to timeline mode (manual mode expired)
+	 * @param {string} channelId - Channel ID
+	 * @returns {boolean} - True if should return to timeline
+	 */
+	shouldReturnToTimeline(channelId) {
+		const state = this.state[channelId]
+		if (!state || !state.manualMode) return false
+
+		if (state.manualModeUntil && Date.now() > state.manualModeUntil) {
+			return true
+		}
+		return false
+	}
+
+	/**
+	 * Get current mode (timeline or manual)
+	 * @param {string} channelId - Channel ID
+	 * @returns {string} - 'timeline' or 'manual'
+	 */
+	getMode(channelId) {
+		const state = this.state[channelId]
+		if (!state) return 'timeline'
+		
+		if (this.shouldReturnToTimeline(channelId)) {
+			return 'timeline'
+		}
+		
+		return state.manualMode ? 'manual' : 'timeline'
+	}
+
+	/**
+	 * Gradually reset offset to return to timeline mode
+	 * Creates a smooth transition back to timeline position
+	 * @param {string} channelId - Channel ID
+	 */
+	gradualOffsetReset(channelId) {
+		const state = this.state[channelId]
+		if (!state) return
+
+		// Clear any existing gradual reset
+		if (this.gradualResetIntervals[channelId]) {
+			clearInterval(this.gradualResetIntervals[channelId])
+		}
+
+		const currentOffset = state.channelOffset || 0
+		if (Math.abs(currentOffset) < 0.1) {
+			// Already close to 0, just reset immediately
+			this.state[channelId] = {
+				...state,
+				channelOffset: 0,
+				manualMode: false,
+				manualModeUntil: null,
+			}
+			this.saveToStorage()
+			return
+		}
+
+		const targetOffset = 0
+		const steps = this.config.manualModeGradualResetSteps
+		const stepInterval = this.config.manualModeGradualResetDuration / steps
+		const stepSize = currentOffset / steps
+
+		let stepCount = 0
+
+		console.log(`[BroadcastState] Starting gradual offset reset for ${channelId} (${currentOffset.toFixed(1)}s → 0s over ${this.config.manualModeGradualResetDuration/1000}s)`)
+
+		this.gradualResetIntervals[channelId] = setInterval(() => {
+			stepCount++
+			const newOffset = currentOffset - (stepSize * stepCount)
+
+			if (stepCount >= steps || Math.abs(newOffset) < Math.abs(stepSize)) {
+				// Reset complete
+				this.state[channelId] = {
+					...state,
+					channelOffset: 0,
+					manualMode: false,
+					manualModeUntil: null,
+					lastAccessTime: new Date(),
+				}
+				clearInterval(this.gradualResetIntervals[channelId])
+				delete this.gradualResetIntervals[channelId]
+				this.saveToStorage()
+				console.log(`[BroadcastState] Gradual reset complete for ${channelId}, returned to timeline mode`)
+			} else {
+				// Update offset gradually
+				this.state[channelId] = {
+					...state,
+					channelOffset: newOffset,
+					lastAccessTime: new Date(),
+				}
+				this.saveToStorage()
+			}
+		}, stepInterval)
+	}
+
+	/**
+	 * Check and handle auto-return to timeline if needed
+	 * Should be called periodically to check if manual mode has expired
+	 * @param {string} channelId - Channel ID
+	 */
+	checkAndReturnToTimeline(channelId) {
+		if (this.shouldReturnToTimeline(channelId)) {
+			this.gradualOffsetReset(channelId)
+			return true
+		}
+		return false
 	}
 
 	/**
