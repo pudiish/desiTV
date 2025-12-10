@@ -1952,8 +1952,8 @@ return (
 					}}>👆 Tap anywhere</div>
 				</div>
 			)}
-			{/* Tap to unmute indicator - only show when muted autoplay is active */}
-			{isMutedAutoplay && !showStaticOverlay && !isBuffering && !isTransitioning && (
+			{/* Tap to unmute indicator - only show when muted autoplay is active and user hasn't interacted */}
+			{isMutedAutoplay && !userInteracted && !showStaticOverlay && !isBuffering && !isTransitioning && (
 				<div
 					className="tap-to-unmute"
 					onClick={handleUserInteraction}
