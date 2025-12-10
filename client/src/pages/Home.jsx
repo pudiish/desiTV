@@ -4,9 +4,9 @@ import TVRemote from '../components/TVRemote'
 import TVMenuV2 from '../components/TVMenuV2'
 import CategoryList from '../components/CategoryList'
 import SessionManager from '../utils/SessionManager'
-import { channelManager } from '../logic/channel/index.js'
-import { channelSwitchPipeline } from '../logic/effects/index.js'
-import { broadcastStateManager } from '../logic/broadcast/index.js'
+import { channelManager } from '../logic/channel'
+import { channelSwitchPipeline } from '../logic/effects'
+import { broadcastStateManager } from '../logic/broadcast'
 
 export default function Home() {
 	// RESTRUCTURED: Categories are playlists, videos are channels
@@ -29,7 +29,6 @@ export default function Home() {
 	const [isFullscreen, setIsFullscreen] = useState(false) // Track fullscreen for overlay remote
 	const [remoteOverlayVisible, setRemoteOverlayVisible] = useState(false) // Slide-up remote visibility
 	const lastPlaybackInfoRef = useRef(null) // Throttle updates to UI
-	// NOTE: DO NOT use uiLoadTime - broadcast epoch is the single source of truth
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
@@ -719,26 +718,6 @@ export default function Home() {
 					</div>
 				)}
 			</div>
-
-		{/* TV Menu Overlay - Only render outside fullscreen (inside fullscreen it's rendered via portal in TVFrame) */}
-		{!isFullscreen && (
-			<TVMenuV2
-				isOpen={menuOpen}
-				onClose={() => setMenuOpen(false)}
-				channels={categories}
-				activeChannelIndex={categories.findIndex(cat => cat._id === selectedCategory?._id)}
-				onChannelSelect={(index) => {
-					const category = categories[index]
-					if (category) {
-						setCategory(category.name)
-						setMenuOpen(false)
-					}
-				}}
-				power={power}
-				playbackInfo={playbackInfo}
-			/>
-		)}
-
 
 		{/* Footer / Status Text */}
 			<div className="footer-status">

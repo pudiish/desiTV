@@ -299,16 +299,20 @@ export default function TVMenuV2({
 									<div className="queue-title">{nowTitle}</div>
 								</div>
 							</div>
-						)}					{/* Up Next */}
-				{hasActivePlaylist && computedNextVideo && (
-						<div className="queue-item next-item">
-							<div className="queue-badge next">⏭ NEXT</div>
-						<div className="queue-info">
-							<div className="queue-title">{computedNextVideo.title}</div>
+						)}
+
+						{/* Up Next */}
+						{hasActivePlaylist && computedNextVideo && (
+							<div className="queue-item next-item">
+								<div className="queue-badge next">⏭ NEXT</div>
+								<div className="queue-info">
+									<div className="queue-title">{computedNextVideo.title}</div>
+								</div>
 							</div>
-							</div>
-						)}							{/* Upcoming (next 3 after next) */}
-							{hasActivePlaylist && (
+						)}
+
+						{/* Upcoming (next 3 after next) */}
+						{hasActivePlaylist && (
 								<>
 									<div className="queue-divider">UPCOMING</div>
 									{Array.from({ length: 3 }).map((_, i) => {

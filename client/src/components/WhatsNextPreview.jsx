@@ -6,12 +6,12 @@ import { getPseudoLiveItem } from '../logic/broadcast'
  * Appears on hover over the TV screen
  */
 export default function WhatsNextPreview({ channel, isVisible, playbackInfo = null }) {
-	const [currentTime, setCurrentTime] = useState(Date.now())
+	const [refreshKey, setRefreshKey] = useState(0)
 
-	// Update time every second for progress calculation
+	// Update every second to trigger re-render for schedule recalculation
 	useEffect(() => {
 		if (!isVisible) return
-		const interval = setInterval(() => setCurrentTime(Date.now()), 1000)
+		const interval = setInterval(() => setRefreshKey(k => k + 1), 1000)
 		return () => clearInterval(interval)
 	}, [isVisible])
 
@@ -49,17 +49,9 @@ export default function WhatsNextPreview({ channel, isVisible, playbackInfo = nu
 			afterNext,
 			isLiveSynced: false
 		}
-	}, [channel, currentTime, playbackInfo])
+	}, [channel, refreshKey, playbackInfo])
 
 	if (!isVisible || !schedule || !schedule.now) return null
-
-	const formatTime = (seconds) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = Math.floor(seconds % 60)
-		return `${mins}:${secs.toString().padStart(2, '0')}`
-	}
-
-	const remaining = Math.max(0, schedule.duration - schedule.offset)
 
 	return (
 		<div className="whats-next-preview">

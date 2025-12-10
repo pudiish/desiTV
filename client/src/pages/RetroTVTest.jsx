@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import RetroTV from '../components/RetroTV'
-import { channelManager } from '../logic/channel/index.js'
+import { channelManager } from '../logic/channel'
 
 export default function RetroTVTest() {
   const [allChannels, setAllChannels] = useState([])

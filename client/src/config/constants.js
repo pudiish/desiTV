@@ -125,14 +125,8 @@ export const UI_STATES = {
 }
 
 // ===== PLAYBACK STATES =====
-export const PLAYBACK_STATES = {
-  IDLE: 'idle',
-  LOADING: 'loading',
-  PLAYING: 'playing',
-  BUFFERING: 'buffering',
-  ERROR: 'error',
-  PAUSED: 'paused',
-}
+// Re-exported from modular constants for backwards compatibility
+export { PLAYBACK_STATES } from './constants/playback'
 
 // ===== BROADCAST STATE =====
 export const BROADCAST_STATE_STATUS = {

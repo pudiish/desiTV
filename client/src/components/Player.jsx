@@ -22,7 +22,6 @@ channel,
 onVideoEnd, 
 	onChannelChange, 
 volume = 0.5, 
-	uiLoadTime, 
 	allChannels = [], 
 onBufferingChange = null,
 	onPlaybackStateChange = null, // Callback for playback state

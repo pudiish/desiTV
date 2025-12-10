@@ -19,12 +19,8 @@ const app = express();
 // ===== ENVIRONMENT =====
 // All configuration comes from .env file - no hardcoded values
 const isProduction = process.env.NODE_ENV === 'production';
-const PORT = process.env.PORT;
-const CLIENT_PORT = process.env.VITE_CLIENT_PORT;
-
-if (!PORT) {
-	console.warn('⚠️  PORT not set in .env, server may not start correctly');
-}
+const PORT = process.env.PORT || 5000; // Default to 5000 if not set
+const CLIENT_PORT = process.env.VITE_CLIENT_PORT || 5173; // Default Vite port
 
 // ===== SECURITY MIDDLEWARE =====
 const { 
@@ -127,12 +123,6 @@ app.use('/api', apiLimiter);
 
 // Mount routes
 app.use('/api/channels', channelRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoriesRoutes);
-app.use('/api/youtube', youtubeRoutes);
-app.use('/api/broadcast-state', broadcastStateRoutes);
-app.use('/api/session', sessionRoutes);
-app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/youtube', youtubeRoutes);
