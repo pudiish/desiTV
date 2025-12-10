@@ -48,6 +48,7 @@ export const PLAYBACK_THRESHOLDS = {
 	VIDEO_LOAD_DELAY: 800, // milliseconds - delay before attempting playback after load
 	VIDEO_LOAD_TIMEOUT: 5000, // milliseconds - timeout for video load attempts
 	SEEK_DELAY: 50, // milliseconds - delay after seek before play
+	VIDEO_BUFFER_WINDOW: 5, // seconds - if offset is within this window, don't reload (just seek)
 
 	// Autoplay
 	AUTOPLAY_DELAY: 300, // milliseconds - delay before autoplay attempt

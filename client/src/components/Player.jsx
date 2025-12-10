@@ -75,6 +75,8 @@ onBufferingChange = null,
 	const shouldPlayRef = useRef(false) // Track if we should be playing
 	const playAttemptInProgressRef = useRef(false) // Prevent multiple simultaneous play attempts
 	const lastPlayAttemptRef = useRef(0) // Track last play attempt time for debouncing
+	const loadedVideoRef = useRef(null) // Cache: { videoId, offset, channelId } - track what's currently loaded
+	const loadVideoTimeoutRef = useRef(null) // Debounce video loading
 
 	// ===== CONSTANTS FROM CONFIG =====
 	// Use constants from config files for easy tweaking
@@ -271,6 +273,98 @@ onBufferingChange = null,
 		}
 	}, [showStaticOverlay, isBuffering, isTransitioning])
 
+	// Effect: Smart video loading with caching (only load when video actually changes)
+	useEffect(() => {
+		if (!videoId || !channel?._id || !ytPlayerRef.current) return
+
+		// Clear any pending load timeout
+		if (loadVideoTimeoutRef.current) {
+			clearTimeout(loadVideoTimeoutRef.current)
+			loadVideoTimeoutRef.current = null
+		}
+
+		const loaded = loadedVideoRef.current
+		const VIDEO_BUFFER_WINDOW = PLAYBACK_THRESHOLDS.VIDEO_BUFFER_WINDOW || 5
+
+		// Check if we need to reload:
+		// 1. Different video ID
+		// 2. Different channel
+		// 3. Offset is outside buffer window (more than 5 seconds difference)
+		const needsReload = !loaded || 
+			loaded.videoId !== videoId || 
+			loaded.channelId !== channel._id ||
+			Math.abs(loaded.offset - startSeconds) > VIDEO_BUFFER_WINDOW
+
+		if (!needsReload) {
+			// Same video within buffer window - just seek if needed
+			const offsetDiff = Math.abs(loaded.offset - startSeconds)
+			if (offsetDiff > 1) { // Only seek if difference is more than 1 second
+				try {
+					if (typeof ytPlayerRef.current.seekTo === 'function') {
+						ytPlayerRef.current.seekTo(startSeconds, true)
+						loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id }
+						console.log(`[Player] Seeking to ${startSeconds}s (within buffer window)`)
+					}
+				} catch (err) {
+					console.error('[Player] Error seeking:', err)
+				}
+			}
+			return
+		}
+
+		// Debounce video loading to avoid rapid reloads
+		loadVideoTimeoutRef.current = setTimeout(() => {
+			if (!ytPlayerRef.current || !videoId || !channel?._id) return
+
+			// Ensure player is fully initialized
+			if (typeof ytPlayerRef.current.loadVideoById !== 'function') {
+				setTimeout(() => {
+					if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
+						// Load video
+						try {
+							ytPlayerRef.current.loadVideoById({
+								videoId: videoId,
+								startSeconds: 0
+							})
+							e7Ref.current = true
+							clipSeekTimeRef.current = startSeconds
+							loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id }
+							console.log(`[Player] Loading video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
+						} catch (err) {
+							console.error('[Player] Error loading video:', err)
+						}
+					}
+				}, 100)
+				return
+			}
+
+			console.log(`[Player] Loading video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
+			
+			e7Ref.current = true
+			clipSeekTimeRef.current = startSeconds
+			
+			try {
+				// Load video starting at 0, then seek after ready
+				ytPlayerRef.current.loadVideoById({
+					videoId: videoId,
+					startSeconds: 0
+				})
+				
+				// Update cache
+				loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id }
+			} catch (err) {
+				console.error('[Player] Error loading video:', err)
+			}
+		}, 100) // Small debounce to batch rapid changes
+
+		return () => {
+			if (loadVideoTimeoutRef.current) {
+				clearTimeout(loadVideoTimeoutRef.current)
+				loadVideoTimeoutRef.current = null
+			}
+		}
+	}, [videoId, channel?._id, startSeconds])
+
 	// Effect: Play static video on initial mount (before YouTube loads)
 	useEffect(() => {
 		const staticVideo = staticVideoRef.current
@@ -323,6 +417,8 @@ onBufferingChange = null,
 			staticShownRef.current = true
 			e7Ref.current = false
 			clipSeekTimeRef.current = 0
+			// Clear loaded video cache on channel change
+			loadedVideoRef.current = null
 			
 			setIsTransitioning(false)
 			isTransitioningRef.current = false
@@ -418,47 +514,11 @@ onBufferingChange = null,
 			}
 		}
 
-		// RetroTV pattern: Load video function
-		const loadVideoToPlayer = () => {
-			if (!ytPlayerRef.current || !videoId) return
-			
-			// Ensure player is fully initialized with loadVideoById method
-			if (typeof ytPlayerRef.current.loadVideoById !== 'function') {
-				console.warn('[Player] Player not ready, waiting for initialization...')
-				// Retry after a short delay
-				setTimeout(() => {
-					if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
-						loadVideoToPlayer()
-					}
-				}, 100)
-				return
-			}
-			
-			console.log('[Player] Loading video (RetroTV pattern):', videoId, 'at', startSeconds, 's')
-			
-			e7Ref.current = true // Mark as loading initiated
-			
-			try {
-				// Load video starting at 0, then seek after ready
-				ytPlayerRef.current.loadVideoById({
-					videoId: videoId,
-					startSeconds: 0
-				})
-				
-				// Store seek time for after video loads
-				clipSeekTimeRef.current = startSeconds
-			} catch (err) {
-				console.error('[Player] Error loading video:', err)
-			}
-		}
-
 		// RetroTV pattern: Set up onYouTubeIframeAPIReady
+		// Video loading is now handled by the smart caching effect above
 		if (window.YT && window.YT.Player) {
 			// API already loaded
-			if (ytPlayerRef.current) {
-				// Player exists, load new video
-				loadVideoToPlayer()
-			} else {
+			if (!ytPlayerRef.current) {
 				// Need to create player
 				if (!initYouTubePlayer()) {
 					const timer = setInterval(() => {
@@ -475,7 +535,6 @@ onBufferingChange = null,
 			window.onYouTubeIframeAPIReady = () => {
 				if (originalCallback) originalCallback()
 				initYouTubePlayer()
-				// Video will load in onReady callback
 			}
 		}
 
@@ -487,7 +546,7 @@ onBufferingChange = null,
 			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [videoId, channel?._id, startSeconds, userInteracted])
+	}, [channel?._id]) // Only re-run on channel change, not video/offset changes
 
 	// Effect: Load and restore saved state with retry
 	useEffect(() => {
@@ -1115,21 +1174,9 @@ onBufferingChange = null,
 		if (nextVid?.youtubeId) {
 			console.log(`[Player] Switching from video ${currIndex} to ${nextIdx}: ${nextVid.youtubeId}`)
 			
-			// CRITICAL FIX: Update broadcast state to reflect video change
-			if (channel?._id) {
-				try {
-					// Jump to next video - this adjusts the epoch for correct timeline calculation
-					broadcastStateManager.jumpToVideo(
-						channel._id,
-						nextIdx,
-						0, // Start at beginning of video
-						items
-					)
-					console.log(`[Player] Jumped to video ${nextIdx} in broadcast timeline`)
-				} catch (err) {
-					console.error('[Player] Error jumping to video:', err)
-				}
-			}
+			// NOTE: Don't call jumpToVideo here - the timeline will naturally progress
+			// jumpToVideo should only be called for manual user actions (previous/next buttons)
+			// The timeline calculation will automatically handle video progression
 			
 			try {
 				// Load next video starting at 0
@@ -1138,9 +1185,11 @@ onBufferingChange = null,
 					startSeconds: 0
 				})
 				
-				// Reset seek time for new video
-				clipSeekTimeRef.current = 0
-				e7Ref.current = true
+			// Reset seek time for new video
+			clipSeekTimeRef.current = 0
+			e7Ref.current = true
+			// Clear loaded video cache to force reload of next video
+			loadedVideoRef.current = null
 				
 				// Attempt autoplay after switching - RESTRUCTURED for robustness
 				// Use multiple retry attempts to ensure playback starts

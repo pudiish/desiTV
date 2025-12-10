@@ -10,7 +10,8 @@ import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
 class BroadcastStateManager {
 	constructor() {
 		this.state = {} // { channelId: channelState }
-		this.globalEpoch = null // Single global timeline epoch
+		this.globalEpoch = null // Single global timeline epoch (IMMUTABLE after initialization)
+		this.globalEpochLocked = false // Lock flag to prevent modification after initialization
 		this.listeners = []
 		this.saveInterval = null
 		this.storageKey = 'desitv-broadcast-state'
@@ -100,9 +101,15 @@ class BroadcastStateManager {
 	}
 
 	/**
-	 * Initialize global epoch
+	 * Initialize global epoch (IMMUTABLE - set once, never changes)
+	 * This represents the "login time" and all channels calculate from this point
 	 */
 	initializeGlobalEpoch() {
+		// If already locked, return existing epoch
+		if (this.globalEpochLocked && this.globalEpoch) {
+			return this.globalEpoch
+		}
+
 		if (this.globalEpoch === null) {
 			this.loadFromStorage()
 		}
@@ -112,6 +119,10 @@ class BroadcastStateManager {
 			console.log(`[BroadcastState] Global epoch initialized: ${this.globalEpoch.toISOString()}`)
 			this.saveToStorage()
 		}
+
+		// Lock the epoch - it should never change after initialization
+		this.globalEpochLocked = true
+		console.log(`[BroadcastState] Global epoch locked - will not change for this session`)
 
 		return this.globalEpoch
 	}
@@ -143,6 +154,8 @@ class BroadcastStateManager {
 					(typeof v.duration === 'number' && v.duration > 0) ? v.duration : this.config.defaultVideoDuration
 				),
 				lastAccessTime: now,
+				// Preserve channelOffset if it exists (for manual seeking)
+				channelOffset: savedState.channelOffset || 0,
 			}
 		} else {
 			this.state[channelId] = {
@@ -153,6 +166,7 @@ class BroadcastStateManager {
 				videoDurations: channel.items.map((v) => 
 					(typeof v.duration === 'number' && v.duration > 0) ? v.duration : this.config.defaultVideoDuration
 				),
+				channelOffset: 0, // Per-channel offset for manual seeking (doesn't affect global epoch)
 			}
 			this.saveToStorage()
 		}
@@ -180,6 +194,7 @@ class BroadcastStateManager {
 
 	/**
 	 * Calculate current position in broadcast timeline
+	 * Uses immutable global epoch + per-channel offset (for manual seeking)
 	 */
 	calculateCurrentPosition(channel) {
 		if (!channel || !channel.items || channel.items.length === 0) {
@@ -203,8 +218,13 @@ class BroadcastStateManager {
 		}
 
 		const now = new Date()
+		// Calculate elapsed time from immutable global epoch
 		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
+
+		// Apply per-channel offset (for manual seeking - doesn't affect global epoch)
+		const channelOffset = savedState.channelOffset || 0
+		const adjustedElapsedSec = totalElapsedSec + channelOffset
 
 		const videoDurations = channel.items.map((v) => {
 			const duration = v.duration
@@ -239,15 +259,26 @@ class BroadcastStateManager {
 					debugInfo: 'Invalid single video duration',
 				}
 			}
-			cyclePosition = totalElapsedSec % singleVideoDuration
+			// Handle negative adjustedElapsedSec (if user seeks backward)
+			const effectiveElapsed = adjustedElapsedSec >= 0 
+				? adjustedElapsedSec 
+				: (Math.ceil(Math.abs(adjustedElapsedSec) / singleVideoDuration) * singleVideoDuration + adjustedElapsedSec)
+			cyclePosition = effectiveElapsed % singleVideoDuration
+			if (cyclePosition < 0) cyclePosition += singleVideoDuration
 			offsetInVideo = cyclePosition
 			videoIndex = 0
-			cycleCount = Math.floor(totalElapsedSec / singleVideoDuration)
+			cycleCount = Math.floor(effectiveElapsed / singleVideoDuration)
 		}
 		// Multiple videos case
 		else {
-			cyclePosition = totalElapsedSec % totalDurationSec
-			cycleCount = Math.floor(totalElapsedSec / totalDurationSec)
+			// Handle negative adjustedElapsedSec
+			const effectiveElapsed = adjustedElapsedSec >= 0
+				? adjustedElapsedSec
+				: (Math.ceil(Math.abs(adjustedElapsedSec) / totalDurationSec) * totalDurationSec + adjustedElapsedSec)
+			
+			cyclePosition = effectiveElapsed % totalDurationSec
+			if (cyclePosition < 0) cyclePosition += totalDurationSec
+			cycleCount = Math.floor(effectiveElapsed / totalDurationSec)
 
 			let accumulatedTime = 0
 			let found = false
@@ -282,6 +313,9 @@ class BroadcastStateManager {
 		if (offsetInVideo >= currentVideoDuration) {
 			offsetInVideo = Math.max(0, currentVideoDuration - 1)
 		}
+		if (offsetInVideo < 0) {
+			offsetInVideo = 0
+		}
 
 		const position = {
 			videoIndex,
@@ -289,6 +323,8 @@ class BroadcastStateManager {
 			cyclePosition,
 			totalDuration: totalDurationSec,
 			totalElapsedSec,
+			adjustedElapsedSec,
+			channelOffset,
 			cycleCount,
 			videoDurations,
 			isSingleVideo: channel.items.length === 1,
@@ -372,14 +408,19 @@ class BroadcastStateManager {
 	}
 
 	/**
-	 * Jump to specific video (adjusts global epoch for this channel)
-	 * Note: This adjusts the global epoch, affecting all channels
+	 * Jump to specific video (adjusts per-channel offset, NOT global epoch)
+	 * Global epoch is immutable - this only affects the current channel
 	 */
 	jumpToVideo(channelId, targetVideoIndex, targetOffset = 0, items) {
 		const state = this.state[channelId]
 		if (!state || !items || items.length === 0) {
 			console.warn(`[BroadcastState] Cannot jump - no state for channel ${channelId}`)
 			return false
+		}
+
+		// Ensure global epoch is initialized
+		if (!this.globalEpoch) {
+			this.initializeGlobalEpoch()
 		}
 
 		// Calculate cumulative time up to target video
@@ -392,24 +433,55 @@ class BroadcastStateManager {
 		// Calculate total playlist duration
 		const totalDuration = items.reduce((sum, v) => sum + (v.duration || this.config.defaultVideoDuration), 0)
 		
-		// Get current cycle position
-		const cyclePosition = cumulativeTime % totalDuration
+		// Get target cycle position
+		const targetCyclePosition = cumulativeTime % totalDuration
 
-		// Adjust global epoch: now - cyclePosition = new epoch
-		// This affects ALL channels, so use with caution
+		// Calculate what the current cycle position would be from global epoch
 		const now = new Date()
-		const newEpoch = new Date(now.getTime() - (cyclePosition * 1000))
+		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
+		const totalElapsedSec = totalElapsedMs / 1000
+		const currentCyclePosition = totalElapsedSec % totalDuration
 
-		this.globalEpoch = newEpoch
+		// Calculate offset needed to make current position = target position
+		// offset = targetCyclePosition - currentCyclePosition
+		// This adjusts the calculation for this channel only, without affecting global epoch
+		const channelOffset = targetCyclePosition - currentCyclePosition
+		
+		// Normalize offset to be within reasonable range (within one cycle)
+		const normalizedOffset = channelOffset > totalDuration / 2 
+			? channelOffset - totalDuration 
+			: channelOffset < -totalDuration / 2 
+				? channelOffset + totalDuration 
+				: channelOffset
+
 		this.state[channelId] = {
 			...state,
-			currentVideoIndex: targetVideoIndex,
-			currentTime: targetOffset,
+			channelOffset: normalizedOffset,
 			lastAccessTime: now,
 		}
 
 		this.saveToStorage()
-		console.log(`[BroadcastState] Jumped to video ${targetVideoIndex} at ${targetOffset}s, adjusted global epoch`)
+		console.log(`[BroadcastState] Jumped to video ${targetVideoIndex} at ${targetOffset}s (channel offset: ${normalizedOffset.toFixed(1)}s)`)
+		return true
+	}
+
+	/**
+	 * Reset channel offset (return to timeline-based position)
+	 */
+	resetChannelOffset(channelId) {
+		const state = this.state[channelId]
+		if (!state) {
+			return false
+		}
+
+		this.state[channelId] = {
+			...state,
+			channelOffset: 0,
+			lastAccessTime: new Date(),
+		}
+
+		this.saveToStorage()
+		console.log(`[BroadcastState] Reset channel offset for ${channelId}`)
 		return true
 	}
 
