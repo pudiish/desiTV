@@ -7,16 +7,21 @@ services:
     env: node
     region: singapore  # Closest to India
     plan: free  # Change to 'starter' ($7/mo) for always-on
-    buildCommand: npm install
-    startCommand: npm start
+    rootDir: server  # Server code is in server/ directory
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        fromService:
+          type: web
+          name: desitv-api
+          property: port  # Render automatically assigns PORT
       - key: MONGO_URI
         sync: false  # Set manually in Render dashboard
       - key: JWT_SECRET
-        generateValue: true  # Auto-generate secure value
+        generateValue: true  # Auto-generate secure value - IMPORTANT: If this doesn't work, set manually in Render dashboard
+        # Recommended: Manually set in Render dashboard Environment tab instead
     autoDeploy: true  # Deploy on push to main branch
