@@ -351,7 +351,16 @@ function VideoManagerContent() {
 			<form onSubmit={handleAddVideo}>
 				{/* Channel Selector */}
 				<div className="form-group">
-					<label className="form-label">SELECT CATEGORY * <button type="button" onClick={() => setShowAddChannel(true)} className="btn btn-small" style={{marginLeft: '8px', padding: '2px 6px', fontSize: '11px'}}>➕ New</button></label>
+					<label className="form-label">
+						<span>SELECT CATEGORY *</span>
+						<button 
+							type="button" 
+							onClick={() => setShowAddChannel(true)} 
+							className="btn btn-small btn-new-category"
+						>
+							➕ New
+						</button>
+					</label>
 					<select
 						value={selectedChannel}
 						onChange={(e) => setSelectedChannel(e.target.value)}
@@ -550,27 +559,9 @@ function VideoManagerContent() {
 
 			{/* Add Category Modal */}
 			{showAddChannel && (
-				<div style={{
-					position: 'fixed',
-					top: 0,
-					left: 0,
-					right: 0,
-					bottom: 0,
-					background: 'rgba(0, 0, 0, 0.7)',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					zIndex: 1000
-				}}>
-					<div style={{
-						background: 'rgba(0, 0, 0, 0.9)',
-						border: '2px solid #00d4ff',
-						borderRadius: '8px',
-						padding: '24px',
-						minWidth: '400px',
-						boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)'
-					}}>
-						<h2 style={{ color: '#00d4ff', marginBottom: '16px' }}>➕ Create New Category</h2>
+				<div className="modal-overlay" onClick={() => setShowAddChannel(false)}>
+					<div className="modal-content" onClick={(e) => e.stopPropagation()}>
+						<h2 className="modal-title">➕ Create New Category</h2>
 						<form onSubmit={handleAddChannel}>
 							<div className="form-group">
 								<label className="form-label">CATEGORY NAME *</label>
@@ -583,12 +574,11 @@ function VideoManagerContent() {
 									autoFocus
 								/>
 							</div>
-							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+							<div className="modal-actions">
 								<button
 									type="submit"
 									disabled={addingChannel || !newChannelName.trim()}
-									className="btn btn-success"
-									style={{ flex: 1 }}
+									className="btn btn-success modal-btn"
 								>
 									{addingChannel ? '⏳ Creating...' : '✓ Create Category'}
 								</button>
@@ -599,8 +589,7 @@ function VideoManagerContent() {
 										setNewChannelName('')
 									}}
 									disabled={addingChannel}
-									className="btn btn-secondary"
-									style={{ flex: 1 }}
+									className="btn btn-secondary modal-btn"
 								>
 									✕ Cancel
 								</button>

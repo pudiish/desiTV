@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import './AdminDashboard.css'
 import ChannelManager from './sections/ChannelManager'
 import VideoFetcher from './sections/VideoFetcher'
@@ -9,10 +10,18 @@ import SystemControls from './sections/SystemControls'
 
 export default function AdminDashboard() {
 	const navigate = useNavigate()
+	const { logout, user } = useAuth()
 	const [activeSection, setActiveSection] = useState('videos-channels')
 	const [notifications, setNotifications] = useState([])
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+	const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+	const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
 	const [currentTime, setCurrentTime] = useState(new Date())
+
+	const handleLogout = async () => {
+		await logout()
+		navigate('/admin/login', { replace: true })
+	}
 
 	// Update time every second
 	useEffect(() => {
@@ -85,9 +94,17 @@ export default function AdminDashboard() {
 	}
 
 	return (
-		<div className={`admin-dashboard ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+		<div className={`admin-dashboard ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+			{/* Mobile Overlay */}
+			{mobileMenuOpen && (
+				<div 
+					className="mobile-overlay"
+					onClick={() => setMobileMenuOpen(false)}
+				/>
+			)}
+
 			{/* Sidebar */}
-			<aside className="admin-sidebar">
+			<aside className={`admin-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
 				<div className="sidebar-header">
 					<div className="logo-section">
 						<span className="logo-icon">🎛️</span>
@@ -116,7 +133,10 @@ export default function AdminDashboard() {
 									<button
 										key={section.id}
 										className={`nav-item ${activeSection === section.id ? 'active' : ''}`}
-										onClick={() => setActiveSection(section.id)}
+										onClick={() => {
+											setActiveSection(section.id)
+											setMobileMenuOpen(false) // Close mobile menu on selection
+										}}
 										title={sidebarCollapsed ? section.label : section.description}
 									>
 										<span className="nav-icon">{section.icon}</span>
@@ -143,6 +163,13 @@ export default function AdminDashboard() {
 				{/* Top Bar */}
 				<header className="admin-topbar">
 					<div className="topbar-left">
+						<button 
+							className="mobile-menu-toggle"
+							onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+							aria-label="Toggle menu"
+						>
+							☰
+						</button>
 						<h1 className="page-title">
 							{activeSectionData?.icon} {activeSectionData?.label}
 						</h1>
@@ -151,6 +178,37 @@ export default function AdminDashboard() {
 					<div className="topbar-right">
 						<div className="time-display">
 							{currentTime.toLocaleTimeString()}
+						</div>
+						<div className="mobile-user-menu">
+							<button 
+								className="mobile-dropdown-toggle"
+								onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+								aria-label="User menu"
+							>
+								👤 {user?.username || 'Admin'}
+							</button>
+							{mobileDropdownOpen && (
+								<div className="mobile-dropdown-menu">
+									<button
+										className="mobile-dropdown-item"
+										onClick={() => {
+											navigate('/')
+											setMobileDropdownOpen(false)
+										}}
+									>
+										📺 TV
+									</button>
+									<button
+										className="mobile-dropdown-item mobile-dropdown-item-danger"
+										onClick={() => {
+											handleLogout()
+											setMobileDropdownOpen(false)
+										}}
+									>
+										🚪 Logout
+									</button>
+								</div>
+							)}
 						</div>
 					</div>
 				</header>

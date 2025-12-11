@@ -175,15 +175,8 @@
 		font-size: 24px;
 	}
 
+	/* Hide admin-nav-buttons on mobile - integrated into topbar dropdown */
 	.admin-nav-buttons {
-		flex-direction: column;
-		top: 10px;
-		right: 10px;
-	}
-
-	.back-to-app-btn,
-	.logout-btn {
-		padding: 10px 15px;
-		font-size: 12px;
+		display: none;
 	}
 }
