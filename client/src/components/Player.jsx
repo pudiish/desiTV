@@ -1358,25 +1358,19 @@ onBufferingChange = null,
 
 		if (onVideoEnd) onVideoEnd()
 
-		// Check if should return to timeline mode (manual mode expired)
+		// Determine next video based on current mode
+		// Manual mode persists until category/channel is changed (no timer expiration)
 		let nextVid = null
 		let targetOffset = 0
 		let nextIdx = (currIndex + 1) % items.length
 		
-		if (channel?._id && broadcastStateManager.checkAndReturnToTimeline(channel._id)) {
-			// Manual mode expired - return to timeline position
-			const timelinePosition = broadcastStateManager.calculateCurrentPosition(channel)
-			nextIdx = timelinePosition.videoIndex
-			nextVid = items[nextIdx]
-			targetOffset = timelinePosition.offset
-			console.log(`[Player] Returning to timeline mode - video ${nextIdx} at ${targetOffset.toFixed(1)}s`)
-		} else if (channel?._id && broadcastStateManager.getMode(channel._id) === 'manual') {
-			// Still in manual mode - continue sequential progression
+		if (channel?._id && broadcastStateManager.getMode(channel._id) === 'manual') {
+			// Manual mode - continue sequential progression (user manually changed channel)
 			nextVid = items[nextIdx]
 			targetOffset = 0
 			console.log(`[Player] Manual mode - continuing sequential to video ${nextIdx}`)
 		} else {
-			// Timeline mode - calculate from timeline
+			// Timeline mode - calculate from timeline (pseudo-live)
 			const timelinePosition = broadcastStateManager.calculateCurrentPosition(channel)
 			nextIdx = timelinePosition.videoIndex
 			nextVid = items[nextIdx]

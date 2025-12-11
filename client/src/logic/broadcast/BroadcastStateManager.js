@@ -504,18 +504,16 @@ class BroadcastStateManager {
 
 	/**
 	 * Set manual mode (user has manually switched videos)
+	 * Manual mode persists until channel/category is changed
 	 * @param {string} channelId - Channel ID
 	 * @param {boolean} isManual - Whether to enable manual mode
-	 * @param {number} autoReturnDelay - Delay before auto-return (optional, uses config default)
 	 */
-	setManualMode(channelId, isManual, autoReturnDelay = null) {
+	setManualMode(channelId, isManual) {
 		const state = this.state[channelId]
 		if (!state) {
 			console.warn(`[BroadcastState] Cannot set manual mode - no state for channel ${channelId}`)
 			return false
 		}
-
-		const delay = autoReturnDelay || this.config.manualModeAutoReturnDelay
 
 		// Clear any existing gradual reset
 		if (this.gradualResetIntervals[channelId]) {
@@ -526,27 +524,24 @@ class BroadcastStateManager {
 		this.state[channelId] = {
 			...state,
 			manualMode: isManual,
-			manualModeUntil: isManual ? Date.now() + delay : null,
+			manualModeUntil: null, // No timer - manual mode persists until category/channel change
 			lastAccessTime: new Date(),
 		}
 
 		this.saveToStorage()
-		console.log(`[BroadcastState] Manual mode ${isManual ? 'enabled' : 'disabled'} for ${channelId}${isManual ? ` (auto-return in ${delay/1000}s)` : ''}`)
+		console.log(`[BroadcastState] Manual mode ${isManual ? 'enabled' : 'disabled'} for ${channelId} (persists until category change)`)
 		return true
 	}
 
 	/**
-	 * Check if should return to timeline mode (manual mode expired)
+	 * Check if should return to timeline mode
+	 * Manual mode no longer expires automatically - it persists until category/channel change
 	 * @param {string} channelId - Channel ID
-	 * @returns {boolean} - True if should return to timeline
+	 * @returns {boolean} - Always returns false (manual mode persists until explicit change)
 	 */
 	shouldReturnToTimeline(channelId) {
-		const state = this.state[channelId]
-		if (!state || !state.manualMode) return false
-
-		if (state.manualModeUntil && Date.now() > state.manualModeUntil) {
-			return true
-		}
+		// Manual mode persists until category/channel is changed
+		// This method is kept for compatibility but always returns false
 		return false
 	}
 
@@ -559,10 +554,7 @@ class BroadcastStateManager {
 		const state = this.state[channelId]
 		if (!state) return 'timeline'
 		
-		if (this.shouldReturnToTimeline(channelId)) {
-			return 'timeline'
-		}
-		
+		// Manual mode persists until explicitly cleared (category change)
 		return state.manualMode ? 'manual' : 'timeline'
 	}
 

@@ -131,43 +131,35 @@ export default function Home() {
 		}
 	}, [power, volume, activeVideoIndex, selectedCategory, sessionRestored, saveSessionState])
 
-	// Periodic check for manual mode expiration and timeline return
+	// Periodic status message update (manual mode no longer expires automatically)
 	useEffect(() => {
 		if (!power || !selectedCategory) return
 
-		const checkManualMode = setInterval(() => {
+		const updateStatus = setInterval(() => {
 			if (!selectedCategory?._id) return
 
-			// Check if should return to timeline
-			if (broadcastStateManager.shouldReturnToTimeline(selectedCategory._id)) {
-				// Start gradual reset
-				broadcastStateManager.gradualOffsetReset(selectedCategory._id)
-				setStatusMessage('RETURNING TO LIVE TIMELINE...')
-			} else {
-				// Update status message based on mode (only if not already set by other handlers)
-				const mode = broadcastStateManager.getMode(selectedCategory._id)
-				const state = broadcastStateManager.getChannelState(selectedCategory._id)
-				
-				// Only update if status doesn't contain manual/timeline indicators
-				const currentStatus = statusMessage || ''
-				if (!currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING') && !currentStatus.includes('LIVE')) {
-					if (mode === 'manual' && state?.manualModeUntil) {
-						const timeRemaining = Math.max(0, Math.ceil((state.manualModeUntil - Date.now()) / 1000))
-						if (timeRemaining > 0 && timeRemaining <= 30) {
-							setStatusMessage(`MANUAL MODE - Returning to LIVE in ${timeRemaining}s`)
-						}
-					} else if (mode === 'timeline') {
-						// Calculate activeVideo here to avoid temporal dead zone
-						const currentVideo = videosInCategory[activeVideoIndex] || null
-						const videoTitle = currentVideo?.title?.substring(0, 30) || 'VIDEO'
-						setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
-					}
+			// Update status message based on mode (only if not already set by other handlers)
+			const mode = broadcastStateManager.getMode(selectedCategory._id)
+			const currentStatus = statusMessage || ''
+			
+			// Only update if status doesn't contain manual/timeline indicators
+			if (!currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING') && !currentStatus.includes('LIVE')) {
+				if (mode === 'manual') {
+					// Manual mode - show current video info
+					const currentVideo = videosInCategory[activeVideoIndex] || null
+					const videoTitle = currentVideo?.title?.substring(0, 30) || 'VIDEO'
+					setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - ${videoTitle}...`)
+				} else if (mode === 'timeline') {
+					// Timeline mode - show LIVE indicator
+					const currentVideo = videosInCategory[activeVideoIndex] || null
+					const videoTitle = currentVideo?.title?.substring(0, 30) || 'VIDEO'
+					setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
 				}
 			}
-		}, 1000) // Check every second
+		}, 2000) // Update every 2 seconds (less frequent since we don't need timer checks)
 
-		return () => clearInterval(checkManualMode)
-	}, [power, selectedCategory, videosInCategory, activeVideoIndex])
+		return () => clearInterval(updateStatus)
+	}, [power, selectedCategory, videosInCategory, activeVideoIndex, statusMessage])
 
 	// Initialize shutdown sound
 	useEffect(() => {
