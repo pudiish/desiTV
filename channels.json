@@ -1,0 +1,282 @@
+{
+  "version": 1765109416716,
+  "generatedAt": "2025-12-07T12:10:16.716Z",
+  "channels": [
+    {
+      "_id": "6932ae9db0fc9c17cbe43a9e",
+      "name": "Music",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6933d7fb78e75b7a157b7112",
+          "title": "Tera Chehra Title Track Full (Audio) Song Adnan Sami Pop Album Songs",
+          "youtubeId": "zNUs54J3mKo",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b7106",
+          "title": "Ganpat (Full Song) | Shoot Out At Lokhandwala",
+          "youtubeId": "4BB-aKPyLe0",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b710b",
+          "title": "Maula Mere Maula | Anwar | Roop Kumar Rathod | Mithoon | Sayeed Quadri | Love Songs",
+          "youtubeId": "AwjEzV2G1PA",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fa78e75b7a157b710c",
+          "title": "O Meri Jaan (From \"Life In a Metro\")",
+          "youtubeId": "deZNSm_3XEc",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b710e",
+          "title": "Sajna Ji Vaari Vaari",
+          "youtubeId": "EJLjIlrsomk",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7110",
+          "title": "Shaan - Tanha Dil Tanha Safar (Music Video) | Popular Hindi Song",
+          "youtubeId": "64KSVbMDr0c",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7113",
+          "title": "Tera Mera Pyar",
+          "youtubeId": "nwXq1iKFmjY",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7115",
+          "title": "Tune Jo Na Kaha",
+          "youtubeId": "01HR1uP4kic",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7116",
+          "title": "Woh Lamhe Woh Baatein (From \"Zeher\")",
+          "youtubeId": "iWJJfHObWDE",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933d7fb78e75b7a157b7117",
+          "title": "Zara Sa",
+          "youtubeId": "V1_5SHc21m8",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6932ae9db0fc9c17cbe43aa4",
+      "name": "Drama",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6932ae9db0fc9c17cbe43aa5",
+          "title": "Taarak Mehta Ka Ooltah Chashmah | तारक मेहता का उल्टा चश्मा | Episode 762 | 22nd May 2021",
+          "youtubeId": "TatHajLfFHA",
+          "duration": 1086,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932b38b842dc46ae0e7d792",
+          "title": "क्या Gada Family लगा पाएगी Taarak के Secret का पता? |Taarak Mehta Ka Ooltah Chashmah|Taarak's Affair",
+          "youtubeId": "_8grrNPJE6k",
+          "duration": 3505,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6932ae9eb0fc9c17cbe43aa7",
+      "name": "Movie",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6932ae9eb0fc9c17cbe43aa9",
+          "title": "Bhagam Bhag | Best Comedy Scenes | Movie Bhagam Bhag | Paresh Rawal - Rajpal Yadav | Movie In Part 4",
+          "youtubeId": "KHvfdKyw2I8",
+          "duration": 1691,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6932ae9eb0fc9c17cbe43aa8",
+          "title": "Phir Hera Pheri  | Most Popular Comedy Scenes | Paresh Rawal - Akshay Kumar - Suniel Shetty",
+          "youtubeId": "kC5PwG8Ebw8",
+          "duration": 2116,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "6933e2ae9318752eefe78429",
+      "name": "Sports",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "6933e4231345b8c2fe0496cb",
+          "title": "INDIA VS AUSTRALIA 2001 KOLKATA HIGHLIGHTS- INDIA'S GREATEST TEST MATCH WIN! Border Gavaskar Series",
+          "youtubeId": "jHNpvQK5Ers",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "6933e4241345b8c2fe0496cc",
+          "title": "One Of The Greatest ODI Matches Ever | England v India NatWest Series Final 2002 - Full Highlights",
+          "youtubeId": "d5LIyNlq2KY",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "69356abdf542b73ba6e22630",
+      "name": "Cult",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "69356ea61473a9072a712ae2",
+          "title": "Minnale - Vaseegara Official Video | Full HD | Harris Jayaraj | Madhavan | Gautham V Menon",
+          "youtubeId": "ew1fKCWb_M4",
+          "duration": 296,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae3",
+          "title": "Tu Hi Meri Shab Hai - K.K | Gangster | Emraan Hashmi, Kangna Ranaut | Full 4K Video Song",
+          "youtubeId": "mWBvudKcByg",
+          "duration": 402,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae4",
+          "title": "FULL VIDEO: \"Pee Loon\" | Once Upon A Time in Mumbai | Emraan Hashmi, Prachi  | Pritam| Mohit Chauhan",
+          "youtubeId": "D8XFTglfSMg",
+          "duration": 256,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae5",
+          "title": "Tu Bin Bataye - Rang De Basanti | R. Madhavan | Soha Ali Khan",
+          "youtubeId": "UqblLzBwlns",
+          "duration": 236,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae6",
+          "title": "Pachai Nirame | Alaiypayudhey HD Video Song | Madhavan, Shalini | AR Rahman",
+          "youtubeId": "4NwJivvXmbg",
+          "duration": 308,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea61473a9072a712ae8",
+          "title": "Tu Hi Mera - Full Video | Jannat 2 | Emraan Hashmi | Esha Gupta | Pritam | Romantic Bollywood Song",
+          "youtubeId": "BLxI_1iKYgc",
+          "duration": 158,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712aef",
+          "title": "Zara Sa - Full Video | Jannat | Emraan Hashmi, Sonal | KK | Pritam | Sayeed Quadri | Mahesh Bhatt",
+          "youtubeId": "5IY4BNj0-10",
+          "duration": 224,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712af1",
+          "title": "Behti Hawa Sa Tha Woh (3 Idiots)..song video in HD",
+          "youtubeId": "Q3xmlwI4iyw",
+          "duration": 97,
+          "year": null,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "69356ea71473a9072a712af2",
+          "title": "Zara Zara - Rehnaa Hai Terre Dil Mein - *HQ* Music Video - Full Song",
+          "youtubeId": "JgKw2UF821A",
+          "duration": 267,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    },
+    {
+      "_id": "69356ea81473a9072a712af9",
+      "name": "Cartoon Movie",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "69356ea81473a9072a712afa",
+          "title": "The Neon Lights Turn On At Radiator Springs | Pixar Cars | @disneyjr",
+          "youtubeId": "Kzy3n-8A-vA",
+          "duration": 30,
+          "year": null,
+          "tags": [],
+          "category": null
+        }
+      ]
+    }
+  ]
+}

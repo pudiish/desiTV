@@ -7,6 +7,8 @@
  * - Channel Up/Down switches videos within the selected category
  */
 
+import { envConfig } from '../../config/environment'
+
 class ChannelManager {
 	constructor() {
 		this.rawChannels = [] // Original channel data from JSON
@@ -16,7 +18,7 @@ class ChannelManager {
 	}
 
 	/**
-	 * Load channels from JSON and restructure into categories
+	 * Load channels from API (or fallback to static JSON) and restructure into categories
 	 * Categories become playlists, videos become channels
 	 */
 	async loadChannels() {
@@ -25,18 +27,50 @@ class ChannelManager {
 		}
 
 		try {
-			const response = await fetch('/data/channels.json?t=' + Date.now())
-			
-			if (!response.ok) {
-				throw new Error(`Failed to load channels.json: ${response.status}`)
+			// Try API first (always up-to-date from MongoDB)
+			let rawChannels = []
+			let useAPI = true
+
+			try {
+				// Use environment config to get correct API base URL
+				const apiUrl = envConfig.getApiUrl(`/api/channels?t=${Date.now()}`)
+				
+				const apiResponse = await fetch(apiUrl)
+				
+				if (apiResponse.ok) {
+					// API returns array directly
+					rawChannels = await apiResponse.json()
+					console.log('[ChannelManager] Loaded channels from API:', rawChannels.length, 'channels')
+				} else {
+					console.warn('[ChannelManager] API failed, trying static file fallback')
+					useAPI = false
+				}
+			} catch (apiErr) {
+				console.warn('[ChannelManager] API error, trying static file fallback:', apiErr.message)
+				useAPI = false
 			}
 
-			const data = await response.json()
-			const rawChannels = data.channels || []
+			// Fallback to static JSON file if API fails
+			if (!useAPI || !Array.isArray(rawChannels) || rawChannels.length === 0) {
+				try {
+					const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
+					
+					if (!staticResponse.ok) {
+						throw new Error(`Failed to load channels.json: ${staticResponse.status}`)
+					}
+
+					const staticData = await staticResponse.json()
+					rawChannels = staticData.channels || []
+					console.log('[ChannelManager] Loaded channels from static file (fallback)')
+				} catch (staticErr) {
+					console.error('[ChannelManager] Static file also failed:', staticErr)
+					throw staticErr
+				}
+			}
 			
 			if (rawChannels.length === 0) {
-				console.warn('[ChannelManager] channels.json is empty')
-				this.loadError = new Error('No channels found in JSON file')
+				console.warn('[ChannelManager] No channels found')
+				this.loadError = new Error('No channels found')
 				this.rawChannels = []
 				this.categories = []
 				this.loaded = true
