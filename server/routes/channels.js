@@ -120,25 +120,65 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
 
-    // Helper function to extract YouTube video ID
-    function extractVideoId(urlOrId) {
-      if (!urlOrId) return null;
+    // Helper function to extract YouTube video ID from any text
+    function extractVideoId(text) {
+      if (!text) return null;
+      text = text.trim();
+      
       // If it's already an 11-character ID, return it
-      if (/^[a-zA-Z0-9_-]{11}$/.test(urlOrId)) {
-        return urlOrId;
+      if (/^[a-zA-Z0-9_-]{11}$/.test(text)) {
+        return text;
       }
-      // Try to extract from URL patterns
+      
+      // Try to extract from URL patterns anywhere in the text
       const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-        /^([a-zA-Z0-9_-]{11})$/
+        /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+        /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
       ];
+      
       for (const pattern of patterns) {
-        const match = urlOrId.match(pattern);
+        const match = text.match(pattern);
         if (match && match[1]) {
           return match[1];
         }
       }
       return null;
+    }
+
+    // Helper function to extract ALL YouTube IDs from a line (handles multiple URLs per line)
+    function extractAllVideoIds(text) {
+      if (!text) return [];
+      const ids = [];
+      
+      // Global pattern to find all YouTube URLs/IDs
+      const globalPattern = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/g;
+      let match;
+      while ((match = globalPattern.exec(text)) !== null) {
+        if (match[1] && !ids.includes(match[1])) {
+          ids.push(match[1]);
+        }
+      }
+      
+      return ids;
+    }
+
+    // Helper function to fetch YouTube metadata using oEmbed (no API key required)
+    async function fetchYouTubeMetadata(videoId) {
+      try {
+        const axios = require('axios');
+        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+        const response = await axios.get(oembedUrl, { timeout: 5000 });
+        return {
+          title: response.data.title || 'Untitled',
+          author: response.data.author_name
+        };
+      } catch (err) {
+        // oEmbed failed, return null
+        return null;
+      }
     }
 
     // Parse file content based on format
@@ -176,13 +216,24 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) continue; // Skip empty lines and comments
 
-        // Try CSV format: url,title
-        if (trimmed.includes(',')) {
+        // Extract all YouTube IDs from this line (handles any format)
+        const foundIds = extractAllVideoIds(trimmed);
+        
+        if (foundIds.length > 0) {
+          // Found YouTube URLs in this line
+          for (const videoId of foundIds) {
+            videos.push({
+              youtubeId: videoId,
+              title: 'Untitled',
+              duration: 30
+            });
+          }
+        } else if (trimmed.includes(',')) {
+          // Try CSV format: url,title or id,title
           const parts = trimmed.split(',').map(p => p.trim());
           if (parts.length >= 1) {
-            const urlOrId = parts[0];
-            const videoId = extractVideoId(urlOrId) || urlOrId;
-            if (videoId && videoId.length === 11) { // YouTube IDs are 11 chars
+            const videoId = extractVideoId(parts[0]);
+            if (videoId) {
               videos.push({
                 youtubeId: videoId,
                 title: parts[1] || 'Untitled',
@@ -191,9 +242,9 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
             }
           }
         } else {
-          // Plain URL or video ID
-          const videoId = extractVideoId(trimmed) || trimmed;
-          if (videoId && videoId.length === 11) {
+          // Try plain video ID
+          const videoId = extractVideoId(trimmed);
+          if (videoId) {
             videos.push({
               youtubeId: videoId,
               title: 'Untitled',
@@ -206,11 +257,11 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
 
     if (videos.length === 0) {
       return res.status(400).json({ 
-        message: 'No valid videos found in file. Expected JSON array, CSV (url,title), or newline-separated YouTube URLs/IDs' 
+        message: 'No valid YouTube links found in file. Supported formats: JSON array, CSV (url,title), or text with YouTube URLs' 
       });
     }
 
-    // Fetch metadata for videos without titles (optional, uses YouTube API if available)
+    // Fetch metadata for videos - prefer oEmbed (no API key required), fallback to YouTube API
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
     const axios = require('axios');
 
@@ -227,28 +278,35 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
           continue;
         }
 
-        // If title is "Untitled" and we have YouTube API key, try to fetch metadata
-        if (video.title === 'Untitled' && YOUTUBE_API_KEY) {
-          try {
-            const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
-            const metadataRes = await axios.get(metadataUrl, { timeout: 5000 });
-            if (metadataRes.data.items && metadataRes.data.items[0]) {
-              video.title = metadataRes.data.items[0].snippet.title;
-              // Parse duration if available
-              const durationStr = metadataRes.data.items[0].contentDetails?.duration;
-              if (durationStr) {
-                const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-                if (match) {
-                  const hours = parseInt(match[1] || 0, 10);
-                  const minutes = parseInt(match[2] || 0, 10);
-                  const seconds = parseInt(match[3] || 0, 10);
-                  video.duration = hours * 3600 + minutes * 60 + seconds;
+        // If title is "Untitled", try to fetch metadata
+        if (video.title === 'Untitled') {
+          // First try oEmbed (free, no API key required)
+          const oembedData = await fetchYouTubeMetadata(video.youtubeId);
+          if (oembedData && oembedData.title) {
+            video.title = oembedData.title;
+          } else if (YOUTUBE_API_KEY) {
+            // Fallback to YouTube Data API if oEmbed fails and API key is available
+            try {
+              const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
+              const metadataRes = await axios.get(metadataUrl, { timeout: 5000 });
+              if (metadataRes.data.items && metadataRes.data.items[0]) {
+                video.title = metadataRes.data.items[0].snippet.title;
+                // Parse duration if available
+                const durationStr = metadataRes.data.items[0].contentDetails?.duration;
+                if (durationStr) {
+                  const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+                  if (match) {
+                    const hours = parseInt(match[1] || 0, 10);
+                    const minutes = parseInt(match[2] || 0, 10);
+                    const seconds = parseInt(match[3] || 0, 10);
+                    video.duration = hours * 3600 + minutes * 60 + seconds;
+                  }
                 }
               }
+            } catch (metadataErr) {
+              // Continue with oEmbed title or default
+              console.warn(`[Bulk Upload] YouTube API failed for ${video.youtubeId}:`, metadataErr.message);
             }
-          } catch (metadataErr) {
-            // Continue with default title if metadata fetch fails
-            console.warn(`[Bulk Upload] Failed to fetch metadata for ${video.youtubeId}:`, metadataErr.message);
           }
         }
 
