@@ -217,12 +217,12 @@ export default function Home() {
 					)
 					setStatusMessage(`● LIVE - ${categoryName} - Video ${timelinePosition.videoIndex + 1}`)
 				} else {
-					broadcastStateManager.jumpToVideo(
-						category._id,
-						0,
-						0,
-						category.items
-					)
+				broadcastStateManager.jumpToVideo(
+					category._id,
+					0,
+					0,
+					category.items
+				)
 					setStatusMessage(`${categoryName} - Video 1`)
 				}
 				// Reset manual mode when switching categories (start fresh)

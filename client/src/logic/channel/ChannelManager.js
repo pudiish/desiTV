@@ -54,10 +54,10 @@ class ChannelManager {
 			if (!useAPI || !Array.isArray(rawChannels) || rawChannels.length === 0) {
 				try {
 					const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
-					
+			
 					if (!staticResponse.ok) {
 						throw new Error(`Failed to load channels.json: ${staticResponse.status}`)
-					}
+			}
 
 					const staticData = await staticResponse.json()
 					rawChannels = staticData.channels || []
