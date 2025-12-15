@@ -117,6 +117,7 @@ const youtubeRoutes = require('./routes/youtube');
 const broadcastStateRoutes = require('./routes/broadcastState');
 const sessionRoutes = require('./routes/session');
 const monitoringRoutes = require('./routes/monitoring');
+const analyticsRoutes = require('./routes/analytics');
 
 // Apply API rate limiter to all API routes (60 requests per minute)
 app.use('/api', apiLimiter);
@@ -129,6 +130,7 @@ app.use('/api/youtube', youtubeRoutes);
 app.use('/api/broadcast-state', broadcastStateRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // health check with security stats
 app.get('/health', (req, res) => res.json({ 

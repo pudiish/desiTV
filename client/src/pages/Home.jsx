@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
 import TVMenuV2 from '../components/TVMenuV2'
+import TVSurvey from '../components/TVSurvey'
 import SessionManager from '../utils/SessionManager'
+import analytics from '../utils/analytics'
+import performanceMonitor from '../utils/performanceMonitor'
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
@@ -27,7 +30,11 @@ export default function Home() {
 	const [crtIsMuted, setCrtIsMuted] = useState(false) // CRT overlay muted state
 	const [isFullscreen, setIsFullscreen] = useState(false) // Track fullscreen for overlay remote
 	const [remoteOverlayVisible, setRemoteOverlayVisible] = useState(false) // Slide-up remote visibility
+	const [surveyOpen, setSurveyOpen] = useState(false) // Survey visibility
+	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
 	const lastPlaybackInfoRef = useRef(null) // Throttle updates to UI
+	const surveyTimerRef = useRef(null) // Timer to show survey after watching
+	const watchStartTimeRef = useRef(null) // Track when user started watching
 	const shutdownSoundRef = useRef(null) // Shutdown sound
 	const sessionSaveTimeoutRef = useRef(null) // Debounced session save
 	const tapTriggerRef = useRef(null) // iOS gesture unlock handler from Player
@@ -378,6 +385,9 @@ export default function Home() {
 	function handleChannelUp() {
 		if (!power || videosInCategory.length === 0 || !selectedCategory) return
 		
+		const startTime = performance.now()
+		const fromChannel = activeVideoIndex
+		
 		// Switch to next video within the selected category
 		const nextIndex = (activeVideoIndex + 1) % videosInCategory.length
 		
@@ -400,6 +410,11 @@ export default function Home() {
 		setActiveVideoIndex(nextIndex)
 		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${nextIndex + 1}`)
 		switchVideo(nextIndex)
+		
+		// Track analytics
+		const switchTime = performanceMonitor.trackChannelSwitch(startTime)
+		analytics.trackChannelChange('up', fromChannel, nextIndex, selectedCategory.name)
+		analytics.trackPerformance('channel_switch_time', switchTime)
 	}
 
 	function handleChannelDown() {
@@ -447,6 +462,7 @@ export default function Home() {
 			setCrtVolume(newVol)
 			setCrtIsMuted(false)
 			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
+			analytics.trackVolumeChange(newVol, 'down')
 			return newVol
 		})
 	}
@@ -458,6 +474,7 @@ export default function Home() {
 			setCrtVolume(0)
 			setCrtIsMuted(true)
 			setStatusMessage('MUTED')
+			analytics.trackVolumeChange(0, 'mute')
 		} else {
 			setVolume(prevVolume || 0.5)
 			setCrtVolume(prevVolume || 0.5)
@@ -531,7 +548,24 @@ export default function Home() {
 	}
 
 	function handleMenuToggle() {
-		setMenuOpen(prev => !prev)
+		const startTime = performance.now()
+		setMenuOpen(prev => {
+			const isOpening = !prev
+			if (isOpening) {
+				analytics.trackMenuOpen()
+			} else {
+				analytics.trackMenuClose()
+			}
+			return !prev
+		})
+		
+		// Track menu open performance
+		if (!menuOpen) {
+			setTimeout(() => {
+				const openTime = performanceMonitor.trackMenuOpen(startTime)
+				analytics.trackPerformance('menu_open_time', openTime)
+			}, 100)
+		}
 	}
 
 	// Close menu on orientation change and when entering fullscreen
