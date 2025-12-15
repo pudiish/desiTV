@@ -1301,9 +1301,14 @@ body.ios-fullscreen-active .right-panel {
 	position: relative;
 	padding-bottom: 0 !important;
 	overflow: hidden !important; /* Prevent edge leaks */
-	clip-path: inset(0); /* Clip content to prevent leaks */
+	clip-path: inset(1px); /* Clip content to prevent leaks - 1px inset for tighter containment */
 	contain: layout style paint;
+	/* Tight mask for edge containment */
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
 	/* Glass overlay for CRT bulge */
+	margin: 0;
+	padding: 0;
 }
 
 .youtube-player-container::after {
