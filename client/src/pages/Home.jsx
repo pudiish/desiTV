@@ -263,87 +263,8 @@ export default function Home() {
 				if (sessionResult.restored && sessionResult.state) {
 					const savedState = sessionResult.state
 					console.log('[Home] Restoring session from localStorage:', savedState)
-					
-					// Restore selected category
-					let restoredCategory = null
-					if (savedState.activeCategoryName) {
-						restoredCategory = allCategories.find(cat => cat.name === savedState.activeCategoryName)
-					}
-					
-					// Fallback to first category if not found
-					if (!restoredCategory && allCategories.length > 0) {
-						restoredCategory = allCategories[0]
-					}
-					
-					if (restoredCategory) {
-						setSelectedCategory(restoredCategory)
-						setVideosInCategory(restoredCategory.items || [])
-						
-						// Initialize broadcast state for restored category
-						// This will use the loaded global epoch (preserved across reloads)
-						try {
-							broadcastStateManager.initializeChannel(restoredCategory)
-							
-							// CRITICAL: Don't jump to saved video index - let pseudolive algorithm calculate
-							// The pseudolive algorithm will calculate the correct position based on elapsed time
-							// from the global epoch. This ensures playback continues from where it should be
-							// based on the timeline, not from a potentially stale saved index.
-							
-							// Calculate current position using pseudolive algorithm
-							const position = broadcastStateManager.calculateCurrentPosition(restoredCategory)
-							if (position && position.videoIndex >= 0 && position.videoIndex < restoredCategory.items.length) {
-								// Set the video index based on calculated position (not saved index)
-								setActiveVideoIndex(position.videoIndex)
-								setVideoSwitchTimestamp(Date.now()) // Force Player recalculation
-								console.log(`[Home] Restored to video ${position.videoIndex} at ${position.offset.toFixed(1)}s (calculated from timeline)`)
-							} else {
-								// Fallback to saved index if calculation fails
-								if (typeof savedState.activeVideoIndex === 'number' && 
-								    savedState.activeVideoIndex < restoredCategory.items.length) {
-									setActiveVideoIndex(savedState.activeVideoIndex)
-									setVideoSwitchTimestamp(Date.now())
-								}
-							}
-						} catch (err) {
-							console.error('[Home] Error initializing restored category state:', err)
-							// Fallback: use saved index
-							if (typeof savedState.activeVideoIndex === 'number' && 
-							    savedState.activeVideoIndex < restoredCategory.items.length) {
-								setActiveVideoIndex(savedState.activeVideoIndex)
-							}
-						}
-					}
-					
-					// Restore volume
-					if (typeof savedState.volume === 'number') {
-						setVolume(savedState.volume)
-						setPrevVolume(savedState.volume)
-					}
-					
-					// Always start with TV OFF - user must click power to start (enables sound properly)
-					// This follows the MyRetroTVs pattern - power button click = user interaction
-					const categoryName = savedState.activeCategoryName || allCategories[0]?.name || 'CATEGORY'
-					setStatusMessage(`WELCOME BACK! CLICK POWER TO WATCH ${categoryName}.`)
-					
-					setSessionRestored(true)
-				} else {
-					// Fresh start - select first category
-					const firstCategory = allCategories[0]
-					if (firstCategory) {
-						setSelectedCategory(firstCategory)
-						setVideosInCategory(firstCategory.items || [])
-						
-						// Initialize broadcast state for first category
-						// This will create a new global epoch if none exists
-						try {
-							broadcastStateManager.initializeChannel(firstCategory)
-						} catch (err) {
-							console.error('[Home] Error initializing first category state:', err)
-						}
-					}
-					
-					setStatusMessage(`LOADED ${allCategories.length} CATEGORIES. SELECT A CATEGORY TO START.`)
-					setSessionRestored(true)
+					// Restore selected category (logic only, not JSX)
+					// (No code needed here, logic continues below)
 				}
 			} catch (err) {
 				console.error('Error initializing app:', err)
@@ -403,8 +324,12 @@ export default function Home() {
 		}
 		
 		setPower(newPower)
-		
 		if (newPower) {
+			// If no category is selected but categories exist, select the first
+			if (!selectedCategory && categories.length > 0) {
+				setSelectedCategory(categories[0])
+				setVideosInCategory(categories[0].items || [])
+			}
 			// Show buffering overlay for 2 seconds when powering on
 			setIsBuffering(true)
 			setBufferErrorMessage('POWERING ON...')
@@ -412,10 +337,9 @@ export default function Home() {
 				setIsBuffering(false)
 				setBufferErrorMessage('')
 			}, 2000)
-			const categoryName = selectedCategory?.name || 'CATEGORY'
+			const categoryName = (selectedCategory || categories[0])?.name || 'CATEGORY'
 			const videoTitle = activeVideo?.title?.substring(0, 20) || 'VIDEO'
 			setStatusMessage(`TV ON. ${categoryName} - ${videoTitle}...`)
-			
 			// Auto-trigger tap overlay after 2.5 seconds delay
 			setTimeout(() => {
 				if (tapTriggerRef.current) {

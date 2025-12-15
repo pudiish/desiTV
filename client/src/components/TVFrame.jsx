@@ -211,6 +211,12 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			e.preventDefault()
 			toggleFullscreen()
 			lastTapRef.current = 0 // Reset
+		const onPowerButton = () => {}
+		const onVolumeUp = () => {}
+		const onVolumeDown = () => {}
+		const onChannelUp = () => {}
+		const onChannelDown = () => {}
+		const onMenu = () => {}
 			if (doubleTapTimeoutRef.current) {
 				clearTimeout(doubleTapTimeoutRef.current)
 			}
@@ -312,6 +318,21 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 											{!isFullscreen && <div className="tv-screen-glow" />}
 											and ensure tv-glow.css is imported.
 										*/}
+				</div>
+				{/* Bottom control strip to mimic 2000s CRT front panel */}
+				<div className="tv-control-bar">
+					<div className="tv-control-buttons">
+						<div className="tv-btn power"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+					</div>
+					<div className="tv-dial">
+						<div className="tv-dial-inner"></div>
+					</div>
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}
