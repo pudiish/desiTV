@@ -1312,16 +1312,21 @@ body.ios-fullscreen-active .right-panel {
 	top: 0;
 	left: 0;
 	border: none;
-	/* Additional convex curvature */
+	/* Subtle convex curvature - reduced to prevent leaks */
 	border-radius: 12px;
-	transform: scale(1.004) perspective(1000px) rotateX(-0.4deg);
+	transform: scale(1.002) perspective(1200px) rotateX(-0.3deg);
 	filter: saturate(1.02) contrast(1.03);
-	/* Clip the iframe to hide YouTube UI and prevent edge leaks */
+	/* Clip the iframe to hide YouTube UI and prevent edge leaks - precise clipping */
 	clip-path: inset(0) !important;
 	overflow: hidden !important;
 	z-index: 10 !important; /* Ensure iframe is on top of glow */
 	/* Prevent content from leaking outside */
 	contain: layout style paint;
+	/* Additional mask for curve containment */
+	mask-image: radial-gradient(ellipse 99.5% 99.5% at 50% 50%, black 99%, transparent 100%);
+	-webkit-mask-image: radial-gradient(ellipse 99.5% 99.5% at 50% 50%, black 99%, transparent 100%);
+	/* Prevent 3D transforms from extending beyond */
+	transform-style: flat;
 }
 
 /* Fullscreen iframe fill */
