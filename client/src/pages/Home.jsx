@@ -794,6 +794,13 @@ export default function Home() {
 			</div>
 
 		</div>
+		
+		{/* Simple TV-like Survey - appears after watching for a few minutes */}
+		<TVSurvey
+			isOpen={surveyOpen}
+			onClose={() => setSurveyOpen(false)}
+			ageGroup={userAgeGroup}
+		/>
 		</>
 	)
 }
