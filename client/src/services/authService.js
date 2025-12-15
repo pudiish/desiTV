@@ -76,7 +76,12 @@ export const isAuthenticated = () => {
  */
 export const login = async (username, password) => {
   try {
-    const response = await fetch(`${API_BASE}/api/auth/login`, {
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Server not responding. Please check if the server is running.')), 5000)
+    );
+    
+    const fetchPromise = fetch(`${API_BASE}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,11 +89,24 @@ export const login = async (username, password) => {
       body: JSON.stringify({ username, password }),
     });
     
-    const data = await response.json();
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
     
+    // Handle non-OK responses
     if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
+      let errorMessage = 'Login failed';
+      try {
+        const data = await response.json();
+        errorMessage = data.message || errorMessage;
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = response.status === 500 
+          ? 'Server error. Please check if the server is running.'
+          : `Login failed: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
+    
+    const data = await response.json();
     
     // Store token and admin info
     localStorage.setItem(TOKEN_KEY, data.token);
@@ -97,7 +115,11 @@ export const login = async (username, password) => {
     return { success: true, admin: data.admin };
   } catch (error) {
     console.error('[Auth] Login error:', error);
-    return { success: false, error: error.message };
+    // Provide user-friendly error messages
+    const errorMessage = error.message.includes('fetch') || error.message.includes('network')
+      ? 'Server not responding. Please check if the server is running.'
+      : error.message;
+    return { success: false, error: errorMessage };
   }
 };
 
@@ -135,12 +157,19 @@ export const verifyToken = async () => {
   if (!token) return false;
   
   try {
-    const response = await fetch(`${API_BASE}/api/auth/verify`, {
+    // Add timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Server timeout')), 5000)
+    );
+    
+    const fetchPromise = fetch(`${API_BASE}/api/auth/verify`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
+    
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
     
     if (!response.ok) {
       logout();
@@ -150,8 +179,10 @@ export const verifyToken = async () => {
     const data = await response.json();
     return data.valid === true;
   } catch (error) {
-    console.error('[Auth] Verify error:', error);
-    return false;
+    // If server is not responding, don't logout - allow offline mode
+    console.warn('[Auth] Verify error (server may be offline):', error.message);
+    // Return true to allow offline access if token exists
+    return true;
   }
 };
 

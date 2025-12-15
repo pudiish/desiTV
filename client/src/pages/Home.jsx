@@ -249,15 +249,34 @@ export default function Home() {
 				// Initialize session manager (loads from localStorage)
 				const sessionResult = await SessionManager.initialize()
 				
-				// Load categories (playlists) from JSON
-				const allCategories = await channelManager.loadChannels()
-				setCategories(allCategories)
-				
-				if (allCategories.length === 0) {
-					setStatusMessage('NO CATEGORIES FOUND. PLEASE CHECK CHANNELS.JSON FILE.')
-					setSessionRestored(true)
-					return
+			// Load categories (playlists) from JSON
+			console.log('[Home] Loading channels...')
+			const allCategories = await channelManager.loadChannels()
+			console.log('[Home] Loaded categories:', allCategories.length)
+			
+			if (!allCategories || allCategories.length === 0) {
+				console.error('[Home] No categories loaded!')
+				setStatusMessage('NO CATEGORIES FOUND. CHECKING CHANNELS.JSON FILE...')
+				// Try to reload once more
+				try {
+					await channelManager.reload()
+					const retryCategories = channelManager.getAllCategories()
+					if (retryCategories && retryCategories.length > 0) {
+						setCategories(retryCategories)
+						setStatusMessage(`LOADED ${retryCategories.length} CATEGORIES.`)
+					} else {
+						setStatusMessage('NO CATEGORIES FOUND. PLEASE CHECK CHANNELS.JSON FILE.')
+					}
+				} catch (reloadErr) {
+					console.error('[Home] Reload failed:', reloadErr)
+					setStatusMessage('ERROR LOADING CHANNELS. CHECK CONSOLE FOR DETAILS.')
 				}
+				setSessionRestored(true)
+				return
+			}
+			
+			setCategories(allCategories)
+			console.log('[Home] Categories set:', allCategories.map(c => c.name))
 				
 				// If session was restored, use saved state
 				if (sessionResult.restored && sessionResult.state) {

@@ -80,13 +80,36 @@ export class APIService {
 
   /**
    * Get all channels
+   * Falls back to channels.json if server is not responding
    */
   async getChannels() {
     try {
       return await this.client.get(API_ENDPOINTS.CHANNELS)
     } catch (error) {
-      console.error('[APIService] Error fetching channels:', error)
-      throw error
+      console.warn('[APIService] Server not responding, falling back to channels.json:', error.message)
+      
+      // Fallback to static channels.json
+      try {
+        const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
+        
+        if (!staticResponse.ok) {
+          throw new Error(`Failed to load channels.json: ${staticResponse.status}`)
+        }
+        
+        const staticData = await staticResponse.json()
+        const channels = staticData.channels || staticData || []
+        
+        // If the JSON is directly an array, use it
+        if (Array.isArray(staticData) && !staticData.channels) {
+          return staticData
+        }
+        
+        console.log('[APIService] ✓ Loaded channels from static file (fallback):', channels.length, 'channels')
+        return channels
+      } catch (fallbackError) {
+        console.error('[APIService] Both API and static file failed:', fallbackError)
+        throw new Error(`Failed to load channels: ${error.message} (fallback also failed: ${fallbackError.message})`)
+      }
     }
   }
 

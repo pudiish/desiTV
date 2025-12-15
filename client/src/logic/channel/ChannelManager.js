@@ -22,8 +22,15 @@ class ChannelManager {
 	 * Categories become playlists, videos become channels
 	 */
 	async loadChannels() {
+		// Only return cached if we have valid categories
 		if (this.loaded && this.categories.length > 0) {
 			return this.categories
+		}
+		
+		// If we previously loaded but got empty, force reload
+		if (this.loaded && this.categories.length === 0) {
+			console.log('[ChannelManager] Previous load was empty, forcing reload...')
+			this.loaded = false
 		}
 
 		try {
@@ -35,36 +42,78 @@ class ChannelManager {
 				// Use environment config to get correct API base URL
 				const apiUrl = envConfig.getApiUrl(`/api/channels?t=${Date.now()}`)
 				
-				const apiResponse = await fetch(apiUrl)
+				// Create a timeout promise (2 seconds - shorter timeout for faster fallback)
+				const timeoutPromise = new Promise((_, reject) => 
+					setTimeout(() => reject(new Error('API request timeout - server not responding')), 2000)
+				)
 				
-				if (apiResponse.ok) {
+				// Create abort controller for fetch cancellation
+				const controller = new AbortController()
+				const timeoutId = setTimeout(() => controller.abort(), 2000)
+				
+				// Race between fetch and timeout
+				let apiResponse
+				try {
+					apiResponse = await Promise.race([
+						fetch(apiUrl, { signal: controller.signal }),
+						timeoutPromise
+					])
+					clearTimeout(timeoutId)
+				} catch (raceErr) {
+					clearTimeout(timeoutId)
+					throw raceErr
+				}
+				
+				if (apiResponse && apiResponse.ok) {
 					// API returns array directly
 					rawChannels = await apiResponse.json()
-					console.log('[ChannelManager] Loaded channels from API:', rawChannels.length, 'channels')
+					if (Array.isArray(rawChannels) && rawChannels.length > 0) {
+						console.log('[ChannelManager] ✓ Loaded channels from API:', rawChannels.length, 'channels')
+					} else {
+						console.warn('[ChannelManager] API returned empty array, trying static file fallback')
+						useAPI = false
+					}
 				} else {
-					console.warn('[ChannelManager] API failed, trying static file fallback')
+					console.warn('[ChannelManager] API returned non-OK status, trying static file fallback')
 					useAPI = false
 				}
 			} catch (apiErr) {
-				console.warn('[ChannelManager] API error, trying static file fallback:', apiErr.message)
+				// Network error, timeout, abort, or other API error
+				console.warn('[ChannelManager] API error (server not responding), using static file fallback:', apiErr.message)
 				useAPI = false
 			}
 
-			// Fallback to static JSON file if API fails
+			// Fallback to static JSON file if API fails or returns empty
 			if (!useAPI || !Array.isArray(rawChannels) || rawChannels.length === 0) {
 				try {
+					console.log('[ChannelManager] Loading channels from channels.json...')
 					const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
 			
 					if (!staticResponse.ok) {
-						throw new Error(`Failed to load channels.json: ${staticResponse.status}`)
-			}
+						throw new Error(`Failed to load channels.json: ${staticResponse.status} ${staticResponse.statusText}`)
+					}
 
 					const staticData = await staticResponse.json()
-					rawChannels = staticData.channels || []
-					console.log('[ChannelManager] Loaded channels from static file (fallback)')
+					
+					// Handle different JSON structures
+					if (Array.isArray(staticData)) {
+						// If JSON is directly an array
+						rawChannels = staticData
+					} else if (staticData.channels && Array.isArray(staticData.channels)) {
+						// If JSON has channels property
+						rawChannels = staticData.channels
+					} else {
+						throw new Error('Invalid channels.json structure')
+					}
+					
+					if (rawChannels.length === 0) {
+						throw new Error('channels.json is empty')
+					}
+					
+					console.log('[ChannelManager] ✓ Loaded channels from static file:', rawChannels.length, 'channels')
 				} catch (staticErr) {
-					console.error('[ChannelManager] Static file also failed:', staticErr)
-					throw staticErr
+					console.error('[ChannelManager] ✗ Static file failed:', staticErr)
+					throw new Error(`Failed to load channels: ${staticErr.message}`)
 				}
 			}
 			
