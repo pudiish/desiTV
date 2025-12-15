@@ -669,16 +669,22 @@ body.ios-fullscreen-active .right-panel {
 	position: relative;
 	/* Maintain 4:3 aspect ratio for screen content */
 	aspect-ratio: 4/3;
-	/* Prevent content leaks at edges - precise clipping for curved CRT */
+	/* Prevent content leaks at edges - aggressive clipping for curved CRT */
 	clip-path: inset(0 round clamp(6px, 0.8vw, 10px));
-	/* Additional mask for better curve containment */
-	mask-image: radial-gradient(ellipse 98% 98% at 50% 50%, black 95%, transparent 100%);
+	/* Tight mask for edge containment - tighter at top, left, right */
+	mask-image: 
+		radial-gradient(ellipse 96% 96% at 50% 50%, black 92%, transparent 98%),
+		linear-gradient(to bottom, black 0%, black 100%),
+		linear-gradient(to right, black 0%, black 100%),
+		linear-gradient(to left, black 0%, black 100%);
 	mask-composite: intersect;
-	-webkit-mask-image: radial-gradient(ellipse 98% 98% at 50% 50%, black 95%, transparent 100%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 92%, transparent 98%);
 	-webkit-mask-composite: source-in;
 	isolation: isolate; /* Create new stacking context to contain effects */
 	/* Ensure transforms don't leak */
 	transform-style: flat; /* Prevent 3D transforms from extending beyond */
+	/* Additional containment for edges */
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.01); /* Subtle edge containment */
 }
 
 /* CRT glass radial vignette overlay - respects 4:3 aspect ratio */
@@ -757,16 +763,19 @@ body.ios-fullscreen-active .right-panel {
 	position: relative;
 	max-width: 100%;
 	max-height: 100%;
-	/* Clip content to prevent edge leaks - precise clipping */
-	clip-path: inset(0 round clamp(4px, 0.6vw, 8px));
-	/* Additional mask for curve containment */
-	mask-image: radial-gradient(ellipse 98% 98% at 50% 50%, black 96%, transparent 100%);
+	/* Clip content to prevent edge leaks - aggressive clipping */
+	clip-path: inset(1px round clamp(4px, 0.6vw, 8px)); /* 1px inset for tighter edge containment */
+	/* Tight mask for edge containment - tighter at edges */
+	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 90%, transparent 96%);
 	mask-composite: intersect;
-	-webkit-mask-image: radial-gradient(ellipse 98% 98% at 50% 50%, black 96%, transparent 100%);
+	-webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 90%, transparent 96%);
 	-webkit-mask-composite: source-in;
 	contain: layout style paint;
 	/* Prevent 3D transforms from extending beyond */
 	transform-style: flat;
+	/* Additional edge containment */
+	margin: 0;
+	padding: 0;
 }
 
 /* Remove transform in fullscreen for content */
@@ -1111,14 +1120,17 @@ body.ios-fullscreen-active .right-panel {
 	max-height: 100%;
 	overflow: hidden !important; /* Prevent edge leaks */
 	contain: layout style paint;
-	/* Clip to prevent content from leaking outside - precise clipping */
-	clip-path: inset(0);
-	/* Additional mask for curve containment */
-	mask-image: radial-gradient(ellipse 99% 99% at 50% 50%, black 98%, transparent 100%);
-	-webkit-mask-image: radial-gradient(ellipse 99% 99% at 50% 50%, black 98%, transparent 100%);
+	/* Clip to prevent content from leaking outside - aggressive clipping */
+	clip-path: inset(1px); /* 1px inset for tighter edge containment */
+	/* Tight mask for edge containment */
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
 	isolation: isolate;
 	/* Prevent 3D transforms from extending beyond */
 	transform-style: flat;
+	/* Additional edge containment */
+	margin: 0;
+	padding: 0;
 }
 
 /* Fullscreen player - simple fill */
@@ -1253,14 +1265,17 @@ body.ios-fullscreen-active .right-panel {
 	max-width: 100%;
 	max-height: 100%;
 	contain: layout style paint;
-	/* Clip to prevent content leaks - precise clipping */
-	clip-path: inset(0);
-	/* Additional mask for curve containment */
-	mask-image: radial-gradient(ellipse 99% 99% at 50% 50%, black 98%, transparent 100%);
-	-webkit-mask-image: radial-gradient(ellipse 99% 99% at 50% 50%, black 98%, transparent 100%);
+	/* Clip to prevent content leaks - aggressive clipping */
+	clip-path: inset(1px); /* 1px inset for tighter edge containment */
+	/* Tight mask for edge containment */
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
 	isolation: isolate;
 	/* Prevent 3D transforms from extending beyond */
 	transform-style: flat;
+	/* Additional edge containment */
+	margin: 0;
+	padding: 0;
 }
 
 /* Glass highlight overlay for convex effect */
@@ -1316,17 +1331,20 @@ body.ios-fullscreen-active .right-panel {
 	border-radius: 12px;
 	transform: scale(1.002) perspective(1200px) rotateX(-0.3deg);
 	filter: saturate(1.02) contrast(1.03);
-	/* Clip the iframe to hide YouTube UI and prevent edge leaks - precise clipping */
-	clip-path: inset(0) !important;
+	/* Clip the iframe to hide YouTube UI and prevent edge leaks - aggressive clipping */
+	clip-path: inset(2px) !important; /* 2px inset for tighter edge containment */
 	overflow: hidden !important;
 	z-index: 10 !important; /* Ensure iframe is on top of glow */
 	/* Prevent content from leaking outside */
 	contain: layout style paint;
-	/* Additional mask for curve containment */
-	mask-image: radial-gradient(ellipse 99.5% 99.5% at 50% 50%, black 99%, transparent 100%);
-	-webkit-mask-image: radial-gradient(ellipse 99.5% 99.5% at 50% 50%, black 99%, transparent 100%);
+	/* Tight mask for edge containment */
+	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 91%, transparent 95%);
+	-webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 91%, transparent 95%);
 	/* Prevent 3D transforms from extending beyond */
 	transform-style: flat;
+	/* Additional edge containment */
+	margin: 0;
+	padding: 0;
 }
 
 /* Fullscreen iframe fill */
