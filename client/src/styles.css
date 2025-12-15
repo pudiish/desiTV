@@ -188,6 +188,9 @@ body.ios-fullscreen-active {
 	left: 0 !important;
 	z-index: 10 !important;
 	background: #000 !important;
+	overflow: hidden !important; /* Prevent edge leaks */
+	clip-path: inset(0) !important; /* Clip content to prevent leaks */
+	contain: layout style paint;
 }
 
 .tv-frame-container.ios-fullscreen-active #desitv-player-iframe iframe {
@@ -199,6 +202,8 @@ body.ios-fullscreen-active {
 	z-index: 10 !important;
 	pointer-events: auto !important;
 	border: none !important;
+	overflow: hidden !important; /* Prevent edge leaks */
+	clip-path: inset(0) !important; /* Clip content to prevent leaks */
 }
 
 /* Ensure YouTube player container div is visible */
@@ -512,6 +517,9 @@ body.ios-fullscreen-active .right-panel {
 	flex-grow: 1; /* Allow flex growing to fill space */
 	/* Ensure frame fills container while maintaining aspect ratio */
 	object-fit: contain;
+	/* Prevent content leaks */
+	overflow: hidden !important;
+	contain: layout style paint;
 	/* Dark plastic look - late 2000s style */
 	background: 
 		/* Base dark gray plastic */
@@ -652,7 +660,7 @@ body.ios-fullscreen-active .right-panel {
 	/* Border is 1.8% of screen size - constant proportion */
 	border: 1.8% solid #1a1a1a;
 	border-radius: clamp(6px, 0.8vw, 10px);
-	overflow: hidden; /* Clip any content that extends beyond screen bounds */
+	overflow: hidden !important; /* Clip any content that extends beyond screen bounds - prevent leaks */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -661,6 +669,9 @@ body.ios-fullscreen-active .right-panel {
 	position: relative;
 	/* Maintain 4:3 aspect ratio for screen content */
 	aspect-ratio: 4/3;
+	/* Prevent content leaks at edges */
+	clip-path: inset(0 round clamp(6px, 0.8vw, 10px));
+	isolation: isolate; /* Create new stacking context to contain effects */
 }
 
 /* CRT glass radial vignette overlay - respects 4:3 aspect ratio */
@@ -733,11 +744,14 @@ body.ios-fullscreen-active .right-panel {
 	/* Rounded corners matching screen */
 	border-radius: clamp(4px, 0.6vw, 8px);
 	/* Add subtle barrel distortion effect */
-	overflow: hidden;
+	overflow: hidden !important; /* Prevent leaks */
 	/* Ensure content respects screen bounds */
 	position: relative;
 	max-width: 100%;
 	max-height: 100%;
+	/* Clip content to prevent edge leaks */
+	clip-path: inset(0 round clamp(4px, 0.6vw, 8px));
+	contain: layout style paint;
 }
 
 /* Remove transform in fullscreen for content */
@@ -1080,8 +1094,11 @@ body.ios-fullscreen-active .right-panel {
 	/* Ensure wrapper respects screen bounds */
 	max-width: 100%;
 	max-height: 100%;
-	overflow: hidden;
+	overflow: hidden !important; /* Prevent edge leaks */
 	contain: layout style paint;
+	/* Clip to prevent content from leaking outside */
+	clip-path: inset(0);
+	isolation: isolate;
 }
 
 /* Fullscreen player - simple fill */
@@ -1209,13 +1226,16 @@ body.ios-fullscreen-active .right-panel {
 	/* Pronounced convex CRT glass effect with barrel distortion - respects 4:3 */
 	transform: scale(1.015) perspective(500px) rotateX(-2deg);
 	transform-origin: center center;
-	overflow: hidden !important;
+	overflow: hidden !important; /* Prevent edge leaks */
 	/* Add glass-like radial highlight overlay */
 	position: relative;
 	/* Ensure container respects 4:3 aspect ratio bounds */
 	max-width: 100%;
 	max-height: 100%;
 	contain: layout style paint;
+	/* Clip to prevent content leaks */
+	clip-path: inset(0);
+	isolation: isolate;
 }
 
 /* Glass highlight overlay for convex effect */
@@ -1240,6 +1260,9 @@ body.ios-fullscreen-active .right-panel {
 	height: 100% !important;
 	position: relative;
 	padding-bottom: 0 !important;
+	overflow: hidden !important; /* Prevent edge leaks */
+	clip-path: inset(0); /* Clip content to prevent leaks */
+	contain: layout style paint;
 	/* Glass overlay for CRT bulge */
 }
 
@@ -1266,13 +1289,14 @@ body.ios-fullscreen-active .right-panel {
 	border: none;
 	/* Additional convex curvature */
 	border-radius: 12px;
-	clip-path: inset(0 round 14px);
 	transform: scale(1.004) perspective(1000px) rotateX(-0.4deg);
 	filter: saturate(1.02) contrast(1.03);
-	/* Clip the iframe to hide YouTube UI - critical for hiding title, logo, etc */
-	clip-path: inset(0 0 0 0);
+	/* Clip the iframe to hide YouTube UI and prevent edge leaks */
+	clip-path: inset(0) !important;
 	overflow: hidden !important;
 	z-index: 10 !important; /* Ensure iframe is on top of glow */
+	/* Prevent content from leaking outside */
+	contain: layout style paint;
 }
 
 /* Fullscreen iframe fill */
