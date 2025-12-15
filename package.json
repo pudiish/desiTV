@@ -29,5 +29,9 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
+  },
+  "dependencies": {
+    "@preact/compat": "^18.3.1",
+    "preact": "^10.28.0"
   }
 }

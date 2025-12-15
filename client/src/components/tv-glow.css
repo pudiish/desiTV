@@ -1,0 +1,29 @@
+/*
+ * tv-glow.css
+ * Controls the TV frame glow/ambient light effect for TVFrame.jsx
+ * To enable the glow, import this file in your component or main CSS.
+ * To disable, simply do not import or comment out the import.
+ */
+
+.tv-screen-glow {
+  /* Example glow effect, adjust as needed */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 16px;
+  box-shadow: 0 0 80px 24px rgba(255,255,255,0.18), 0 0 120px 32px rgba(124,255,188,0.10);
+  transition: box-shadow 0.3s cubic-bezier(.4,0,.2,1);
+  opacity: 1;
+}
+
+.tv-frame-container:hover .tv-screen-glow {
+  /* Brighter glow on hover */
+  box-shadow: 0 0 120px 36px rgba(255,255,255,0.28), 0 0 160px 48px rgba(124,255,188,0.18);
+  opacity: 1;
+}
+
+/* To disable the glow, comment out the box-shadow and opacity lines above, or do not import this file. */
