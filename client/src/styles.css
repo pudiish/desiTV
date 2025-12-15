@@ -2190,13 +2190,16 @@ button,
 	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* Ensure menu works inside fullscreen container */
+/* Hide menu in fullscreen - should not be visible */
 .tv-frame-container:fullscreen .tv-menu-overlay,
 .tv-frame-container:-webkit-full-screen .tv-menu-overlay,
 .tv-frame-container:-moz-full-screen .tv-menu-overlay,
-.tv-frame-container:-ms-fullscreen .tv-menu-overlay {
-	position: fixed !important;
-	z-index: 10002 !important;
+.tv-frame-container:-ms-fullscreen .tv-menu-overlay,
+.tv-frame-container.ios-fullscreen-active .tv-menu-overlay,
+body.ios-fullscreen-active .tv-menu-overlay {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
 }
 
 @keyframes menu-fade-in {

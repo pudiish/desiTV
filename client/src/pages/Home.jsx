@@ -534,6 +534,30 @@ export default function Home() {
 		setMenuOpen(prev => !prev)
 	}
 
+	// Close menu on orientation change and when entering fullscreen
+	useEffect(() => {
+		const handleOrientationChange = () => {
+			if (menuOpen) {
+				setMenuOpen(false)
+			}
+		}
+
+		window.addEventListener('orientationchange', handleOrientationChange)
+		window.addEventListener('resize', handleOrientationChange)
+
+		return () => {
+			window.removeEventListener('orientationchange', handleOrientationChange)
+			window.removeEventListener('resize', handleOrientationChange)
+		}
+	}, [menuOpen])
+
+	// Close menu when entering fullscreen
+	useEffect(() => {
+		if (isFullscreen && menuOpen) {
+			setMenuOpen(false)
+		}
+	}, [isFullscreen, menuOpen])
+
 	function triggerStatic() {
 		setStaticActive(true)
 		setTimeout(() => setStaticActive(false), 300)
