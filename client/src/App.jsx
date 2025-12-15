@@ -6,6 +6,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { lazy, Suspense } from 'react';
 import './App.css';
 
 const Home = lazy(() => import('./pages/Home'));

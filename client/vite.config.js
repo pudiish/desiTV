@@ -16,7 +16,9 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    
+
+    // No React-to-Preact aliasing; using standard React/ReactDOM
+
     // Make env vars available to client code
     define: {
       'import.meta.env.VITE_SERVER_PORT': JSON.stringify(serverPort.toString()),

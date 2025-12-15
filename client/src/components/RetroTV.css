@@ -27,7 +27,7 @@
 .tv-viewport { 
   position: relative; 
   width: 100%; 
-  aspect-ratio: 16/10; 
+  aspect-ratio: 4/3; 
   overflow: hidden; 
   background: #000; 
 }
