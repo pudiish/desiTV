@@ -305,8 +305,13 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							)}
 						</div>
 					)}
-					{/* Hide glow in fullscreen */}
-					{!isFullscreen && <div className="tv-screen-glow" />}
+										{/* Hide glow in fullscreen */}
+										{false && !isFullscreen && <div className="tv-screen-glow" />}
+										{/*
+											To re-enable the TV frame glow/ambient light effect, set the above to:
+											{!isFullscreen && <div className="tv-screen-glow" />}
+											and ensure tv-glow.css is imported.
+										*/}
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}

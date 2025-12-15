@@ -653,6 +653,8 @@ export default function Home() {
 
 		return (
 		<div className="main-container">
+			{/* Global glass overlay covering window while keeping remote above */}
+			<div className="glass-full-overlay" aria-hidden="true" />
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
 		<TVFrame 
