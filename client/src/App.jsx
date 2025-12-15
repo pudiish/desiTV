@@ -6,13 +6,15 @@
 
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Home from './pages/Home';
-import Landing from './pages/Landing';
-import RetroTVTest from './pages/RetroTVTest';
-import YouTubeAutoplayTest from './pages/YouTubeAutoplayTest';
-import AdminDashboard from './admin/AdminDashboard';
-import AdminLogin from './pages/AdminLoginNew';
+import { lazy, Suspense } from 'preact/compat';
 import './App.css';
+
+const Home = lazy(() => import('./pages/Home'));
+const Landing = lazy(() => import('./pages/Landing'));
+const RetroTVTest = lazy(() => import('./pages/RetroTVTest'));
+const YouTubeAutoplayTest = lazy(() => import('./pages/YouTubeAutoplayTest'));
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
+const AdminLogin = lazy(() => import('./pages/AdminLoginNew'));
 
 /**
  * Protected Route - requires authentication
@@ -53,8 +55,9 @@ function AdminView() {
 
   return (
     <div className="admin-view">
-      <AdminDashboard />
-      
+      <Suspense fallback={<div>Loading Admin Dashboard...</div>}>
+        <AdminDashboard />
+      </Suspense>
       {/* Admin Navigation */}
       <div className="admin-nav-buttons">
         <div className="admin-user-info">
@@ -85,7 +88,9 @@ function AdminView() {
 function TVView() {
   return (
     <div className="tv-view">
-      <Home />
+      <Suspense fallback={<div>Loading TV...</div>}>
+        <Home />
+      </Suspense>
     </div>
   );
 }
@@ -97,28 +102,32 @@ function TVView() {
 function AdminRoutesWrapper() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="login" element={<AdminLogin />} />
-        <Route
-          path=""
-          element={
-            <ProtectedRoute>
-              <AdminView />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="dashboard"
-          element={
-            <ProtectedRoute>
-              <AdminView />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <Suspense fallback={<div>Loading Admin...</div>}>
+        <Routes>
+          <Route path="login" element={<AdminLogin />} />
+          <Route
+            path=""
+            element={
+              <ProtectedRoute>
+                <AdminView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dashboard"
+            element={
+              <ProtectedRoute>
+                <AdminView />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Suspense>
+
     </AuthProvider>
   );
 }
+
 
 /**
  * App Routes - TV routes are independent, Admin routes share single AuthProvider
@@ -126,25 +135,22 @@ function AdminRoutesWrapper() {
 function AppRoutes() {
   return (
     <div className="app">
-      <Routes>
-        {/* Public: Landing Page - No dependencies */}
-        <Route path="/" element={<Landing />} />
-        
-        {/* Public: TV View - Completely independent, no admin dependencies */}
-        <Route path="/tv" element={<TVView />} />
-        
-        {/* RetroTV Test - iPhone Compatible Version */}
-        <Route path="/retro" element={<RetroTVTest />} />
-        
-        {/* YouTube Autoplay Test - Reference Script Pattern */}
-        <Route path="/autoplay-test" element={<YouTubeAutoplayTest />} />
-        
-        {/* Admin Routes - Single AuthProvider for all admin routes */}
-        <Route path="/admin/*" element={<AdminRoutesWrapper />} />
-        
-        {/* Fallback to TV */}
-        <Route path="*" element={<Navigate to="/tv" replace />} />
-      </Routes>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          {/* Public: Landing Page - No dependencies */}
+          <Route path="/" element={<Landing />} />
+          {/* Public: TV View - Completely independent, no admin dependencies */}
+          <Route path="/tv" element={<TVView />} />
+          {/* RetroTV Test - iPhone Compatible Version */}
+          <Route path="/retro" element={<RetroTVTest />} />
+          {/* YouTube Autoplay Test - Reference Script Pattern */}
+          <Route path="/autoplay-test" element={<YouTubeAutoplayTest />} />
+          {/* Admin Routes - Single AuthProvider for all admin routes */}
+          <Route path="/admin/*" element={<AdminRoutesWrapper />} />
+          {/* Fallback to TV */}
+          <Route path="*" element={<Navigate to="/tv" replace />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

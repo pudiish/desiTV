@@ -16,7 +16,15 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    
+
+    // Alias React imports to Preact for compatibility
+    resolve: {
+      alias: [
+        { find: 'react', replacement: 'preact/compat' },
+        { find: 'react-dom', replacement: 'preact/compat' },
+      ],
+    },
+
     // Make env vars available to client code
     define: {
       'import.meta.env.VITE_SERVER_PORT': JSON.stringify(serverPort.toString()),
