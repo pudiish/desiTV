@@ -6,7 +6,7 @@ import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
@@ -324,16 +324,48 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				{/* Bottom control strip to mimic 2000s CRT front panel */}
 				<div className="tv-control-bar">
 					<div className="tv-control-buttons">
-						<div className="tv-btn power"></div>
-						<div className="tv-btn small"></div>
-						<div className="tv-btn small"></div>
-						<div className="tv-btn small"></div>
-						<div className="tv-btn small"></div>
-						<div className="tv-btn small"></div>
-						<div className="tv-btn small"></div>
-					</div>
-					<div className="tv-dial">
-						<div className="tv-dial-inner"></div>
+						<button 
+							className="tv-btn small" 
+							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
+							title="Channel Down"
+							aria-label="Channel Down"
+						></button>
+						<button 
+							className="tv-btn small" 
+							onClick={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
+							title="Channel Up"
+							aria-label="Channel Up"
+						></button>
+						<button 
+							className="tv-btn small" 
+							onClick={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
+							title="Volume Down"
+							aria-label="Volume Down"
+						></button>
+						<button 
+							className="tv-btn small" 
+							onClick={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
+							title="Volume Up"
+							aria-label="Volume Up"
+						></button>
+						<button 
+							className="tv-btn small" 
+							onClick={(e) => { e.stopPropagation(); onMute && onMute(); }}
+							title="Mute"
+							aria-label="Mute"
+						></button>
+						<button 
+							className="tv-btn small" 
+							onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+							title="Fullscreen"
+							aria-label="Fullscreen"
+						></button>
+						<button 
+							className="tv-btn power" 
+							onClick={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
+							title="Power"
+							aria-label="Power"
+						></button>
 					</div>
 				</div>
 			</div>

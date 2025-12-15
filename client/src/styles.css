@@ -140,6 +140,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	overflow: visible; /* allow remote to fully show */
 	min-height: 0;
 	position: relative;
+	/* Prevent TV frame from flexing */
+	flex-wrap: nowrap;
 }
 
 
@@ -155,7 +157,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* Left Side - TV Frame */
 .tv-frame-container {
-	flex: 1;
+	flex: 0 0 auto; /* Don't flex - fixed size */
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -164,7 +166,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	transition: filter 0.2s ease;
 	position: relative;
 	filter: none; /* disable ambient halo */
-	min-height: 200px; /* Ensure minimum height on mobile */
+	width: 800px; /* Fixed container width */
+	height: 600px; /* Fixed container height */
 	overflow: visible;
 }
 
@@ -259,10 +262,15 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .tv-frame {
-	height: clamp(400px, calc(100vh - 80px), 90vh);
-	width: auto;
+	height: 600px !important; /* Fixed height - no flexing */
+	width: 800px !important; /* Fixed width - no flexing */
+	min-width: 800px !important;
+	min-height: 600px !important;
+	max-width: 800px !important;
+	max-height: 600px !important;
 	aspect-ratio: 4/3; /* Classic CRT TV aspect ratio */
-	max-width: calc(100vw - 320px);
+	flex-shrink: 0; /* Prevent flex shrinking */
+	flex-grow: 0; /* Prevent flex growing */
 	/* Dark plastic look - late 2000s style */
 	background: 
 		/* Base dark gray plastic */
@@ -561,6 +569,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: clamp(20px, 2.2vw, 24px);
 	height: clamp(20px, 2.2vw, 24px);
 	border-radius: 50%;
+	border: none;
 	/* Dark plastic concave button */
 	background: radial-gradient(circle at 35% 35%, 
 		rgba(255, 255, 255, 0.12) 0%,
@@ -574,6 +583,39 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
 		0 1px 3px rgba(0, 0, 0, 0.5);
 	position: relative;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	-webkit-tap-highlight-color: transparent;
+	outline: none;
+}
+
+.tv-btn:hover {
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.18) 0%,
+		#4f5153 25%,
+		#3a3c3e 60%,
+		#2d2f31 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.15),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 2px 5px rgba(0, 0, 0, 0.6);
+	transform: scale(1.05);
+}
+
+.tv-btn:active {
+	transform: scale(0.95);
+	box-shadow:
+		inset 0 3px 6px rgba(0, 0, 0, 0.7),
+		inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.tv-btn:focus {
+	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline-offset: 2px;
 }
 
 /* Button highlight - subtle for dark plastic */
@@ -611,6 +653,29 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
+.tv-btn.power:hover {
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.2) 0%,
+		#555759 25%,
+		#404244 60%,
+		#323436 100%
+	);
+	box-shadow:
+		inset 0 2px 5px rgba(255, 255, 255, 0.15),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.55),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.tv-btn.power:active {
+	transform: scale(0.95);
+	box-shadow:
+		inset 0 3px 7px rgba(0, 0, 0, 0.75),
+		inset 0 -1px 3px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
 /* Power symbol (optional - can be added via JSX) */
 .tv-btn.power::after {
 	content: "⚫";
@@ -623,70 +688,6 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-.tv-dial {
-	width: clamp(44px, 5vw, 52px);
-	height: clamp(44px, 5vw, 52px);
-	border-radius: 50%;
-	/* Dark plastic dial with concentric rings */
-	background: 
-		radial-gradient(circle at 30% 30%, 
-			rgba(255, 255, 255, 0.15) 0%,
-			#4f5153 20%,
-			#3d3f41 45%,
-			#2f3133 75%,
-			#252729 100%
-		),
-		/* Concentric ring texture */
-		repeating-conic-gradient(
-			from 0deg at 50% 50%,
-			transparent 0deg,
-			rgba(0, 0, 0, 0.15) 1deg,
-			transparent 2deg,
-			rgba(0, 0, 0, 0.15) 3deg,
-			transparent 4deg
-		);
-	box-shadow:
-		inset 0 3px 6px rgba(255, 255, 255, 0.1),
-		inset 0 -4px 8px rgba(0, 0, 0, 0.6),
-		inset 0 0 0 2px rgba(0, 0, 0, 0.4),
-		0 3px 8px rgba(0, 0, 0, 0.5);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	position: relative;
-	z-index: 1;
-}
-
-.tv-dial-inner {
-	width: clamp(20px, 2.4vw, 24px);
-	height: clamp(20px, 2.4vw, 24px);
-	border-radius: 50%;
-	background: radial-gradient(circle at 35% 35%, 
-		rgba(255, 255, 255, 0.12) 0%,
-		#4a4c4e 30%,
-		#353739 65%,
-		#252729 100%
-	);
-	box-shadow:
-		inset 0 2px 4px rgba(255, 255, 255, 0.1),
-		inset 0 -2px 4px rgba(0, 0, 0, 0.6),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
-		0 1px 3px rgba(0, 0, 0, 0.5);
-	position: relative;
-}
-
-/* Power symbol on dial center */
-.tv-dial-inner::after {
-	content: "⏻";
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	font-size: clamp(10px, 1.2vw, 12px);
-	color: #a0a0a0;
-	font-weight: bold;
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
 
 .tv-off-screen {
 	width: 100%;
@@ -2406,8 +2407,7 @@ button,
 /* Large Desktop (1400px+) - TV and remote side by side */
 @media (min-width: 1400px) {
 	.tv-frame {
-		height: clamp(550px, 90vh, 92vh);
-		max-width: calc(100vw - 340px);
+		/* Fixed size - no change */
 	}
 	
 	.right-panel {
@@ -2423,8 +2423,7 @@ button,
 /* Standard Desktop (1024px - 1399px) */
 @media (min-width: 1024px) and (max-width: 1399px) {
 	.tv-frame {
-		height: clamp(450px, 85vh, 88vh);
-		max-width: calc(100vw - 300px);
+		/* Fixed size - no change */
 	}
 	
 	.right-panel {
@@ -2445,10 +2444,13 @@ button,
 	}
 	
 	.tv-frame {
-		height: clamp(400px, 80vh, 85vh);
-		max-width: calc(100vw - 280px);
-		padding: 12px;
-		border-radius: 12px;
+		/* Fixed size - no scaling */
+		width: 800px !important;
+		height: 600px !important;
+		max-width: 800px !important;
+		max-height: 600px !important;
+		min-width: 800px !important;
+		min-height: 600px !important;
 	}
 	
 	.right-panel {
@@ -2535,10 +2537,13 @@ button,
 	}
 	
 	.tv-frame {
-		height: auto;
-		width: 100%;
-		max-width: 100%;
-		aspect-ratio: 4/3; /* Consistent 4:3 aspect ratio */
+		/* Fixed size - no scaling even on mobile */
+		width: 800px !important;
+		height: 600px !important;
+		max-width: 800px !important;
+		max-height: 600px !important;
+		min-width: 800px !important;
+		min-height: 600px !important;
 		padding: 8px;
 		border-radius: 8px;
 	}
@@ -2647,9 +2652,13 @@ button,
 	}
 	
 	.tv-frame {
-		width: 100%;
-		height: auto;
-		aspect-ratio: 4/3; /* Consistent 4:3 aspect ratio */
+		/* Fixed size - no scaling even on small mobile */
+		width: 800px !important;
+		height: 600px !important;
+		max-width: 800px !important;
+		max-height: 600px !important;
+		min-width: 800px !important;
+		min-height: 600px !important;
 		padding: 6px;
 		border-radius: 6px;
 		border-width: 2px;

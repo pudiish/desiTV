@@ -622,6 +622,12 @@ export default function Home() {
 			onFullscreenChange={setIsFullscreen}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
 			remoteOverlayVisible={remoteOverlayVisible}
+			onPowerToggle={handlePowerToggle}
+			onChannelUp={handleChannelUp}
+			onChannelDown={handleChannelDown}
+			onVolumeUp={handleVolumeUp}
+			onVolumeDown={handleVolumeDown}
+			onMute={handleMute}
 			remoteOverlayComponent={isFullscreen ? (
 				<TVRemote
 					power={power}
