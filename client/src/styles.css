@@ -85,10 +85,22 @@ body {
 }
 
 /* Hide scrollbar and prevent scrolling when fullscreen is active */
-body:has(.tv-frame-container:fullscreen),
-body:has(.tv-frame-container:-webkit-full-screen),
-body:has(.tv-frame-container:-moz-full-screen),
-body:has(.tv-frame-container:-ms-fullscreen) {
+/* iOS-compatible: Use @supports for :has() selector (iOS 15.4+) */
+@supports selector(:has(*)) {
+	body:has(.tv-frame-container:fullscreen),
+	body:has(.tv-frame-container:-webkit-full-screen),
+	body:has(.tv-frame-container:-moz-full-screen),
+	body:has(.tv-frame-container:-ms-fullscreen) {
+		overflow: hidden !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		width: 100vw !important;
+		height: 100vh !important;
+	}
+}
+
+/* Fallback for browsers without :has() support - requires JS to add .fullscreen-active class */
+body.fullscreen-active {
 	overflow: hidden !important;
 	margin: 0 !important;
 	padding: 0 !important;
@@ -119,6 +131,23 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	-webkit-backdrop-filter: none;
 }
 
+/* Optimize backdrop-filter usage - only when supported */
+@supports (backdrop-filter: blur(8px)) {
+	.glass-full-overlay.has-backdrop {
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+	}
+}
+
+/* Fallback and performance optimization */
+@media (prefers-reduced-motion: reduce) {
+	.glass-full-overlay {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+		background: rgba(0, 0, 0, 0.3);
+	}
+}
+
 /* Hide main container and remote when fullscreen is active */
 .tv-frame-container:fullscreen ~ .main-container,
 .tv-frame-container:-webkit-full-screen ~ .main-container,
@@ -140,8 +169,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	overflow: visible; /* allow remote to fully show */
 	min-height: 0;
 	position: relative;
-	/* Prevent TV frame from flexing */
 	flex-wrap: nowrap;
+	/* Allow TV frame to flex and fill space */
 }
 
 
@@ -157,7 +186,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* Left Side - TV Frame */
 .tv-frame-container {
-	flex: 0 0 auto; /* Don't flex - fixed size */
+	flex: 1 1 auto; /* Flex to fill available space */
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -166,9 +195,21 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	transition: filter 0.2s ease;
 	position: relative;
 	filter: none; /* disable ambient halo */
-	width: 800px; /* Fixed container width */
-	height: 600px; /* Fixed container height */
+	width: 100%; /* Fill available width */
+	max-width: 800px; /* Max size constraint */
+	height: auto; /* Auto height for aspect ratio */
+	aspect-ratio: 4/3; /* Maintain 4:3 aspect ratio */
+	min-width: 0; /* Allow shrinking */
+	min-height: 0; /* Allow shrinking */
 	overflow: visible;
+}
+
+/* Fallback for browsers without aspect-ratio support */
+@supports not (aspect-ratio: 4/3) {
+	.tv-frame-container {
+		height: calc(100% * 0.75); /* 4:3 ratio fallback based on width */
+		max-height: 600px;
+	}
 }
 
 
@@ -201,10 +242,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	border: 1px solid rgba(74, 158, 255, 0.5);
 }
 
-@keyframes hint-pulse {
-	0%, 100% { opacity: 0.9; }
-	50% { opacity: 0.9; }
-}
+/* Removed: hint-pulse animation - no visual effect (opacity stays same) */
 
 /* ===== FULLSCREEN STYLES - Simple, just iframe fills screen ===== */
 
@@ -262,15 +300,17 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 }
 
 .tv-frame {
-	height: 600px !important; /* Fixed height - no flexing */
-	width: 800px !important; /* Fixed width - no flexing */
-	min-width: 800px !important;
-	min-height: 600px !important;
-	max-width: 800px !important;
-	max-height: 600px !important;
-	aspect-ratio: 4/3; /* Classic CRT TV aspect ratio */
-	flex-shrink: 0; /* Prevent flex shrinking */
-	flex-grow: 0; /* Prevent flex growing */
+	width: 100% !important; /* Fill container width */
+	height: auto !important; /* Auto height for aspect ratio */
+	min-width: 0 !important; /* Allow shrinking */
+	min-height: 0 !important;
+	max-width: 100% !important; /* Don't exceed container */
+	max-height: 100% !important; /* Don't exceed container */
+	aspect-ratio: 4/3; /* Classic CRT TV aspect ratio - maintain 4:3 */
+	flex-shrink: 1; /* Allow flex shrinking */
+	flex-grow: 1; /* Allow flex growing to fill space */
+	/* Ensure frame fills container while maintaining aspect ratio */
+	object-fit: contain;
 	/* Dark plastic look - late 2000s style */
 	background: 
 		/* Base dark gray plastic */
@@ -295,7 +335,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 			rgba(0, 0, 0, 0.3) 100%
 		);
 	border-radius: clamp(14px, 2vw, 20px);
-	padding: clamp(16px, 2.4vw, 26px) clamp(32px, 4vw, 48px); /* Much thicker sides for speakers */
+	/* Constant CRT TV bezels - proportional to frame size, not viewport */
+	/* Top: 2.5%, Bottom: 3.5%, Left/Right: 5% (thicker for speakers) */
+	padding: 2.5% 5% 3.5% 5%;
 	/* Multiple layered shadows for dark plastic depth */
 	box-shadow:
 		/* Main depth shadow - darker for dark plastic */
@@ -405,8 +447,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	flex: 1 1 auto;
 	min-height: 0;
 	background: #000000;
-	/* Thick glossy black inner bezel - like real CRT */
-	border: clamp(10px, 1.5vw, 14px) solid #1a1a1a;
+	/* Constant thick glossy black inner bezel - like real CRT */
+	/* Border is 1.8% of screen size - constant proportion */
+	border: 1.8% solid #1a1a1a;
 	border-radius: clamp(6px, 0.8vw, 10px);
 	overflow: hidden; /* Clip any content that extends beyond screen bounds */
 	display: flex;
@@ -721,10 +764,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	z-index: 10;
 }
 
-@keyframes pulse-glow {
-	0%, 100% { opacity: 0.9; }
-	50% { opacity: 0.9; }
-}
+/* Removed: pulse-glow animation - no visual effect (opacity stays same) */
 
 .tv-screen-glow {
 	position: absolute;
@@ -780,14 +820,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	100% { transform: translateY(4px); }
 }
 
-/* Static Effect - Full Screen (removed, not used) */
-.static-effect {
-	position: fixed;
-	inset: 0;
-	z-index: 9999;
-	pointer-events: none;
-	animation: static-flicker 0.3s steps(10) infinite;
-}
+/* Removed: .static-effect - marked as unused in original code */
 
 /* Static Effect - Inside TV Screen - respects 4:3 aspect ratio */
 .static-effect-tv {
@@ -1361,10 +1394,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	letter-spacing: 1px;
 }
 
-@keyframes status-pulse {
-	0%, 100% { opacity: 0.9; }
-	50% { opacity: 0.9; }
-}
+/* Removed: status-pulse animation - no visual effect (opacity stays same) */
 
 
 /* ==========================================
@@ -2206,10 +2236,7 @@ button,
 	animation: live-pulse 1s ease-in-out infinite;
 }
 
-@keyframes live-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 1; }
-}
+/* Removed: live-pulse animation - no visual effect (opacity stays same) */
 
 /* Queue View */
 .queue-view {
@@ -2444,13 +2471,13 @@ button,
 	}
 	
 	.tv-frame {
-		/* Fixed size - no scaling */
-		width: 800px !important;
-		height: 600px !important;
+		/* Responsive on tablet - maintains aspect ratio */
+		width: 100% !important;
 		max-width: 800px !important;
-		max-height: 600px !important;
-		min-width: 800px !important;
-		min-height: 600px !important;
+		height: auto !important;
+		aspect-ratio: 4/3 !important;
+		min-width: 0 !important;
+		min-height: 0 !important;
 	}
 	
 	.right-panel {
@@ -2533,19 +2560,31 @@ button,
 		width: 100%;
 		max-width: 100%;
 		order: 1; /* TV shows first */
-		flex-shrink: 0;
+		flex: 1 1 auto; /* Allow flexing on mobile too */
+		min-width: 0; /* Allow shrinking */
+		min-height: 0;
 	}
 	
 	.tv-frame {
-		/* Fixed size - no scaling even on mobile */
-		width: 800px !important;
-		height: 600px !important;
-		max-width: 800px !important;
-		max-height: 600px !important;
-		min-width: 800px !important;
-		min-height: 600px !important;
-		padding: 8px;
+		/* Responsive on mobile - fills container while maintaining 4:3 */
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
+		aspect-ratio: 4/3 !important;
+		min-width: 0 !important;
+		min-height: 0 !important;
+		flex: 1 1 auto !important; /* Fill container */
+		/* Constant CRT bezels - same proportions as desktop */
+		padding: 2.5% 5% 3.5% 5% !important;
 		border-radius: 8px;
+	}
+	
+	/* Fallback for browsers without aspect-ratio */
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame {
+			height: calc(100vw * 0.75);
+			max-height: 600px;
+		}
 	}
 	
 	.right-panel {
@@ -2648,20 +2687,31 @@ button,
 	.tv-frame-container {
 		order: 1;
 		width: 100%;
-		flex-shrink: 0;
+		flex: 1 1 auto; /* Allow flexing on small mobile */
+		min-width: 0;
+		min-height: 0;
 	}
 	
 	.tv-frame {
-		/* Fixed size - no scaling even on small mobile */
-		width: 800px !important;
-		height: 600px !important;
-		max-width: 800px !important;
-		max-height: 600px !important;
-		min-width: 800px !important;
-		min-height: 600px !important;
-		padding: 6px;
+		/* Responsive on small mobile - fills container while maintaining 4:3 */
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
+		aspect-ratio: 4/3 !important;
+		min-width: 0 !important;
+		min-height: 0 !important;
+		flex: 1 1 auto !important; /* Fill container */
+		/* Constant CRT bezels - same proportions as desktop */
+		padding: 2.5% 5% 3.5% 5% !important;
 		border-radius: 6px;
-		border-width: 2px;
+	}
+	
+	/* Fallback for browsers without aspect-ratio */
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame {
+			height: calc(100vw * 0.75);
+			max-height: 600px;
+		}
 	}
 	
 	.tv-screen {
@@ -2994,10 +3044,7 @@ button,
 	animation: live-blink 1s ease-in-out infinite;
 }
 
-@keyframes live-blink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 1; }
-}
+/* Removed: live-blink animation - no visual effect (opacity stays same) */
 
 .preview-now {
 	margin-bottom: 10px;
@@ -3541,14 +3588,23 @@ transparent 2px
 	mix-blend-mode: overlay;
 }
 
-/* Subtle CRT flicker on video content */
+/* Subtle CRT flicker on video content - GPU optimized */
 .player-wrapper {
-	animation: crt-subtle-flicker 0.2s infinite;
+	will-change: transform;
+	transform: translateZ(0); /* Force GPU acceleration */
 }
 
 @keyframes crt-subtle-flicker {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.98; }
+	0%, 100% { transform: translateZ(0) scale(1); }
+	50% { transform: translateZ(0) scale(0.999); }
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+	.player-wrapper {
+		animation: none !important;
+		transform: none !important;
+	}
 }
 
 /* Enhanced static transition for channel switching */
@@ -3580,10 +3636,7 @@ transparent 2px
 	animation: pulse 1s infinite;
 }
 
-@keyframes pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 1; }
-}
+/* Removed: pulse animation - no visual effect (opacity stays same) */
 
 /* Fullscreen CRT effects */
 .tv-frame-container:fullscreen .crt-scanlines,
@@ -3630,20 +3683,7 @@ transparent 2px
 	animation: pulse-dot 2s ease-in-out infinite;
 }
 
-@keyframes pulse-dot {
-	0%, 100% { 
-		opacity: 0.3; 
-		transform: scale(1);
-	}
-	50% {
-		opacity: 0.3;
-		transform: scale(1);
-	}
-	50% { 
-		opacity: 1; 
-		transform: scale(1.2);
-	}
-}
+/* Removed: pulse-dot animation - redundant and conflicting keyframes */
 
 /* ===== PLAYER OVERLAYS - PERFECTLY BLENDED ===== */
 
