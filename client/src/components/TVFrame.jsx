@@ -249,15 +249,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							</div>
 						</div>
 					) : (
-						   <div style={{ 
-							   position: 'relative', 
-							   width: '100%', 
-							   aspectRatio: '4 / 3',
-							   display: 'flex', 
-							   alignItems: 'center', 
-							   justifyContent: 'center',
-							   background: '#000',
-						   }}>
+						<div style={{ 
+							position: 'relative', 
+							width: '100%', 
+							height: '100%', 
+							display: 'flex', 
+							alignItems: 'center', 
+							justifyContent: 'center' 
+						}}>
 							{activeChannel ? (
 								<Player 
 									channel={activeChannel} 
@@ -306,8 +305,28 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							)}
 						</div>
 					)}
-					{/* Hide glow in fullscreen */}
-					{!isFullscreen && <div className="tv-screen-glow" />}
+										{/* Hide glow in fullscreen */}
+										{false && !isFullscreen && <div className="tv-screen-glow" />}
+										{/*
+											To re-enable the TV frame glow/ambient light effect, set the above to:
+											{!isFullscreen && <div className="tv-screen-glow" />}
+											and ensure tv-glow.css is imported.
+										*/}
+				</div>
+				{/* Bottom control strip to mimic 2000s CRT front panel */}
+				<div className="tv-control-bar">
+					<div className="tv-control-buttons">
+						<div className="tv-btn power"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+						<div className="tv-btn small"></div>
+					</div>
+					<div className="tv-dial">
+						<div className="tv-dial-inner"></div>
+					</div>
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}

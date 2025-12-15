@@ -1084,6 +1084,16 @@ onBufferingChange = null,
 		}
 	}, [power])
 
+	// Effect: Hard-stop static audio when power is off to avoid lingering glitches
+	useEffect(() => {
+		if (!power && staticAudioRef.current) {
+			try {
+				staticAudioRef.current.pause()
+				staticAudioRef.current.currentTime = 0
+			} catch (err) {}
+		}
+	}, [power])
+
 	// Effect: Start/stop unified playback manager based on power state
 	useEffect(() => {
 		if (power && playerRef.current && hasInitializedRef.current) {

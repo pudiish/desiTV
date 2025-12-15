@@ -6,7 +6,7 @@
 
 body {
 	font-family: 'Press Start 2P', 'Courier New', monospace;
-	background: #1a1816;
+	background: #0d0b09; /* Intense dark brown */
 	color: #d4c4b0;
 	margin: 0;
 	padding: 0;
@@ -32,7 +32,18 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	height: 100vh;
 	max-height: 100vh;
 	overflow: hidden;
-	background: radial-gradient(ellipse at center, #2a2520 0%, #1a1816 100%);
+	background: radial-gradient(ellipse at center, #1a1512 0%, #0d0b09 100%); /* Intense dark brown gradient */
+}
+
+/* Full-window glass overlay (keeps remote above via higher z-index) */
+.glass-full-overlay {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 8000;
+	background: transparent; /* transparent glass */
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
 }
 
 /* Hide main container and remote when fullscreen is active */
@@ -53,7 +64,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: 100%;
 	justify-content: center;
 	align-items: center;
-	overflow: hidden;
+	overflow: visible; /* allow remote to fully show */
 	min-height: 0;
 }
 
@@ -77,13 +88,13 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	cursor: pointer;
 	transition: filter 0.2s ease;
 	position: relative;
-	filter: drop-shadow(0 0 30px rgba(128, 128, 128, 0.4));
+	filter: none; /* disable ambient halo */
 	min-height: 200px; /* Ensure minimum height on mobile */
 	overflow: visible;
 }
 
 .tv-frame-container:hover {
-	filter: drop-shadow(0 0 40px rgba(128, 128, 128, 0.5));
+	filter: none;
 }
 
 /* Fullscreen hint overlay */
@@ -167,32 +178,124 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .tv-frame {
 	height: clamp(300px, calc(100vh - 100px), 85vh);
 	width: auto;
-	aspect-ratio: 16/10;
-	max-width: calc(100vw - 280px); /* Leave room for remote on desktop */
-	background: linear-gradient(145deg, #a0a0a0, #808080, #707070);
-	border-radius: clamp(10px, 1.5vw, 16px);
-	padding: clamp(10px, 1.5vw, 18px);
-	box-shadow: 
-		0 0 60px rgba(128, 128, 128, 0.5),
-		0 0 100px rgba(128, 128, 128, 0.3),
-		inset 0 0 25px rgba(255, 255, 255, 0.1),
-		0 20px 50px rgba(0, 0, 0, 0.7),
-		inset 0 2px 4px rgba(255, 255, 255, 0.15);
+	aspect-ratio: 4/3; /* Classic CRT TV aspect ratio */
+	max-width: calc(100vw - 280px);
+	/* Dark plastic look - late 2000s style */
+	background: 
+		/* Base dark gray plastic */
+		linear-gradient(180deg, 
+			#3a3c3e 0%,
+			#2d2f31 15%,
+			#252729 50%,
+			#1e2022 85%,
+			#181a1c 100%
+		),
+		/* Subtle top highlight - dark plastic has minimal shine */
+		linear-gradient(135deg,
+			rgba(255, 255, 255, 0.08) 0%,
+			rgba(255, 255, 255, 0.03) 20%,
+			transparent 50%
+		),
+		/* Side depth shadows */
+		linear-gradient(90deg,
+			rgba(0, 0, 0, 0.3) 0%,
+			transparent 10%,
+			transparent 90%,
+			rgba(0, 0, 0, 0.3) 100%
+		);
+	border-radius: clamp(14px, 2vw, 20px);
+	padding: clamp(16px, 2.4vw, 26px) clamp(32px, 4vw, 48px); /* Much thicker sides for speakers */
+	/* Multiple layered shadows for dark plastic depth */
+	box-shadow:
+		/* Main depth shadow - darker for dark plastic */
+		0 8px 32px rgba(0, 0, 0, 0.6),
+		0 4px 16px rgba(0, 0, 0, 0.5),
+		/* Subtle inner top highlight - dark plastic has minimal reflection */
+		inset 0 2px 6px rgba(255, 255, 255, 0.06),
+		inset 0 4px 10px rgba(255, 255, 255, 0.03),
+		/* Inner side shadows for depth */
+		inset -4px 0 12px rgba(0, 0, 0, 0.4),
+		inset 4px 0 12px rgba(0, 0, 0, 0.4),
+		/* Bottom shadow */
+		inset 0 -2px 8px rgba(0, 0, 0, 0.35),
+		/* Subtle outer border - dark plastic edge */
+		0 0 0 1px rgba(255, 255, 255, 0.05),
+		0 0 0 2px rgba(0, 0, 0, 0.3);
 	position: relative;
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	border: 3px solid #909090;
+	justify-content: flex-start;
+	border: none;
 }
 
-
+/* Top highlight layer - subtle for dark plastic */
 .tv-frame::before {
 	content: "";
 	position: absolute;
-	inset: 0;
-	background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
-	border-radius: 20px;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 40%;
+	background: linear-gradient(180deg, 
+		rgba(255, 255, 255, 0.1) 0%,
+		rgba(255, 255, 255, 0.04) 25%,
+		transparent 60%
+	);
+	border-radius: clamp(14px, 2vw, 20px) clamp(14px, 2vw, 20px) 0 0;
 	pointer-events: none;
+	z-index: 1;
+}
+
+/* Speaker grills and side details - clean, subtle design */
+.tv-frame::after {
+	content: "";
+	position: absolute;
+	inset: 8px;
+	pointer-events: none;
+	border-radius: clamp(10px, 1.5vw, 16px);
+	background:
+		/* Left speaker grill - subtle vertical lines only */
+		repeating-linear-gradient(
+			90deg,
+			transparent 0px,
+			transparent 2px,
+			rgba(0, 0, 0, 0.1) 2px,
+			rgba(0, 0, 0, 0.1) 3px,
+			transparent 3px,
+			transparent 5px
+		) left center / 18% 100% no-repeat,
+		/* Right speaker grill */
+		repeating-linear-gradient(
+			90deg,
+			transparent 0px,
+			transparent 2px,
+			rgba(0, 0, 0, 0.1) 2px,
+			rgba(0, 0, 0, 0.1) 3px,
+			transparent 3px,
+			transparent 5px
+		) right center / 18% 100% no-repeat,
+		/* Very subtle speaker cone shadow */
+		radial-gradient(ellipse 45% 65% at 50% 50%,
+			rgba(0, 0, 0, 0.08) 0%,
+			rgba(0, 0, 0, 0.04) 35%,
+			transparent 60%
+		) left center / 18% 55% no-repeat,
+		radial-gradient(ellipse 45% 65% at 50% 50%,
+			rgba(0, 0, 0, 0.08) 0%,
+			rgba(0, 0, 0, 0.04) 35%,
+			transparent 60%
+		) right center / 18% 55% no-repeat,
+		/* Subtle side edge depth */
+		linear-gradient(90deg,
+			rgba(0, 0, 0, 0.1) 0%,
+			rgba(0, 0, 0, 0.05) 5%,
+			transparent 15%,
+			transparent 85%,
+			rgba(0, 0, 0, 0.05) 95%,
+			rgba(0, 0, 0, 0.1) 100%
+		);
+	opacity: 0.5;
 	z-index: 1;
 }
 
@@ -208,22 +311,59 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	position: relative;
 	z-index: 2;
 	width: 100%;
-	height: 100%;
-	background: #0a0806;
-	border: 6px solid #606060;
-	border-radius: 6px;
-	overflow: hidden;
+	flex: 1 1 auto;
+	min-height: 0;
+	background: #000000;
+	/* Thick glossy black inner bezel - like real CRT */
+	border: clamp(10px, 1.5vw, 14px) solid #1a1a1a;
+	border-radius: clamp(6px, 0.8vw, 10px);
+	overflow: hidden; /* Clip any content that extends beyond screen bounds */
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	/* Ensure absolute children stay within bounds */
+	contain: layout style paint;
+	/* Add glass-like radial vignette for convex effect */
+	position: relative;
+}
+
+/* CRT glass radial vignette overlay */
+.tv-screen::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse 90% 70% at 50% 50%,
+		transparent 0%,
+		transparent 40%,
+		rgba(0, 0, 0, 0.15) 70%,
+		rgba(0, 0, 0, 0.3) 100%
+	);
+	pointer-events: none;
+	z-index: 4;
+	border-radius: inherit;
+	mix-blend-mode: multiply;
+	/* Realistic CRT glass depth and convex effect */
 	box-shadow: 
-		inset 0 0 80px rgba(0, 0, 0, 0.95),
-		0 0 20px rgba(128, 128, 128, 0.3),
-		inset 0 0 20px rgba(255, 255, 255, 0.05),
-		inset 0 2px 4px rgba(255, 255, 255, 0.08);
-	/* Convex CRT screen effect - subtle curve */
-	transform: perspective(1500px) rotateX(1deg);
+		/* Deep inset shadow */
+		inset 0 0 120px rgba(0, 0, 0, 0.98),
+		inset 0 0 50px rgba(0, 0, 0, 0.95),
+		/* Convex glass reflection highlights - top and sides */
+		inset 0 -30px 80px rgba(255, 255, 255, 0.12),
+		inset 0 30px 60px rgba(255, 255, 255, 0.08),
+		inset -20px 0 60px rgba(255, 255, 255, 0.06),
+		inset 20px 0 60px rgba(255, 255, 255, 0.06),
+		/* Radial glass highlight in center */
+		inset 0 0 100px rgba(255, 255, 255, 0.03),
+		/* Outer glow */
+		0 0 40px rgba(0, 0, 0, 0.7),
+		/* Bezel highlight */
+		inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+	/* Pronounced convex CRT screen effect */
+	transform: perspective(800px) rotateX(2.5deg);
 	transform-style: preserve-3d;
+	/* Add subtle barrel distortion via border radius */
+	border-radius: clamp(6px, 0.8vw, 10px);
 }
 
 /* Fullscreen tv-screen - fill viewport with subtle CRT effect */
@@ -243,12 +383,15 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 /* Convex screen content wrapper - creates the curved glass effect */
 .tv-screen > * {
-	transform: perspective(1000px) rotateX(-0.8deg) scale(0.99);
+	/* More pronounced convex curve to match CRT glass */
+	transform: perspective(600px) rotateX(-2deg) scale(0.98);
 	transform-origin: center center;
 	width: 100%;
 	height: 100%;
-	/* Subtle border radius for rounded corners */
-	border-radius: 4px;
+	/* Rounded corners matching screen */
+	border-radius: clamp(4px, 0.6vw, 8px);
+	/* Add subtle barrel distortion effect */
+	overflow: hidden;
 }
 
 /* Remove transform in fullscreen for content */
@@ -258,6 +401,197 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .tv-frame-container:-ms-fullscreen .tv-screen > * {
 	transform: none;
 	border-radius: 0;
+}
+
+/* Bottom control bar - realistic recessed panel */
+.tv-control-bar {
+	width: 100%;
+	flex: 0 0 auto;
+	margin-top: clamp(10px, 1.2vh, 14px);
+	padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
+	border-radius: clamp(8px, 1vw, 12px);
+	/* Dark plastic control panel - slightly lighter than frame */
+	background: 
+		linear-gradient(180deg, 
+			#3d3f41 0%,
+			#323436 25%,
+			#2a2c2e 60%,
+			#222426 100%
+		),
+		/* Subtle top highlight */
+		linear-gradient(180deg,
+			rgba(255, 255, 255, 0.1) 0%,
+			rgba(255, 255, 255, 0.04) 25%,
+			transparent 65%
+		);
+	/* Recessed appearance - dark plastic */
+	box-shadow:
+		inset 0 2px 6px rgba(255, 255, 255, 0.08),
+		inset 0 -3px 8px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 2px rgba(0, 0, 0, 0.4),
+		0 2px 8px rgba(0, 0, 0, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: clamp(10px, 1.5vw, 16px);
+	position: relative;
+}
+
+/* Subtle texture overlay on control bar */
+.tv-control-bar::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: repeating-linear-gradient(
+		0deg,
+		transparent 0px,
+		transparent 1px,
+		rgba(0, 0, 0, 0.02) 1px,
+		rgba(0, 0, 0, 0.02) 2px
+	);
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.tv-control-buttons {
+	display: flex;
+	align-items: center;
+	gap: clamp(6px, 0.8vw, 10px);
+	position: relative;
+	z-index: 1;
+}
+
+.tv-btn {
+	width: clamp(20px, 2.2vw, 24px);
+	height: clamp(20px, 2.2vw, 24px);
+	border-radius: 50%;
+	/* Dark plastic concave button */
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.12) 0%,
+		#4a4c4e 25%,
+		#353739 60%,
+		#252729 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.1),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 1px 3px rgba(0, 0, 0, 0.5);
+	position: relative;
+}
+
+/* Button highlight - subtle for dark plastic */
+.tv-btn::before {
+	content: "";
+	position: absolute;
+	top: 20%;
+	left: 20%;
+	width: 35%;
+	height: 35%;
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+	pointer-events: none;
+}
+
+.tv-btn.small {
+	width: clamp(16px, 1.8vw, 20px);
+	height: clamp(16px, 1.8vw, 20px);
+}
+
+.tv-btn.power {
+	/* Power button - slightly larger and more prominent */
+	width: clamp(24px, 2.6vw, 28px);
+	height: clamp(24px, 2.6vw, 28px);
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.15) 0%,
+		#4f5153 25%,
+		#3a3c3e 60%,
+		#2a2c2e 100%
+	);
+	box-shadow:
+		inset 0 2px 5px rgba(255, 255, 255, 0.12),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.65),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Power symbol (optional - can be added via JSX) */
+.tv-btn.power::after {
+	content: "⚫";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: clamp(8px, 1vw, 10px);
+	color: #a0a0a0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.tv-dial {
+	width: clamp(44px, 5vw, 52px);
+	height: clamp(44px, 5vw, 52px);
+	border-radius: 50%;
+	/* Dark plastic dial with concentric rings */
+	background: 
+		radial-gradient(circle at 30% 30%, 
+			rgba(255, 255, 255, 0.15) 0%,
+			#4f5153 20%,
+			#3d3f41 45%,
+			#2f3133 75%,
+			#252729 100%
+		),
+		/* Concentric ring texture */
+		repeating-conic-gradient(
+			from 0deg at 50% 50%,
+			transparent 0deg,
+			rgba(0, 0, 0, 0.15) 1deg,
+			transparent 2deg,
+			rgba(0, 0, 0, 0.15) 3deg,
+			transparent 4deg
+		);
+	box-shadow:
+		inset 0 3px 6px rgba(255, 255, 255, 0.1),
+		inset 0 -4px 8px rgba(0, 0, 0, 0.6),
+		inset 0 0 0 2px rgba(0, 0, 0, 0.4),
+		0 3px 8px rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	z-index: 1;
+}
+
+.tv-dial-inner {
+	width: clamp(20px, 2.4vw, 24px);
+	height: clamp(20px, 2.4vw, 24px);
+	border-radius: 50%;
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.12) 0%,
+		#4a4c4e 30%,
+		#353739 65%,
+		#252729 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.1),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 1px 3px rgba(0, 0, 0, 0.5);
+	position: relative;
+}
+
+/* Power symbol on dial center */
+.tv-dial-inner::after {
+	content: "⏻";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: clamp(10px, 1.2vw, 12px);
+	color: #a0a0a0;
+	font-weight: bold;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .tv-off-screen {
@@ -389,8 +723,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: 100%;
 	height: 100%;
 	position: relative;
-	/* Convex CRT effect on video - subtle curve */
-	transform: perspective(1000px) rotateX(-0.4deg);
+	/* Pronounced convex CRT glass effect */
+	transform: perspective(600px) rotateX(-2deg);
+	transform-origin: center center;
 }
 
 /* Fullscreen player - simple fill */
@@ -447,15 +782,26 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	z-index: 10 !important;
 }
 
-/* Vintage TV sepia/brown tint overlay */
+/* CRT glass radial vignette and convex effect overlay */
 .tv-screen::after {
 	content: "";
 	position: absolute;
 	inset: 0;
-	background: rgba(107, 93, 79, 0.03);
+	background: 
+		/* Radial vignette for convex glass effect */
+		radial-gradient(
+			ellipse 90% 70% at 50% 50%,
+			transparent 0%,
+			transparent 40%,
+			rgba(0, 0, 0, 0.15) 70%,
+			rgba(0, 0, 0, 0.3) 100%
+		),
+		/* Subtle sepia/brown tint */
+		rgba(107, 93, 79, 0.03);
 	pointer-events: none;
 	z-index: 6;
-	mix-blend-mode: overlay;
+	mix-blend-mode: multiply;
+	border-radius: inherit;
 }
 
 /* Static overlay in fullscreen */
@@ -504,10 +850,29 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	width: 100% !important;
 	height: 100% !important;
 	position: relative;
-	/* Subtle barrel distortion for convex effect */
-	transform: scale(1.01) perspective(800px) rotateX(-0.2deg);
+	/* Pronounced convex CRT glass effect with barrel distortion */
+	transform: scale(1.015) perspective(500px) rotateX(-2deg);
 	transform-origin: center center;
 	overflow: hidden !important;
+	/* Add glass-like radial highlight overlay */
+	position: relative;
+}
+
+/* Glass highlight overlay for convex effect */
+.youtube-player-container::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse 80% 60% at 50% 45%,
+		rgba(255, 255, 255, 0.08) 0%,
+		rgba(255, 255, 255, 0.04) 30%,
+		transparent 60%
+	);
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	mix-blend-mode: overlay;
 }
 
 .youtube-player-container > div {
@@ -515,6 +880,21 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	height: 100% !important;
 	position: relative;
 	padding-bottom: 0 !important;
+	/* Glass overlay for CRT bulge */
+}
+
+.youtube-player-container::after {
+	content: "";
+	position: absolute;
+	inset: -3%;
+	pointer-events: none;
+	border-radius: 18px;
+	background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.03) 52%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0.38) 100%);
+	mix-blend-mode: screen;
+	box-shadow:
+		inset 0 0 30px rgba(0, 0, 0, 0.45),
+		0 0 22px rgba(0, 0, 0, 0.25);
+	filter: saturate(1.04) contrast(1.02);
 }
 
 .youtube-iframe {
@@ -525,7 +905,10 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	left: 0;
 	border: none;
 	/* Additional convex curvature */
-	border-radius: 2px;
+	border-radius: 12px;
+	clip-path: inset(0 round 14px);
+	transform: scale(1.004) perspective(1000px) rotateX(-0.4deg);
+	filter: saturate(1.02) contrast(1.03);
 	/* Clip the iframe to hide YouTube UI - critical for hiding title, logo, etc */
 	clip-path: inset(0 0 0 0);
 	overflow: hidden !important;
@@ -597,7 +980,7 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 /* Right Side - Remote Control */
 .right-panel {
 	flex: 0 0 auto;
-	width: clamp(180px, 15vw, 220px);
+	width: clamp(150px, 13vw, 190px);
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -606,6 +989,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	max-height: calc(100vh - 100px);
 	overflow: visible;
 	align-self: center;
+	position: relative;
+	z-index: 9000; /* keep remote above glass overlay */
 }
 
 /* Hide right panel when tv-frame-container is fullscreen */
@@ -890,8 +1275,8 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 .remote-body {
 	background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 50%, #151515 100%);
 	border-radius: 14px 14px 24px 24px;
-	padding: clamp(10px, 1.5vh, 14px) clamp(8px, 1vw, 12px) clamp(14px, 2vh, 18px);
-	width: clamp(160px, 14vw, 200px);
+	padding: clamp(8px, 1.2vh, 12px) clamp(8px, 1vw, 12px) clamp(12px, 1.6vh, 16px);
+	width: clamp(150px, 13vw, 180px);
 	box-shadow: 
 		0 10px 30px rgba(0, 0, 0, 0.8),
 		inset 0 1px 0 rgba(255, 255, 255, 0.03),
@@ -2509,10 +2894,12 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 /* Volume Display - Right Side Vertical (Inside TV Frame) */
 .crt-volume-display {
 	position: absolute;
-	right: 20px;
-	top: 50%;
+	/* Position from right edge, stay well inside screen bounds */
+	right: clamp(12px, 1.5vw, 18px);
+	/* Position above control bar - use calc to avoid overlap */
+	top: calc(50% - clamp(60px, 8vh, 80px));
 	transform: translateY(-50%);
-	z-index: 1000;
+	z-index: 15; /* Lower than overlays but above content */
 	pointer-events: none;
 	opacity: 1;
 	filter: blur(0px) brightness(1);
@@ -2520,6 +2907,11 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 		opacity 0.4s ease-out,
 		filter 0.4s ease-out;
 	animation: volume-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+	/* Ensure it doesn't extend beyond screen bounds */
+	max-height: calc(100% - clamp(100px, 12vh, 140px));
+	overflow: hidden;
+	/* Clip any glow/shadow that extends beyond */
+	clip-path: inset(0 0 0 0);
 }
 
 .crt-volume-display.fade-out {
@@ -2564,14 +2956,19 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 	border: 2px solid #39ff14;
 	border-radius: 6px;
 	padding: 12px 10px;
+	/* Reduced glow to prevent overflow */
 	box-shadow: 
-		0 0 25px rgba(57, 255, 20, 0.4),
-		0 0 50px rgba(57, 255, 20, 0.15),
+		0 0 15px rgba(57, 255, 20, 0.3),
+		0 0 30px rgba(57, 255, 20, 0.1),
 		inset 0 0 15px rgba(57, 255, 20, 0.1);
 	position: relative;
 	min-width: 65px;
+	max-width: 100%; /* Prevent overflow */
 	text-align: center;
 	font-family: 'Press Start 2P', monospace;
+	box-sizing: border-box; /* Include border in width calculation */
+	/* Ensure box doesn't extend beyond parent */
+	overflow: hidden;
 }
 
 .volume-label {
@@ -2640,7 +3037,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 /* Responsive adjustments for volume display */
 @media (max-width: 1024px) {
 	.crt-volume-display {
-		right: 15px;
+		right: clamp(10px, 1.2vw, 15px);
+		top: calc(50% - clamp(50px, 7vh, 70px));
+		max-height: calc(100% - clamp(80px, 10vh, 120px));
 	}
 
 	.volume-box {
@@ -2672,7 +3071,9 @@ body:has(.tv-frame-container:-ms-fullscreen) {
 
 @media (max-width: 768px) {
 	.crt-volume-display {
-		right: 12px;
+		right: clamp(8px, 1vw, 12px);
+		top: calc(50% - clamp(40px, 6vh, 60px));
+		max-height: calc(100% - clamp(70px, 9vh, 100px));
 	}
 
 	.volume-box {
