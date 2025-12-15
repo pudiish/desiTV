@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             // Split vendor chunks
-            'react-vendor': ['preact', 'preact/compat', 'react-router-dom'],
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'youtube': ['react-youtube'],
           },
         },
@@ -66,13 +66,12 @@ export default defineConfig(({ mode }) => {
       // Reduce chunk size warnings threshold
       chunkSizeWarningLimit: 500,
     },
-        // Alias React imports to Preact for compatibility
-        resolve: {
-          alias: [
-            { find: 'react', replacement: 'preact/compat' },
-            { find: 'react-dom', replacement: 'preact/compat' },
-          ],
-        },
+    // Resolve configuration - using standard React (no Preact aliasing)
+    resolve: {
+      alias: {
+        // No aliasing needed - using standard React
+      },
+    },
     
     // Preview server (for testing production build locally)
     preview: {
