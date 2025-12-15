@@ -31,6 +31,10 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 	}
 
 	const toggleFullscreen = useCallback(() => {
+		// Detect iOS specifically (iOS doesn't support Fullscreen API for iframes)
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+		
 		// Detect mobile device
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
@@ -55,9 +59,43 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				} else if (document.msExitFullscreen) {
 					document.msExitFullscreen()
 				}
+				// Remove iOS fullscreen class
+				if (isIOS) {
+					document.body.classList.remove('ios-fullscreen-active')
+					if (tvFrameRef.current) {
+						tvFrameRef.current.classList.remove('ios-fullscreen-active')
+					}
+				}
 			} else {
-				if (isMobile) {
-					// Mobile: Make iframe container fullscreen (simpler, no scale)
+				if (isIOS) {
+					// iOS: Use CSS-based fullscreen (iframe doesn't support Fullscreen API)
+					// Make the iframe container fill the viewport
+					const iframeContainer = document.getElementById('desitv-player-iframe')
+					if (iframeContainer) {
+						// Add iOS fullscreen class to body and container
+						document.body.classList.add('ios-fullscreen-active')
+						if (tvFrameRef.current) {
+							tvFrameRef.current.classList.add('ios-fullscreen-active')
+						}
+						// Try to access YouTube iframe's video element for native fullscreen
+						const iframe = iframeContainer.querySelector('iframe')
+						if (iframe && iframe.contentWindow) {
+							try {
+								// Try to find video element inside iframe (cross-origin may block this)
+								const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+								const video = iframeDoc?.querySelector('video')
+								if (video && video.webkitEnterFullscreen) {
+									video.webkitEnterFullscreen()
+									return
+								}
+							} catch (e) {
+								// Cross-origin restriction - use CSS fullscreen instead
+								console.log('[Fullscreen] iOS: Using CSS-based fullscreen (cross-origin iframe)')
+							}
+						}
+					}
+				} else if (isMobile) {
+					// Android/Other Mobile: Try standard Fullscreen API
 					const iframeContainer = document.getElementById('desitv-player-iframe')
 					if (iframeContainer) {
 						if (iframeContainer.requestFullscreen) {
@@ -88,6 +126,13 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			}
 		} catch (error) {
 			console.error('Error toggling fullscreen:', error)
+			// Fallback for iOS: Use CSS fullscreen
+			if (isIOS && !isCurrentlyFullscreen) {
+				document.body.classList.add('ios-fullscreen-active')
+				if (tvFrameRef.current) {
+					tvFrameRef.current.classList.add('ios-fullscreen-active')
+				}
+			}
 		}
 	}, [])
 
@@ -99,7 +144,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				document.fullscreenElement ||
 				document.webkitFullscreenElement ||
 				document.mozFullScreenElement ||
-				document.msFullscreenElement
+				document.msFullscreenElement ||
+				document.body.classList.contains('ios-fullscreen-active') // iOS CSS fullscreen
 			)
 			setIsFullscreen(isCurrentlyFullscreen)
 			if (onFullscreenChange) {
@@ -118,7 +164,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				document.fullscreenElement ||
 				document.webkitFullscreenElement ||
 				document.mozFullScreenElement ||
-				document.msFullscreenElement
+				document.msFullscreenElement ||
+				document.body.classList.contains('ios-fullscreen-active') // iOS CSS fullscreen
 			)
 			if (isCurrentlyFullscreen) {
 				toggleFullscreen()
@@ -137,6 +184,10 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 
 	// Handle orientation change - auto fullscreen on landscape (mobile only, iframe fullscreen)
 	useEffect(() => {
+		// Detect iOS specifically
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+		
 		// Detect mobile device
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
@@ -151,41 +202,60 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					document.fullscreenElement ||
 					document.webkitFullscreenElement ||
 					document.mozFullScreenElement ||
-					document.msFullscreenElement
+					document.msFullscreenElement ||
+					document.body.classList.contains('ios-fullscreen-active') // iOS CSS fullscreen
 				)
 
 				if (isLandscape && !isCurrentlyFullscreen && power) {
-					// Rotated to landscape - enter iframe fullscreen (mobile only)
-					const iframeContainer = document.getElementById('desitv-player-iframe')
-					if (iframeContainer) {
-						try {
-							if (iframeContainer.requestFullscreen) {
-								iframeContainer.requestFullscreen()
-							} else if (iframeContainer.webkitRequestFullscreen) {
-								iframeContainer.webkitRequestFullscreen()
-							} else if (iframeContainer.mozRequestFullScreen) {
-								iframeContainer.mozRequestFullScreen()
-							} else if (iframeContainer.msRequestFullscreen) {
-								iframeContainer.msRequestFullscreen()
+					// Rotated to landscape - enter fullscreen
+					if (isIOS) {
+						// iOS: Use CSS-based fullscreen
+						document.body.classList.add('ios-fullscreen-active')
+						if (tvFrameRef.current) {
+							tvFrameRef.current.classList.add('ios-fullscreen-active')
+						}
+					} else {
+						// Android/Other: Use Fullscreen API
+						const iframeContainer = document.getElementById('desitv-player-iframe')
+						if (iframeContainer) {
+							try {
+								if (iframeContainer.requestFullscreen) {
+									iframeContainer.requestFullscreen()
+								} else if (iframeContainer.webkitRequestFullscreen) {
+									iframeContainer.webkitRequestFullscreen()
+								} else if (iframeContainer.mozRequestFullScreen) {
+									iframeContainer.mozRequestFullScreen()
+								} else if (iframeContainer.msRequestFullscreen) {
+									iframeContainer.msRequestFullscreen()
+								}
+							} catch (error) {
+								console.error('Error entering iframe fullscreen on orientation change:', error)
 							}
-						} catch (error) {
-							console.error('Error entering iframe fullscreen on orientation change:', error)
 						}
 					}
 				} else if (!isLandscape && isCurrentlyFullscreen) {
 					// Rotated to portrait - exit fullscreen
-					try {
-						if (document.exitFullscreen) {
-							document.exitFullscreen()
-						} else if (document.webkitExitFullscreen) {
-							document.webkitExitFullscreen()
-						} else if (document.mozCancelFullScreen) {
-							document.mozCancelFullScreen()
-						} else if (document.msExitFullscreen) {
-							document.msExitFullscreen()
+					if (isIOS) {
+						// iOS: Remove CSS fullscreen classes
+						document.body.classList.remove('ios-fullscreen-active')
+						if (tvFrameRef.current) {
+							tvFrameRef.current.classList.remove('ios-fullscreen-active')
 						}
-					} catch (error) {
-						console.error('Error exiting fullscreen on orientation change:', error)
+					} else {
+						// Android/Other: Use Fullscreen API exit
+						try {
+							if (document.exitFullscreen) {
+								document.exitFullscreen()
+							} else if (document.webkitExitFullscreen) {
+								document.webkitExitFullscreen()
+							} else if (document.mozCancelFullScreen) {
+								document.mozCancelFullScreen()
+							} else if (document.msExitFullscreen) {
+								document.msExitFullscreen()
+							}
+						} catch (error) {
+							console.error('Error exiting fullscreen on orientation change:', error)
+						}
 					}
 				}
 			}, 100) // Small delay to ensure dimensions are updated
@@ -206,17 +276,27 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		const now = Date.now()
 		const DOUBLE_TAP_DELAY = 300 // ms between taps
 		
+		// Check if iOS fullscreen is active - allow single tap to exit
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+		const isIOSFullscreen = document.body.classList.contains('ios-fullscreen-active')
+		
+		if (isIOS && isIOSFullscreen) {
+			// iOS: Single tap exits fullscreen
+			e.preventDefault()
+			toggleFullscreen()
+			lastTapRef.current = 0
+			if (doubleTapTimeoutRef.current) {
+				clearTimeout(doubleTapTimeoutRef.current)
+			}
+			return
+		}
+		
 		if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
 			// Double tap detected
 			e.preventDefault()
 			toggleFullscreen()
 			lastTapRef.current = 0 // Reset
-		const onPowerButton = () => {}
-		const onVolumeUp = () => {}
-		const onVolumeDown = () => {}
-		const onChannelUp = () => {}
-		const onChannelDown = () => {}
-		const onMenu = () => {}
 			if (doubleTapTimeoutRef.current) {
 				clearTimeout(doubleTapTimeoutRef.current)
 			}
