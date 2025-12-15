@@ -4,11 +4,12 @@
  * Handles admin authentication, token management, and auth state
  */
 
+import { STORAGE } from '../config/constants';
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 // Token storage keys
-const TOKEN_KEY = 'desiTV_admin_token';
-const ADMIN_KEY = 'desiTV_admin_info';
+const TOKEN_KEY = STORAGE.ADMIN_TOKEN_KEY || 'desiTV_admin_token';
+const ADMIN_KEY = STORAGE.ADMIN_INFO_KEY || 'desiTV_admin_info';
 
 /**
  * Get the stored auth token
