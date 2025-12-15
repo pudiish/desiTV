@@ -1,0 +1,453 @@
+/**
+ * Button Patterns - Common button styles extracted and optimized
+ * Base button class with modifiers for different variants
+ */
+
+/* Base Button Reset */
+button,
+.remote-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	font-family: inherit;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	-webkit-tap-highlight-color: transparent;
+	outline: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	cursor: pointer;
+}
+
+/* Base Button Styles - Common pattern */
+.btn-base {
+	position: relative;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	-webkit-tap-highlight-color: transparent;
+	outline: none;
+	border-radius: var(--radius-md);
+	font-family: var(--font-primary);
+}
+
+.btn-base:hover:not(:disabled) {
+	transform: scale(1.05);
+}
+
+.btn-base:active:not(:disabled) {
+	transform: scale(0.95);
+}
+
+.btn-base:focus:not(:disabled) {
+	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline-offset: 2px;
+}
+
+.btn-base:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* TV Frame Buttons */
+.tv-btn {
+	width: clamp(20px, 2.2vw, 24px);
+	height: clamp(20px, 2.2vw, 24px);
+	border-radius: var(--radius-full);
+	border: none;
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.12) 0%,
+		var(--tv-button-base) 25%,
+		#353739 60%,
+		#252729 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.1),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		var(--shadow-sm);
+	position: relative;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	-webkit-tap-highlight-color: transparent;
+	outline: none;
+}
+
+.tv-btn:hover {
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.18) 0%,
+		var(--tv-button-hover) 25%,
+		#3a3c3e 60%,
+		#2d2f31 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.15),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		var(--shadow-md);
+	transform: scale(1.05);
+}
+
+.tv-btn:active {
+	transform: scale(0.95);
+	box-shadow:
+		inset 0 3px 6px rgba(0, 0, 0, 0.7),
+		inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		var(--shadow-sm);
+}
+
+.tv-btn:focus {
+	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline-offset: 2px;
+}
+
+.tv-btn::before {
+	content: "";
+	position: absolute;
+	top: 20%;
+	left: 20%;
+	width: 35%;
+	height: 35%;
+	border-radius: var(--radius-full);
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+	pointer-events: none;
+}
+
+.tv-btn.small {
+	width: clamp(16px, 1.8vw, 20px);
+	height: clamp(16px, 1.8vw, 20px);
+}
+
+.tv-btn.power {
+	width: clamp(24px, 2.6vw, 28px);
+	height: clamp(24px, 2.6vw, 28px);
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.15) 0%,
+		var(--tv-button-hover) 25%,
+		#3a3c3e 60%,
+		#2a2c2e 100%
+	);
+	box-shadow:
+		inset 0 2px 5px rgba(255, 255, 255, 0.12),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.65),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		var(--shadow-md);
+}
+
+.tv-btn.power:hover {
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.2) 0%,
+		#555759 25%,
+		#404244 60%,
+		#323436 100%
+	);
+	box-shadow:
+		inset 0 2px 5px rgba(255, 255, 255, 0.15),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.55),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		var(--shadow-lg);
+}
+
+.tv-btn.power:active {
+	transform: scale(0.95);
+	box-shadow:
+		inset 0 3px 7px rgba(0, 0, 0, 0.75),
+		inset 0 -1px 3px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		var(--shadow-sm);
+}
+
+.tv-btn.power::after {
+	content: "⚫";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: var(--font-size-xs);
+	color: #a0a0a0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Remote Control Buttons - Base Pattern */
+.remote-btn {
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	border: 2px solid #0a0a0a;
+	border-radius: var(--radius-md);
+	color: #666;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	font-family: var(--font-primary);
+	box-shadow: 
+		var(--shadow-md),
+		inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.remote-btn:hover:not(:disabled) {
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+	color: #888;
+}
+
+.remote-btn:active:not(:disabled) {
+	transform: scale(0.95);
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.remote-btn:focus:not(:disabled) {
+	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline-offset: 2px;
+}
+
+.remote-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* Remote Power Button */
+.remote-btn.power-btn {
+	width: clamp(32px, 3.2vw, 38px);
+	height: clamp(32px, 3.2vw, 38px);
+	border-radius: var(--radius-full);
+	box-shadow: 
+		0 4px 15px rgba(0, 0, 0, 0.5),
+		inset 0 2px 0 rgba(255, 255, 255, 0.02);
+}
+
+.remote-btn.power-btn:hover:not(:disabled) {
+	box-shadow: 
+		0 4px 15px rgba(255, 0, 0, 0.6),
+		inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+.remote-btn.power-btn:active:not(:disabled) {
+	transform: scale(0.95);
+	box-shadow: 
+		0 2px 8px rgba(255, 0, 0, 0.4),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.remote-btn.power-btn:focus:not(:disabled) {
+	outline: 2px solid rgba(255, 0, 0, 0.6);
+	outline-offset: 2px;
+}
+
+.remote-btn.power-btn.on {
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+	border-color: #0a0a0a;
+	box-shadow: 
+		0 4px 15px rgba(0, 0, 0, 0.6),
+		inset 0 2px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Remote Number Buttons */
+.remote-btn.num-btn {
+	border: 1.5px solid #0a0a0a;
+	border-radius: 5px;
+	font-size: var(--font-size-sm);
+	padding: clamp(5px, 0.6vh, 7px);
+	min-height: clamp(26px, 2.8vh, 30px);
+	box-shadow: 
+		var(--shadow-sm),
+		inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.remote-btn.num-btn:hover:not(:disabled) {
+	color: #888;
+}
+
+.remote-btn.num-btn:active:not(:disabled) {
+	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.remote-btn.num-btn.special {
+	grid-column: 2;
+}
+
+/* Remote D-Pad Buttons */
+.remote-btn.dpad-btn {
+	font-size: var(--font-size-xs);
+	padding: clamp(7px, 0.8vh, 9px) clamp(8px, 1vw, 12px);
+	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
+	min-height: clamp(28px, 3vh, 32px);
+}
+
+.remote-btn.dpad-btn.up,
+.remote-btn.dpad-btn.down {
+	min-width: clamp(50px, 5.5vw, 60px);
+}
+
+.remote-btn.dpad-btn.left,
+.remote-btn.dpad-btn.right {
+	min-width: clamp(38px, 4.2vw, 45px);
+}
+
+.remote-btn.dpad-btn.center {
+	min-width: clamp(42px, 4.8vw, 50px);
+}
+
+.remote-btn.dpad-btn:hover:not(:disabled) {
+	text-shadow: 0 0 3px rgba(136, 136, 136, 0.3);
+}
+
+/* Category Buttons */
+.remote-btn.category-btn {
+	font-size: var(--font-size-xs);
+	padding: clamp(7px, 0.8vh, 9px) clamp(8px, 1vw, 12px);
+	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
+	border-radius: var(--radius-md);
+	text-transform: uppercase;
+	min-height: clamp(28px, 3vh, 32px);
+	box-shadow: 
+		var(--shadow-sm),
+		inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.remote-btn.category-btn.left,
+.remote-btn.category-btn.right {
+	min-width: clamp(50px, 5.5vw, 60px);
+}
+
+/* Mute Button */
+.remote-btn.mute-btn {
+	font-size: var(--font-size-xs);
+	padding: clamp(5px, 0.6vh, 7px) clamp(10px, 1.2vw, 14px);
+	border-radius: var(--radius-md);
+	width: 100%;
+	min-height: clamp(26px, 2.8vh, 30px);
+}
+
+.remote-btn.mute-btn.active {
+	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+	color: #888;
+}
+
+.remote-btn.mute-btn:hover:not(:disabled) {
+	background: linear-gradient(145deg, #555, #333);
+	color: #aaa;
+}
+
+/* VCR Buttons */
+.remote-btn.vcr-btn {
+	width: clamp(24px, 2.6vw, 28px);
+	height: clamp(20px, 2.2vh, 24px);
+	border-radius: 3px;
+	border: 1.5px solid #222;
+	font-size: var(--font-size-xs);
+}
+
+.remote-btn.vcr-btn.small {
+	width: clamp(20px, 2.2vw, 24px);
+	height: clamp(18px, 2vh, 22px);
+	font-size: var(--font-size-xs);
+}
+
+.remote-btn.vcr-btn:hover:not(:disabled) {
+	border-color: #333;
+}
+
+/* Control Panel Buttons */
+.control-btn {
+	width: 100%;
+	padding: 15px 20px;
+	margin: var(--spacing-sm) 0;
+	background: linear-gradient(145deg, #e0e0e0, #c0c0c0);
+	border: 2px solid #888;
+	border-radius: var(--radius-lg);
+	color: #000;
+	font-family: var(--font-primary);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	box-shadow: 
+		var(--shadow-md),
+		inset 0 1px 0 rgba(255, 255, 255, 0.5);
+	transition: all var(--transition-base);
+	position: relative;
+	overflow: hidden;
+}
+
+.control-btn::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+	opacity: 0;
+	transition: opacity var(--transition-base);
+}
+
+.control-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 
+		0 6px 12px rgba(0, 0, 0, 0.4),
+		inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.control-btn:hover::before {
+	opacity: 1;
+}
+
+.control-btn:active {
+	transform: translateY(0);
+	box-shadow: 
+		var(--shadow-sm),
+		inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.power-btn {
+	background: linear-gradient(145deg, #ff4444, #cc0000);
+	color: #fff;
+	border-color: #aa0000;
+	font-weight: bold;
+	box-shadow: 
+		0 0 20px rgba(255, 68, 68, 0.5),
+		var(--shadow-md),
+		inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	animation: power-glow 2s ease-in-out infinite;
+}
+
+@keyframes power-glow {
+	0%, 100% { 
+		box-shadow: 
+			0 0 20px rgba(255, 68, 68, 0.5),
+			var(--shadow-md),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+	50% { 
+		box-shadow: 
+			0 0 30px rgba(255, 68, 68, 0.8),
+			var(--shadow-md),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	}
+}
+
+.power-btn:hover {
+	box-shadow: 
+		0 0 40px rgba(255, 68, 68, 0.9),
+		0 6px 12px rgba(0, 0, 0, 0.4),
+		inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Touch Target Sizes */
+@media (max-width: 768px) {
+	button:not(.vcr-btn):not(.tv-btn),
+	.remote-btn:not(.vcr-btn):not(.tv-btn) {
+		min-width: var(--touch-target-min);
+		min-height: var(--touch-target-min);
+	}
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+	.btn-base,
+	.tv-btn,
+	.remote-btn,
+	.control-btn {
+		animation: none !important;
+		transition: none !important;
+	}
+}

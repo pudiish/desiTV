@@ -1,0 +1,205 @@
+/**
+ * Player Styles - YouTube player, iframe, overlays
+ */
+
+/* YouTube Player Styling - Base styles */
+/* Note: Fullscreen and GPU-optimized styles are in fullscreen.css and effects.css */
+.player-wrapper {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	transform: perspective(800px) rotateX(-1.5deg);
+	transform-origin: center center;
+	max-width: 100%;
+	max-height: 100%;
+	overflow: hidden !important;
+	contain: layout style paint;
+	clip-path: inset(1px);
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	isolation: isolate;
+	transform-style: flat;
+	margin: 0;
+	padding: 0;
+}
+
+/* Fullscreen styles are in fullscreen.css */
+
+/* CRT glass radial vignette and convex effect overlay */
+.tv-screen::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: 
+		/* Radial vignette for convex glass effect */
+		radial-gradient(
+			ellipse 90% 70% at 50% 50%,
+			transparent 0%,
+			transparent 40%,
+			rgba(0, 0, 0, 0.15) 70%,
+			rgba(0, 0, 0, 0.3) 100%
+		),
+		/* Subtle sepia/brown tint */
+		rgba(107, 93, 79, 0.03);
+	pointer-events: none;
+	z-index: 6;
+	mix-blend-mode: multiply;
+	border-radius: inherit;
+}
+
+/* Fullscreen styles are in fullscreen.css */
+
+/* ===== Fullscreen Remote Overlay ===== */
+.remote-overlay {
+	position: fixed;
+	right: 0;
+	bottom: 20px;
+	transform: translateX(110%);
+	transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+	z-index: 10000 !important;
+	pointer-events: none;
+	width: min(360px, 90vw);
+	max-width: 90vw;
+	opacity: 0;
+}
+
+.remote-overlay.visible {
+	transform: translateX(0);
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* Fullscreen remote overlay styles are in fullscreen.css */
+
+.youtube-player-container {
+	width: 100% !important;
+	height: 100% !important;
+	position: relative;
+	transform: scale(1.01) perspective(700px) rotateX(-1.2deg);
+	transform-origin: center center;
+	overflow: hidden !important;
+	position: relative;
+	max-width: 100%;
+	max-height: 100%;
+	contain: layout style paint;
+	clip-path: inset(1px);
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	isolation: isolate;
+	transform-style: flat;
+	margin: 0;
+	padding: 0;
+}
+
+/* Glass highlight overlay for convex effect */
+.youtube-player-container::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse 80% 60% at 50% 45%,
+		rgba(255, 255, 255, 0.08) 0%,
+		rgba(255, 255, 255, 0.04) 30%,
+		transparent 60%
+	);
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	mix-blend-mode: overlay;
+}
+
+.youtube-player-container > div {
+	width: 100% !important;
+	height: 100% !important;
+	position: relative;
+	padding-bottom: 0 !important;
+	overflow: hidden !important;
+	clip-path: inset(1px);
+	contain: layout style paint;
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	margin: 0;
+	padding: 0;
+}
+
+.youtube-player-container::after {
+	content: "";
+	position: absolute;
+	inset: -3%;
+	pointer-events: none;
+	border-radius: 18px;
+	background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.03) 52%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0.38) 100%);
+	mix-blend-mode: screen;
+	box-shadow:
+		inset 0 0 30px rgba(0, 0, 0, 0.45),
+		0 0 22px rgba(0, 0, 0, 0.25);
+	filter: saturate(1.04) contrast(1.02);
+}
+
+.youtube-iframe {
+	width: 100% !important;
+	height: 100% !important;
+	position: absolute;
+	top: 0;
+	left: 0;
+	border: none;
+	border-radius: var(--radius-xl);
+	transform: scale(1.002) perspective(1200px) rotateX(-0.3deg);
+	filter: saturate(1.02) contrast(1.03);
+	clip-path: inset(2px) !important;
+	overflow: hidden !important;
+	z-index: var(--z-overlay) !important;
+	contain: layout style paint;
+	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 91%, transparent 95%);
+	-webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 91%, transparent 95%);
+	transform-style: flat;
+	margin: 0;
+	padding: 0;
+}
+
+/* Fullscreen styles are in fullscreen.css */
+
+/* Hide YouTube controls completely - prevent any interaction */
+.youtube-player-container iframe,
+.youtube-iframe iframe {
+	pointer-events: none !important;
+}
+
+.youtube-player-container {
+	pointer-events: none !important;
+}
+
+.youtube-player-container > div {
+	pointer-events: none !important;
+}
+
+/* Hide YouTube UI elements - targets YouTube's internal classes */
+.html5-video-container .ytp-chrome-bottom,
+.html5-video-container .ytp-chrome-top,
+.html5-video-container .ytp-chrome,
+.html5-video-player .ytp-chrome,
+.ytp-tooltip-bg,
+.ytp-tooltip-text,
+.ytp-logo,
+.ytp-logo-button,
+.ytp-title,
+.ytp-info-icon,
+.ytp-watermark,
+.ytp-pause-overlay,
+.ytp-large-play-button-bg,
+.ytp-large-play-button,
+.html5-endscreen-ui,
+.html5-video-info-panel-container,
+.ytp-endscreen-container,
+.ytp-gradient-bottom,
+.ytp-gradient-top,
+.ytp-show-scroll-indicator,
+[data-tooltip],
+[data-tooltip-alignment] {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	height: 0 !important;
+	width: 0 !important;
+}

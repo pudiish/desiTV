@@ -1,0 +1,45 @@
+/**
+ * Base Styles - Reset, typography, base element styles
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: var(--font-primary);
+	background: var(--color-bg);
+	color: var(--color-text);
+	margin: 0;
+	padding: 0;
+	overflow-x: hidden;
+	position: relative;
+	width: 100%;
+	max-width: 100vw;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

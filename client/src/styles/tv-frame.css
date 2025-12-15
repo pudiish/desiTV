@@ -1,0 +1,497 @@
+/**
+ * TV Frame Styles - TV frame, screen, control bar
+ */
+
+.tv-frame {
+	width: 100% !important; /* Fill container width */
+	height: auto !important; /* Auto height for aspect ratio */
+	min-width: 0 !important; /* Allow shrinking */
+	min-height: 0 !important;
+	max-width: 100% !important; /* Don't exceed container */
+	max-height: 100% !important; /* Don't exceed container */
+	aspect-ratio: 4/3; /* Classic CRT TV aspect ratio - maintain 4:3 */
+	flex-shrink: 1; /* Allow flex shrinking */
+	flex-grow: 1; /* Allow flex growing to fill space */
+	/* Ensure frame fills container while maintaining aspect ratio */
+	object-fit: contain;
+	/* Prevent content leaks */
+	overflow: hidden !important;
+	contain: layout style paint;
+	/* Dark plastic look - late 2000s style */
+	background: 
+		/* Base dark gray plastic */
+		linear-gradient(180deg, 
+			#3a3c3e 0%,
+			#2d2f31 15%,
+			#252729 50%,
+			#1e2022 85%,
+			#181a1c 100%
+		),
+		/* Subtle top highlight - dark plastic has minimal shine */
+		linear-gradient(135deg,
+			rgba(255, 255, 255, 0.08) 0%,
+			rgba(255, 255, 255, 0.03) 20%,
+			transparent 50%
+		),
+		/* Side depth shadows */
+		linear-gradient(90deg,
+			rgba(0, 0, 0, 0.3) 0%,
+			transparent 10%,
+			transparent 90%,
+			rgba(0, 0, 0, 0.3) 100%
+		);
+	border-radius: clamp(14px, 2vw, 20px);
+	/* Constant CRT TV bezels - proportional to frame size, not viewport */
+	/* Top: 2.5%, Bottom: 3.5%, Left/Right: 5% (thicker for speakers) */
+	padding: 2.5% 5% 3.5% 5%;
+	/* Multiple layered shadows for dark plastic depth */
+	box-shadow:
+		/* Main depth shadow - darker for dark plastic */
+		0 8px 32px rgba(0, 0, 0, 0.6),
+		0 4px 16px rgba(0, 0, 0, 0.5),
+		/* Subtle inner top highlight - dark plastic has minimal reflection */
+		inset 0 2px 6px rgba(255, 255, 255, 0.06),
+		inset 0 4px 10px rgba(255, 255, 255, 0.03),
+		/* Inner side shadows for depth */
+		inset -4px 0 12px rgba(0, 0, 0, 0.4),
+		inset 4px 0 12px rgba(0, 0, 0, 0.4),
+		/* Bottom shadow */
+		inset 0 -2px 8px rgba(0, 0, 0, 0.35),
+		/* Subtle outer border - dark plastic edge */
+		0 0 0 1px rgba(255, 255, 255, 0.05),
+		0 0 0 2px rgba(0, 0, 0, 0.3);
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	border: none;
+}
+
+/* Top highlight layer - subtle for dark plastic */
+.tv-frame::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 40%;
+	background: linear-gradient(180deg, 
+		rgba(255, 255, 255, 0.1) 0%,
+		rgba(255, 255, 255, 0.04) 25%,
+		transparent 60%
+	);
+	border-radius: clamp(14px, 2vw, 20px) clamp(14px, 2vw, 20px) 0 0;
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* Speaker grills and side details - clean, subtle design */
+.tv-frame::after {
+	content: "";
+	position: absolute;
+	inset: 8px;
+	pointer-events: none;
+	border-radius: clamp(10px, 1.5vw, 16px);
+	background:
+		/* Left speaker grill - subtle vertical lines only */
+		repeating-linear-gradient(
+			90deg,
+			transparent 0px,
+			transparent 2px,
+			rgba(0, 0, 0, 0.1) 2px,
+			rgba(0, 0, 0, 0.1) 3px,
+			transparent 3px,
+			transparent 5px
+		) left center / 18% 100% no-repeat,
+		/* Right speaker grill */
+		repeating-linear-gradient(
+			90deg,
+			transparent 0px,
+			transparent 2px,
+			rgba(0, 0, 0, 0.1) 2px,
+			rgba(0, 0, 0, 0.1) 3px,
+			transparent 3px,
+			transparent 5px
+		) right center / 18% 100% no-repeat,
+		/* Very subtle speaker cone shadow */
+		radial-gradient(ellipse 45% 65% at 50% 50%,
+			rgba(0, 0, 0, 0.08) 0%,
+			rgba(0, 0, 0, 0.04) 35%,
+			transparent 60%
+		) left center / 18% 55% no-repeat,
+		radial-gradient(ellipse 45% 65% at 50% 50%,
+			rgba(0, 0, 0, 0.08) 0%,
+			rgba(0, 0, 0, 0.04) 35%,
+			transparent 60%
+		) right center / 18% 55% no-repeat,
+		/* Subtle side edge depth */
+		linear-gradient(90deg,
+			rgba(0, 0, 0, 0.1) 0%,
+			rgba(0, 0, 0, 0.05) 5%,
+			transparent 15%,
+			transparent 85%,
+			rgba(0, 0, 0, 0.05) 95%,
+			rgba(0, 0, 0, 0.1) 100%
+		);
+	opacity: 0.5;
+	z-index: 1;
+}
+
+/* Hide TV frame decorations in fullscreen */
+.tv-frame-container:fullscreen .tv-frame::before,
+.tv-frame-container:-webkit-full-screen .tv-frame::before,
+.tv-frame-container:-moz-full-screen .tv-frame::before,
+.tv-frame-container:-ms-fullscreen .tv-frame::before {
+	display: none;
+}
+
+.tv-screen {
+	position: relative;
+	z-index: 2;
+	width: 100%;
+	flex: 1 1 auto;
+	min-height: 0;
+	background: #000000;
+	/* Constant thick glossy black inner bezel - like real CRT */
+	/* Border is 1.8% of screen size - constant proportion */
+	border: 1.8% solid #1a1a1a;
+	border-radius: clamp(6px, 0.8vw, 10px);
+	overflow: hidden !important; /* Clip any content that extends beyond screen bounds - prevent leaks */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* Ensure absolute children stay within bounds - critical for 4:3 aspect ratio */
+	contain: layout style paint;
+	position: relative;
+	/* Maintain 4:3 aspect ratio for screen content */
+	aspect-ratio: 4/3;
+	/* Prevent content leaks at edges - aggressive clipping for curved CRT */
+	clip-path: inset(0 round clamp(6px, 0.8vw, 10px));
+	/* Tight mask for edge containment - tighter at edges */
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 92%, transparent 98%);
+	mask-composite: intersect;
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 92%, transparent 98%);
+	-webkit-mask-composite: source-in;
+	isolation: isolate; /* Create new stacking context to contain effects */
+	/* Ensure transforms don't leak */
+	transform-style: flat; /* Prevent 3D transforms from extending beyond */
+	/* Additional containment for edges */
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.01); /* Subtle edge containment */
+}
+
+/* CRT glass radial vignette overlay - respects 4:3 aspect ratio */
+.tv-screen::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	/* Ensure overlay stays within screen bounds - no leaks */
+	width: 100%;
+	height: 100%;
+	background: radial-gradient(
+		ellipse 90% 70% at 50% 50%,
+		transparent 0%,
+		transparent 40%,
+		rgba(0, 0, 0, 0.15) 70%,
+		rgba(0, 0, 0, 0.3) 100%
+	);
+	pointer-events: none;
+	z-index: 4;
+	border-radius: inherit;
+	mix-blend-mode: multiply;
+	/* Realistic CRT glass depth and convex effect */
+	box-shadow: 
+		/* Deep inset shadow */
+		inset 0 0 120px rgba(0, 0, 0, 0.98),
+		inset 0 0 50px rgba(0, 0, 0, 0.95),
+		/* Convex glass reflection highlights - top and sides */
+		inset 0 -30px 80px rgba(255, 255, 255, 0.12),
+		inset 0 30px 60px rgba(255, 255, 255, 0.08),
+		inset -20px 0 60px rgba(255, 255, 255, 0.06),
+		inset 20px 0 60px rgba(255, 255, 255, 0.06),
+		/* Radial glass highlight in center */
+		inset 0 0 100px rgba(255, 255, 255, 0.03),
+		/* Bezel highlight */
+		inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+	/* Subtle convex CRT screen effect - reduced to prevent leaks */
+	transform: perspective(1200px) rotateX(1.5deg);
+	transform-origin: center center;
+	/* Ensure no overflow - strict clipping */
+	overflow: hidden;
+	clip-path: inset(0 round inherit);
+	/* Mask to contain curve effect */
+	mask-image: radial-gradient(ellipse 99% 99% at 50% 50%, black 98%, transparent 100%);
+	-webkit-mask-image: radial-gradient(ellipse 99% 99% at 50% 50%, black 98%, transparent 100%);
+	contain: strict; /* Strict containment */
+}
+
+/* Fullscreen tv-screen - fill viewport with subtle CRT effect */
+.tv-frame-container:fullscreen .tv-screen,
+.tv-frame-container:-webkit-full-screen .tv-screen,
+.tv-frame-container:-moz-full-screen .tv-screen,
+.tv-frame-container:-ms-fullscreen .tv-screen {
+	width: 100% !important;
+	height: 100% !important;
+	border: none !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	background: #000 !important;
+	/* Subtle CRT convex effect */
+	transform: perspective(2000px) rotateX(0.3deg) !important;
+}
+
+/* Convex screen content wrapper - creates the curved glass effect */
+/* Respects 4:3 aspect ratio bounds */
+.tv-screen > * {
+	/* Subtle convex curve to match CRT glass - reduced to prevent leaks */
+	transform: perspective(800px) rotateX(-1.5deg) scale(0.99);
+	transform-origin: center center;
+	width: 100%;
+	height: 100%;
+	/* Rounded corners matching screen */
+	border-radius: clamp(4px, 0.6vw, 8px);
+	/* Add subtle barrel distortion effect */
+	overflow: hidden !important; /* Prevent leaks */
+	/* Ensure content respects screen bounds */
+	position: relative;
+	max-width: 100%;
+	max-height: 100%;
+	/* Clip content to prevent edge leaks - aggressive clipping */
+	clip-path: inset(1px round clamp(4px, 0.6vw, 8px)); /* 1px inset for tighter edge containment */
+	/* Tight mask for edge containment - tighter at edges */
+	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 90%, transparent 96%);
+	mask-composite: intersect;
+	-webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 90%, transparent 96%);
+	-webkit-mask-composite: source-in;
+	contain: layout style paint;
+	/* Prevent 3D transforms from extending beyond */
+	transform-style: flat;
+	/* Additional edge containment */
+	margin: 0;
+	padding: 0;
+}
+
+/* Remove transform in fullscreen for content */
+.tv-frame-container:fullscreen .tv-screen > *,
+.tv-frame-container:-webkit-full-screen .tv-screen > *,
+.tv-frame-container:-moz-full-screen .tv-screen > *,
+.tv-frame-container:-ms-fullscreen .tv-screen > * {
+	transform: none;
+	border-radius: 0;
+}
+
+/* Bottom control bar - realistic recessed panel */
+.tv-control-bar {
+	width: 100%;
+	flex: 0 0 auto;
+	margin-top: clamp(10px, 1.2vh, 14px);
+	padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
+	border-radius: clamp(8px, 1vw, 12px);
+	/* Dark plastic control panel - slightly lighter than frame */
+	background: 
+		linear-gradient(180deg, 
+			#3d3f41 0%,
+			#323436 25%,
+			#2a2c2e 60%,
+			#222426 100%
+		),
+		/* Subtle top highlight */
+		linear-gradient(180deg,
+			rgba(255, 255, 255, 0.1) 0%,
+			rgba(255, 255, 255, 0.04) 25%,
+			transparent 65%
+		);
+	/* Recessed appearance - dark plastic */
+	box-shadow:
+		inset 0 2px 6px rgba(255, 255, 255, 0.08),
+		inset 0 -3px 8px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 2px rgba(0, 0, 0, 0.4),
+		0 2px 8px rgba(0, 0, 0, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: clamp(10px, 1.5vw, 16px);
+	position: relative;
+}
+
+/* Subtle texture overlay on control bar */
+.tv-control-bar::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: repeating-linear-gradient(
+		0deg,
+		transparent 0px,
+		transparent 1px,
+		rgba(0, 0, 0, 0.02) 1px,
+		rgba(0, 0, 0, 0.02) 2px
+	);
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.tv-control-buttons {
+	display: flex;
+	align-items: center;
+	gap: clamp(6px, 0.8vw, 10px);
+	position: relative;
+	z-index: 1;
+}
+
+.tv-btn {
+	width: clamp(20px, 2.2vw, 24px);
+	height: clamp(20px, 2.2vw, 24px);
+	border-radius: 50%;
+	border: none;
+	/* Dark plastic concave button */
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.12) 0%,
+		#4a4c4e 25%,
+		#353739 60%,
+		#252729 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.1),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 1px 3px rgba(0, 0, 0, 0.5);
+	position: relative;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	-webkit-tap-highlight-color: transparent;
+	outline: none;
+}
+
+.tv-btn:hover {
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.18) 0%,
+		#4f5153 25%,
+		#3a3c3e 60%,
+		#2d2f31 100%
+	);
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.15),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 2px 5px rgba(0, 0, 0, 0.6);
+	transform: scale(1.05);
+}
+
+.tv-btn:active {
+	transform: scale(0.95);
+	box-shadow:
+		inset 0 3px 6px rgba(0, 0, 0, 0.7),
+		inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.tv-btn:focus {
+	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline-offset: 2px;
+}
+
+/* Button highlight - subtle for dark plastic */
+.tv-btn::before {
+	content: "";
+	position: absolute;
+	top: 20%;
+	left: 20%;
+	width: 35%;
+	height: 35%;
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+	pointer-events: none;
+}
+
+.tv-btn.small {
+	width: clamp(16px, 1.8vw, 20px);
+	height: clamp(16px, 1.8vw, 20px);
+}
+
+.tv-btn.power {
+	/* Power button - slightly larger and more prominent */
+	width: clamp(24px, 2.6vw, 28px);
+	height: clamp(24px, 2.6vw, 28px);
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.15) 0%,
+		#4f5153 25%,
+		#3a3c3e 60%,
+		#2a2c2e 100%
+	);
+	box-shadow:
+		inset 0 2px 5px rgba(255, 255, 255, 0.12),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.65),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.tv-btn.power:hover {
+	background: radial-gradient(circle at 35% 35%, 
+		rgba(255, 255, 255, 0.2) 0%,
+		#555759 25%,
+		#404244 60%,
+		#323436 100%
+	);
+	box-shadow:
+		inset 0 2px 5px rgba(255, 255, 255, 0.15),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.55),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.tv-btn.power:active {
+	transform: scale(0.95);
+	box-shadow:
+		inset 0 3px 7px rgba(0, 0, 0, 0.75),
+		inset 0 -1px 3px rgba(255, 255, 255, 0.05),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Power symbol (optional - can be added via JSX) */
+.tv-btn.power::after {
+	content: "⚫";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: clamp(8px, 1vw, 10px);
+	color: #a0a0a0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+
+.tv-off-screen {
+	width: 100%;
+	height: 100%;
+	background: 
+		radial-gradient(ellipse at center, #222 0%, #000 70%),
+		repeating-linear-gradient(
+			0deg,
+			rgba(0, 0, 0, 0.15) 0px,
+			rgba(0, 0, 0, 0.15) 1px,
+			transparent 1px,
+			transparent 2px
+		);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	/* Convex effect for off screen too */
+	transform: perspective(800px) rotateX(-0.5deg);
+	transform-origin: center center;
+}
+
+.tv-off-message {
+	font-size: 12px;
+	color: #b8956a;
+	text-shadow: 
+		0 0 8px rgba(184, 149, 106, 0.6),
+		0 0 15px rgba(184, 149, 106, 0.4),
+		0 0 25px rgba(184, 149, 106, 0.2);
+	opacity: 0.9; /* Static - no animation */
+	z-index: 10;
+}
