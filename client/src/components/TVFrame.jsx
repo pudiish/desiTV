@@ -242,10 +242,12 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			ref={tvFrameRef} 
 			onDoubleClick={toggleFullscreen}
 			onTouchEnd={handleTouchEnd}
-			onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
-			onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
 		>
-			<div className="tv-frame">
+			<div 
+				className="tv-frame"
+				onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
+				onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
+			>
 				<div className="tv-screen" onClick={handleScreenClick}>
 					{!power ? (
 						<div className="tv-off-screen">
@@ -355,12 +357,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				/>
 			)}
 
-			{/* Hide status and hints in fullscreen */}
-			{!isFullscreen && (
-				<div className="tv-status-indicator">
-					{statusMessage || "WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY."}
-				</div>
-			)}
 			{/* Minimal exit hint in fullscreen - positioned at bottom */}
 			{isFullscreen && (
 				<div 

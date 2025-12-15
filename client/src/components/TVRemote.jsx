@@ -231,14 +231,34 @@ export default function TVRemote({
 				{/* Channel/Volume Controls */}
 				<div className="dpad-section">
 					<div className="dpad">
-						<button
-							className="remote-btn dpad-btn up"
-							onClick={() => { playButtonSound(); onChannelUp(); }}
-							disabled={!power}
-							title="Channel Up (↑)"
-						>
-							CH▲
-						</button>
+						{/* Top Row: Category Up | Channel Up | Category Down */}
+						<div className="dpad-top-row">
+							<button
+								className="remote-btn category-btn left"
+								onClick={() => { playButtonSound(); onCategoryUp && onCategoryUp(); }}
+								disabled={!power || !onCategoryUp}
+								title="Category Up (Page Up)"
+							>
+								CAT▲
+							</button>
+							<button
+								className="remote-btn dpad-btn up"
+								onClick={() => { playButtonSound(); onChannelUp(); }}
+								disabled={!power}
+								title="Channel Up (↑)"
+							>
+								CH▲
+							</button>
+							<button
+								className="remote-btn category-btn right"
+								onClick={() => { playButtonSound(); onCategoryDown && onCategoryDown(); }}
+								disabled={!power || !onCategoryDown}
+								title="Category Down (Page Down)"
+							>
+								CAT▼
+							</button>
+						</div>
+						{/* Middle Row: Volume Down | Menu | Volume Up */}
 						<div className="dpad-middle">
 							<button
 								className="remote-btn dpad-btn left"
@@ -265,6 +285,7 @@ export default function TVRemote({
 								VOL+
 							</button>
 						</div>
+						{/* Bottom Row: Channel Down */}
 						<button
 							className="remote-btn dpad-btn down"
 							onClick={() => { playButtonSound(); onChannelDown(); }}
@@ -272,29 +293,6 @@ export default function TVRemote({
 							title="Channel Down (↓)"
 						>
 							CH▼
-						</button>
-					</div>
-				</div>
-
-				{/* Category Controls */}
-				<div className="category-section">
-					<div className="category-label">CATEGORY</div>
-					<div className="category-buttons">
-						<button
-							className="remote-btn category-btn up"
-							onClick={() => { playButtonSound(); onCategoryUp && onCategoryUp(); }}
-							disabled={!power || !onCategoryUp}
-							title="Category Up (Page Up)"
-						>
-							CAT▲
-						</button>
-						<button
-							className="remote-btn category-btn down"
-							onClick={() => { playButtonSound(); onCategoryDown && onCategoryDown(); }}
-							disabled={!power || !onCategoryDown}
-							title="Category Down (Page Down)"
-						>
-							CAT▼
 						</button>
 					</div>
 				</div>

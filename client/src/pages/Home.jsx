@@ -124,6 +124,7 @@ export default function Home() {
 		}
 	}, [])
 
+
 	// Save session when key state changes
 	useEffect(() => {
 		if (sessionRestored) {
@@ -595,6 +596,7 @@ export default function Home() {
 	}
 
 		return (
+		<>
 		<div className="main-container">
 			{/* Global glass overlay covering window while keeping remote above */}
 			<div className="glass-full-overlay" aria-hidden="true" />
@@ -728,5 +730,6 @@ export default function Home() {
 			</div>
 
 		</div>
+		</>
 	)
 }

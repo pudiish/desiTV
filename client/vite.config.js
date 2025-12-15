@@ -69,7 +69,7 @@ export default defineConfig(({ mode }) => {
     // Resolve configuration - using standard React (no Preact aliasing)
     resolve: {
       alias: {
-        // No aliasing needed - using standard React
+        '@': path.resolve(__dirname, './src'),
       },
     },
     
