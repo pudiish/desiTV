@@ -230,6 +230,8 @@ body.ios-fullscreen-active {
 	padding: 0 !important;
 	margin: 0 !important;
 	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
 	align-items: stretch !important;
 	justify-content: stretch !important;
 	overflow: hidden !important;
@@ -341,15 +343,25 @@ body.ios-fullscreen-active::-webkit-scrollbar {
 
 body.ios-fullscreen-active .main-container,
 html.ios-fullscreen-active .main-container {
-	display: none !important;
+	overflow: hidden !important;
 }
 
+/* Don't hide content-wrapper - we need TV frame container to be visible */
+/* Hide only the right panel and other non-TV elements */
 body.ios-fullscreen-active .content-wrapper,
 html.ios-fullscreen-active .content-wrapper {
-	display: none !important;
+	position: relative !important;
+	overflow: visible !important;
+	/* Allow TV frame container to break out */
 }
 
 body.ios-fullscreen-active .right-panel {
+	display: none !important;
+}
+
+/* Hide other content in content-wrapper except TV frame container */
+body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container),
+html.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 	display: none !important;
 }
 
@@ -447,12 +459,7 @@ body.ios-fullscreen-active .right-panel {
 	position: relative !important;
 }
 
-/* Ensure TV frame is visible in fullscreen */
-.tv-frame-container.ios-fullscreen-active {
-	display: flex !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-}
+/* Ensure TV frame is visible in fullscreen - duplicate removed, already defined above */
 
 /* Safe area handling for notched devices */
 @supports (padding: env(safe-area-inset-top)) {
