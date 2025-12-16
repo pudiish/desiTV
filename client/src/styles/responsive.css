@@ -110,110 +110,82 @@
 	}
 }
 
-/* Tablet Portrait / Large Mobile (600px - 767px) - Modern Full-Screen Design */
+/* Tablet Portrait / Large Mobile (600px - 767px) - Stack vertically */
 @media (max-width: 767px) {
 	.main-container {
-		height: 100vh;
-		height: 100dvh;
+		height: auto;
 		min-height: 100vh;
 		min-height: 100dvh;
-		overflow: hidden;
+		overflow-y: auto;
 		overflow-x: hidden;
-		position: relative;
-		display: flex;
-		flex-direction: column;
 	}
 	
 	.content-wrapper {
 		flex-direction: column;
-		gap: 0;
-		padding: 0;
-		justify-content: center;
-		align-items: stretch;
-		overflow: hidden;
-		min-height: 100%;
+		gap: 12px;
+		padding: 8px;
+		justify-content: flex-start;
+		align-items: center;
+		overflow: visible;
+		min-height: auto;
 		width: 100%;
 		max-width: 100%;
-		flex: 1;
-		position: relative;
 	}
 	
 	.tv-frame-container {
 		width: 100%;
 		max-width: 100%;
-		order: 1;
-		flex: 1 1 auto;
-		display: flex !important;
-		align-items: center;
-		justify-content: center;
+		order: 1; /* TV shows first */
+		flex: 0 0 auto; /* Don't flex - fixed size based on constraints */
 		min-width: 0;
-		min-height: calc(100vh - 120px);
-		min-height: calc(100dvh - 120px);
-		max-height: 100%;
-		padding: 0;
-		position: relative;
-		overflow: visible;
+		min-height: 0;
+		/* Limit TV frame height to leave room for remote */
+		max-height: 55vh; /* Max 55% of viewport height */
+		max-width: 100vw;
+		padding: 0 8px;
 	}
 	
 	.tv-frame {
-		/* Maximize TV frame on mobile - ensure it's visible */
-		width: 100vw !important;
-		max-width: 100vw !important;
-		height: calc(100vw * 0.5625) !important; /* 16:9 aspect ratio */
-		max-height: calc(100vh - 100px) !important;
-		max-height: calc(100dvh - 100px) !important;
-		min-height: 200px !important;
-		aspect-ratio: 16/9 !important;
+		/* Responsive on mobile - constrained size to fit screen */
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
+		max-height: 100% !important;
+		aspect-ratio: 4/3 !important;
 		min-width: 0 !important;
-		flex: 0 0 auto !important;
-		display: block !important;
-		visibility: visible !important;
-		opacity: 1 !important;
-		/* Minimal bezels for maximum screen space */
-		padding: 8px !important;
+		min-height: 0 !important;
+		flex: 0 0 auto !important; /* Don't flex - use constraints */
+		/* Constant CRT bezels - same proportions as desktop */
+		padding: 2.5% 5% 3.5% 5% !important;
 		border-radius: 8px;
-		box-shadow: 
-			0 20px 60px rgba(0, 0, 0, 0.5),
-			0 0 0 1px rgba(255, 255, 255, 0.05);
-		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-		            box-shadow 0.3s ease;
-		margin: 0 auto;
-	}
-	
-	.tv-frame-container:active .tv-frame {
-		transform: scale(0.99);
 	}
 	
 	/* Fallback for browsers without aspect-ratio */
-	@supports not (aspect-ratio: 16/9) {
+	@supports not (aspect-ratio: 4/3) {
 		.tv-frame-container {
-			min-height: calc(100vh - 120px);
-			min-height: calc(100dvh - 120px);
+			max-height: 55vh;
 		}
 		.tv-frame {
-			height: calc(100vw * 0.5625) !important; /* 16:9 ratio */
-			max-height: calc(100vh - 100px) !important;
-			max-height: calc(100dvh - 100px) !important;
-			min-height: 200px !important;
+			height: calc((100vw - 16px) * 0.75); /* Account for padding */
+			max-height: 55vh;
 		}
 	}
 	
-	.tv-screen {
-		width: 100% !important;
-		height: 100% !important;
-		min-height: 100% !important;
-		display: block !important;
-		visibility: visible !important;
-	}
-	
-	/* Hide right panel completely on mobile - controls are in TV frame */
 	.right-panel {
-		display: none !important;
+		width: 100%;
+		max-width: 280px;
+		height: auto;
+		max-height: none;
+		order: 2; /* Remote shows second */
+		flex-shrink: 0;
+		flex-grow: 0;
+		margin-bottom: 50px; /* Space for fixed footer */
+		padding: 0 8px;
 	}
 	
-	/* Remove bottom padding - not needed */
+	/* Add bottom padding to main container for fixed footer */
 	.main-container {
-		padding-bottom: 0;
+		padding-bottom: 50px;
 	}
 	
 	.remote-body {
@@ -273,139 +245,92 @@
 		display: none;
 	}
 	
-	/* Modern status bar for mobile */
 	.footer-status {
-		padding: 10px 16px;
-		padding-bottom: max(10px + env(safe-area-inset-bottom, 0), 16px);
+		padding: 8px 10px;
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
 		z-index: var(--z-menu);
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.85));
-		backdrop-filter: blur(20px) saturate(180%);
-		-webkit-backdrop-filter: blur(20px) saturate(180%);
-		border-top: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 	}
 	
 	.status-text {
-		font-size: 11px;
-		letter-spacing: 0.3px;
-		text-align: center;
-		color: rgba(255, 255, 255, 0.9);
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+		font-size: 7px;
 	}
 }
 
-/* Small Mobile (< 600px) - Optimized for smaller screens */
+/* Small Mobile (< 600px) */
 @media (max-width: 599px) {
 	.main-container {
-		height: 100vh;
-		height: 100dvh;
 		min-height: 100vh;
 		min-height: 100dvh;
-		overflow: hidden;
+		height: auto;
+		overflow-y: auto;
 		overflow-x: hidden;
-		position: relative;
-		display: flex;
-		flex-direction: column;
 	}
 	
 	.content-wrapper {
-		padding: 0;
-		gap: 0;
+		padding: 6px;
+		gap: 10px;
 		flex-direction: column;
-		overflow: hidden;
+		overflow: visible;
 		width: 100%;
 		max-width: 100%;
-		flex: 1;
-		justify-content: center;
-		align-items: stretch;
-		min-height: 100%;
-		position: relative;
 	}
 	
 	.tv-frame-container {
 		order: 1;
 		width: 100%;
 		max-width: 100%;
-		flex: 1 1 auto;
-		display: flex !important;
-		align-items: center;
-		justify-content: center;
+		flex: 0 0 auto; /* Don't flex - use constraints */
 		min-width: 0;
-		min-height: calc(100vh - 100px);
-		min-height: calc(100dvh - 100px);
-		max-height: 100%;
-		padding: 0;
-		overflow: visible;
+		min-height: 0;
+		/* Limit TV frame height to leave room for remote on small screens */
+		max-height: 50vh; /* Max 50% of viewport height */
+		padding: 0 6px;
 	}
 	
 	.tv-frame {
-		/* Full-screen optimized TV frame - ensure visibility */
-		width: 100vw !important;
-		max-width: 100vw !important;
-		height: calc(100vw * 0.5625) !important;
-		max-height: calc(100vh - 80px) !important;
-		max-height: calc(100dvh - 80px) !important;
-		min-height: 180px !important;
-		aspect-ratio: 16/9 !important;
+		/* Responsive on small mobile - constrained size to fit screen */
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
+		max-height: 100% !important;
+		aspect-ratio: 4/3 !important;
 		min-width: 0 !important;
-		flex: 0 0 auto !important;
-		display: block !important;
-		visibility: visible !important;
-		opacity: 1 !important;
-		/* Minimal bezels */
-		padding: 6px !important;
-		border-radius: 8px;
-		box-shadow: 
-			0 16px 48px rgba(0, 0, 0, 0.5),
-			0 0 0 1px rgba(255, 255, 255, 0.05);
-		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-		            box-shadow 0.3s ease;
-		margin: 0 auto;
-	}
-	
-	.tv-frame-container:active .tv-frame {
-		transform: scale(0.99);
+		min-height: 0 !important;
+		flex: 0 0 auto !important; /* Don't flex - use constraints */
+		/* Constant CRT bezels - same proportions as desktop */
+		padding: 2.5% 5% 3.5% 5% !important;
+		border-radius: 6px;
 	}
 	
 	/* Fallback for browsers without aspect-ratio */
-	@supports not (aspect-ratio: 16/9) {
+	@supports not (aspect-ratio: 4/3) {
 		.tv-frame-container {
-			min-height: calc(100vh - 100px);
-			min-height: calc(100dvh - 100px);
+			max-height: 50vh;
 		}
 		.tv-frame {
-			height: calc(100vw * 0.5625) !important;
-			max-height: calc(100vh - 80px) !important;
-			max-height: calc(100dvh - 80px) !important;
-			min-height: 180px !important;
+			height: calc((100vw - 12px) * 0.75); /* Account for padding */
+			max-height: 50vh;
 		}
 	}
 	
 	.tv-screen {
-		width: 100% !important;
-		height: 100% !important;
-		min-height: 100% !important;
-		display: block !important;
-		visibility: visible !important;
+		border-radius: 4px;
+		border: 1.8% solid #000000 !important; /* Black border, no white */
 	}
 	
-	.tv-screen {
-		border-radius: 6px;
-		border: 1.5% solid #000000 !important;
-	}
-	
-	/* Hide right panel completely */
 	.right-panel {
-		display: none !important;
+		order: 2;
+		max-width: 240px;
+		margin-bottom: 50px; /* Space for fixed footer */
+		padding: 0 6px;
 	}
 	
-	/* No bottom padding needed */
+	/* Add bottom padding to main container for fixed footer */
 	.main-container {
-		padding-bottom: 0;
+		padding-bottom: 50px;
 	}
 	
 	/* Remote styles removed - controls are in TV frame on mobile */
@@ -523,26 +448,16 @@
 	}
 	
 	.footer-status {
-		padding: 8px 12px;
-		padding-bottom: max(8px + env(safe-area-inset-bottom, 0), 14px);
+		padding: 5px 8px;
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
 		z-index: var(--z-menu);
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.85));
-		backdrop-filter: blur(20px) saturate(180%);
-		-webkit-backdrop-filter: blur(20px) saturate(180%);
-		border-top: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 	}
 	
 	.status-text {
-		font-size: 10px;
-		letter-spacing: 0.2px;
-		text-align: center;
-		color: rgba(255, 255, 255, 0.9);
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+		font-size: 6px;
 	}
 }
 
@@ -1633,3 +1548,5 @@ transparent 2px
 		font-size: 20px;
 	}
 }
+
+
