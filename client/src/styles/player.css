@@ -122,8 +122,16 @@
 	touch-action: manipulation;
 }
 
-/* ===== MOBILE-FIRST REMOTE OVERLAY REDESIGN ===== */
+/* ===== MOBILE-FIRST REMOTE OVERLAY REDESIGN - HIDDEN ON MOBILE ===== */
 @media (max-width: 768px) {
+	/* Hide remote overlay completely on mobile - use TV frame buttons instead */
+	.remote-overlay {
+		display: none !important;
+	}
+	
+	.mobile-remote-toggle {
+		display: none !important;
+	}
 	.remote-trigger-sensor {
 		width: 60px !important;
 	}
