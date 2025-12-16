@@ -31,6 +31,111 @@ body.ios-fullscreen-active .tv-menu-overlay {
 	opacity: 0 !important;
 }
 
+/* Mobile: Full-screen menu with touch-optimized controls */
+@media (max-width: 768px) {
+	.tv-menu-overlay {
+		background: rgba(0, 0, 0, 0.95);
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+		padding: max(env(safe-area-inset-top, 0), 12px) 
+		         max(env(safe-area-inset-right, 0), 12px) 
+		         max(env(safe-area-inset-bottom, 0), 12px) 
+		         max(env(safe-area-inset-left, 0), 12px);
+	}
+	
+	.tv-menu {
+		width: 100%;
+		max-width: 100%;
+		max-height: 100vh;
+		max-height: 100dvh;
+		border-radius: 0;
+		border-left: none;
+		border-right: none;
+		border-top: 2px solid var(--color-primary);
+		border-bottom: 2px solid var(--color-primary);
+		box-shadow: none;
+		display: flex;
+		flex-direction: column;
+	}
+	
+	.tv-menu-header {
+		padding: 16px 20px;
+		flex-shrink: 0;
+		border-bottom-width: 1px;
+	}
+	
+	.menu-close-btn {
+		width: 44px;
+		height: 44px;
+		min-width: 44px;
+		min-height: 44px;
+		font-size: 20px;
+		border-radius: 12px;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		transition: all 0.2s ease;
+	}
+	
+	.menu-close-btn:active {
+		transform: scale(0.92);
+	}
+	
+	.menu-content {
+		flex: 1;
+		overflow-y: auto;
+		overflow-x: hidden;
+		-webkit-overflow-scrolling: touch;
+		padding: 16px;
+	}
+	
+	.channel-grid {
+		gap: 12px;
+		padding: 8px 0;
+	}
+	
+	.channel-item {
+		padding: 16px;
+		min-height: 60px;
+		border-radius: 12px;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	
+	.channel-item:active {
+		transform: scale(0.98);
+	}
+	
+	.channel-number {
+		font-size: 20px;
+	}
+	
+	.channel-name {
+		font-size: 16px;
+	}
+	
+	.menu-footer {
+		padding: 16px 20px;
+		flex-shrink: 0;
+		border-top-width: 1px;
+		gap: 12px;
+	}
+	
+	.menu-footer-btn {
+		padding: 14px 20px;
+		min-height: 48px;
+		font-size: 16px;
+		border-radius: 12px;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		transition: all 0.2s ease;
+	}
+	
+	.menu-footer-btn:active {
+		transform: scale(0.96);
+	}
+}
+
 @keyframes menu-fade-in {
 	from { opacity: 0; }
 	to { opacity: 1; }
