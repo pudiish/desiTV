@@ -14,6 +14,19 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 	const tapHandlerRef = useRef(null)
 	const lastTapRef = useRef(0)
 	const doubleTapTimeoutRef = useRef(null)
+	
+	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
+	const isActuallyFullscreen = () => {
+		return !!(
+			isFullscreen ||
+			document.fullscreenElement ||
+			document.webkitFullscreenElement ||
+			document.mozFullScreenElement ||
+			document.msFullscreenElement ||
+			document.body.classList.contains('ios-fullscreen-active') ||
+			(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
+		)
+	}
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -39,12 +52,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
 
-		// Check if currently in fullscreen
+		// Check if currently in fullscreen (including iOS CSS fullscreen)
 		const isCurrentlyFullscreen = !!(
 			document.fullscreenElement ||
 			document.webkitFullscreenElement ||
 			document.mozFullScreenElement ||
-			document.msFullscreenElement
+			document.msFullscreenElement ||
+			document.body.classList.contains('ios-fullscreen-active') ||
+			(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
 		)
 
 		try {
@@ -65,6 +80,11 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					if (tvFrameRef.current) {
 						tvFrameRef.current.classList.remove('ios-fullscreen-active')
 					}
+					// Manually update fullscreen state for iOS
+					setIsFullscreen(false)
+					if (onFullscreenChange) {
+						onFullscreenChange(false)
+					}
 				}
 			} else {
 				if (isIOS) {
@@ -77,6 +97,11 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 						if (tvFrameRef.current) {
 							tvFrameRef.current.classList.add('ios-fullscreen-active')
 						}
+						// Manually update fullscreen state for iOS
+						setIsFullscreen(true)
+						if (onFullscreenChange) {
+							onFullscreenChange(true)
+						}
 						// Try to access YouTube iframe's video element for native fullscreen
 						const iframe = iframeContainer.querySelector('iframe')
 						if (iframe && iframe.contentWindow) {
@@ -86,6 +111,11 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 								const video = iframeDoc?.querySelector('video')
 								if (video && video.webkitEnterFullscreen) {
 									video.webkitEnterFullscreen()
+									// Still set state in case webkitEnterFullscreen doesn't work
+									setIsFullscreen(true)
+									if (onFullscreenChange) {
+										onFullscreenChange(true)
+									}
 									return
 								}
 							} catch (e) {
@@ -582,7 +612,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}
-			{isFullscreen && (
+			{isActuallyFullscreen() && (
 				<div
 					className="remote-trigger-sensor"
 					style={{
@@ -617,7 +647,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			)}
 			
 			{/* Mobile: Bottom center button to toggle remote */}
-			{isFullscreen && (
+			{isActuallyFullscreen() && (
 				<button
 					className="mobile-remote-toggle"
 					onClick={(e) => {
@@ -637,7 +667,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			)}
 
 			{/* Minimal exit hint in fullscreen - positioned at bottom */}
-			{isFullscreen && (
+			{isActuallyFullscreen() && (
 				<div 
 					className="fullscreen-exit-hint"
 					style={{
@@ -659,7 +689,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			)}
 			
 			{/* Remote overlay portal - renders inside fullscreen container */}
-			{isFullscreen && tvFrameRef.current && remoteOverlayComponent && createPortal(
+			{isActuallyFullscreen() && tvFrameRef.current && remoteOverlayComponent && createPortal(
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
 					onTouchStart={(e) => e.stopPropagation()}
