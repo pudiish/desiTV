@@ -475,7 +475,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Channel Down"
 							aria-label="Channel Down"
 						>
-							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<polyline points="18 15 12 9 6 15"></polyline>
 							</svg>
 						</button>
@@ -486,8 +486,30 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Channel Up"
 							aria-label="Channel Up"
 						>
-							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<polyline points="6 9 12 15 18 9"></polyline>
+							</svg>
+						</button>
+						<button 
+							className="tv-btn small channel-prev" 
+							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
+							title="Previous Channel"
+							aria-label="Previous Channel"
+						>
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+								<polyline points="15 18 9 12 15 6"></polyline>
+							</svg>
+						</button>
+						<button 
+							className="tv-btn small channel-next" 
+							onClick={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
+							title="Next Channel"
+							aria-label="Next Channel"
+						>
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+								<polyline points="9 18 15 12 9 6"></polyline>
 							</svg>
 						</button>
 						<button 
@@ -497,7 +519,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Volume Down"
 							aria-label="Volume Down"
 						>
-							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
 								<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
 								<line x1="15" y1="12" x2="23" y2="12"></line>
@@ -510,7 +532,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Volume Up"
 							aria-label="Volume Up"
 						>
-							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
 								<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
 							</svg>
@@ -522,7 +544,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Mute"
 							aria-label="Mute"
 						>
-							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
 								<line x1="23" y1="9" x2="17" y2="15"></line>
 								<line x1="17" y1="9" x2="23" y2="15"></line>
@@ -535,7 +557,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Fullscreen"
 							aria-label="Fullscreen"
 						>
-							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
 							</svg>
 						</button>
@@ -546,7 +568,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							title="Power"
 							aria-label="Power"
 						>
-							<svg className="btn-icon power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+							<svg className="btn-icon power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 								<path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
 								<line x1="12" y1="2" x2="12" y2="12"></line>
 							</svg>
