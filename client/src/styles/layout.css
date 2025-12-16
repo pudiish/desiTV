@@ -82,6 +82,21 @@
 	filter: none;
 }
 
+.tv-frame-container:focus,
+.tv-frame-container:active,
+.tv-frame-container:focus-visible {
+	outline: none !important;
+	box-shadow: none !important;
+	filter: none !important;
+}
+
+.tv-frame-container .tv-frame:focus,
+.tv-frame-container .tv-frame:active,
+.tv-frame-container .tv-frame:focus-visible {
+	outline: none !important;
+	box-shadow: none !important;
+}
+
 .tv-frame-container .tv-frame {
 	position: relative;
 	z-index: var(--z-base);

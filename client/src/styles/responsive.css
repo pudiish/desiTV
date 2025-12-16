@@ -680,10 +680,28 @@
 		height: 44px;
 	}
 	
-	/* Disable hover effects on touch */
+	/* Disable hover effects on touch - no glow */
 	.tv-frame-container:hover {
 		transform: none;
-		filter: drop-shadow(0 0 40px rgba(128, 128, 128, 0.4));
+		filter: none !important;
+	}
+	
+	/* Remove focus/active glow on mobile */
+	.tv-frame-container:focus,
+	.tv-frame-container:active,
+	.tv-frame-container:focus-visible,
+	.tv-frame-container:focus-within {
+		outline: none !important;
+		box-shadow: none !important;
+		filter: none !important;
+		-webkit-tap-highlight-color: transparent !important;
+	}
+	
+	.tv-frame-container .tv-frame:focus,
+	.tv-frame-container .tv-frame:active,
+	.tv-frame-container .tv-frame:focus-visible {
+		outline: none !important;
+		box-shadow: none !important;
 	}
 	
 	/* Better scrolling in menu */
