@@ -827,10 +827,6 @@
 		right: max(0px, env(safe-area-inset-right));
 		bottom: max(20px, env(safe-area-inset-bottom));
 	}
-	
-	.fullscreen-exit-hint {
-		bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px)) !important;
-	}
 }
 
 /* CRT Info Overlay - Channel and Volume Display */

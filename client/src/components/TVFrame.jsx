@@ -220,10 +220,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			const isIOSFullscreen = document.body.classList.contains('ios-fullscreen-active')
 			if (!isIOSFullscreen) return
 
-			// Don't interfere with remote overlay or exit button
+			// Don't interfere with remote overlay or toggle button
 			const target = e.target
 			if (target.closest('.remote-overlay') || 
-				target.closest('.ios-exit-fullscreen-btn') ||
 				target.closest('.mobile-remote-toggle') ||
 				target.closest('.remote-trigger-sensor')) {
 				return
@@ -466,25 +465,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			onDoubleClick={toggleFullscreen}
 			onTouchEnd={handleTouchEnd}
 		>
-			{/* iOS Fullscreen Exit Button */}
-			{isIOS && isFullscreen && (
-				<button
-					className="ios-exit-fullscreen-btn"
-					onClick={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						toggleFullscreen()
-					}}
-					onTouchEnd={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						toggleFullscreen()
-					}}
-					aria-label="Exit Fullscreen"
-				>
-					✕ EXIT
-				</button>
-			)}
 			<div 
 				className="tv-frame"
 				onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
@@ -666,27 +646,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				</button>
 			)}
 
-			{/* Minimal exit hint in fullscreen - positioned at bottom */}
-			{isActuallyFullscreen() && (
-				<div 
-					className="fullscreen-exit-hint"
-					style={{
-						position: 'fixed',
-						bottom: '20px',
-						left: '50%',
-						transform: 'translateX(-50%)',
-						fontSize: '12px',
-						color: 'rgba(255,255,255,0.5)',
-						textAlign: 'center',
-						zIndex: 9999,
-						pointerEvents: 'none',
-						opacity: 0.7,
-						transition: 'opacity 0.3s ease'
-					}}
-				>
-					Double tap to exit
-				</div>
-			)}
 			
 			{/* Remote overlay portal - renders inside fullscreen container */}
 			{isActuallyFullscreen() && tvFrameRef.current && remoteOverlayComponent && createPortal(
