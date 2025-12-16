@@ -140,10 +140,10 @@ function AppRoutes() {
       <Galaxy 
         className="galaxy-background"
         transparent={true}
-        density={1.2}
+        density={0.5}
         hueShift={140}
-        glowIntensity={0.4}
-        twinkleIntensity={0.5}
+        glowIntensity={0.15}
+        twinkleIntensity={0.3}
         rotationSpeed={0.05}
         mouseRepulsion={true}
         repulsionStrength={2}
