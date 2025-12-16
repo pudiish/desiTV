@@ -367,16 +367,6 @@ body.ios-fullscreen-active .remote-trigger-sensor,
 	pointer-events: auto !important;
 }
 
-	font-family: var(--font-primary);
-	animation: fade-in-out 4s ease-in-out;
-	letter-spacing: 1px;
-}
-
-@keyframes fade-in-out {
-	0%, 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-	15%, 85% { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
 
 /* Safe area handling for notched devices */
 @supports (padding: env(safe-area-inset-top)) {

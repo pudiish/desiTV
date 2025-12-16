@@ -9,11 +9,8 @@ import CRTInfoOverlay from './CRTInfoOverlay'
 export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
-	const [showFullscreenHint, setShowFullscreenHint] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
 	const tapHandlerRef = useRef(null)
-	const lastTapRef = useRef(0)
-	const doubleTapTimeoutRef = useRef(null)
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
@@ -194,121 +191,74 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		document.addEventListener('mozfullscreenchange', handleFullscreenChange)
 		document.addEventListener('MSFullscreenChange', handleFullscreenChange)
 
-		// Allow double-click anywhere (document) to exit fullscreen when active
-		const handleDocDblClick = () => {
+		// Exit fullscreen: double-click (desktop) or double-tap (mobile)
+		let lastTapTime = 0
+		let tapTimeout = null
+		const DOUBLE_TAP_DELAY = 300
+
+		const handleExitFullscreen = (e) => {
 			const isCurrentlyFullscreen = !!(
 				document.fullscreenElement ||
 				document.webkitFullscreenElement ||
 				document.mozFullScreenElement ||
 				document.msFullscreenElement ||
-				document.body.classList.contains('ios-fullscreen-active') // iOS CSS fullscreen
+				document.body.classList.contains('ios-fullscreen-active') ||
+				(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
 			)
-			if (isCurrentlyFullscreen) {
-				toggleFullscreen()
-			}
-		}
-		document.addEventListener('dblclick', handleDocDblClick)
+			if (!isCurrentlyFullscreen) return
 
-		// iOS-specific: Handle double-tap on document level (iframe blocks container touches)
-		let lastTouchTime = 0
-		let touchTimeout = null
-		const DOUBLE_TAP_DELAY = 300
-
-		const handleDocTouchEnd = (e) => {
-			if (!isIOS) return
-			
-			const isIOSFullscreen = document.body.classList.contains('ios-fullscreen-active')
-			if (!isIOSFullscreen) return
-
-			// Don't interfere with remote overlay or toggle button
+			// Ignore if clicking on remote controls
 			const target = e.target
 			if (target.closest('.remote-overlay') || 
 				target.closest('.mobile-remote-toggle') ||
-				target.closest('.remote-trigger-sensor')) {
+				target.closest('.remote-trigger-sensor') ||
+				target.closest('button')) {
 				return
 			}
 
 			const now = Date.now()
+			const isTouch = e.type === 'touchend'
 			
-			// Check if target is the iframe or video (they block touches)
-			const isVideoElement = target.tagName === 'VIDEO' || 
-				target.tagName === 'IFRAME' ||
-				target.closest('iframe') ||
-				target.closest('#desitv-player-iframe')
-
-			if (isVideoElement && now - lastTouchTime < DOUBLE_TAP_DELAY) {
-				// Double tap detected on video/iframe - exit fullscreen
-				e.preventDefault()
-				e.stopPropagation()
-				toggleFullscreen()
-				lastTouchTime = 0
-				if (touchTimeout) {
-					clearTimeout(touchTimeout)
-					touchTimeout = null
-				}
-			} else if (isVideoElement) {
-				// First tap - wait for second tap
-				lastTouchTime = now
-				if (touchTimeout) {
-					clearTimeout(touchTimeout)
-				}
-				touchTimeout = setTimeout(() => {
-					lastTouchTime = 0
-					touchTimeout = null
-				}, DOUBLE_TAP_DELAY)
-			} else {
-				// Touch outside iframe - exit immediately (unless it's a button)
-				if (!target.closest('button') && !target.closest('.remote-overlay')) {
+			if (isTouch) {
+				// Mobile: Double-tap to exit
+				if (now - lastTapTime < DOUBLE_TAP_DELAY) {
 					e.preventDefault()
 					e.stopPropagation()
 					toggleFullscreen()
-					lastTouchTime = 0
-					if (touchTimeout) {
-						clearTimeout(touchTimeout)
-						touchTimeout = null
+					lastTapTime = 0
+					if (tapTimeout) {
+						clearTimeout(tapTimeout)
+						tapTimeout = null
 					}
+				} else {
+					lastTapTime = now
+					if (tapTimeout) clearTimeout(tapTimeout)
+					tapTimeout = setTimeout(() => {
+						lastTapTime = 0
+					}, DOUBLE_TAP_DELAY)
 				}
+			} else {
+				// Desktop: Double-click to exit
+				toggleFullscreen()
 			}
 		}
 
-		// iOS: Watch for class changes on body AND container
+		document.addEventListener('dblclick', handleExitFullscreen)
+		document.addEventListener('touchend', handleExitFullscreen, { passive: false, capture: true })
+
+		// iOS: Watch for CSS class changes (for iOS fullscreen detection)
 		let observer = null
 		if (isIOS) {
-			observer = new MutationObserver(() => {
-				handleFullscreenChange()
-			})
+			observer = new MutationObserver(handleFullscreenChange)
 			observer.observe(document.body, {
 				attributes: true,
 				attributeFilter: ['class']
 			})
-			
 			if (tvFrameRef.current) {
 				observer.observe(tvFrameRef.current, {
 					attributes: true,
 					attributeFilter: ['class']
 				})
-			}
-			
-			// Also poll for iOS fullscreen state (fallback)
-			const pollInterval = setInterval(() => {
-				handleFullscreenChange()
-			}, 500)
-			
-			// iOS touch handler
-			document.addEventListener('touchend', handleDocTouchEnd, { passive: false, capture: true })
-
-			return () => {
-				document.removeEventListener('fullscreenchange', handleFullscreenChange)
-				document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
-				document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
-				document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
-				document.removeEventListener('dblclick', handleDocDblClick)
-				document.removeEventListener('touchend', handleDocTouchEnd, { capture: true })
-				if (observer) observer.disconnect()
-				clearInterval(pollInterval)
-				if (touchTimeout) {
-					clearTimeout(touchTimeout)
-				}
 			}
 		}
 
@@ -317,7 +267,10 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
 			document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
 			document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
-			document.removeEventListener('dblclick', handleDocDblClick)
+			document.removeEventListener('dblclick', handleExitFullscreen)
+			document.removeEventListener('touchend', handleExitFullscreen, { capture: true })
+			if (observer) observer.disconnect()
+			if (tapTimeout) clearTimeout(tapTimeout)
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
@@ -410,65 +363,16 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [power])
 
-	// Handle double-tap for mobile fullscreen toggle
-	const handleTouchEnd = useCallback((e) => {
-		const now = Date.now()
-		const DOUBLE_TAP_DELAY = 300 // ms between taps
-		
-		// Check if iOS fullscreen is active - allow single tap to exit
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-		const isIOSFullscreen = document.body.classList.contains('ios-fullscreen-active')
-		
-		if (isIOS && isIOSFullscreen) {
-			// iOS: Single tap exits fullscreen
-			e.preventDefault()
-			toggleFullscreen()
-			lastTapRef.current = 0
-			if (doubleTapTimeoutRef.current) {
-				clearTimeout(doubleTapTimeoutRef.current)
-			}
-			return
-		}
-		
-		if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-			// Double tap detected
-			e.preventDefault()
-			toggleFullscreen()
-			lastTapRef.current = 0 // Reset
-			if (doubleTapTimeoutRef.current) {
-				clearTimeout(doubleTapTimeoutRef.current)
-			}
-		} else {
-			// First tap - wait for potential second tap
-			lastTapRef.current = now
-			
-			// Clear previous timeout
-			if (doubleTapTimeoutRef.current) {
-				clearTimeout(doubleTapTimeoutRef.current)
-			}
-			
-			// Set timeout to reset if no second tap
-			doubleTapTimeoutRef.current = setTimeout(() => {
-				lastTapRef.current = 0
-			}, DOUBLE_TAP_DELAY)
-		}
-	}, [toggleFullscreen])
-
-	const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
 	return (
 		<div 
 			className="tv-frame-container"
-			ref={tvFrameRef} 
-			onDoubleClick={toggleFullscreen}
-			onTouchEnd={handleTouchEnd}
+			ref={tvFrameRef}
 		>
 			<div 
 				className="tv-frame"
-				onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
-				onMouseLeave={() => { setShowFullscreenHint(false); setShowPreview(false); }}
+				onMouseEnter={() => { setShowPreview(true); }}
+				onMouseLeave={() => { setShowPreview(false); }}
 			>
 				<div className="tv-screen" onClick={handleScreenClick}>
 					{!power ? (
