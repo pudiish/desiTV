@@ -64,12 +64,74 @@
 	width: min(360px, 90vw);
 	max-width: 90vw;
 	opacity: 0;
+	touch-action: manipulation;
+	-webkit-overflow-scrolling: touch;
 }
 
 .remote-overlay.visible {
 	transform: translateX(0);
 	opacity: 1;
 	pointer-events: auto;
+}
+
+/* Mobile Remote Toggle Button */
+.mobile-remote-toggle {
+	position: fixed;
+	bottom: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.9);
+	border: 2px solid var(--color-primary);
+	border-radius: var(--radius-lg);
+	padding: var(--spacing-md) var(--spacing-xl);
+	font-size: 1.5rem;
+	z-index: calc(var(--z-remote-overlay) + 1);
+	cursor: pointer;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: rgba(74, 158, 255, 0.3);
+	transition: all 0.2s ease;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+	pointer-events: auto;
+}
+
+.mobile-remote-toggle:active {
+	background: rgba(74, 158, 255, 0.2);
+	transform: translateX(-50%) scale(0.95);
+}
+
+.mobile-remote-toggle:hover {
+	background: rgba(74, 158, 255, 0.15);
+	border-color: var(--color-primary-hover);
+}
+
+/* Hide on desktop (only show on mobile) */
+@media (min-width: 769px) {
+	.mobile-remote-toggle {
+		display: none;
+	}
+}
+
+/* Remote Trigger Sensor */
+.remote-trigger-sensor {
+	touch-action: manipulation;
+}
+
+@media (max-width: 768px) {
+	.remote-trigger-sensor {
+		width: 100px !important;
+	}
+	
+	.remote-overlay {
+		width: min(320px, 90vw) !important;
+		max-width: 90vw !important;
+		bottom: 80px !important;
+		z-index: calc(var(--z-ios-fullscreen) + 5) !important;
+	}
+	
+	.mobile-remote-toggle {
+		bottom: 20px !important;
+		z-index: calc(var(--z-ios-fullscreen) + 6) !important;
+	}
 }
 
 /* Remote overlay already uses --z-remote-overlay */

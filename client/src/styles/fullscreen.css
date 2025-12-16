@@ -340,6 +340,37 @@ body.ios-fullscreen-active .right-panel {
 	pointer-events: auto !important;
 }
 
+/* Ensure remote overlay works in iOS fullscreen */
+body.ios-fullscreen-active .remote-overlay,
+.tv-frame-container.ios-fullscreen-active .remote-overlay {
+	z-index: calc(var(--z-ios-fullscreen) + 5) !important;
+	position: fixed !important;
+	pointer-events: auto !important;
+}
+
+body.ios-fullscreen-active .remote-overlay.visible {
+	pointer-events: auto !important;
+	z-index: calc(var(--z-ios-fullscreen) + 5) !important;
+}
+
+body.ios-fullscreen-active .mobile-remote-toggle,
+.tv-frame-container.ios-fullscreen-active .mobile-remote-toggle {
+	z-index: calc(var(--z-ios-fullscreen) + 6) !important;
+	position: fixed !important;
+	pointer-events: auto !important;
+}
+
+body.ios-fullscreen-active .remote-trigger-sensor,
+.tv-frame-container.ios-fullscreen-active .remote-trigger-sensor {
+	z-index: calc(var(--z-ios-fullscreen) + 1) !important;
+	position: fixed !important;
+	pointer-events: auto !important;
+}
+
+body.ios-fullscreen-active .ios-exit-fullscreen-btn {
+	z-index: calc(var(--z-ios-fullscreen) + 10) !important;
+}
+
 .tv-frame-container.ios-fullscreen-active::after {
 	content: "Double Tap to Exit";
 	position: fixed;

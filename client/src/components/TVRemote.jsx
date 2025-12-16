@@ -59,6 +59,26 @@ export default function TVRemote({
 		if (onTapTrigger) onTapTrigger()
 	}
 
+	// Mobile-friendly handler that prevents double-firing on touch devices
+	const handleMobileClick = (handler, preventDefault = true) => {
+		return (e) => {
+			if (preventDefault) {
+				e.preventDefault()
+				e.stopPropagation()
+			}
+			handler()
+		}
+	}
+
+	// Touch handler for mobile
+	const handleMobileTouch = (handler) => {
+		return (e) => {
+			e.preventDefault()
+			e.stopPropagation()
+			handler()
+		}
+	}
+
 	// Handle number pad input for direct channel access
 	const handleNumberClick = (num) => {
 		playButtonSound()
@@ -192,7 +212,8 @@ export default function TVRemote({
 				<div className="remote-section power-section">
 					<button 
 						className={`remote-btn power-btn ${power ? 'on' : ''}`}
-						onClick={handlePowerClick}
+						onClick={handleMobileClick(handlePowerClick)}
+						onTouchEnd={handleMobileTouch(handlePowerClick)}
 						title="Power (Space/Enter)"
 					>
 						<span className="power-icon">⏻</span>
@@ -216,14 +237,20 @@ export default function TVRemote({
 						<button
 							key={num}
 							className="remote-btn num-btn"
-							onClick={() => handleNumberClick(String(num))}
+							onClick={handleMobileClick(() => handleNumberClick(String(num)))}
+							onTouchEnd={handleMobileTouch(() => handleNumberClick(String(num)))}
 							disabled={!power}
 							title={`Channel ${num}`}
 						>
 							{num}
 						</button>
 					))}
-					<button className="remote-btn num-btn special" onClick={() => handleNumberClick('0')} disabled={!power}>
+					<button 
+						className="remote-btn num-btn special" 
+						onClick={handleMobileClick(() => handleNumberClick('0'))}
+						onTouchEnd={handleMobileTouch(() => handleNumberClick('0'))}
+						disabled={!power}
+					>
 						0
 					</button>
 				</div>
@@ -235,7 +262,8 @@ export default function TVRemote({
 						<div className="dpad-top-row">
 							<button
 								className="remote-btn category-btn left"
-								onClick={() => { playButtonSound(); onCategoryUp && onCategoryUp(); }}
+								onClick={handleMobileClick(() => { playButtonSound(); onCategoryUp && onCategoryUp(); })}
+								onTouchEnd={handleMobileTouch(() => { playButtonSound(); onCategoryUp && onCategoryUp(); })}
 								disabled={!power || !onCategoryUp}
 								title="Category Up (Page Up)"
 							>
@@ -243,7 +271,8 @@ export default function TVRemote({
 							</button>
 							<button
 								className="remote-btn dpad-btn up"
-								onClick={() => { playButtonSound(); onChannelUp(); }}
+								onClick={handleMobileClick(() => { playButtonSound(); onChannelUp(); })}
+								onTouchEnd={handleMobileTouch(() => { playButtonSound(); onChannelUp(); })}
 								disabled={!power}
 								title="Channel Up (↑)"
 							>
@@ -251,7 +280,8 @@ export default function TVRemote({
 							</button>
 							<button
 								className="remote-btn category-btn right"
-								onClick={() => { playButtonSound(); onCategoryDown && onCategoryDown(); }}
+								onClick={handleMobileClick(() => { playButtonSound(); onCategoryDown && onCategoryDown(); })}
+								onTouchEnd={handleMobileTouch(() => { playButtonSound(); onCategoryDown && onCategoryDown(); })}
 								disabled={!power || !onCategoryDown}
 								title="Category Down (Page Down)"
 							>
@@ -262,7 +292,8 @@ export default function TVRemote({
 						<div className="dpad-middle">
 							<button
 								className="remote-btn dpad-btn left"
-								onClick={() => { playButtonSound(); onVolumeDown(); }}
+								onClick={handleMobileClick(() => { playButtonSound(); onVolumeDown(); })}
+								onTouchEnd={handleMobileTouch(() => { playButtonSound(); onVolumeDown(); })}
 								disabled={!power}
 								title="Volume Down (←)"
 							>
@@ -270,7 +301,8 @@ export default function TVRemote({
 							</button>
 							<button
 								className="remote-btn dpad-btn center menu-btn"
-								onClick={() => { onMenuToggle && onMenuToggle(); }}
+								onClick={handleMobileClick(() => { onMenuToggle && onMenuToggle(); })}
+								onTouchEnd={handleMobileTouch(() => { onMenuToggle && onMenuToggle(); })}
 								disabled={!power}
 								title="Menu (Esc)"
 							>
@@ -278,7 +310,8 @@ export default function TVRemote({
 							</button>
 							<button
 								className="remote-btn dpad-btn right"
-								onClick={() => { playButtonSound(); onVolumeUp(); }}
+								onClick={handleMobileClick(() => { playButtonSound(); onVolumeUp(); })}
+								onTouchEnd={handleMobileTouch(() => { playButtonSound(); onVolumeUp(); })}
 								disabled={!power}
 								title="Volume Up (→)"
 							>
@@ -288,7 +321,8 @@ export default function TVRemote({
 						{/* Bottom Row: Channel Down */}
 						<button
 							className="remote-btn dpad-btn down"
-							onClick={() => { playButtonSound(); onChannelDown(); }}
+							onClick={handleMobileClick(() => { playButtonSound(); onChannelDown(); })}
+							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onChannelDown(); })}
 							disabled={!power}
 							title="Channel Down (↓)"
 						>
@@ -301,7 +335,8 @@ export default function TVRemote({
 				<div className="mute-section">
 					<button
 						className={`remote-btn mute-btn ${volume === 0 ? 'active' : ''}`}
-						onClick={() => { playButtonSound(); onMute(); }}
+						onClick={handleMobileClick(() => { playButtonSound(); onMute(); })}
+						onTouchEnd={handleMobileTouch(() => { playButtonSound(); onMute(); })}
 						disabled={!power}
 						title="Mute (M)"
 					>
@@ -315,7 +350,8 @@ export default function TVRemote({
 					<div className="vcr-buttons">
 						<button 
 							className="remote-btn vcr-btn record"
-							onClick={() => { playButtonSound(); onRecord && onRecord(); }}
+							onClick={handleMobileClick(() => { playButtonSound(); onRecord && onRecord(); })}
+							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onRecord && onRecord(); })}
 							disabled={!power}
 							title="Record"
 						>
@@ -323,7 +359,8 @@ export default function TVRemote({
 						</button>
 						<button 
 							className="remote-btn vcr-btn play"
-							onClick={() => { playButtonSound(); onPlayPause && onPlayPause(); }}
+							onClick={handleMobileClick(() => { playButtonSound(); onPlayPause && onPlayPause(); })}
+							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onPlayPause && onPlayPause(); })}
 							disabled={!power}
 							title="Play/Pause"
 						>
@@ -331,7 +368,8 @@ export default function TVRemote({
 						</button>
 						<button 
 							className="remote-btn vcr-btn stop"
-							onClick={() => { playButtonSound(); onStop && onStop(); }}
+							onClick={handleMobileClick(() => { playButtonSound(); onStop && onStop(); })}
+							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onStop && onStop(); })}
 							disabled={!power}
 							title="Stop"
 						>

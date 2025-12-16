@@ -49,14 +49,32 @@ export default function Home() {
 
 	// Callback to show remote overlay (triggered from TVFrame sensor)
 	const handleRemoteEdgeHover = useCallback(() => {
-		if (!isFullscreen) return
-		setRemoteOverlayVisible(true)
-		if (remoteHideTimeoutRef.current) {
-			clearTimeout(remoteHideTimeoutRef.current)
-		}
-		remoteHideTimeoutRef.current = setTimeout(() => {
-			setRemoteOverlayVisible(false)
-		}, 2500)
+		// Check if fullscreen (including iOS CSS fullscreen)
+		const isCurrentlyFullscreen = !!(
+			document.fullscreenElement ||
+			document.webkitFullscreenElement ||
+			document.mozFullScreenElement ||
+			document.msFullscreenElement ||
+			document.body.classList.contains('ios-fullscreen-active') ||
+			isFullscreen
+		)
+		
+		if (!isCurrentlyFullscreen) return
+		
+		// Toggle remote visibility
+		setRemoteOverlayVisible(prev => {
+			const newState = !prev
+			if (remoteHideTimeoutRef.current) {
+				clearTimeout(remoteHideTimeoutRef.current)
+			}
+			// Auto-hide after 5 seconds (longer for mobile)
+			if (newState) {
+				remoteHideTimeoutRef.current = setTimeout(() => {
+					setRemoteOverlayVisible(false)
+				}, 5000)
+			}
+			return newState
+		})
 	}, [isFullscreen])
 
 	// Trigger tap for remote buttons and screen clicks

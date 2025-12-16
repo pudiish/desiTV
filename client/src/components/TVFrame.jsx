@@ -138,6 +138,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 
 	// Handle fullscreen change events
 	useEffect(() => {
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
 		const handleFullscreenChange = () => {
 			// Check if container OR iframe container is fullscreen
 			const isCurrentlyFullscreen = !!(
@@ -152,6 +155,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				onFullscreenChange(isCurrentlyFullscreen)
 			}
 		}
+
+		// Check initial state (important for iOS)
+		handleFullscreenChange()
 
 		document.addEventListener('fullscreenchange', handleFullscreenChange)
 		document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
@@ -174,9 +180,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		document.addEventListener('dblclick', handleDocDblClick)
 
 		// iOS-specific: Handle double-tap on document level (iframe blocks container touches)
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-		
 		let lastTouchTime = 0
 		let touchTimeout = null
 		const DOUBLE_TAP_DELAY = 300
@@ -187,10 +190,18 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			const isIOSFullscreen = document.body.classList.contains('ios-fullscreen-active')
 			if (!isIOSFullscreen) return
 
+			// Don't interfere with remote overlay or exit button
+			const target = e.target
+			if (target.closest('.remote-overlay') || 
+				target.closest('.ios-exit-fullscreen-btn') ||
+				target.closest('.mobile-remote-toggle') ||
+				target.closest('.remote-trigger-sensor')) {
+				return
+			}
+
 			const now = Date.now()
 			
 			// Check if target is the iframe or video (they block touches)
-			const target = e.target
 			const isVideoElement = target.tagName === 'VIDEO' || 
 				target.tagName === 'IFRAME' ||
 				target.closest('iframe') ||
@@ -217,20 +228,59 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					touchTimeout = null
 				}, DOUBLE_TAP_DELAY)
 			} else {
-				// Touch outside iframe - exit immediately
-				e.preventDefault()
-				e.stopPropagation()
-				toggleFullscreen()
-				lastTouchTime = 0
-				if (touchTimeout) {
-					clearTimeout(touchTimeout)
-					touchTimeout = null
+				// Touch outside iframe - exit immediately (unless it's a button)
+				if (!target.closest('button') && !target.closest('.remote-overlay')) {
+					e.preventDefault()
+					e.stopPropagation()
+					toggleFullscreen()
+					lastTouchTime = 0
+					if (touchTimeout) {
+						clearTimeout(touchTimeout)
+						touchTimeout = null
+					}
 				}
 			}
 		}
 
+		// iOS: Watch for class changes on body AND container
+		let observer = null
 		if (isIOS) {
+			observer = new MutationObserver(() => {
+				handleFullscreenChange()
+			})
+			observer.observe(document.body, {
+				attributes: true,
+				attributeFilter: ['class']
+			})
+			
+			if (tvFrameRef.current) {
+				observer.observe(tvFrameRef.current, {
+					attributes: true,
+					attributeFilter: ['class']
+				})
+			}
+			
+			// Also poll for iOS fullscreen state (fallback)
+			const pollInterval = setInterval(() => {
+				handleFullscreenChange()
+			}, 500)
+			
+			// iOS touch handler
 			document.addEventListener('touchend', handleDocTouchEnd, { passive: false, capture: true })
+
+			return () => {
+				document.removeEventListener('fullscreenchange', handleFullscreenChange)
+				document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+				document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+				document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+				document.removeEventListener('dblclick', handleDocDblClick)
+				document.removeEventListener('touchend', handleDocTouchEnd, { capture: true })
+				if (observer) observer.disconnect()
+				clearInterval(pollInterval)
+				if (touchTimeout) {
+					clearTimeout(touchTimeout)
+				}
+			}
 		}
 
 		return () => {
@@ -239,12 +289,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
 			document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
 			document.removeEventListener('dblclick', handleDocDblClick)
-			if (isIOS) {
-				document.removeEventListener('touchend', handleDocTouchEnd, { capture: true })
-				if (touchTimeout) {
-					clearTimeout(touchTimeout)
-				}
-			}
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
@@ -540,21 +584,56 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}
 			{isFullscreen && (
 				<div
+					className="remote-trigger-sensor"
 					style={{
 						position: 'fixed',
 						top: 0,
 						right: 0,
-						width: '80px',
+						width: '120px',
 						height: '100vh',
-						zIndex: 10002,
+						zIndex: 9999,
 						pointerEvents: 'auto',
 						background: 'transparent',
+						touchAction: 'manipulation',
 					}}
 					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
 					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-					onTouchStart={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-					onTouchMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onTouchStart={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					onTouchMove={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					onClick={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
 				/>
+			)}
+			
+			{/* Mobile: Bottom center button to toggle remote */}
+			{isFullscreen && (
+				<button
+					className="mobile-remote-toggle"
+					onClick={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					onTouchEnd={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					aria-label="Show Remote Control"
+				>
+					📱
+				</button>
 			)}
 
 			{/* Minimal exit hint in fullscreen - positioned at bottom */}
@@ -581,7 +660,12 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			
 			{/* Remote overlay portal - renders inside fullscreen container */}
 			{isFullscreen && tvFrameRef.current && remoteOverlayComponent && createPortal(
-				<div className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}>
+				<div 
+					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
+					onTouchStart={(e) => e.stopPropagation()}
+					onTouchMove={(e) => e.stopPropagation()}
+					onClick={(e) => e.stopPropagation()}
+				>
 					{remoteOverlayComponent}
 				</div>,
 				tvFrameRef.current
