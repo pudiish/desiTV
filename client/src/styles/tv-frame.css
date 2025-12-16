@@ -309,6 +309,7 @@
 	flex: 0 0 auto;
 	margin-top: clamp(10px, 1.2vh, 14px);
 	padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
+	padding-bottom: clamp(30px, 3.5vh, 40px) !important;
 	border-radius: clamp(8px, 1vw, 12px);
 	/* Black plastic control panel - slightly lighter than frame */
 	background: 
@@ -332,10 +333,11 @@
 		inset 0 0 0 2px rgba(0, 0, 0, 0.6),
 		0 2px 8px rgba(0, 0, 0, 0.6);
 	display: flex;
-	align-items: center;
+	align-items: flex-start !important;
 	justify-content: space-between;
 	gap: clamp(10px, 1.5vw, 16px);
 	position: relative;
+	overflow: visible !important;
 }
 
 /* Subtle texture overlay on control bar */
@@ -357,10 +359,14 @@
 
 .tv-control-buttons {
 	display: flex;
-	align-items: center;
+	align-items: flex-start !important;
 	gap: clamp(6px, 0.8vw, 10px);
 	position: relative;
 	z-index: var(--z-base);
+	flex-wrap: wrap;
+	justify-content: center;
+	overflow: visible !important;
+	padding-bottom: 20px !important;
 }
 
 .tv-btn {
@@ -380,11 +386,12 @@
 		inset 0 -2px 4px rgba(0, 0, 0, 0.8),
 		inset 0 0 0 1px rgba(0, 0, 0, 0.6),
 		0 1px 3px rgba(0, 0, 0, 0.7);
-	position: relative;
+	position: relative !important;
 	cursor: pointer;
 	transition: all 0.15s ease;
 	-webkit-tap-highlight-color: transparent;
 	outline: none;
+	overflow: visible !important;
 }
 
 .tv-btn:hover {
@@ -433,6 +440,25 @@
 	width: clamp(16px, 1.8vw, 20px);
 	height: clamp(16px, 1.8vw, 20px);
 	position: relative;
+}
+
+/* Button labels - small text below buttons */
+.btn-label {
+	position: absolute !important;
+	bottom: -16px !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	font-size: clamp(7px, 0.8vw, 9px) !important;
+	font-family: var(--font-primary) !important;
+	color: rgba(255, 255, 255, 0.75) !important;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9) !important;
+	white-space: nowrap !important;
+	pointer-events: none !important;
+	letter-spacing: 0.5px !important;
+	opacity: 0.85 !important;
+	z-index: 10 !important;
+	display: block !important;
+	visibility: visible !important;
 }
 
 .tv-btn .btn-icon {
@@ -616,6 +642,14 @@
 	}
 	
 	/* Very light small symbols on mobile buttons too */
+	.tv-btn {
+		display: flex !important;
+		flex-direction: column !important;
+		align-items: center !important;
+		justify-content: center !important;
+		gap: 2px !important;
+	}
+	
 	.tv-btn .btn-icon {
 		width: clamp(10px, 1.2vw, 14px) !important;
 		height: clamp(10px, 1.2vw, 14px) !important;
@@ -624,10 +658,8 @@
 		fill: none !important;
 		stroke-width: 1.5 !important;
 		pointer-events: none !important;
-		position: absolute !important;
-		top: 50% !important;
-		left: 50% !important;
-		transform: translate(-50%, -50%) !important;
+		position: relative !important;
+		transform: none !important;
 		display: block !important;
 		transition: opacity 0.2s ease !important;
 	}
@@ -636,6 +668,22 @@
 	.tv-btn:focus .btn-icon,
 	.tv-btn:active .btn-icon {
 		opacity: 0.3 !important;
+	}
+	
+	/* Button labels on mobile */
+	.btn-label {
+		position: absolute !important;
+		bottom: -20px !important;
+		left: 50% !important;
+		transform: translateX(-50%) !important;
+		font-size: clamp(7px, 0.9vw, 9px) !important;
+		font-family: var(--font-primary) !important;
+		color: rgba(255, 255, 255, 0.7) !important;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+		white-space: nowrap !important;
+		pointer-events: none !important;
+		letter-spacing: 0.5px !important;
+		opacity: 0.8 !important;
 	}
 	
 	.tv-btn.small {

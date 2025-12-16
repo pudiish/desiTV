@@ -133,6 +133,14 @@
 		flex: 0 0 auto;
 		max-height: 55vh;
 		padding: 0 8px;
+		aspect-ratio: 4/3;
+	}
+	
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame-container {
+			height: calc((100vw - 16px) * 0.75);
+			max-height: 55vh;
+		}
 	}
 	
 	.tv-frame {
@@ -147,8 +155,9 @@
 	
 	@supports not (aspect-ratio: 4/3) {
 		.tv-frame {
-			height: calc((100vw - 16px) * 0.75);
+			height: calc((100vw - 16px) * 0.75) !important;
 			max-height: 55vh;
+			min-height: calc((100vw - 16px) * 0.75) !important;
 		}
 	}
 	
@@ -194,6 +203,14 @@
 		flex: 0 0 auto;
 		max-height: 50vh;
 		padding: 0 6px;
+		aspect-ratio: 4/3;
+	}
+	
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame-container {
+			height: calc((100vw - 12px) * 0.75);
+			max-height: 50vh;
+		}
 	}
 	
 	.tv-frame {
@@ -208,8 +225,9 @@
 	
 	@supports not (aspect-ratio: 4/3) {
 		.tv-frame {
-			height: calc((100vw - 12px) * 0.75);
+			height: calc((100vw - 12px) * 0.75) !important;
 			max-height: 50vh;
+			min-height: calc((100vw - 12px) * 0.75) !important;
 		}
 	}
 	
@@ -356,14 +374,28 @@
 	
 	.tv-frame-container {
 		padding: clamp(4px, 1vh, 8px) clamp(4px, 1vw, 8px);
+		aspect-ratio: 4/3;
+	}
+	
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame-container {
+			height: calc((100vw - 8px) * 0.75);
+		}
 	}
 	
 	.tv-frame {
+		aspect-ratio: 4/3 !important;
 		padding: 1% 2% 1.5% 2% !important;
 		border-radius: 8px;
 		box-shadow: 
 			0 12px 36px rgba(0, 0, 0, 0.5),
 			0 0 0 1px rgba(255, 255, 255, 0.05);
+	}
+	
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame {
+			height: calc((100vw - 8px) * 0.75) !important;
+		}
 	}
 	
 	/* Hide right panel */
