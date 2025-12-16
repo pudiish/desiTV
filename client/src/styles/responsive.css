@@ -110,10 +110,9 @@
 	}
 }
 
-/* Tablet Portrait / Large Mobile (600px - 767px) - Stack vertically */
+/* Tablet Portrait / Large Mobile (600px - 767px) */
 @media (max-width: 767px) {
 	.main-container {
-		height: auto;
 		min-height: 100vh;
 		min-height: 100dvh;
 		overflow-y: auto;
@@ -124,125 +123,38 @@
 		flex-direction: column;
 		gap: 12px;
 		padding: 8px;
-		justify-content: flex-start;
 		align-items: center;
-		overflow: visible;
-		min-height: auto;
-		width: 100%;
-		max-width: 100%;
 	}
 	
 	.tv-frame-container {
 		width: 100%;
 		max-width: 100%;
-		order: 1; /* TV shows first */
-		flex: 0 0 auto; /* Don't flex - fixed size based on constraints */
-		min-width: 0;
-		min-height: 0;
-		/* Limit TV frame height to leave room for remote */
-		max-height: 55vh; /* Max 55% of viewport height */
-		max-width: 100vw;
+		order: 1;
+		flex: 0 0 auto;
+		max-height: 55vh;
 		padding: 0 8px;
 	}
 	
 	.tv-frame {
-		/* Responsive on mobile - constrained size to fit screen */
 		width: 100% !important;
 		max-width: 100% !important;
 		height: auto !important;
 		max-height: 100% !important;
 		aspect-ratio: 4/3 !important;
-		min-width: 0 !important;
-		min-height: 0 !important;
-		flex: 0 0 auto !important; /* Don't flex - use constraints */
-		/* Constant CRT bezels - same proportions as desktop */
 		padding: 2.5% 5% 3.5% 5% !important;
 		border-radius: 8px;
 	}
 	
-	/* Fallback for browsers without aspect-ratio */
 	@supports not (aspect-ratio: 4/3) {
-		.tv-frame-container {
-			max-height: 55vh;
-		}
 		.tv-frame {
-			height: calc((100vw - 16px) * 0.75); /* Account for padding */
+			height: calc((100vw - 16px) * 0.75);
 			max-height: 55vh;
 		}
 	}
 	
+	/* Hide remote on mobile - controls are in TV frame */
 	.right-panel {
-		width: 100%;
-		max-width: 280px;
-		height: auto;
-		max-height: none;
-		order: 2; /* Remote shows second */
-		flex-shrink: 0;
-		flex-grow: 0;
-		margin-bottom: 50px; /* Space for fixed footer */
-		padding: 0 8px;
-	}
-	
-	/* Add bottom padding to main container for fixed footer */
-	.main-container {
-		padding-bottom: 50px;
-	}
-	
-	.remote-body {
-		width: 100%;
-		max-width: 260px;
-		padding: 12px 10px 14px;
-	}
-	
-	.remote-brand {
-		font-size: 9px;
-		margin-bottom: 8px;
-	}
-	
-	.remote-btn.power-btn {
-		width: 36px;
-		height: 36px;
-	}
-	
-	.power-icon {
-		font-size: 14px;
-	}
-	
-	.channel-display {
-		padding: 5px 10px;
-		margin: 6px auto 8px;
-	}
-	
-	.channel-number {
-		font-size: 18px;
-	}
-	
-	.number-pad {
-		gap: 6px;
-	}
-	
-	.remote-btn.num-btn {
-		padding: 10px;
-		font-size: 12px;
-	}
-	
-	.dpad-section {
-		margin: 10px 0;
-	}
-	
-	.remote-btn.dpad-btn {
-		padding: 8px 10px;
-		font-size: 8px;
-	}
-	
-	.remote-btn.vcr-btn {
-		width: 34px;
-		height: 30px;
-		font-size: 12px;
-	}
-	
-	.keyboard-hints {
-		display: none;
+		display: none !important;
 	}
 	
 	.footer-status {
@@ -264,7 +176,6 @@
 	.main-container {
 		min-height: 100vh;
 		min-height: 100dvh;
-		height: auto;
 		overflow-y: auto;
 		overflow-x: hidden;
 	}
@@ -273,85 +184,60 @@
 		padding: 6px;
 		gap: 10px;
 		flex-direction: column;
-		overflow: visible;
-		width: 100%;
-		max-width: 100%;
+		align-items: center;
 	}
 	
 	.tv-frame-container {
 		order: 1;
 		width: 100%;
 		max-width: 100%;
-		flex: 0 0 auto; /* Don't flex - use constraints */
-		min-width: 0;
-		min-height: 0;
-		/* Limit TV frame height to leave room for remote on small screens */
-		max-height: 50vh; /* Max 50% of viewport height */
+		flex: 0 0 auto;
+		max-height: 50vh;
 		padding: 0 6px;
 	}
 	
 	.tv-frame {
-		/* Responsive on small mobile - constrained size to fit screen */
 		width: 100% !important;
 		max-width: 100% !important;
 		height: auto !important;
 		max-height: 100% !important;
 		aspect-ratio: 4/3 !important;
-		min-width: 0 !important;
-		min-height: 0 !important;
-		flex: 0 0 auto !important; /* Don't flex - use constraints */
-		/* Constant CRT bezels - same proportions as desktop */
 		padding: 2.5% 5% 3.5% 5% !important;
 		border-radius: 6px;
 	}
 	
-	/* Fallback for browsers without aspect-ratio */
 	@supports not (aspect-ratio: 4/3) {
-		.tv-frame-container {
-			max-height: 50vh;
-		}
 		.tv-frame {
-			height: calc((100vw - 12px) * 0.75); /* Account for padding */
+			height: calc((100vw - 12px) * 0.75);
 			max-height: 50vh;
 		}
 	}
 	
 	.tv-screen {
 		border-radius: 4px;
-		border: 1.8% solid #000000 !important; /* Black border, no white */
+		border: 1.8% solid #000000 !important;
 	}
 	
+	/* Hide remote on mobile - controls are in TV frame */
 	.right-panel {
-		order: 2;
-		max-width: 240px;
-		margin-bottom: 50px; /* Space for fixed footer */
-		padding: 0 6px;
+		display: none !important;
 	}
 	
-	/* Add bottom padding to main container for fixed footer */
 	.main-container {
 		padding-bottom: 50px;
 	}
 	
-	/* Remote styles removed - controls are in TV frame on mobile */
-	.remote-body {
-		max-width: 220px;
-		padding: 10px 8px 14px;
+	.footer-status {
+		padding: 5px 8px;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		z-index: var(--z-menu);
 	}
 	
-	.remote-brand {
-		font-size: 8px;
-		margin-bottom: 6px;
-	}
-	
-	.power-section {
-		gap: 8px;
-		margin-bottom: 8px;
-	}
-	
-	.remote-btn.power-btn {
-		width: 32px;
-		height: 32px;
+	.status-text {
+		font-size: 6px;
 	}
 	
 	.power-icon {

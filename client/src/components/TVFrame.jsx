@@ -41,15 +41,11 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 	}
 
 	const toggleFullscreen = useCallback(() => {
-		// Detect iOS specifically (iOS doesn't support Fullscreen API for iframes)
 		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
 			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-		
-		// Detect mobile device
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
 
-		// Check if currently in fullscreen (including iOS CSS fullscreen)
 		const isCurrentlyFullscreen = !!(
 			document.fullscreenElement ||
 			document.webkitFullscreenElement ||
@@ -60,102 +56,32 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
 		)
 
-		console.log('[Fullscreen] Toggle - Currently fullscreen:', isCurrentlyFullscreen, 'isIOS:', isIOS, 'isMobile:', isMobile)
-
-		try {
-			if (isCurrentlyFullscreen) {
-				// Exit fullscreen
-				console.log('[Fullscreen] Exiting fullscreen...')
-				
-				// Remove iOS fullscreen classes first
-				document.documentElement.classList.remove('ios-fullscreen-active')
-				document.body.classList.remove('ios-fullscreen-active')
-				if (tvFrameRef.current) {
-					tvFrameRef.current.classList.remove('ios-fullscreen-active')
-				}
-				
-				// Try standard exit methods
-				if (document.exitFullscreen) {
-					document.exitFullscreen().catch(err => console.log('[Fullscreen] Exit error:', err))
-				} else if (document.webkitExitFullscreen) {
-					document.webkitExitFullscreen()
-				} else if (document.mozCancelFullScreen) {
-					document.mozCancelFullScreen()
-				} else if (document.msExitFullscreen) {
-					document.msExitFullscreen()
-				}
-				
-				// Manually update state
-				setIsFullscreen(false)
-				if (onFullscreenChange) {
-					onFullscreenChange(false)
-				}
-			} else {
-				console.log('[Fullscreen] Entering fullscreen...')
-				
-				if (isIOS || isMobile) {
-					// iOS/Mobile: Use CSS-based fullscreen (more reliable for mobile)
-					// Add iOS fullscreen class to html, body and container
-					document.documentElement.classList.add('ios-fullscreen-active')
-					document.body.classList.add('ios-fullscreen-active')
-					if (tvFrameRef.current) {
-						tvFrameRef.current.classList.add('ios-fullscreen-active')
-					}
-					
-					// Try YouTube native fullscreen for iOS if available
-					const iframeContainer = document.getElementById('desitv-player-iframe')
-					if (iframeContainer && isIOS) {
-						const iframe = iframeContainer.querySelector('iframe')
-						if (iframe && iframe.contentWindow) {
-							try {
-								const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
-								const video = iframeDoc?.querySelector('video')
-								if (video && typeof video.webkitEnterFullscreen === 'function') {
-									video.webkitEnterFullscreen()
-									console.log('[Fullscreen] iOS: Attempted native video fullscreen')
-								}
-							} catch (e) {
-								console.log('[Fullscreen] iOS: Using CSS-based fullscreen (cross-origin iframe)')
-							}
-						}
-					}
-					
-					// Set state
-					setIsFullscreen(true)
-					if (onFullscreenChange) {
-						onFullscreenChange(true)
-					}
-				} else {
-					// Desktop: Standard Fullscreen API
-					const element = tvFrameRef.current
-					if (element) {
-						const promise = element.requestFullscreen?.() ||
-							element.webkitRequestFullscreen?.() ||
-							element.mozRequestFullScreen?.() ||
-							element.msRequestFullscreen?.()
-						
-						if (promise) {
-							promise.catch(err => {
-								console.error('[Fullscreen] Error:', err)
-								// Fallback to CSS fullscreen on error
-								document.documentElement.classList.add('ios-fullscreen-active')
-								document.body.classList.add('ios-fullscreen-active')
-								if (tvFrameRef.current) {
-									tvFrameRef.current.classList.add('ios-fullscreen-active')
-								}
-								setIsFullscreen(true)
-								if (onFullscreenChange) {
-									onFullscreenChange(true)
-								}
-							})
-						}
-					}
-				}
+		if (isCurrentlyFullscreen) {
+			// Exit fullscreen
+			document.documentElement.classList.remove('ios-fullscreen-active')
+			document.body.classList.remove('ios-fullscreen-active')
+			if (tvFrameRef.current) {
+				tvFrameRef.current.classList.remove('ios-fullscreen-active')
 			}
-		} catch (error) {
-			console.error('[Fullscreen] Error toggling fullscreen:', error)
-			// Fallback for mobile: Use CSS fullscreen
-			if ((isIOS || isMobile) && !isCurrentlyFullscreen) {
+			
+			if (document.exitFullscreen) {
+				document.exitFullscreen().catch(() => {})
+			} else if (document.webkitExitFullscreen) {
+				document.webkitExitFullscreen()
+			} else if (document.mozCancelFullScreen) {
+				document.mozCancelFullScreen()
+			} else if (document.msExitFullscreen) {
+				document.msExitFullscreen()
+			}
+			
+			setIsFullscreen(false)
+			if (onFullscreenChange) {
+				onFullscreenChange(false)
+			}
+		} else {
+			// Enter fullscreen
+			if (isIOS || isMobile) {
+				// Mobile: CSS-based fullscreen
 				document.documentElement.classList.add('ios-fullscreen-active')
 				document.body.classList.add('ios-fullscreen-active')
 				if (tvFrameRef.current) {
@@ -164,6 +90,30 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				setIsFullscreen(true)
 				if (onFullscreenChange) {
 					onFullscreenChange(true)
+				}
+			} else {
+				// Desktop: Standard Fullscreen API
+				const element = tvFrameRef.current
+				if (element) {
+					const promise = element.requestFullscreen?.() ||
+						element.webkitRequestFullscreen?.() ||
+						element.mozRequestFullScreen?.() ||
+						element.msRequestFullscreen?.()
+					
+					if (promise) {
+						promise.catch(() => {
+							// Fallback to CSS fullscreen
+							document.documentElement.classList.add('ios-fullscreen-active')
+							document.body.classList.add('ios-fullscreen-active')
+							if (tvFrameRef.current) {
+								tvFrameRef.current.classList.add('ios-fullscreen-active')
+							}
+							setIsFullscreen(true)
+							if (onFullscreenChange) {
+								onFullscreenChange(true)
+							}
+						})
+					}
 				}
 			}
 		}
@@ -199,7 +149,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 
 		// Exit fullscreen: double-click (desktop) or double-tap (mobile)
 		let lastTapTime = 0
-		let tapTimeout = null
 		const DOUBLE_TAP_DELAY = 300
 
 		const handleExitFullscreen = (e) => {
@@ -213,12 +162,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			)
 			if (!isCurrentlyFullscreen) return
 
-			// Ignore if clicking on remote controls
+			// Ignore if clicking on buttons or controls
 			const target = e.target
-			if (target.closest('.remote-overlay') || 
-				target.closest('.mobile-remote-toggle') ||
-				target.closest('.remote-trigger-sensor') ||
-				target.closest('button')) {
+			if (target.closest('button') || target.closest('.tv-control-bar')) {
 				return
 			}
 
@@ -232,16 +178,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					e.stopPropagation()
 					toggleFullscreen()
 					lastTapTime = 0
-					if (tapTimeout) {
-						clearTimeout(tapTimeout)
-						tapTimeout = null
-					}
 				} else {
 					lastTapTime = now
-					if (tapTimeout) clearTimeout(tapTimeout)
-					tapTimeout = setTimeout(() => {
-						lastTapTime = 0
-					}, DOUBLE_TAP_DELAY)
 				}
 			} else {
 				// Desktop: Double-click to exit
@@ -276,7 +214,6 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			document.removeEventListener('dblclick', handleExitFullscreen)
 			document.removeEventListener('touchend', handleExitFullscreen, { capture: true })
 			if (observer) observer.disconnect()
-			if (tapTimeout) clearTimeout(tapTimeout)
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
