@@ -559,28 +559,44 @@
 	}
 	
 	.tv-control-bar {
-		width: 100%;
-		flex: 0 0 auto;
-		margin-top: clamp(10px, 1.2vh, 14px);
-		margin-bottom: 0;
-		padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
-		padding-bottom: max(clamp(12px, 1.5vw, 16px) + env(safe-area-inset-bottom, 0), 20px) !important;
-		border-radius: clamp(8px, 1vw, 12px);
-		background: linear-gradient(180deg, 
-			#0f0f0f 0%,
-			#1a1a1a 50%,
-			#151515 100%
-		) !important;
+		width: 100% !important;
+		flex: 0 0 auto !important;
+		margin-top: clamp(10px, 1.2vh, 14px) !important;
+		margin-bottom: 0 !important;
+		padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px) !important;
+		padding-bottom: max(clamp(30px, 3.5vh, 40px) + env(safe-area-inset-bottom, 0), 40px) !important;
+		border-radius: clamp(8px, 1vw, 12px) !important;
+		max-width: 100% !important;
+		/* Match desktop black plastic control panel styling */
+		background: 
+			linear-gradient(180deg, 
+				#151515 0%,
+				#0f0f0f 25%,
+				#080808 60%,
+				#050505 100%
+			),
+			/* Subtle top highlight */
+			linear-gradient(180deg,
+				rgba(255, 255, 255, 0.06) 0%,
+				rgba(255, 255, 255, 0.02) 25%,
+				transparent 65%
+			) !important;
+		/* Recessed appearance - black plastic - match desktop */
 		box-shadow:
-			inset 0 2px 8px rgba(0, 0, 0, 0.8),
-			inset 0 -2px 4px rgba(255, 255, 255, 0.02),
+			inset 0 2px 6px rgba(255, 255, 255, 0.05),
+			inset 0 -3px 8px rgba(0, 0, 0, 0.7),
 			inset 0 0 0 1px rgba(255, 255, 255, 0.03),
 			inset 0 0 0 2px rgba(0, 0, 0, 0.6),
 			0 2px 8px rgba(0, 0, 0, 0.6) !important;
-		position: relative !important;
 		display: flex !important;
+		align-items: flex-start !important;
+		justify-content: space-between !important;
+		gap: clamp(10px, 1.5vw, 16px) !important;
+		position: relative !important;
+		overflow: visible !important;
 		visibility: visible !important;
 		opacity: 1 !important;
+		z-index: 100 !important;
 	}
 	
 	.tv-control-bar::before {
@@ -601,21 +617,24 @@
 	
 	.tv-control-buttons {
 		display: flex !important;
+		align-items: flex-start !important;
+		gap: clamp(6px, 0.8vw, 10px) !important;
+		position: relative !important;
+		z-index: calc(var(--z-base) + 1) !important;
+		flex-wrap: wrap !important;
 		justify-content: center !important;
-		align-items: center !important;
-		gap: clamp(10px, 1.2vw, 14px) !important;
-		padding: 0 !important;
-		position: relative;
-		z-index: var(--z-base);
-		width: 100%;
+		overflow: visible !important;
+		padding-bottom: 20px !important;
+		width: 100% !important;
 	}
 	
 	/* Retro TV buttons - larger for touch but same style as desktop */
 	.tv-btn {
-		width: clamp(32px, 4vw, 40px) !important;
-		height: clamp(32px, 4vw, 40px) !important;
+		width: clamp(28px, 3.5vw, 36px) !important;
+		height: clamp(28px, 3.5vw, 36px) !important;
 		border-radius: 50% !important;
 		border: none !important;
+		/* Match desktop black plastic concave button */
 		background: radial-gradient(circle at 35% 35%, 
 			rgba(255, 255, 255, 0.08) 0%,
 			#1a1a1a 25%,
@@ -627,11 +646,18 @@
 			inset 0 -2px 4px rgba(0, 0, 0, 0.8),
 			inset 0 0 0 1px rgba(0, 0, 0, 0.6),
 			0 1px 3px rgba(0, 0, 0, 0.7) !important;
-		position: relative;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		-webkit-tap-highlight-color: transparent;
-		outline: none;
+		position: relative !important;
+		cursor: pointer !important;
+		transition: all 0.15s ease !important;
+		-webkit-tap-highlight-color: transparent !important;
+		outline: none !important;
+		overflow: visible !important;
+		z-index: 101 !important;
+		/* Hide any text content - only show SVG and span labels */
+		color: transparent !important;
+		font-size: 0 !important;
+		line-height: 0 !important;
+		text-indent: -9999px !important;
 	}
 	
 	.tv-btn::before {
@@ -659,7 +685,7 @@
 			inset 0 -2px 4px rgba(0, 0, 0, 0.7),
 			inset 0 0 0 1px rgba(0, 0, 0, 0.5),
 			0 2px 5px rgba(0, 0, 0, 0.8) !important;
-		transform: scale(1.05);
+		transform: scale(1.05) !important;
 	}
 	
 	.tv-btn:active {
@@ -681,15 +707,17 @@
 	}
 	
 	.tv-btn .btn-icon {
-		width: clamp(10px, 1.2vw, 14px) !important;
-		height: clamp(10px, 1.2vw, 14px) !important;
-		opacity: 0.2 !important;
-		stroke: rgba(255, 255, 255, 0.25) !important;
+		position: absolute !important;
+		top: 50% !important;
+		left: 50% !important;
+		transform: translate(-50%, -50%) !important;
+		width: clamp(12px, 1.4vw, 16px) !important;
+		height: clamp(12px, 1.4vw, 16px) !important;
+		opacity: 0.15 !important;
+		stroke: rgba(255, 255, 255, 0.2) !important;
 		fill: none !important;
 		stroke-width: 1.5 !important;
 		pointer-events: none !important;
-		position: relative !important;
-		transform: none !important;
 		display: block !important;
 		transition: opacity 0.2s ease !important;
 	}
@@ -697,7 +725,7 @@
 	.tv-btn:hover .btn-icon,
 	.tv-btn:focus .btn-icon,
 	.tv-btn:active .btn-icon {
-		opacity: 0.3 !important;
+		opacity: 0.25 !important;
 	}
 	
 	/* Button labels on mobile - very small and barely visible */
@@ -728,8 +756,8 @@
 	
 	/* Power button - same retro style but larger */
 	.tv-btn.power {
-		width: clamp(40px, 5vw, 48px) !important;
-		height: clamp(40px, 5vw, 48px) !important;
+		width: clamp(36px, 4.5vw, 44px) !important;
+		height: clamp(36px, 4.5vw, 44px) !important;
 		background: radial-gradient(circle at 35% 35%, 
 			rgba(255, 255, 255, 0.1) 0%,
 			#252525 25%,
