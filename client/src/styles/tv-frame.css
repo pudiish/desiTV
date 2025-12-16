@@ -495,136 +495,172 @@
 	transition: opacity 0.2s ease;
 }
 
-/* Mobile: Modern, clean, minimal controls */
+/* Mobile: Same retro TV console as desktop, but larger for touch */
 @media (max-width: 768px) {
 	.tv-control-bar {
-		padding: 0 !important;
-		background: transparent !important;
-		border: none !important;
+		width: 100%;
+		flex: 0 0 auto;
+		margin-top: clamp(10px, 1.2vh, 14px);
+		padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
+		padding-bottom: max(clamp(12px, 1.5vw, 16px) + env(safe-area-inset-bottom, 0), 20px) !important;
+		border-radius: clamp(8px, 1vw, 12px);
+		background: linear-gradient(180deg, 
+			#0f0f0f 0%,
+			#1a1a1a 50%,
+			#151515 100%
+		) !important;
+		box-shadow:
+			inset 0 2px 8px rgba(0, 0, 0, 0.8),
+			inset 0 -2px 4px rgba(255, 255, 255, 0.02),
+			inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+			inset 0 0 0 2px rgba(0, 0, 0, 0.6),
+			0 2px 8px rgba(0, 0, 0, 0.6) !important;
 		position: absolute !important;
 		bottom: 0 !important;
 		left: 0 !important;
 		right: 0 !important;
 		z-index: 9999 !important;
-		margin-top: 0 !important;
-		width: 100% !important;
 		display: flex !important;
 		visibility: visible !important;
 		opacity: 1 !important;
+	}
+	
+	.tv-control-bar::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: repeating-linear-gradient(
+			0deg,
+			transparent 0px,
+			transparent 1px,
+			rgba(0, 0, 0, 0.02) 1px,
+			rgba(0, 0, 0, 0.02) 2px
+		);
+		pointer-events: none;
+		opacity: 0.6;
 	}
 	
 	.tv-control-buttons {
 		display: flex !important;
 		justify-content: center !important;
 		align-items: center !important;
-		gap: 8px !important;
-		padding: 12px 16px !important;
-		padding-bottom: max(12px + env(safe-area-inset-bottom, 0), 20px) !important;
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.75), transparent) !important;
-		backdrop-filter: blur(24px) saturate(180%);
-		-webkit-backdrop-filter: blur(24px) saturate(180%);
-		border-radius: 0 !important;
-		border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+		gap: clamp(10px, 1.2vw, 14px) !important;
+		padding: 0 !important;
+		position: relative;
+		z-index: var(--z-base);
+		width: 100%;
 	}
 	
-	/* Clean, modern button design - optimized for touch */
+	/* Retro TV buttons - larger for touch but same style as desktop */
 	.tv-btn {
-		min-width: 52px !important;
-		min-height: 52px !important;
-		width: 52px !important;
-		height: 52px !important;
-		border-radius: 14px !important;
-		background: rgba(255, 255, 255, 0.1) !important;
-		border: 1px solid rgba(255, 255, 255, 0.12) !important;
-		display: flex !important;
-		align-items: center !important;
-		justify-content: center !important;
-		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-		touch-action: manipulation;
-		-webkit-tap-highlight-color: transparent;
-		box-shadow: 
-			0 2px 8px rgba(0, 0, 0, 0.2),
-			inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+		width: clamp(32px, 4vw, 40px) !important;
+		height: clamp(32px, 4vw, 40px) !important;
+		border-radius: 50% !important;
+		border: none !important;
+		background: radial-gradient(circle at 35% 35%, 
+			rgba(255, 255, 255, 0.08) 0%,
+			#1a1a1a 25%,
+			#0f0f0f 60%,
+			#000000 100%
+		) !important;
+		box-shadow:
+			inset 0 2px 4px rgba(255, 255, 255, 0.06),
+			inset 0 -2px 4px rgba(0, 0, 0, 0.8),
+			inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+			0 1px 3px rgba(0, 0, 0, 0.7) !important;
 		position: relative;
-		overflow: hidden;
 		cursor: pointer;
+		transition: all 0.15s ease;
+		-webkit-tap-highlight-color: transparent;
+		outline: none;
 	}
 	
 	.tv-btn::before {
-		display: none !important;
+		content: "";
+		position: absolute;
+		top: 20%;
+		left: 20%;
+		width: 35%;
+		height: 35%;
+		border-radius: 50%;
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+		pointer-events: none;
 	}
 	
 	.tv-btn:hover,
 	.tv-btn:focus-visible {
-		background: rgba(255, 255, 255, 0.15) !important;
-		border-color: rgba(255, 255, 255, 0.2) !important;
-		transform: translateY(-2px) !important;
-		box-shadow: 
-			0 4px 12px rgba(0, 0, 0, 0.3),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+		background: radial-gradient(circle at 35% 35%, 
+			rgba(255, 255, 255, 0.12) 0%,
+			#252525 25%,
+			#151515 60%,
+			#050505 100%
+		) !important;
+		box-shadow:
+			inset 0 2px 4px rgba(255, 255, 255, 0.08),
+			inset 0 -2px 4px rgba(0, 0, 0, 0.7),
+			inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+			0 2px 5px rgba(0, 0, 0, 0.8) !important;
+		transform: scale(1.05);
 	}
 	
 	.tv-btn:active {
-		background: rgba(255, 255, 255, 0.2) !important;
-		transform: scale(0.94) translateY(0) !important;
-		box-shadow: 
-			0 1px 4px rgba(0, 0, 0, 0.2),
-			inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+		transform: scale(0.95) !important;
+		box-shadow:
+			inset 0 3px 6px rgba(0, 0, 0, 0.9),
+			inset 0 -1px 2px rgba(255, 255, 255, 0.03),
+			inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+			0 1px 2px rgba(0, 0, 0, 0.6) !important;
 	}
 	
-	/* SVG icons - clean and minimal */
 	.tv-btn .btn-icon {
-		display: block !important;
-		width: 22px !important;
-		height: 22px !important;
-		stroke: rgba(255, 255, 255, 0.95) !important;
-		stroke-width: 2.5 !important;
-		fill: none !important;
-		opacity: 1 !important;
-		pointer-events: none;
-		transition: stroke 0.2s ease;
+		display: none !important;
 	}
 	
-	.tv-btn.small .btn-icon {
-		width: 20px !important;
-		height: 20px !important;
+	.tv-btn.small {
+		width: clamp(28px, 3.5vw, 36px) !important;
+		height: clamp(28px, 3.5vw, 36px) !important;
 	}
 	
-	/* Power button - prominent accent */
+	/* Power button - same retro style but larger */
 	.tv-btn.power {
-		width: 56px !important;
-		height: 56px !important;
-		background: linear-gradient(135deg, rgba(74, 158, 255, 0.2), rgba(74, 158, 255, 0.15)) !important;
-		border: 1.5px solid rgba(74, 158, 255, 0.4) !important;
-		box-shadow: 
-			0 2px 8px rgba(74, 158, 255, 0.2),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15),
-			0 0 20px rgba(74, 158, 255, 0.1) !important;
-	}
-	
-	.tv-btn.power .btn-icon {
-		width: 24px !important;
-		height: 24px !important;
-		stroke: rgba(74, 158, 255, 1) !important;
-		filter: drop-shadow(0 0 4px rgba(74, 158, 255, 0.5));
+		width: clamp(40px, 5vw, 48px) !important;
+		height: clamp(40px, 5vw, 48px) !important;
+		background: radial-gradient(circle at 35% 35%, 
+			rgba(255, 255, 255, 0.1) 0%,
+			#252525 25%,
+			#151515 60%,
+			#050505 100%
+		) !important;
+		box-shadow:
+			inset 0 2px 5px rgba(255, 255, 255, 0.08),
+			inset 0 -3px 5px rgba(0, 0, 0, 0.85),
+			inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+			0 2px 4px rgba(0, 0, 0, 0.7) !important;
 	}
 	
 	.tv-btn.power:hover,
 	.tv-btn.power:focus-visible {
-		background: linear-gradient(135deg, rgba(74, 158, 255, 0.25), rgba(74, 158, 255, 0.2)) !important;
-		border-color: rgba(74, 158, 255, 0.5) !important;
-		box-shadow: 
-			0 4px 12px rgba(74, 158, 255, 0.3),
-			inset 0 1px 0 rgba(255, 255, 255, 0.2),
-			0 0 24px rgba(74, 158, 255, 0.15) !important;
+		background: radial-gradient(circle at 35% 35%, 
+			rgba(255, 255, 255, 0.15) 0%,
+			#2a2a2a 25%,
+			#1a1a1a 60%,
+			#0a0a0a 100%
+		) !important;
+		box-shadow:
+			inset 0 2px 5px rgba(255, 255, 255, 0.1),
+			inset 0 -3px 5px rgba(0, 0, 0, 0.75),
+			inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+			0 3px 6px rgba(0, 0, 0, 0.8) !important;
 	}
 	
 	.tv-btn.power:active {
-		background: linear-gradient(135deg, rgba(74, 158, 255, 0.3), rgba(74, 158, 255, 0.25)) !important;
-		box-shadow: 
-			0 1px 4px rgba(74, 158, 255, 0.2),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+		transform: scale(0.95) !important;
+		box-shadow:
+			inset 0 3px 7px rgba(0, 0, 0, 0.95),
+			inset 0 -1px 3px rgba(255, 255, 255, 0.03),
+			inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+			0 1px 3px rgba(0, 0, 0, 0.6) !important;
 	}
 	
 	/* Fullscreen mode - fixed at bottom */
@@ -636,12 +672,12 @@
 		right: 0 !important;
 		width: 100% !important;
 		z-index: calc(var(--z-ios-fullscreen) + 10) !important;
+		margin: 0 !important;
 	}
 	
 	body.ios-fullscreen-active .tv-control-buttons,
 	.tv-frame-container.ios-fullscreen-active .tv-control-buttons {
-		padding-bottom: max(env(safe-area-inset-bottom, 0) + 8px, 16px) !important;
-		padding-top: 12px !important;
+		gap: clamp(10px, 1.2vw, 14px) !important;
 	}
 }
 
