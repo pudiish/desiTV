@@ -149,7 +149,9 @@
 .tv-screen {
 	position: relative;
 	z-index: var(--z-frame-base);
-	width: 100%;
+	width: 100% !important;
+	height: 0 !important;
+	padding-bottom: 75% !important; /* 4:3 aspect ratio (3/4 = 0.75) */
 	flex: 1 1 auto;
 	min-height: 0;
 	background: #000000;
@@ -158,14 +160,9 @@
 	border: 1.8% solid #000000;
 	border-radius: clamp(6px, 0.8vw, 10px);
 	overflow: hidden !important; /* Clip any content that extends beyond screen bounds - prevent leaks */
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	display: block !important;
 	/* Ensure absolute children stay within bounds - critical for 4:3 aspect ratio */
 	contain: layout style paint;
-	position: relative;
-	/* Maintain 4:3 aspect ratio for screen content */
-	aspect-ratio: 4/3;
 	/* Prevent content leaks at edges - aggressive clipping for curved CRT */
 	clip-path: inset(0 round clamp(6px, 0.8vw, 10px));
 	/* Tight mask for edge containment - tighter at edges, no white borders */
@@ -179,6 +176,15 @@
 	/* Additional containment for edges - black plastic, no white borders */
 	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5); /* Dark edge containment */
 	outline: none !important;
+}
+
+/* Use aspect-ratio for modern browsers - more reliable */
+@supports (aspect-ratio: 4/3) {
+	.tv-screen {
+		height: auto !important;
+		padding-bottom: 0 !important;
+		aspect-ratio: 4/3 !important;
+	}
 }
 
 /* Remove any white borders from iframes and player elements */
@@ -266,18 +272,22 @@
 	/* Subtle convex curve to match CRT glass - reduced to prevent leaks */
 	transform: perspective(800px) rotateX(-1.5deg) scale(0.99);
 	transform-origin: center center;
-	width: 100%;
-	height: 100%;
+	width: 100% !important;
+	height: 100% !important;
+	max-width: 100% !important;
+	max-height: 100% !important;
 	/* Rounded corners matching screen */
 	border-radius: clamp(4px, 0.6vw, 8px);
 	/* Add subtle barrel distortion effect */
-	overflow: hidden !important; /* Prevent leaks */
-	/* Ensure content respects screen bounds */
-	position: relative;
-	max-width: 100%;
-	max-height: 100%;
+	overflow: hidden !important;
+	/* Ensure content respects screen bounds - absolutely positioned to fill screen */
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
 	/* Clip content to prevent edge leaks - aggressive clipping */
-	clip-path: inset(1px round clamp(4px, 0.6vw, 8px)); /* 1px inset for tighter edge containment */
+	clip-path: inset(1px round clamp(4px, 0.6vw, 8px));
 	/* Tight mask for edge containment - tighter at edges, no white borders */
 	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 92%, black 94%, transparent 96%);
 	mask-composite: intersect;
@@ -287,8 +297,8 @@
 	/* Prevent 3D transforms from extending beyond */
 	transform-style: flat;
 	/* Additional edge containment - no white borders */
-	margin: 0;
-	padding: 0;
+	margin: 0 !important;
+	padding: 0 !important;
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
@@ -763,9 +773,7 @@
 			transparent 1px,
 			transparent 2px
 		);
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	display: block !important;
 	position: relative;
 	/* Convex effect for off screen too */
 	transform: perspective(800px) rotateX(-0.5deg);
