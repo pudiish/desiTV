@@ -3,55 +3,52 @@
 /* Responsive */
 @media (max-width: 768px) {
 	.landing-content {
-		padding: 30px 15px;
-		gap: 25px;
+		padding: var(--spacing-2xl) var(--spacing-lg);
+		gap: var(--spacing-3xl);
 	}
 
 	.retro-title {
-		font-size: 2.5rem;
-		letter-spacing: 2px;
+		font-size: clamp(3rem, 10vw, 5rem) !important;
+		letter-spacing: clamp(1px, 0.3vw, 4px) !important;
 	}
 
 	.tagline {
-		font-size: 0.85rem;
+		font-size: clamp(0.95rem, 3vw, 1.2rem) !important;
 	}
 
-	.info-card {
-		padding: 24px;
+	.game-cards-container {
+		grid-template-columns: 1fr !important;
+		gap: var(--spacing-xl) !important;
+		padding: var(--spacing-2xl) var(--spacing-lg) !important;
 	}
 
-	.landing-info {
-		max-height: 55vh;
+	.game-card {
+		padding: var(--spacing-2xl) !important;
 	}
 
-	.info-card h2 {
-		font-size: 1.4rem;
-		margin-bottom: 24px;
+	.card-icon {
+		font-size: 2.5rem !important;
 	}
 
-	.info-section {
-		margin-bottom: 24px;
-		padding-bottom: 18px;
+	.instructions-grid {
+		grid-template-columns: 1fr !important;
+		gap: var(--spacing-sm);
+	}
+
+	.instruction-item {
+		padding: var(--spacing-md) !important;
 	}
 
 	.enter-button {
-		padding: 14px 35px;
-		font-size: 0.95rem;
-		letter-spacing: 1.5px;
-	}
-
-	.tech-stack {
-		gap: 8px;
-	}
-
-	.tech-badge {
-		font-size: 0.7rem;
-		padding: 7px 12px;
+		padding: clamp(16px, 3vh, 20px) clamp(40px, 8vw, 60px) !important;
+		font-size: clamp(1rem, 3vw, 1.2rem) !important;
+		width: 90%;
+		max-width: 400px;
 	}
 
 	.links-container {
 		flex-direction: column;
-		gap: 10px;
+		gap: var(--spacing-sm);
 	}
 
 	.info-link {
@@ -60,108 +57,94 @@
 		justify-content: center;
 	}
 
-	.instructions-grid {
-		grid-template-columns: 1fr;
-		gap: 10px;
+	.contact-social {
+		flex-direction: column;
 	}
 
-	.instruction-item {
-		padding: 12px;
+	.contact-link {
+		width: 100%;
+		text-align: center;
+	}
+
+	.info-toggle-button {
+		width: 90%;
+		max-width: 400px;
 	}
 }
 
 @media (max-width: 480px) {
 	.landing-content {
-		width: 95%;
-		padding: 20px 12px;
-		gap: 20px;
+		width: 100%;
+		padding: var(--spacing-xl) var(--spacing-md);
+		gap: var(--spacing-2xl);
 	}
 
 	.retro-title {
-		font-size: 2rem;
-		letter-spacing: 1.5px;
-		margin-bottom: 12px;
+		font-size: clamp(2.5rem, 12vw, 4rem) !important;
+		letter-spacing: clamp(1px, 0.2vw, 3px) !important;
+		margin-bottom: var(--spacing-md) !important;
 	}
 
 	.tagline {
-		font-size: 0.75rem;
-		letter-spacing: 1px;
+		font-size: clamp(0.9rem, 4vw, 1.1rem) !important;
+		letter-spacing: 0.5px !important;
 	}
 
-	.info-card {
-		padding: 20px;
-		border: 1px solid #8b7864;
+	.game-cards-container {
+		grid-template-columns: 1fr !important;
+		gap: var(--spacing-lg) !important;
+		padding: var(--spacing-xl) var(--spacing-md) !important;
 	}
 
-	.info-card h2 {
-		font-size: 1.2rem;
-		margin-bottom: 20px;
-		padding-bottom: 12px;
+	.game-card {
+		padding: var(--spacing-xl) !important;
 	}
 
-	.landing-info {
-		max-height: 50vh;
+	.card-icon {
+		font-size: 2rem !important;
 	}
 
-	.info-section {
-		margin-bottom: 20px;
-		padding-bottom: 16px;
-	}
-
-	.info-section h3 {
-		font-size: 0.9rem;
-		margin-bottom: 10px;
-	}
-
-	.creator-name {
-		font-size: 1.1rem;
-	}
-
-	.info-section p {
-		font-size: 0.85rem;
-	}
-
-	.features-list li {
-		font-size: 0.82rem;
-		margin: 8px 0;
+	.card-title {
+		font-size: clamp(1.1rem, 5vw, 1.4rem) !important;
 	}
 
 	.enter-button {
-		padding: 12px 28px;
-		font-size: 0.85rem;
+		padding: clamp(14px, 4vh, 18px) clamp(36px, 10vw, 50px) !important;
+		font-size: clamp(0.95rem, 4vw, 1.1rem) !important;
 		width: 100%;
-		letter-spacing: 1px;
-	}
-
-	.tech-badge {
-		font-size: 0.65rem;
-		padding: 6px 10px;
+		max-width: 100%;
 	}
 
 	.instructions-grid {
-		gap: 8px;
+		gap: var(--spacing-xs) !important;
+		grid-template-columns: 1fr !important;
 	}
 
 	.instruction-item {
-		padding: 10px;
-		gap: 10px;
+		padding: var(--spacing-sm) !important;
+		gap: var(--spacing-xs) !important;
 	}
 
-	.instruction-icon {
-		font-size: 1.2rem;
-		min-width: 32px;
+	.instruction-item strong {
+		font-size: clamp(0.85rem, 3vw, 0.95rem) !important;
 	}
 
-	.instruction-text strong {
-		font-size: 0.85rem;
-		margin-bottom: 4px;
+	.instruction-item span {
+		font-size: clamp(0.75rem, 2.5vw, 0.85rem) !important;
 	}
 
-	.instruction-text p {
-		font-size: 0.75rem;
+	.contact-email {
+		font-size: clamp(0.85rem, 3vw, 0.95rem) !important;
+		padding: var(--spacing-sm) !important;
 	}
 
-	.how-to-use {
-		padding: 18px !important;
+	.contact-link {
+		font-size: clamp(0.8rem, 3vw, 0.9rem) !important;
+		padding: var(--spacing-sm) var(--spacing-md) !important;
+	}
+
+	.info-toggle-button {
+		width: 100%;
+		max-width: 100%;
 	}
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CacheManager from '../utils/CacheManager'
 import './Landing.css'
@@ -7,6 +7,7 @@ export default function Landing() {
 	const navigate = useNavigate()
 	const [isLoading, setIsLoading] = useState(false)
 	const [cleanupComplete, setCleanupComplete] = useState(false)
+	const [hoveredItem, setHoveredItem] = useState(null)
 
 	const handleEnterTV = async () => {
 		setIsLoading(true)
@@ -29,183 +30,97 @@ export default function Landing() {
 		}
 	}
 
+
 	return (
 		<div className="landing-container">
-			{/* Retro scanlines background */}
-			<div className="landing-scanlines"></div>
-
-			<div className="landing-content">
-				{/* Logo/Title */}
-				<div className="landing-header">
-					<h1 className="retro-title">📺 DesiTV</h1>
-					<p className="tagline">Your Nostalgic TV Experience</p>
-					<div className="title-glow"></div>
+			<div className="landing-content-single">
+				{/* Hero */}
+				<div className="landing-hero">
+					<h1 className="hero-title">DesiTV</h1>
+					<p className="hero-subtitle">24/7 Indian Entertainment</p>
 				</div>
 
-				{/* Creator Info Section */}
-				<div className="landing-info">
-					<div className="info-card">
-						<h2>Welcome to Retro TV</h2>
-
-						<div className="info-section">
-							<h3>✨ Created by</h3>
-							<p className="creator-name">Ishwar Swarnapudi</p>
-							<p className="creator-title">Full Stack Developer</p>
-						</div>
-
-						<div className="info-section">
-							<h3>🎬 About This Project</h3>
-							<p>
-								A nostalgic pseudo-live TV broadcast experience that simulates real television channels.
-								Content plays 24/7 continuously - when you tune in, you join wherever the broadcast currently is,
-								just like flipping channels on a real TV!
-							</p>
-						</div>
-
-						<div className="info-section">
-							<h3>🛠️ Technology Stack</h3>
-							<div className="tech-stack">
-								<span className="tech-badge">React 18</span>
-								<span className="tech-badge">Express.js</span>
-								<span className="tech-badge">MongoDB</span>
-								<span className="tech-badge">Vite</span>
-								<span className="tech-badge">YouTube API</span>
-							</div>
-						</div>
-
-						<div className="info-section">
-							<h3>✨ Features</h3>
-							<ul className="features-list">
-								<li>🎥 Pseudo-live continuous broadcast timeline</li>
-								<li>📱 Multi-channel support with smooth transitions</li>
-								<li>💾 Session persistence with MongoDB</li>
-								<li>🎨 Retro TV aesthetic with scanlines and CRT effects</li>
-								<li>🔊 Dynamic audio and visual effects</li>
-								<li>⚙️ Admin dashboard for channel management</li>
-								<li>🌍 Responsive design for all devices</li>
-							</ul>
-						</div>
-
-						<div className="info-section how-to-use">
-							<h3>📖 How to Use</h3>
-							<div className="instructions-grid">
-								<div className="instruction-item">
-									<span className="instruction-icon">🔴</span>
-									<div className="instruction-text">
-										<strong>Power Button</strong>
-										<p>Click to turn the TV on/off</p>
-									</div>
-								</div>
-								<div className="instruction-item">
-									<span className="instruction-icon">🔼🔽</span>
-									<div className="instruction-text">
-										<strong>Channel Up/Down</strong>
-										<p>Switch between channels using remote or arrow keys</p>
-									</div>
-								</div>
-								<div className="instruction-item">
-									<span className="instruction-icon">🔊</span>
-									<div className="instruction-text">
-										<strong>Volume Control</strong>
-										<p>Adjust volume with remote slider or +/- keys</p>
-									</div>
-								</div>
-								<div className="instruction-item">
-									<span className="instruction-icon">📺</span>
-									<div className="instruction-text">
-										<strong>Fullscreen</strong>
-										<p>Double-click TV screen for fullscreen mode</p>
-									</div>
-								</div>
-								<div className="instruction-item">
-									<span className="instruction-icon">📋</span>
-									<div className="instruction-text">
-										<strong>TV Menu</strong>
-										<p>Press ESC or click menu button for channel guide</p>
-									</div>
-								</div>
-								<div className="instruction-item">
-									<span className="instruction-icon">🔄</span>
-									<div className="instruction-text">
-										<strong>Live Broadcast</strong>
-										<p>Content plays 24/7 - join wherever the broadcast is!</p>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<div className="info-section">
-							<h3>🔗 Connect</h3>
-							<div className="links-container">
-								<a
-									href="https://github.com/pudiish/desiTV"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="info-link"
-								>
-									<span className="link-icon">📁</span> GitHub Repository
-								</a>
-								<a
-									href="https://www.linkedin.com/in/ishwar-swarnapudi"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="info-link"
-								>
-									<span className="link-icon">💼</span> LinkedIn
-								</a>
-								<a
-									href="mailto:ishwar@example.com"
-									className="info-link"
-								>
-									<span className="link-icon">✉️</span> Contact
-								</a>
-							</div>
-						</div>
+				{/* Features - Minimal */}
+				<div className="features-minimal">
+					<div 
+						className="feature-badge"
+						onMouseEnter={() => setHoveredItem('free')}
+						onMouseLeave={() => setHoveredItem(null)}
+					>
+						<span>FREE</span>
+						{hoveredItem === 'free' && <div className="tooltip">No subscriptions, no payments</div>}
+					</div>
+					<div 
+						className="feature-badge"
+						onMouseEnter={() => setHoveredItem('live')}
+						onMouseLeave={() => setHoveredItem(null)}
+					>
+						<span>LIVE</span>
+						{hoveredItem === 'live' && <div className="tooltip">Continuous 24/7 broadcasts</div>}
+					</div>
+					<div 
+						className="feature-badge"
+						onMouseEnter={() => setHoveredItem('desi')}
+						onMouseLeave={() => setHoveredItem(null)}
+					>
+						<span>DESI</span>
+						{hoveredItem === 'desi' && <div className="tooltip">Indian movies, music, shows</div>}
 					</div>
 				</div>
 
-				{/* Enter Button */}
-				<div className="landing-action">
+				{/* CTA */}
+				<div className="landing-cta">
 					<button
-						className={`enter-button ${isLoading ? 'loading' : ''} ${
-							cleanupComplete ? 'complete' : ''
-						}`}
+						className={`tv-button ${isLoading ? 'loading' : ''}`}
 						onClick={handleEnterTV}
 						disabled={isLoading}
 					>
 						{isLoading ? (
 							<>
 								<span className="loader"></span>
-								{cleanupComplete ? 'Entering TV...' : 'Preparing...'}
+								{cleanupComplete ? 'LOADING...' : 'PREPARING...'}
 							</>
 						) : (
-							<>
-								<span className="button-icon">▶</span>
-								Enter Retro TV
-							</>
+							<>▶ TUNE IN</>
 						)}
 					</button>
+				</div>
 
-					{isLoading && (
-						<div className="cleanup-status">
-							<p className="status-text">
-								{cleanupComplete
-									? '✓ Cache cleaned, loading TV...'
-									: '⟳ Cleaning cache & preparing...'}
-							</p>
+				{/* Controls Hint */}
+				<div className="controls-hint">
+					<div className="hint-item">
+						<kbd>◄</kbd><kbd>►</kbd> <span>Channels</span>
+					</div>
+					<div className="hint-item">
+						<kbd>+</kbd><kbd>-</kbd> <span>Volume</span>
+					</div>
+					<div className="hint-item">
+						<kbd>ESC</kbd> <span>Menu</span>
+					</div>
+				</div>
+
+				{/* Legal */}
+				<div className="legal-section">
+					<details className="legal-details">
+						<summary>Disclaimer & Copyright</summary>
+						<div className="legal-text">
+							<p><strong>Content:</strong> For personal viewing only. Content sourced from public platforms.</p>
+							<p><strong>Copyright:</strong> All media belongs to respective owners. Contact for takedown requests.</p>
+							<p><strong>India:</strong> Compliant with IT Act 2000 & Copyright Act 1957. Personal, non-commercial use only.</p>
+							<p><strong>Contact:</strong> <a href="mailto:legal@desitv.com">legal@desitv.com</a></p>
 						</div>
-					)}
+					</details>
 				</div>
 
 				{/* Footer */}
 				<div className="landing-footer">
-					<p>🎬 Enjoy your retro TV experience! 📺</p>
-					<p className="version">v1.0.0 • 2025</p>
+					<a href="https://github.com/pudiish/desiTV" target="_blank" rel="noopener noreferrer">GitHub</a>
+					<span>•</span>
+					<a href="https://www.linkedin.com/in/ishwar-swarnapudi" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+					<span>•</span>
+					<span>© 2025</span>
 				</div>
 			</div>
-
-			{/* Retro CRT effect */}
-			<div className="landing-crt-effect"></div>
 		</div>
 	)
 }

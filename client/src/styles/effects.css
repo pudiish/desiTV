@@ -46,7 +46,7 @@
 		transparent 2px
 	);
 	pointer-events: none;
-	z-index: 9996;
+	z-index: var(--z-crt-effects);
 	opacity: 0.8;
 	animation: scanline-move 8s linear infinite;
 	mix-blend-mode: overlay;
@@ -58,7 +58,7 @@
 .static-effect-tv {
 	position: absolute;
 	inset: 0;
-	z-index: 15;
+	z-index: var(--z-screen-overlay);
 	pointer-events: none;
 	animation: static-intense 0.2s steps(8) infinite;
 	border-radius: inherit;
@@ -69,6 +69,7 @@
 	max-height: 100%;
 	contain: layout style paint;
 	will-change: transform, opacity;
+	z-index: var(--z-screen-overlay);
 }
 
 .static-noise-overlay {
@@ -112,7 +113,7 @@
 	height: 100%;
 	background: radial-gradient(ellipse at center, transparent 0%, rgba(139, 115, 85, 0.08) 100%);
 	pointer-events: none;
-	z-index: 5;
+	z-index: var(--z-content-overlay);
 	border-radius: inherit;
 	overflow: hidden;
 	max-width: 100%;
@@ -200,7 +201,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 9999;
+	z-index: var(--z-tap-overlay);
 	cursor: pointer;
 	animation: tv-on-boot 2s ease-in-out infinite;
 }

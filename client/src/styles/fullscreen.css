@@ -289,7 +289,7 @@ body.ios-fullscreen-active .main-container {
 	overflow: hidden !important;
 	position: fixed !important;
 	inset: 0 !important;
-	z-index: 99998 !important;
+	z-index: calc(var(--z-ios-fullscreen) - 1) !important;
 }
 
 body.ios-fullscreen-active .content-wrapper {

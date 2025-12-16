@@ -83,7 +83,7 @@
 	);
 	border-radius: clamp(14px, 2vw, 20px) clamp(14px, 2vw, 20px) 0 0;
 	pointer-events: none;
-	z-index: 1;
+	z-index: var(--z-base);
 }
 
 /* Speaker grills and side details - black plastic design */
@@ -135,7 +135,7 @@
 			rgba(0, 0, 0, 0.2) 100%
 		);
 	opacity: 0.6;
-	z-index: 1;
+	z-index: var(--z-base);
 }
 
 /* Hide TV frame decorations in fullscreen */
@@ -148,7 +148,7 @@
 
 .tv-screen {
 	position: relative;
-	z-index: 2;
+	z-index: var(--z-frame-base);
 	width: 100%;
 	flex: 1 1 auto;
 	min-height: 0;
@@ -216,7 +216,7 @@
 		rgba(0, 0, 0, 0.3) 100%
 	);
 	pointer-events: none;
-	z-index: 4;
+	z-index: var(--z-frame-decor);
 	border-radius: inherit;
 	mix-blend-mode: multiply;
 	/* Realistic CRT glass depth and convex effect */
@@ -360,7 +360,7 @@
 	align-items: center;
 	gap: clamp(6px, 0.8vw, 10px);
 	position: relative;
-	z-index: 1;
+	z-index: var(--z-base);
 }
 
 .tv-btn {
@@ -516,5 +516,5 @@
 		0 0 15px rgba(184, 149, 106, 0.4),
 		0 0 25px rgba(184, 149, 106, 0.2);
 	opacity: 0.9; /* Static - no animation */
-	z-index: 10;
+	z-index: var(--z-overlay);
 }

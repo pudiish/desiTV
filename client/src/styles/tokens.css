@@ -68,6 +68,12 @@
 
 	/* ============================================
 	   Z-INDEX SCALE
+	   Layer hierarchy (lowest to highest):
+	   1-10: Base content and overlays
+	   10-100: UI elements and menus
+	   8000-9000: Glass overlays and remotes
+	   9990-10000: Fullscreen and high-priority overlays
+	   10000+: Modals and top-level overlays
 	   ============================================ */
 	--z-base: 1;
 	--z-overlay: 10;
@@ -79,6 +85,16 @@
 	--z-survey-overlay: 10003;
 	--z-remote-overlay: 10000;
 	--z-ios-fullscreen: 99999;
+	/* CRT and effects layers */
+	--z-crt-effects: 9996;
+	--z-crt-overlay: 9995;
+	--z-tap-overlay: 9999;
+	--z-auto-unlock: 9990;
+	--z-player-overlay: 20;
+	--z-screen-overlay: 15;
+	--z-content-overlay: 6;
+	--z-frame-decor: 4;
+	--z-frame-base: 2;
 
 	/* ============================================
 	   BORDER RADIUS

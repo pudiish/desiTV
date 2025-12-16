@@ -45,7 +45,7 @@
 		/* Subtle sepia/brown tint */
 		rgba(107, 93, 79, 0.03);
 	pointer-events: none;
-	z-index: 6;
+	z-index: var(--z-content-overlay);
 	mix-blend-mode: multiply;
 	border-radius: inherit;
 }
@@ -58,8 +58,8 @@
 	right: 0;
 	bottom: 20px;
 	transform: translateX(110%);
-	transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-	z-index: 10000 !important;
+	transition: transform var(--transition-slow) ease-out, opacity var(--transition-slow) ease-out;
+	z-index: var(--z-remote-overlay) !important;
 	pointer-events: none;
 	width: min(360px, 90vw);
 	max-width: 90vw;
@@ -71,6 +71,8 @@
 	opacity: 1;
 	pointer-events: auto;
 }
+
+/* Remote overlay already uses --z-remote-overlay */
 
 /* Fullscreen remote overlay styles are in fullscreen.css */
 
@@ -109,7 +111,7 @@
 		transparent 60%
 	);
 	pointer-events: none;
-	z-index: 1;
+	z-index: var(--z-base);
 	border-radius: inherit;
 	mix-blend-mode: overlay;
 }

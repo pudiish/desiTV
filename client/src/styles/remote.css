@@ -9,8 +9,8 @@
 }
 
 .remote-body {
-	background: linear-gradient(180deg, var(--color-bg-secondary) 0%, #0a0a0a 50%, #151515 100%);
-	border-radius: var(--radius-xl) var(--radius-xl) 20px 20px;
+	background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--tv-frame-darkest) 50%, var(--tv-control-bar) 100%);
+	border-radius: var(--radius-xl) var(--radius-xl) var(--spacing-xl) var(--spacing-xl);
 	padding: clamp(var(--spacing-md), 1.2vh, var(--spacing-lg)) clamp(var(--spacing-md), 1vw, var(--spacing-lg)) clamp(var(--spacing-lg), 1.5vh, 14px);
 	width: clamp(130px, 11vw, 160px);
 	box-shadow: 
@@ -18,7 +18,7 @@
 		var(--shadow-md),
 		inset 0 1px 0 rgba(255, 255, 255, 0.04),
 		inset 0 -3px 8px rgba(0, 0, 0, 0.8);
-	border: 2px solid #0a0a0a;
+	border: 2px solid var(--tv-frame-darkest);
 	position: relative;
 	opacity: 0.97;
 	transform: scale(1);
@@ -48,8 +48,8 @@
 .remote-brand {
 	text-align: center;
 	font-size: var(--font-size-sm);
-	color: #666;
-	text-shadow: 0 0 4px rgba(102, 102, 102, 0.3);
+	color: var(--color-text-muted);
+	text-shadow: 0 0 4px color-mix(in srgb, var(--color-text-muted) 30%, transparent);
 	margin-bottom: clamp(var(--spacing-sm), 0.8vh, var(--spacing-sm));
 	font-weight: bold;
 	letter-spacing: 2px;
@@ -68,37 +68,37 @@
 .remote-btn.power-btn {
 	width: clamp(32px, 3.2vw, 38px);
 	height: clamp(32px, 3.2vw, 38px);
-	border-radius: 50%;
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	border: 2px solid #0a0a0a;
+	border-radius: var(--radius-full);
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	border: 2px solid var(--tv-frame-darkest);
 	box-shadow: 
-		0 4px 15px rgba(0, 0, 0, 0.5),
+		var(--shadow-lg),
 		inset 0 2px 0 rgba(255, 255, 255, 0.02);
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: all var(--transition-base);
 }
 
 .remote-btn.power-btn:hover:not(:disabled) {
 	box-shadow: 
-		0 4px 15px rgba(255, 0, 0, 0.6),
+		0 4px 15px color-mix(in srgb, var(--color-error) 60%, transparent),
 		inset 0 2px 0 rgba(255, 255, 255, 0.3);
 }
 
 .remote-btn.power-btn:active:not(:disabled) {
 	transform: scale(0.95);
 	box-shadow: 
-		0 2px 8px rgba(255, 0, 0, 0.4),
+		0 2px 8px color-mix(in srgb, var(--color-error) 40%, transparent),
 		inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .remote-btn.power-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(255, 0, 0, 0.6);
+	outline: 2px solid color-mix(in srgb, var(--color-error) 60%, transparent);
 	outline-offset: 2px;
 }
 
 .remote-btn.power-btn.on {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	border-color: #0a0a0a;
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	border-color: var(--tv-frame-darkest);
 	box-shadow: 
 		0 4px 15px rgba(0, 0, 0, 0.6),
 		inset 0 2px 0 rgba(255, 255, 255, 0.03);
@@ -123,24 +123,24 @@
 .led {
 	width: 8px;
 	height: 8px;
-	border-radius: 50%;
-	background: #333;
+	border-radius: var(--radius-full);
+	background: var(--color-text-muted);
 	box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
 }
 
 .led.on {
-	background: #00ff00;
+	background: var(--color-success);
 	box-shadow: 
-		0 0 10px #00ff00,
-		0 0 20px #00ff00,
+		0 0 10px var(--color-success),
+		0 0 20px var(--color-success),
 		inset 0 0 3px rgba(255,255,255,0.5);
 }
 
 /* Channel Display */
 .channel-display {
-	background: #000;
-	border: 2px solid #333;
-	border-radius: 5px;
+	background: var(--tv-frame-darkest);
+	border: 2px solid var(--color-border);
+	border-radius: var(--radius-sm);
 	padding: clamp(5px, 0.6vh, 6px) clamp(8px, 0.9vw, 10px);
 	margin: clamp(6px, 0.7vh, 8px) auto clamp(8px, 1vh, 10px);
 	display: flex;
@@ -152,17 +152,17 @@
 
 .channel-label {
 	font-size: clamp(7px, 0.85vw, 9px);
-	color: #555;
+	color: var(--color-text-muted);
 	opacity: 0.6;
 }
 
 .channel-number {
 	font-size: clamp(12px, 1.4vw, 16px);
-	color: #666;
+	color: var(--color-text-dim);
 	text-shadow: 
-		0 0 5px rgba(102, 102, 102, 0.3),
-		0 0 10px rgba(102, 102, 102, 0.2);
-	font-family: 'Courier New', monospace;
+		0 0 5px color-mix(in srgb, var(--color-text-dim) 30%, transparent),
+		0 0 10px color-mix(in srgb, var(--color-text-dim) 20%, transparent);
+	font-family: var(--font-mono);
 	letter-spacing: 1.5px;
 	opacity: 0.7;
 }
@@ -176,17 +176,17 @@
 }
 
 .remote-btn.num-btn {
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	border: 1.5px solid #0a0a0a;
-	border-radius: 5px;
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	border: 1.5px solid var(--tv-frame-darkest);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-dim);
 	font-size: clamp(8px, 0.9vw, 10px);
 	padding: clamp(5px, 0.6vh, 7px);
 	cursor: pointer;
-	transition: background 0.15s ease;
-	font-family: 'Press Start 2P', monospace;
+	transition: background var(--transition-fast);
+	font-family: var(--font-primary);
 	box-shadow: 
-		0 2px 4px rgba(0,0,0,0.6),
+		var(--shadow-sm),
 		inset 0 1px 0 rgba(255,255,255,0.02);
 	min-height: clamp(26px, 2.8vh, 30px);
 	display: flex;
@@ -195,18 +195,18 @@
 }
 
 .remote-btn.num-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	color: #888;
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.num-btn:active:not(:disabled) {
 	transform: scale(0.95);
-	box-shadow: 0 1px 2px rgba(0,0,0,0.4);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	box-shadow: var(--shadow-sm);
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
 }
 
 .remote-btn.num-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
 	outline-offset: 2px;
 }
 
@@ -247,16 +247,16 @@
 }
 
 .remote-btn.dpad-btn {
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	border: 2px solid #0a0a0a;
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	border: 2px solid var(--tv-frame-darkest);
+	color: var(--color-text-dim);
 	font-size: clamp(7px, 0.85vw, 9px);
 	padding: clamp(7px, 0.8vh, 9px) clamp(8px, 1vw, 12px);
 	cursor: pointer;
-	transition: all 0.15s ease;
-	font-family: 'Press Start 2P', monospace;
-	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
-	border-radius: 5px;
+	transition: all var(--transition-fast);
+	font-family: var(--font-primary);
+	text-shadow: 0 0 2px color-mix(in srgb, var(--color-text-dim) 20%, transparent);
+	border-radius: var(--radius-sm);
 	min-height: clamp(28px, 3vh, 32px);
 	display: flex;
 	align-items: center;
@@ -281,24 +281,24 @@
 
 .remote-btn.dpad-btn.center {
 	min-width: clamp(42px, 4.8vw, 50px);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.dpad-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	color: #888;
-	text-shadow: 0 0 3px rgba(136, 136, 136, 0.3);
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	color: var(--color-text-dim);
+	text-shadow: 0 0 3px color-mix(in srgb, var(--color-text-dim) 30%, transparent);
 }
 
 .remote-btn.dpad-btn:active:not(:disabled) {
 	transform: scale(0.95);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .remote-btn.dpad-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
 	outline-offset: 2px;
 }
 
@@ -310,41 +310,41 @@
 /* Category Buttons - Now integrated into dpad-top-row */
 .remote-btn.category-btn {
 	/* Match dpad-btn styling for consistency */
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	border: 2px solid #0a0a0a;
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	border: 2px solid var(--tv-frame-darkest);
+	color: var(--color-text-dim);
 	font-size: clamp(7px, 0.85vw, 9px);
 	padding: clamp(7px, 0.8vh, 9px) clamp(8px, 1vw, 12px);
 	cursor: pointer;
-	transition: all 0.15s ease;
-	font-family: 'Press Start 2P', monospace;
-	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
-	border-radius: 5px;
+	transition: all var(--transition-fast);
+	font-family: var(--font-primary);
+	text-shadow: 0 0 2px color-mix(in srgb, var(--color-text-dim) 20%, transparent);
+	border-radius: var(--radius-sm);
 	text-transform: uppercase;
 	min-height: clamp(28px, 3vh, 32px);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	box-shadow: 
-		0 2px 4px rgba(0,0,0,0.6),
+		var(--shadow-sm),
 		inset 0 1px 0 rgba(255,255,255,0.02);
 	-webkit-tap-highlight-color: transparent;
 }
 
 .remote-btn.category-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	color: #888;
-	text-shadow: 0 0 3px rgba(136, 136, 136, 0.3);
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	color: var(--color-text-dim);
+	text-shadow: 0 0 3px color-mix(in srgb, var(--color-text-dim) 30%, transparent);
 }
 
 .remote-btn.category-btn:active:not(:disabled) {
 	transform: scale(0.95);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .remote-btn.category-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
 	outline-offset: 2px;
 }
 
@@ -359,15 +359,15 @@
 }
 
 .remote-btn.mute-btn {
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	border: 2px solid #0a0a0a;
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	border: 2px solid var(--tv-frame-darkest);
+	color: var(--color-text-dim);
 	font-size: clamp(6px, 0.7vw, 8px);
 	padding: clamp(5px, 0.6vh, 7px) clamp(10px, 1.2vw, 14px);
 	cursor: pointer;
-	transition: background 0.15s ease;
-	font-family: 'Press Start 2P', monospace;
-	border-radius: 5px;
+	transition: background var(--transition-fast);
+	font-family: var(--font-primary);
+	border-radius: var(--radius-sm);
 	width: 100%;
 	min-height: clamp(26px, 2.8vh, 30px);
 	display: flex;
@@ -376,23 +376,23 @@
 }
 
 .remote-btn.mute-btn.active {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	color: #888;
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.mute-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #555, #333);
-	color: #aaa;
+	background: linear-gradient(145deg, var(--color-text-dim), var(--color-text-muted));
+	color: var(--color-text);
 }
 
 .remote-btn.mute-btn:active:not(:disabled) {
 	transform: scale(0.95);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .remote-btn.mute-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
 	outline-offset: 2px;
 }
 
@@ -411,8 +411,8 @@
 .vcr-label {
 	text-align: center;
 	font-size: 8px;
-	color: #666;
-	margin-bottom: 10px;
+	color: var(--color-text-dim);
+	margin-bottom: var(--spacing-sm);
 	letter-spacing: 2px;
 }
 
@@ -431,9 +431,9 @@
 	width: clamp(24px, 2.6vw, 28px);
 	height: clamp(20px, 2.2vh, 24px);
 	border-radius: 3px;
-	border: 1.5px solid #222;
+	border: 1.5px solid var(--color-border);
 	cursor: pointer;
-	transition: background 0.15s ease;
+	transition: background var(--transition-fast);
 	font-size: clamp(7px, 0.8vw, 9px);
 	display: flex;
 	align-items: center;
@@ -441,42 +441,42 @@
 }
 
 .remote-btn.vcr-btn.record {
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn.play {
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn.stop {
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn.small {
 	width: clamp(20px, 2.2vw, 24px);
 	height: clamp(18px, 2vh, 22px);
 	font-size: clamp(6px, 0.7vw, 8px);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-	color: #666;
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-	color: #888;
-	border-color: #333;
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	color: var(--color-text-dim);
+	border-color: var(--color-border);
 }
 
 .remote-btn.vcr-btn:active:not(:disabled) {
 	transform: scale(0.95);
-	background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .remote-btn.vcr-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
 	outline-offset: 2px;
 }
 
@@ -495,33 +495,33 @@
 
 .volume-label {
 	font-size: clamp(7px, 0.85vw, 9px);
-	color: #666;
+	color: var(--color-text-dim);
 	margin-bottom: clamp(4px, 0.5vh, 6px);
 	text-align: center;
 }
 
 .volume-bar {
 	height: 8px;
-	background: #222;
-	border-radius: 4px;
+	background: var(--color-bg-secondary);
+	border-radius: var(--radius-sm);
 	overflow: hidden;
 	box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
 }
 
 .volume-fill {
 	height: 100%;
-	background: linear-gradient(90deg, #666, #555);
-	border-radius: 4px;
-	transition: width 0.2s ease;
-	box-shadow: 0 0 5px rgba(102, 102, 102, 0.3);
+	background: linear-gradient(90deg, var(--color-text-dim), var(--color-text-muted));
+	border-radius: var(--radius-sm);
+	transition: width var(--transition-base);
+	box-shadow: 0 0 5px color-mix(in srgb, var(--color-text-dim) 30%, transparent);
 }
 
 .volume-percent {
 	font-size: clamp(9px, 1vw, 11px);
-	color: #666;
+	color: var(--color-text-dim);
 	text-align: center;
 	margin-top: clamp(4px, 0.5vh, 6px);
-	text-shadow: 0 0 2px rgba(102, 102, 102, 0.2);
+	text-shadow: 0 0 2px color-mix(in srgb, var(--color-text-dim) 20%, transparent);
 	opacity: 0.6;
 }
 
@@ -538,7 +538,7 @@
 
 .keyboard-hints .hint {
 	font-size: 7px;
-	color: #555;
+	color: var(--color-text-muted);
 	text-align: center;
 	opacity: 0.5;
 }

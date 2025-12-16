@@ -251,7 +251,7 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		z-index: 100;
+		z-index: var(--z-menu);
 	}
 	
 	.status-text {
@@ -466,7 +466,7 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		z-index: 100;
+		z-index: var(--z-menu);
 	}
 	
 	.status-text {
@@ -620,11 +620,12 @@
 	left: 15px;
 	right: 15px;
 	background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(13, 21, 32, 0.7) 100%);
-	border: 1px solid rgba(74, 158, 255, 0.3);
-	border-radius: 8px;
-	padding: 10px;
-	z-index: 20;
-	animation: preview-slide-up 0.3s ease;
+	border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+	border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+	border-radius: var(--radius-lg);
+	padding: var(--spacing-sm);
+	z-index: var(--z-overlay);
+	animation: preview-slide-up var(--transition-slow) ease;
 	backdrop-filter: blur(8px);
 	box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.5);
 	max-width: 85%;
@@ -645,24 +646,24 @@
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 8px;
+	margin-bottom: var(--spacing-sm);
 	padding-bottom: 6px;
-	border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+	border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .channel-badge {
 	font-size: 8px;
-	color: #4a9eff;
-	text-shadow: 0 0 8px #4a9eff;
+	color: var(--color-primary);
+	text-shadow: 0 0 8px var(--color-primary);
 	padding: 2px 6px;
-	background: rgba(74, 158, 255, 0.15);
-	border-radius: 3px;
-	border: 1px solid rgba(74, 158, 255, 0.3);
+	background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+	border-radius: var(--radius-sm);
+	border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .live-indicator {
 	font-size: 7px;
-	color: #ff4444;
+	color: var(--color-error);
 	animation: live-blink 1s ease-in-out infinite;
 }
 
@@ -673,8 +674,8 @@
 
 .preview-label {
 	font-size: 7px;
-	color: #39ff14;
-	text-shadow: 0 0 4px #39ff14;
+	color: var(--color-success);
+	text-shadow: 0 0 4px var(--color-success);
 	margin-bottom: 3px;
 	letter-spacing: 0.5px;
 }
@@ -696,28 +697,28 @@
 
 .preview-progress-bar {
 	height: 100%;
-	background: linear-gradient(90deg, #39ff14, #00ff88);
+	background: linear-gradient(90deg, var(--color-success), #00ff88);
 	border-radius: 2px;
 	transition: width 1s linear;
-	box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+	box-shadow: 0 0 10px color-mix(in srgb, var(--color-success) 50%, transparent);
 }
 
 .preview-time {
 	font-size: 9px;
-	color: #888;
+	color: var(--color-text-dim);
 }
 
 .preview-next {
 	padding: 6px;
-	background: rgba(255, 102, 0, 0.08);
-	border: 1px solid rgba(255, 102, 0, 0.2);
-	border-radius: 4px;
+	background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-warning) 20%, transparent);
+	border-radius: var(--radius-sm);
 	margin-bottom: 6px;
 }
 
 .preview-next .preview-label {
-	color: #ff6600;
-	text-shadow: 0 0 4px #ff6600;
+	color: var(--color-warning);
+	text-shadow: 0 0 4px var(--color-warning);
 }
 
 .preview-next .preview-title {
@@ -738,13 +739,13 @@
 }
 
 .preview-later .preview-label {
-	color: #666;
+	color: var(--color-text-muted);
 	text-shadow: none;
 }
 
 .preview-later .preview-title {
 	font-size: 8px;
-	color: #888;
+	color: var(--color-text-dim);
 }
 
 /* Hide preview on small screens */
@@ -843,14 +844,14 @@
 	/* Position above control bar - adjusted for 4:3 taller aspect ratio */
 	top: calc(50% - clamp(70px, 9vh, 90px));
 	transform: translateY(-50%);
-	z-index: 15; /* Lower than overlays but above content */
+	z-index: var(--z-overlay); /* Lower than overlays but above content */
 	pointer-events: none;
 	opacity: 1;
 	filter: blur(0px) brightness(1);
 	transition: 
-		opacity 0.4s ease-out,
-		filter 0.4s ease-out;
-	animation: volume-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+		opacity var(--transition-slower) ease-out,
+		filter var(--transition-slower) ease-out;
+	animation: volume-slide-in var(--transition-slow) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 	/* Ensure volume display stays within 4:3 screen bounds */
 	max-height: calc(100% - clamp(120px, 15vh, 160px));
 	max-width: calc(100% - clamp(24px, 3vw, 36px));
@@ -862,7 +863,7 @@
 }
 
 .crt-volume-display.fade-out {
-	animation: volume-fade-out 0.5s ease-out forwards !important;
+	animation: volume-fade-out var(--transition-slower) ease-out forwards !important;
 }
 
 @keyframes volume-slide-in {
@@ -900,14 +901,14 @@
 
 .volume-box {
 	background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(13, 21, 32, 0.85) 100%);
-	border: 2px solid #39ff14;
-	border-radius: 6px;
-	padding: 12px 10px;
+	border: 2px solid var(--color-success);
+	border-radius: var(--radius-md);
+	padding: var(--spacing-md) var(--spacing-sm);
 	/* Reduced glow to prevent overflow - respects 4:3 bounds */
 	box-shadow: 
-		0 0 15px rgba(57, 255, 20, 0.3),
-		0 0 30px rgba(57, 255, 20, 0.1),
-		inset 0 0 15px rgba(57, 255, 20, 0.1);
+		0 0 15px color-mix(in srgb, var(--color-success) 30%, transparent),
+		0 0 30px color-mix(in srgb, var(--color-success) 10%, transparent),
+		inset 0 0 15px color-mix(in srgb, var(--color-success) 10%, transparent);
 	position: relative;
 	min-width: 65px;
 	max-width: 100%; /* Prevent overflow */
@@ -924,8 +925,8 @@
 
 .volume-label {
 	font-size: 6px;
-	color: #39ff14;
-	text-shadow: 0 0 8px #39ff14;
+	color: var(--color-success);
+	text-shadow: 0 0 8px var(--color-success);
 	margin-bottom: 6px;
 	letter-spacing: 1px;
 	opacity: 0.7;
@@ -941,30 +942,30 @@
 	margin: 6px 0;
 	padding: 8px;
 	background: rgba(0, 0, 0, 0.5);
-	border: 1px solid rgba(57, 255, 20, 0.3);
+	border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
 	border-radius: 4px;
 }
 
 .volume-bar-vertical {
 	width: 28px;
 	height: 8px;
-	background: rgba(57, 255, 20, 0.2);
-	border: 1px solid rgba(57, 255, 20, 0.4);
+	background: color-mix(in srgb, var(--color-success) 20%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
 	border-radius: 2px;
 	transition: all 0.1s ease;
 }
 
 .volume-bar-vertical.active {
-	background: linear-gradient(90deg, #39ff14 0%, #00ff88 100%);
-	box-shadow: 0 0 12px rgba(57, 255, 20, 0.8), inset 0 0 8px rgba(255, 255, 255, 0.2);
-	border-color: #39ff14;
+	background: linear-gradient(90deg, var(--color-success) 0%, #00ff88 100%);
+	box-shadow: 0 0 12px color-mix(in srgb, var(--color-success) 80%, transparent), inset 0 0 8px rgba(255, 255, 255, 0.2);
+	border-color: var(--color-success);
 }
 
 .volume-value {
 	font-size: 14px;
-	color: #39ff14;
-	text-shadow: 0 0 10px #39ff14;
-	margin-top: 4px;
+	color: var(--color-success);
+	text-shadow: 0 0 10px var(--color-success);
+	margin-top: var(--spacing-xs);
 	letter-spacing: 0.5px;
 }
 
@@ -1115,7 +1116,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 9999;
+	z-index: var(--z-ios-fullscreen);
 	cursor: pointer;
 	animation: tv-on-boot 2s ease-in-out infinite;
 }
@@ -1123,14 +1124,14 @@
 .tap-to-start-content {
 	position: relative;
 	text-align: center;
-	z-index: 2;
+	z-index: var(--z-frame-base);
 }
 
 .crt-flicker {
 	position: absolute;
 	inset: -50px;
-	background: radial-gradient(circle at 50% 50%, rgba(74, 158, 255, 0.1) 0%, transparent 50%);
-	animation: crt-flicker-animation 0.15s infinite;
+	background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 50%);
+	animation: crt-flicker-animation var(--transition-fast) infinite;
 	pointer-events: none;
 }
 
@@ -1140,24 +1141,24 @@
 }
 
 @keyframes tv-on-boot {
-	0%, 100% { box-shadow: inset 0 0 80px rgba(74, 158, 255, 0.2); }
-	50% { box-shadow: inset 0 0 120px rgba(74, 158, 255, 0.4); }
+	0%, 100% { box-shadow: inset 0 0 80px color-mix(in srgb, var(--color-primary) 20%, transparent); }
+	50% { box-shadow: inset 0 0 120px color-mix(in srgb, var(--color-primary) 40%, transparent); }
 }
 
 .tap-message {
-	color: #4a9eff;
+	color: var(--color-primary);
 	text-shadow: 
-		0 0 10px #4a9eff,
-		0 0 20px #4a9eff,
-		0 0 40px rgba(74, 158, 255, 0.8);
+		0 0 10px var(--color-primary),
+		0 0 20px var(--color-primary),
+		0 0 40px color-mix(in srgb, var(--color-primary) 80%, transparent);
 	animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .tap-message .tv-icon {
 	font-size: 80px;
-	margin-bottom: 20px;
+	margin-bottom: var(--spacing-xl);
 	animation: float-icon 3s ease-in-out infinite;
-	filter: drop-shadow(0 0 20px rgba(74, 158, 255, 0.8));
+	filter: drop-shadow(0 0 20px color-mix(in srgb, var(--color-primary) 80%, transparent));
 }
 
 @keyframes float-icon {
@@ -1197,13 +1198,13 @@
 	inset: 0;
 	background: repeating-linear-gradient(
 0deg,
-rgba(139, 115, 85, 0.1) 0px,
-rgba(139, 115, 85, 0.1) 1px,
+color-mix(in srgb, var(--color-text-muted) 10%, transparent) 0px,
+color-mix(in srgb, var(--color-text-muted) 10%, transparent) 1px,
 transparent 1px,
 transparent 2px
 );
 	pointer-events: none;
-	z-index: 9996;
+	z-index: var(--z-crt-effects);
 	opacity: 0.8;
 	animation: scanline-move 8s linear infinite;
 	mix-blend-mode: overlay;
@@ -1244,16 +1245,16 @@ transparent 2px
 /* Retry indicator styling */
 .retry-indicator {
 	position: absolute;
-	bottom: 20px;
+	bottom: var(--spacing-xl);
 	left: 50%;
 	transform: translateX(-50%);
-	background: rgba(255, 0, 0, 0.8);
+	background: color-mix(in srgb, var(--color-error) 80%, transparent);
 	color: white;
-	padding: 8px 16px;
-	border-radius: 4px;
-	font-size: 12px;
+	padding: var(--spacing-sm) var(--spacing-lg);
+	border-radius: var(--radius-sm);
+	font-size: var(--font-size-sm);
 	font-weight: 700;
-	z-index: 20;
+	z-index: var(--z-overlay);
 	animation: pulse 1s infinite;
 }
 
@@ -1263,7 +1264,7 @@ transparent 2px
 .tv-frame-container:-webkit-full-screen .crt-scanlines,
 .tv-frame-container:-moz-full-screen .crt-scanlines,
 .tv-frame-container:-ms-fullscreen .crt-scanlines {
-	z-index: 9996 !important;
+	z-index: var(--z-crt-effects) !important;
 }
 
 /* Playback error overlay */
@@ -1274,32 +1275,32 @@ transparent 2px
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 9995;
+	z-index: var(--z-crt-overlay);
 }
 
 .error-message {
-	color: #ff4444;
-	font-size: 18px;
+	color: var(--color-error);
+	font-size: var(--font-size-lg);
 	font-weight: 700;
-	text-shadow: 0 0 10px #ff4444;
+	text-shadow: 0 0 10px var(--color-error);
 	opacity: 0.9; /* Static - no animation */
 }
 
 /* Auto-unlock indicator - subtle waiting for interaction */
 .auto-unlock-indicator {
 	position: absolute;
-	top: 10px;
-	right: 10px;
-	z-index: 9990;
+	top: var(--spacing-sm);
+	right: var(--spacing-sm);
+	z-index: var(--z-auto-unlock);
 	pointer-events: none;
 }
 
 .pulse-dot {
 	width: 10px;
 	height: 10px;
-	background: #4a9eff;
-	border-radius: 50%;
-	box-shadow: 0 0 10px #4a9eff;
+	background: var(--color-primary);
+	border-radius: var(--radius-full);
+	box-shadow: 0 0 10px var(--color-primary);
 	animation: pulse-dot 2s ease-in-out infinite;
 }
 
@@ -1319,7 +1320,7 @@ transparent 2px
 	text-transform: uppercase;
 	letter-spacing: 1px;
 	white-space: nowrap;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+	box-shadow: var(--shadow-md);
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	backdrop-filter: blur(4px);
 	-webkit-backdrop-filter: blur(4px);
@@ -1332,21 +1333,21 @@ transparent 2px
 	left: 50%;
 	transform: translateX(-50%);
 	background: rgba(0, 0, 0, 0.8);
-	color: #4a9eff;
-	padding: 10px 20px;
-	border-radius: 8px;
-	font-size: 12px;
-	font-family: 'Press Start 2P', monospace;
+	color: var(--color-primary);
+	padding: var(--spacing-sm) var(--spacing-xl);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	font-family: var(--font-primary);
 	cursor: pointer;
-	z-index: 100;
-	border: 1px solid #4a9eff;
-	text-shadow: 0 0 10px #4a9eff;
+	z-index: var(--z-menu);
+	border: 1px solid var(--color-primary);
+	text-shadow: 0 0 10px var(--color-primary);
 	animation: pulse-glow 2s ease-in-out infinite;
 	-webkit-tap-highlight-color: transparent;
 }
 
 .muted-autoplay-overlay:hover {
-	background: rgba(74, 158, 255, 0.2);
+	background: color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 @keyframes pulse {
@@ -1368,7 +1369,7 @@ transparent 2px
 
 /* CRT scanlines over static video */
 .player-wrapper .crt-scanlines {
-	z-index: 20;
+	z-index: var(--z-player-overlay);
 	mix-blend-mode: multiply;
 }
 
@@ -1387,7 +1388,7 @@ transparent 2px
 	position: fixed;
 	inset: 0;
 	background: rgba(0, 0, 0, 0.85);
-	z-index: 10003;
+	z-index: var(--z-survey-overlay);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1403,7 +1404,7 @@ transparent 2px
 	max-width: 600px;
 	padding: 30px;
 	box-shadow: 
-		0 0 50px rgba(74, 158, 255, 0.3),
+		0 0 50px color-mix(in srgb, var(--color-primary) 30%, transparent),
 		inset 0 0 30px rgba(0, 0, 0, 0.5);
 	position: relative;
 }
@@ -1419,7 +1420,7 @@ transparent 2px
 	color: #4a9eff;
 	font-size: 24px;
 	margin: 0;
-	text-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+	text-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 50%, transparent);
 }
 
 .tv-survey-close {
@@ -1438,14 +1439,14 @@ transparent 2px
 }
 
 .tv-survey-close:hover {
-	background: rgba(74, 158, 255, 0.2);
+	background: color-mix(in srgb, var(--color-primary) 20%, transparent);
 	transform: scale(1.1);
 }
 
 .tv-survey-progress {
 	width: 100%;
 	height: 4px;
-	background: rgba(74, 158, 255, 0.2);
+	background: color-mix(in srgb, var(--color-primary) 20%, transparent);
 	border-radius: 2px;
 	margin-bottom: 30px;
 	overflow: hidden;
@@ -1456,7 +1457,7 @@ transparent 2px
 	background: linear-gradient(90deg, #4a9eff, #6bb6ff);
 	border-radius: 2px;
 	transition: width 0.3s ease;
-	box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+	box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 50%, transparent);
 }
 
 .tv-survey-question {
@@ -1504,14 +1505,14 @@ transparent 2px
 	background: linear-gradient(180deg, #3a4a5a 0%, #2a3a4a 100%);
 	border-color: #6bb6ff;
 	transform: translateY(-2px);
-	box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
+	box-shadow: 0 4px 15px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .tv-survey-button.selected {
 	background: linear-gradient(180deg, #4a9eff 0%, #3a8eef 100%);
 	border-color: #6bb6ff;
 	color: #fff;
-	box-shadow: 0 0 20px rgba(74, 158, 255, 0.6);
+	box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 60%, transparent);
 }
 
 .tv-survey-button:disabled {
