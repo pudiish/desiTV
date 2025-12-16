@@ -47,7 +47,7 @@ export default function Home() {
 		tapTriggerRef.current = handler
 	}
 
-	// Callback to show remote overlay (triggered from TVFrame sensor)
+	// Callback to show/hide remote overlay (triggered from TVFrame sensor or mobile toggle)
 	const handleRemoteEdgeHover = useCallback(() => {
 		// Check if fullscreen (including iOS CSS fullscreen)
 		const isCurrentlyFullscreen = !!(
@@ -67,8 +67,9 @@ export default function Home() {
 			if (remoteHideTimeoutRef.current) {
 				clearTimeout(remoteHideTimeoutRef.current)
 			}
-			// Auto-hide after 5 seconds (longer for mobile)
-			if (newState) {
+			// Don't auto-hide on mobile (user controls it manually)
+			const isMobile = window.innerWidth <= 768
+			if (newState && !isMobile) {
 				remoteHideTimeoutRef.current = setTimeout(() => {
 					setRemoteOverlayVisible(false)
 				}, 5000)
@@ -76,6 +77,11 @@ export default function Home() {
 			return newState
 		})
 	}, [isFullscreen])
+	
+	// Handle swipe down to dismiss (mobile only)
+	const handleRemoteSwipeDismiss = useCallback(() => {
+		setRemoteOverlayVisible(false)
+	}, [])
 
 	// Trigger tap for remote buttons and screen clicks
 	const handleTapTrigger = () => {

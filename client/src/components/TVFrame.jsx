@@ -555,11 +555,30 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			{isActuallyFullscreen() && tvFrameRef.current && remoteOverlayComponent && createPortal(
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
-					onTouchStart={(e) => e.stopPropagation()}
-					onTouchMove={(e) => e.stopPropagation()}
-					onClick={(e) => e.stopPropagation()}
 				>
-					{remoteOverlayComponent}
+					{/* Backdrop - tap to dismiss */}
+					{remoteOverlayVisible && (
+						<div 
+							className="remote-overlay-backdrop" 
+							onClick={(e) => {
+								e.stopPropagation()
+								onRemoteEdgeHover && onRemoteEdgeHover()
+							}}
+							onTouchEnd={(e) => {
+								e.stopPropagation()
+								onRemoteEdgeHover && onRemoteEdgeHover()
+							}}
+						/>
+					)}
+					{/* Content container */}
+					<div 
+						className="remote-overlay-content"
+						onTouchStart={(e) => e.stopPropagation()}
+						onTouchMove={(e) => e.stopPropagation()}
+						onClick={(e) => e.stopPropagation()}
+					>
+						{remoteOverlayComponent}
+					</div>
 				</div>,
 				tvFrameRef.current
 			)}

@@ -823,10 +823,7 @@
 		padding-right: env(safe-area-inset-right);
 	}
 	
-	.remote-overlay {
-		right: max(0px, env(safe-area-inset-right));
-		bottom: max(20px, env(safe-area-inset-bottom));
-	}
+	/* Mobile remote overlay uses bottom sheet - safe areas handled in player.css */
 }
 
 /* CRT Info Overlay - Channel and Volume Display */
