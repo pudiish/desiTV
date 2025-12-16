@@ -707,6 +707,8 @@ export default function Home() {
 			onPowerToggle={handlePowerToggle}
 			onChannelUp={handleChannelUp}
 			onChannelDown={handleChannelDown}
+			onCategoryUp={handleCategoryUp}
+			onCategoryDown={handleCategoryDown}
 			onVolumeUp={handleVolumeUp}
 			onVolumeDown={handleVolumeDown}
 			onMute={handleMute}

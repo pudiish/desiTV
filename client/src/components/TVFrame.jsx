@@ -6,7 +6,7 @@ import BufferingOverlay from './BufferingOverlay'
 import WhatsNextPreview from './WhatsNextPreview'
 import CRTInfoOverlay from './CRTInfoOverlay'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
+export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
@@ -493,28 +493,38 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							<span className="btn-label">CH+</span>
 						</button>
 						<button 
-							className="tv-btn small channel-prev" 
-							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
-							title="Previous Channel"
-							aria-label="Previous Channel"
+							className="tv-btn small category-down" 
+							onClick={(e) => { e.stopPropagation(); onCategoryDown && onCategoryDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onCategoryDown && onCategoryDown(); }}
+							title="Previous Category"
+							aria-label="Previous Category"
 						>
 							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-								<polyline points="15 18 9 12 15 6"></polyline>
+								<rect x="3" y="3" width="7" height="7"></rect>
+								<rect x="14" y="3" width="7" height="7"></rect>
+								<rect x="3" y="14" width="7" height="7"></rect>
+								<rect x="14" y="14" width="7" height="7"></rect>
+								<polyline points="10 12 8 10 10 8"></polyline>
+								<polyline points="14 12 16 10 14 8"></polyline>
 							</svg>
-							<span className="btn-label">PREV</span>
+							<span className="btn-label">CAT-</span>
 						</button>
 						<button 
-							className="tv-btn small channel-next" 
-							onClick={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
-							title="Next Channel"
-							aria-label="Next Channel"
+							className="tv-btn small category-up" 
+							onClick={(e) => { e.stopPropagation(); onCategoryUp && onCategoryUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onCategoryUp && onCategoryUp(); }}
+							title="Next Category"
+							aria-label="Next Category"
 						>
 							<svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-								<polyline points="9 18 15 12 9 6"></polyline>
+								<rect x="3" y="3" width="7" height="7"></rect>
+								<rect x="14" y="3" width="7" height="7"></rect>
+								<rect x="3" y="14" width="7" height="7"></rect>
+								<rect x="14" y="14" width="7" height="7"></rect>
+								<polyline points="10 12 12 10 10 8"></polyline>
+								<polyline points="14 12 12 10 14 8"></polyline>
 							</svg>
-							<span className="btn-label">NEXT</span>
+							<span className="btn-label">CAT+</span>
 						</button>
 						<button 
 							className="tv-btn small volume-down" 
