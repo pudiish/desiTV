@@ -173,12 +173,78 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 		document.addEventListener('dblclick', handleDocDblClick)
 
+		// iOS-specific: Handle double-tap on document level (iframe blocks container touches)
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+		
+		let lastTouchTime = 0
+		let touchTimeout = null
+		const DOUBLE_TAP_DELAY = 300
+
+		const handleDocTouchEnd = (e) => {
+			if (!isIOS) return
+			
+			const isIOSFullscreen = document.body.classList.contains('ios-fullscreen-active')
+			if (!isIOSFullscreen) return
+
+			const now = Date.now()
+			
+			// Check if target is the iframe or video (they block touches)
+			const target = e.target
+			const isVideoElement = target.tagName === 'VIDEO' || 
+				target.tagName === 'IFRAME' ||
+				target.closest('iframe') ||
+				target.closest('#desitv-player-iframe')
+
+			if (isVideoElement && now - lastTouchTime < DOUBLE_TAP_DELAY) {
+				// Double tap detected on video/iframe - exit fullscreen
+				e.preventDefault()
+				e.stopPropagation()
+				toggleFullscreen()
+				lastTouchTime = 0
+				if (touchTimeout) {
+					clearTimeout(touchTimeout)
+					touchTimeout = null
+				}
+			} else if (isVideoElement) {
+				// First tap - wait for second tap
+				lastTouchTime = now
+				if (touchTimeout) {
+					clearTimeout(touchTimeout)
+				}
+				touchTimeout = setTimeout(() => {
+					lastTouchTime = 0
+					touchTimeout = null
+				}, DOUBLE_TAP_DELAY)
+			} else {
+				// Touch outside iframe - exit immediately
+				e.preventDefault()
+				e.stopPropagation()
+				toggleFullscreen()
+				lastTouchTime = 0
+				if (touchTimeout) {
+					clearTimeout(touchTimeout)
+					touchTimeout = null
+				}
+			}
+		}
+
+		if (isIOS) {
+			document.addEventListener('touchend', handleDocTouchEnd, { passive: false, capture: true })
+		}
+
 		return () => {
 			document.removeEventListener('fullscreenchange', handleFullscreenChange)
 			document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
 			document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
 			document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
 			document.removeEventListener('dblclick', handleDocDblClick)
+			if (isIOS) {
+				document.removeEventListener('touchend', handleDocTouchEnd, { capture: true })
+				if (touchTimeout) {
+					clearTimeout(touchTimeout)
+				}
+			}
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
@@ -316,13 +382,35 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [toggleFullscreen])
 
-		return (
+	const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+	return (
 		<div 
 			className="tv-frame-container"
 			ref={tvFrameRef} 
 			onDoubleClick={toggleFullscreen}
 			onTouchEnd={handleTouchEnd}
 		>
+			{/* iOS Fullscreen Exit Button */}
+			{isIOS && isFullscreen && (
+				<button
+					className="ios-exit-fullscreen-btn"
+					onClick={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						toggleFullscreen()
+					}}
+					onTouchEnd={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						toggleFullscreen()
+					}}
+					aria-label="Exit Fullscreen"
+				>
+					✕ EXIT
+				</button>
+			)}
 			<div 
 				className="tv-frame"
 				onMouseEnter={() => { setShowFullscreenHint(true); setShowPreview(true); }}
