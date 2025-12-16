@@ -73,6 +73,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				}
 				// Remove iOS fullscreen class
 				if (isIOS) {
+					document.documentElement.classList.remove('ios-fullscreen-active')
 					document.body.classList.remove('ios-fullscreen-active')
 					if (tvFrameRef.current) {
 						tvFrameRef.current.classList.remove('ios-fullscreen-active')
@@ -89,7 +90,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					// Make the iframe container fill the viewport
 					const iframeContainer = document.getElementById('desitv-player-iframe')
 					if (iframeContainer) {
-						// Add iOS fullscreen class to body and container
+						// Add iOS fullscreen class to html, body and container
+						document.documentElement.classList.add('ios-fullscreen-active')
 						document.body.classList.add('ios-fullscreen-active')
 						if (tvFrameRef.current) {
 							tvFrameRef.current.classList.add('ios-fullscreen-active')
@@ -155,9 +157,14 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			console.error('Error toggling fullscreen:', error)
 			// Fallback for iOS: Use CSS fullscreen
 			if (isIOS && !isCurrentlyFullscreen) {
+				document.documentElement.classList.add('ios-fullscreen-active')
 				document.body.classList.add('ios-fullscreen-active')
 				if (tvFrameRef.current) {
 					tvFrameRef.current.classList.add('ios-fullscreen-active')
+				}
+				setIsFullscreen(true)
+				if (onFullscreenChange) {
+					onFullscreenChange(true)
 				}
 			}
 		}
@@ -274,7 +281,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
-	// Handle orientation change - auto fullscreen on landscape (mobile only, iframe fullscreen)
+	// Handle orientation change - auto fullscreen on landscape (mobile only)
 	useEffect(() => {
 		// Detect iOS specifically
 		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -286,82 +293,157 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 
 		if (!isMobile) return // Only for mobile devices
 
-		const handleOrientationChange = () => {
-			// Small delay to ensure window dimensions are updated
-			setTimeout(() => {
-				const isLandscape = window.innerWidth > window.innerHeight
-				const isCurrentlyFullscreen = !!(
-					document.fullscreenElement ||
-					document.webkitFullscreenElement ||
-					document.mozFullScreenElement ||
-					document.msFullscreenElement ||
-					document.body.classList.contains('ios-fullscreen-active') // iOS CSS fullscreen
-				)
-
-				if (isLandscape && !isCurrentlyFullscreen && power) {
-					// Rotated to landscape - enter fullscreen
-					if (isIOS) {
-						// iOS: Use CSS-based fullscreen
-						document.body.classList.add('ios-fullscreen-active')
-						if (tvFrameRef.current) {
-							tvFrameRef.current.classList.add('ios-fullscreen-active')
-						}
-					} else {
-						// Android/Other: Use Fullscreen API
-						const iframeContainer = document.getElementById('desitv-player-iframe')
-						if (iframeContainer) {
-							try {
-								if (iframeContainer.requestFullscreen) {
-									iframeContainer.requestFullscreen()
-								} else if (iframeContainer.webkitRequestFullscreen) {
-									iframeContainer.webkitRequestFullscreen()
-								} else if (iframeContainer.mozRequestFullScreen) {
-									iframeContainer.mozRequestFullScreen()
-								} else if (iframeContainer.msRequestFullscreen) {
-									iframeContainer.msRequestFullscreen()
-								}
-							} catch (error) {
-								console.error('Error entering iframe fullscreen on orientation change:', error)
-							}
-						}
-					}
-				} else if (!isLandscape && isCurrentlyFullscreen) {
-					// Rotated to portrait - exit fullscreen
-					if (isIOS) {
-						// iOS: Remove CSS fullscreen classes
-						document.body.classList.remove('ios-fullscreen-active')
-						if (tvFrameRef.current) {
-							tvFrameRef.current.classList.remove('ios-fullscreen-active')
-						}
-					} else {
-						// Android/Other: Use Fullscreen API exit
-						try {
-							if (document.exitFullscreen) {
-								document.exitFullscreen()
-							} else if (document.webkitExitFullscreen) {
-								document.webkitExitFullscreen()
-							} else if (document.mozCancelFullScreen) {
-								document.mozCancelFullScreen()
-							} else if (document.msExitFullscreen) {
-								document.msExitFullscreen()
-							}
-						} catch (error) {
-							console.error('Error exiting fullscreen on orientation change:', error)
-						}
-					}
-				}
-			}, 100) // Small delay to ensure dimensions are updated
+		// Check if currently in landscape
+		const checkIsLandscape = () => {
+			return window.innerWidth > window.innerHeight || 
+				   window.matchMedia('(orientation: landscape)').matches ||
+				   (window.screen && window.screen.orientation && 
+				    (window.screen.orientation.angle === 90 || window.screen.orientation.angle === -90))
 		}
 
-		// Listen to both orientationchange and resize events
+		// Check if currently in fullscreen
+		const checkIsFullscreen = () => {
+			return !!(
+				document.fullscreenElement ||
+				document.webkitFullscreenElement ||
+				document.mozFullScreenElement ||
+				document.msFullscreenElement ||
+				document.body.classList.contains('ios-fullscreen-active') ||
+				(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
+			)
+		}
+
+		const handleOrientationChange = () => {
+			// Multiple checks with delays to handle all orientation change scenarios
+			const checks = [0, 100, 300, 500] // Progressive delays
+			
+			checks.forEach(delay => {
+				setTimeout(() => {
+					const isLandscape = checkIsLandscape()
+					const isCurrentlyFullscreen = checkIsFullscreen()
+
+					if (isLandscape && !isCurrentlyFullscreen && power) {
+						// Rotated to landscape - enter fullscreen IMMEDIATELY
+						if (isIOS) {
+							// iOS: Use CSS-based fullscreen to fill browser viewport
+							document.body.classList.add('ios-fullscreen-active')
+							document.documentElement.classList.add('ios-fullscreen-active')
+							if (tvFrameRef.current) {
+								tvFrameRef.current.classList.add('ios-fullscreen-active')
+							}
+							setIsFullscreen(true)
+							if (onFullscreenChange) {
+								onFullscreenChange(true)
+							}
+						} else {
+							// Android/Other: Try Fullscreen API first, fallback to CSS
+							const iframeContainer = document.getElementById('desitv-player-iframe')
+							if (iframeContainer) {
+								try {
+									// Try iframe container first
+									if (iframeContainer.requestFullscreen) {
+										iframeContainer.requestFullscreen().catch(() => {
+											// Fallback to CSS fullscreen
+											enterCSSFullscreen()
+										})
+									} else if (iframeContainer.webkitRequestFullscreen) {
+										iframeContainer.webkitRequestFullscreen()
+									} else {
+										enterCSSFullscreen()
+									}
+								} catch (error) {
+									// Fallback to CSS fullscreen
+									enterCSSFullscreen()
+								}
+							} else {
+								enterCSSFullscreen()
+							}
+						}
+					} else if (!isLandscape && isCurrentlyFullscreen) {
+						// Rotated to portrait - exit fullscreen
+						if (isIOS) {
+							// iOS: Remove CSS fullscreen classes
+							document.body.classList.remove('ios-fullscreen-active')
+							document.documentElement.classList.remove('ios-fullscreen-active')
+							if (tvFrameRef.current) {
+								tvFrameRef.current.classList.remove('ios-fullscreen-active')
+							}
+							setIsFullscreen(false)
+							if (onFullscreenChange) {
+								onFullscreenChange(false)
+							}
+						} else {
+							// Android/Other: Use Fullscreen API exit
+							try {
+								if (document.exitFullscreen) {
+									document.exitFullscreen().catch(() => {
+										exitCSSFullscreen()
+									})
+								} else if (document.webkitExitFullscreen) {
+									document.webkitExitFullscreen()
+								} else if (document.mozCancelFullScreen) {
+									document.mozCancelFullScreen()
+								} else if (document.msExitFullscreen) {
+									document.msExitFullscreen()
+								} else {
+									exitCSSFullscreen()
+								}
+							} catch (error) {
+								exitCSSFullscreen()
+							}
+						}
+					}
+				}, delay)
+			})
+		}
+
+		// CSS fullscreen helper (fallback for all platforms)
+		const enterCSSFullscreen = () => {
+			document.body.classList.add('ios-fullscreen-active')
+			document.documentElement.classList.add('ios-fullscreen-active')
+			if (tvFrameRef.current) {
+				tvFrameRef.current.classList.add('ios-fullscreen-active')
+			}
+			setIsFullscreen(true)
+			if (onFullscreenChange) {
+				onFullscreenChange(true)
+			}
+		}
+
+		const exitCSSFullscreen = () => {
+			document.body.classList.remove('ios-fullscreen-active')
+			document.documentElement.classList.remove('ios-fullscreen-active')
+			if (tvFrameRef.current) {
+				tvFrameRef.current.classList.remove('ios-fullscreen-active')
+			}
+			setIsFullscreen(false)
+			if (onFullscreenChange) {
+				onFullscreenChange(false)
+			}
+		}
+
+		// Check initial orientation
+		if (checkIsLandscape() && power && !checkIsFullscreen()) {
+			handleOrientationChange()
+		}
+
+		// Listen to orientation change events
 		window.addEventListener('orientationchange', handleOrientationChange)
 		window.addEventListener('resize', handleOrientationChange)
+		
+		// Also listen to screen orientation API if available
+		if (window.screen && window.screen.orientation) {
+			window.screen.orientation.addEventListener('change', handleOrientationChange)
+		}
 
 		return () => {
 			window.removeEventListener('orientationchange', handleOrientationChange)
 			window.removeEventListener('resize', handleOrientationChange)
+			if (window.screen && window.screen.orientation) {
+				window.screen.orientation.removeEventListener('change', handleOrientationChange)
+			}
 		}
-	}, [power])
+	}, [power, onFullscreenChange, setIsFullscreen])
 
 
 	return (
