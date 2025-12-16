@@ -465,9 +465,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 											and ensure tv-glow.css is imported.
 										*/}
 				</div>
-				{/* Bottom control strip - clean mobile controls */}
+				{/* Bottom control strip - inside TV frame, below screen */}
 				<div className="tv-control-bar">
-					<div className="tv-control-buttons">
+				<div className="tv-control-buttons">
 						<button 
 							className="tv-btn small channel-down" 
 							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}

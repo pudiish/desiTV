@@ -10,8 +10,8 @@
 	max-width: 100% !important; /* Don't exceed container */
 	max-height: 100% !important; /* Don't exceed container */
 	aspect-ratio: 4/3; /* Classic CRT TV aspect ratio - maintain 4:3 */
-	flex-shrink: 1; /* Allow flex shrinking */
-	flex-grow: 1; /* Allow flex growing to fill space */
+	flex-shrink: 0; /* Don't shrink - maintain aspect ratio */
+	flex-grow: 0; /* Don't grow - maintain aspect ratio */
 	/* Ensure frame fills container while maintaining aspect ratio */
 	object-fit: contain;
 	/* Prevent content leaks */
@@ -313,14 +313,15 @@
 	border-radius: 0;
 }
 
-/* Bottom control bar - realistic recessed panel */
+/* Bottom control bar - realistic recessed panel - part of TV frame */
 .tv-control-bar {
 	width: 100%;
 	flex: 0 0 auto;
-	margin-top: clamp(10px, 1.2vh, 14px);
+	margin-top: clamp(12px, 1.5vh, 18px);
 	padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
 	padding-bottom: clamp(30px, 3.5vh, 40px) !important;
 	border-radius: clamp(8px, 1vw, 12px);
+	max-width: 100%;
 	/* Black plastic control panel - slightly lighter than frame */
 	background: 
 		linear-gradient(180deg, 
@@ -384,6 +385,12 @@
 	height: clamp(20px, 2.2vw, 24px);
 	border-radius: 50%;
 	border: none;
+	/* Hide any text content - only show SVG and span labels */
+	color: transparent !important;
+	font-size: 0 !important;
+	line-height: 0 !important;
+	text-indent: -9999px !important;
+	overflow: hidden !important;
 	/* Black plastic concave button */
 	background: radial-gradient(circle at 35% 35%, 
 		rgba(255, 255, 255, 0.08) 0%,
@@ -452,23 +459,26 @@
 	position: relative;
 }
 
-/* Button labels - small text below buttons */
-.btn-label {
+/* Button labels - very small and barely visible text below buttons */
+.tv-btn .btn-label {
 	position: absolute !important;
 	bottom: -16px !important;
 	left: 50% !important;
 	transform: translateX(-50%) !important;
-	font-size: clamp(7px, 0.8vw, 9px) !important;
+	font-size: clamp(6px, 0.7vw, 8px) !important;
 	font-family: var(--font-primary) !important;
-	color: rgba(255, 255, 255, 0.75) !important;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9) !important;
+	color: rgba(255, 255, 255, 0.3) !important; /* Very low opacity - barely visible */
+	text-shadow: 0 0 2px rgba(0, 0, 0, 0.8) !important;
 	white-space: nowrap !important;
 	pointer-events: none !important;
-	letter-spacing: 0.5px !important;
-	opacity: 0.85 !important;
+	letter-spacing: 0.3px !important;
+	opacity: 0.4 !important; /* Very low opacity */
 	z-index: 10 !important;
 	display: block !important;
 	visibility: visible !important;
+	text-indent: 0 !important; /* Override button text-indent */
+	line-height: 1.2 !important;
+	font-weight: 300 !important;
 }
 
 .tv-btn .btn-icon {
@@ -533,12 +543,26 @@
 	opacity: 0.25;
 }
 
-/* Mobile: Same retro TV console as desktop, but larger for touch */
+/* Mobile: Control bar as part of TV frame, below screen */
 @media (max-width: 768px) {
+	.tv-frame {
+		/* TV frame maintains 4:3 for screen, but can expand to fit control bar */
+		aspect-ratio: unset;
+		min-height: fit-content;
+		padding-bottom: clamp(14px, 2vh, 18px) !important; /* Extra bottom padding for control bar */
+	}
+	
+	.tv-screen {
+		/* Screen maintains 4:3 aspect ratio */
+		aspect-ratio: 4/3 !important;
+		flex: 0 0 auto;
+	}
+	
 	.tv-control-bar {
 		width: 100%;
 		flex: 0 0 auto;
 		margin-top: clamp(10px, 1.2vh, 14px);
+		margin-bottom: 0;
 		padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 20px);
 		padding-bottom: max(clamp(12px, 1.5vw, 16px) + env(safe-area-inset-bottom, 0), 20px) !important;
 		border-radius: clamp(8px, 1vw, 12px);
@@ -553,11 +577,7 @@
 			inset 0 0 0 1px rgba(255, 255, 255, 0.03),
 			inset 0 0 0 2px rgba(0, 0, 0, 0.6),
 			0 2px 8px rgba(0, 0, 0, 0.6) !important;
-		position: absolute !important;
-		bottom: 0 !important;
-		left: 0 !important;
-		right: 0 !important;
-		z-index: 9999 !important;
+		position: relative !important;
 		display: flex !important;
 		visibility: visible !important;
 		opacity: 1 !important;
@@ -680,20 +700,25 @@
 		opacity: 0.3 !important;
 	}
 	
-	/* Button labels on mobile */
-	.btn-label {
+	/* Button labels on mobile - very small and barely visible */
+	.tv-btn .btn-label {
 		position: absolute !important;
 		bottom: -20px !important;
 		left: 50% !important;
 		transform: translateX(-50%) !important;
-		font-size: clamp(7px, 0.9vw, 9px) !important;
+		font-size: clamp(6px, 0.8vw, 8px) !important;
 		font-family: var(--font-primary) !important;
-		color: rgba(255, 255, 255, 0.7) !important;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+		color: rgba(255, 255, 255, 0.3) !important; /* Very low opacity - barely visible */
+		text-shadow: 0 0 2px rgba(0, 0, 0, 0.8) !important;
 		white-space: nowrap !important;
 		pointer-events: none !important;
-		letter-spacing: 0.5px !important;
-		opacity: 0.8 !important;
+		letter-spacing: 0.3px !important;
+		opacity: 0.4 !important; /* Very low opacity */
+		text-indent: 0 !important;
+		line-height: 1.2 !important;
+		display: block !important;
+		visibility: visible !important;
+		font-weight: 300 !important;
 	}
 	
 	.tv-btn.small {
@@ -762,8 +787,13 @@
 
 
 .tv-off-screen {
-	width: 100%;
-	height: 100%;
+	width: 100% !important;
+	height: 100% !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
 	background: 
 		radial-gradient(ellipse at center, #222 0%, #000 70%),
 		repeating-linear-gradient(
@@ -773,11 +803,17 @@
 			transparent 1px,
 			transparent 2px
 		);
-	display: block !important;
-	position: relative;
-	/* Convex effect for off screen too */
-	transform: perspective(800px) rotateX(-0.5deg);
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	/* Convex effect for off screen too - matches .tv-screen > * */
+	transform: perspective(800px) rotateX(-1.5deg) scale(0.99) !important;
 	transform-origin: center center;
+	border-radius: clamp(4px, 0.6vw, 8px) !important;
+	overflow: hidden !important;
+	max-width: 100% !important;
+	max-height: 100% !important;
+	z-index: 1 !important;
 }
 
 .tv-off-message {
