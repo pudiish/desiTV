@@ -451,52 +451,73 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				<div className="tv-control-bar">
 					<div className="tv-control-buttons">
 						<button 
-							className="tv-btn small" 
+							className="tv-btn small channel-down" 
 							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
 							title="Channel Down"
 							aria-label="Channel Down"
-						></button>
+						>
+							<span className="btn-icon">CH▼</span>
+						</button>
 						<button 
-							className="tv-btn small" 
+							className="tv-btn small channel-up" 
 							onClick={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
 							title="Channel Up"
 							aria-label="Channel Up"
-						></button>
+						>
+							<span className="btn-icon">CH▲</span>
+						</button>
 						<button 
-							className="tv-btn small" 
+							className="tv-btn small volume-down" 
 							onClick={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
 							title="Volume Down"
 							aria-label="Volume Down"
-						></button>
+						>
+							<span className="btn-icon">VOL−</span>
+						</button>
 						<button 
-							className="tv-btn small" 
+							className="tv-btn small volume-up" 
 							onClick={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
 							title="Volume Up"
 							aria-label="Volume Up"
-						></button>
+						>
+							<span className="btn-icon">VOL+</span>
+						</button>
 						<button 
-							className="tv-btn small" 
+							className="tv-btn small mute" 
 							onClick={(e) => { e.stopPropagation(); onMute && onMute(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onMute && onMute(); }}
 							title="Mute"
 							aria-label="Mute"
-						></button>
+						>
+							<span className="btn-icon">🔇</span>
+						</button>
 						<button 
-							className="tv-btn small" 
+							className="tv-btn small fullscreen-btn" 
 							onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); toggleFullscreen(); }}
 							title="Fullscreen"
 							aria-label="Fullscreen"
-						></button>
+						>
+							<span className="btn-icon">⛶</span>
+						</button>
 						<button 
 							className="tv-btn power" 
 							onClick={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
 							title="Power"
 							aria-label="Power"
-						></button>
+						>
+							<span className="btn-icon">⏻</span>
+						</button>
 					</div>
 				</div>
 			</div>
-			{/* Right-edge sensor to reveal remote in fullscreen (above iframe) */}
-			{isActuallyFullscreen() && (
+			{/* Right-edge sensor to reveal remote in fullscreen - Desktop only */}
+			{isActuallyFullscreen() && window.innerWidth > 768 && (
 				<div
 					className="remote-trigger-sensor"
 					style={{
@@ -512,47 +533,12 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 					}}
 					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
 					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-					onTouchStart={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					onTouchMove={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					onClick={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
 				/>
-			)}
-			
-			{/* Mobile: Bottom center button to toggle remote */}
-			{isActuallyFullscreen() && (
-				<button
-					className="mobile-remote-toggle"
-					onClick={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					onTouchEnd={(e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					aria-label="Show Remote Control"
-				>
-					📱
-				</button>
 			)}
 
 			
-			{/* Remote overlay portal - renders inside fullscreen container */}
-			{isActuallyFullscreen() && tvFrameRef.current && remoteOverlayComponent && createPortal(
+			{/* Remote overlay portal - renders inside fullscreen container (Desktop only) */}
+			{isActuallyFullscreen() && window.innerWidth > 768 && tvFrameRef.current && remoteOverlayComponent && createPortal(
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
 				>

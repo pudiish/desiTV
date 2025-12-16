@@ -710,7 +710,7 @@ export default function Home() {
 			onVolumeUp={handleVolumeUp}
 			onVolumeDown={handleVolumeDown}
 			onMute={handleMute}
-			remoteOverlayComponent={
+			remoteOverlayComponent={window.innerWidth > 768 ? (
 				<TVRemote
 					power={power}
 					onPowerToggle={handlePowerToggle}
@@ -729,7 +729,7 @@ export default function Home() {
 					menuOpen={menuOpen}
 					onTapTrigger={handleTapTrigger}
 				/>
-			}
+			) : null}
 			menuComponent={menuOpen ? (
 				<TVMenuV2
 					isOpen={menuOpen}
