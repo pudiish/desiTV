@@ -7,6 +7,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { lazy, Suspense } from 'react';
+import Galaxy from './components/Galaxy';
 import './App.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -135,6 +136,19 @@ function AdminRoutesWrapper() {
 function AppRoutes() {
   return (
     <div className="app">
+      {/* Galaxy Background - Fixed behind all content (reactbits.dev implementation) */}
+      <Galaxy 
+        className="galaxy-background"
+        transparent={true}
+        density={1.2}
+        hueShift={140}
+        glowIntensity={0.4}
+        twinkleIntensity={0.5}
+        rotationSpeed={0.05}
+        mouseRepulsion={true}
+        repulsionStrength={2}
+        speed={1.0}
+      />
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
           {/* Public: Landing Page - No dependencies */}

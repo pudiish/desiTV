@@ -23,7 +23,7 @@
 
 body {
 	font-family: var(--font-primary);
-	background: var(--color-bg);
+	background: #000000; /* Fallback black - Galaxy will overlay */
 	color: var(--color-text);
 	margin: 0;
 	padding: 0;

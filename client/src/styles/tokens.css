@@ -29,13 +29,13 @@
 	--color-bg-secondary: #1a1a1a;
 	--color-border: #4a3f35;
 
-	/* TV Frame Colors */
-	--tv-frame-dark: #3a3c3e;
-	--tv-frame-darker: #2d2f31;
-	--tv-frame-darkest: #1e2022;
-	--tv-control-bar: #3d3f41;
-	--tv-button-base: #4a4c4e;
-	--tv-button-hover: #4f5153;
+	/* TV Frame Colors - Black Plastic Shades */
+	--tv-frame-dark: #1a1a1a;
+	--tv-frame-darker: #0f0f0f;
+	--tv-frame-darkest: #000000;
+	--tv-control-bar: #151515;
+	--tv-button-base: #1a1a1a;
+	--tv-button-hover: #252525;
 
 	/* ============================================
 	   SPACING SCALE

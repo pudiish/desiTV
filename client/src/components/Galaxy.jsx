@@ -331,5 +331,9 @@ export default function Galaxy({
     transparent
   ]);
 
-  return <div ref={ctnDom} className="galaxy-container" {...rest} />;
+  const className = rest.className 
+    ? `galaxy-container ${rest.className}` 
+    : 'galaxy-container';
+  const { className: _, ...restProps } = rest;
+  return <div ref={ctnDom} className={className} {...restProps} />;
 }

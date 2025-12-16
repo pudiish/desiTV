@@ -15,12 +15,15 @@
 	overflow: hidden !important;
 	contain: layout style paint;
 	clip-path: inset(1px);
-	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
-	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 94%, black 95%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 94%, black 95%, transparent 97%);
 	isolation: isolate;
 	transform-style: flat;
 	margin: 0;
 	padding: 0;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
 }
 
 /* Fullscreen styles are in fullscreen.css */
@@ -83,12 +86,15 @@
 	max-height: 100%;
 	contain: layout style paint;
 	clip-path: inset(1px);
-	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
-	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 94%, black 95%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 94%, black 95%, transparent 97%);
 	isolation: isolate;
 	transform-style: flat;
 	margin: 0;
 	padding: 0;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
 }
 
 /* Glass highlight overlay for convex effect */
@@ -116,10 +122,13 @@
 	overflow: hidden !important;
 	clip-path: inset(1px);
 	contain: layout style paint;
-	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
-	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 93%, transparent 97%);
+	mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 94%, black 95%, transparent 97%);
+	-webkit-mask-image: radial-gradient(ellipse 96% 96% at 50% 50%, black 94%, black 95%, transparent 97%);
 	margin: 0;
 	padding: 0;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
 }
 
 .youtube-player-container::after {
@@ -142,7 +151,8 @@
 	position: absolute;
 	top: 0;
 	left: 0;
-	border: none;
+	border: none !important;
+	outline: none !important;
 	border-radius: var(--radius-xl);
 	transform: scale(1.002) perspective(1200px) rotateX(-0.3deg);
 	filter: saturate(1.02) contrast(1.03);
@@ -150,19 +160,41 @@
 	overflow: hidden !important;
 	z-index: var(--z-overlay) !important;
 	contain: layout style paint;
-	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 91%, transparent 95%);
-	-webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 91%, transparent 95%);
+	mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 93%, black 94%, transparent 95%);
+	-webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 50%, black 93%, black 94%, transparent 95%);
 	transform-style: flat;
 	margin: 0;
 	padding: 0;
+	box-shadow: none !important;
 }
 
 /* Fullscreen styles are in fullscreen.css */
 
 /* Hide YouTube controls completely - prevent any interaction */
 .youtube-player-container iframe,
-.youtube-iframe iframe {
+.youtube-iframe iframe,
+#desitv-player-iframe,
+#desitv-player-iframe iframe {
 	pointer-events: none !important;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+}
+
+/* Remove white borders from all iframe elements */
+iframe {
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+.tv-screen iframe,
+.tv-screen * iframe {
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
 }
 
 .youtube-player-container {

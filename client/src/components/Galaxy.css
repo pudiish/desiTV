@@ -1,6 +1,37 @@
+/* Galaxy Container - Base styles */
 .galaxy-container {
   width: 100%;
   height: 100%;
   position: relative;
+}
+
+/* Galaxy Background - Fixed behind all content (exact reactbits.dev implementation) */
+.galaxy-background,
+.galaxy-container.galaxy-background {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: -1 !important;
+  pointer-events: none;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure app content appears above galaxy */
+.app {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  min-height: 100vh;
+}
+
+.app > *:not(.galaxy-background) {
+  position: relative;
+  z-index: 1;
 }
 

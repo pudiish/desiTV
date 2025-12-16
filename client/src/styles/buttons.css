@@ -52,22 +52,22 @@ button,
 	cursor: not-allowed;
 }
 
-/* TV Frame Buttons */
+/* TV Frame Buttons - Black Plastic */
 .tv-btn {
 	width: clamp(20px, 2.2vw, 24px);
 	height: clamp(20px, 2.2vw, 24px);
 	border-radius: var(--radius-full);
 	border: none;
 	background: radial-gradient(circle at 35% 35%, 
-		rgba(255, 255, 255, 0.12) 0%,
+		rgba(255, 255, 255, 0.08) 0%,
 		var(--tv-button-base) 25%,
-		#353739 60%,
-		#252729 100%
+		#0f0f0f 60%,
+		#000000 100%
 	);
 	box-shadow:
-		inset 0 2px 4px rgba(255, 255, 255, 0.1),
-		inset 0 -2px 4px rgba(0, 0, 0, 0.6),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		inset 0 2px 4px rgba(255, 255, 255, 0.06),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.6),
 		var(--shadow-sm);
 	position: relative;
 	cursor: pointer;
@@ -78,15 +78,15 @@ button,
 
 .tv-btn:hover {
 	background: radial-gradient(circle at 35% 35%, 
-		rgba(255, 255, 255, 0.18) 0%,
+		rgba(255, 255, 255, 0.12) 0%,
 		var(--tv-button-hover) 25%,
-		#3a3c3e 60%,
-		#2d2f31 100%
+		#151515 60%,
+		#050505 100%
 	);
 	box-shadow:
-		inset 0 2px 4px rgba(255, 255, 255, 0.15),
-		inset 0 -2px 4px rgba(0, 0, 0, 0.5),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		inset 0 2px 4px rgba(255, 255, 255, 0.08),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.7),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
 		var(--shadow-md);
 	transform: scale(1.05);
 }
@@ -94,9 +94,9 @@ button,
 .tv-btn:active {
 	transform: scale(0.95);
 	box-shadow:
-		inset 0 3px 6px rgba(0, 0, 0, 0.7),
-		inset 0 -1px 2px rgba(255, 255, 255, 0.05),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		inset 0 3px 6px rgba(0, 0, 0, 0.9),
+		inset 0 -1px 2px rgba(255, 255, 255, 0.03),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.7),
 		var(--shadow-sm);
 }
 
@@ -113,7 +113,7 @@ button,
 	width: 35%;
 	height: 35%;
 	border-radius: var(--radius-full);
-	background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
 	pointer-events: none;
 }
 
@@ -126,38 +126,38 @@ button,
 	width: clamp(24px, 2.6vw, 28px);
 	height: clamp(24px, 2.6vw, 28px);
 	background: radial-gradient(circle at 35% 35%, 
-		rgba(255, 255, 255, 0.15) 0%,
+		rgba(255, 255, 255, 0.1) 0%,
 		var(--tv-button-hover) 25%,
-		#3a3c3e 60%,
-		#2a2c2e 100%
+		#151515 60%,
+		#050505 100%
 	);
 	box-shadow:
-		inset 0 2px 5px rgba(255, 255, 255, 0.12),
-		inset 0 -3px 5px rgba(0, 0, 0, 0.65),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		inset 0 2px 5px rgba(255, 255, 255, 0.08),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.85),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.6),
 		var(--shadow-md);
 }
 
 .tv-btn.power:hover {
 	background: radial-gradient(circle at 35% 35%, 
-		rgba(255, 255, 255, 0.2) 0%,
-		#555759 25%,
-		#404244 60%,
-		#323436 100%
+		rgba(255, 255, 255, 0.15) 0%,
+		#2a2a2a 25%,
+		#1a1a1a 60%,
+		#0a0a0a 100%
 	);
 	box-shadow:
-		inset 0 2px 5px rgba(255, 255, 255, 0.15),
-		inset 0 -3px 5px rgba(0, 0, 0, 0.55),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+		inset 0 2px 5px rgba(255, 255, 255, 0.1),
+		inset 0 -3px 5px rgba(0, 0, 0, 0.75),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
 		var(--shadow-lg);
 }
 
 .tv-btn.power:active {
 	transform: scale(0.95);
 	box-shadow:
-		inset 0 3px 7px rgba(0, 0, 0, 0.75),
-		inset 0 -1px 3px rgba(255, 255, 255, 0.05),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+		inset 0 3px 7px rgba(0, 0, 0, 0.95),
+		inset 0 -1px 3px rgba(255, 255, 255, 0.03),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.7),
 		var(--shadow-sm);
 }
 
