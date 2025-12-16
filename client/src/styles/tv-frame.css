@@ -505,9 +505,12 @@
 		bottom: 0 !important;
 		left: 0 !important;
 		right: 0 !important;
-		z-index: var(--z-overlay);
+		z-index: 9999 !important;
 		margin-top: 0 !important;
 		width: 100% !important;
+		display: flex !important;
+		visibility: visible !important;
+		opacity: 1 !important;
 	}
 	
 	.tv-control-buttons {

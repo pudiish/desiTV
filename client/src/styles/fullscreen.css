@@ -252,6 +252,8 @@ body.ios-fullscreen-active {
 	flex-direction: column !important;
 	background: #000 !important;
 	aspect-ratio: unset !important;
+	position: relative !important;
+	z-index: 1 !important;
 }
 
 .tv-frame-container.ios-fullscreen-active .tv-screen {
@@ -261,6 +263,8 @@ body.ios-fullscreen-active {
 	border-radius: 0 !important;
 	background: #000 !important;
 	flex: 1 1 auto !important;
+	position: relative !important;
+	overflow: visible !important;
 }
 
 .tv-frame-container.ios-fullscreen-active .player-wrapper,
@@ -268,13 +272,13 @@ body.ios-fullscreen-active {
 .tv-frame-container.ios-fullscreen-active #desitv-player-iframe {
 	width: 100vw !important;
 	height: 100vh !important;
-	position: fixed !important;
+	position: absolute !important;
 	top: 0 !important;
 	left: 0 !important;
 	right: 0 !important;
 	bottom: 0 !important;
 	transform: none !important;
-	z-index: var(--z-overlay) !important;
+	z-index: 1 !important;
 }
 
 .tv-frame-container.ios-fullscreen-active #desitv-player-iframe {
@@ -370,7 +374,7 @@ body.ios-fullscreen-active .right-panel {
 	top: 0 !important;
 	left: 0 !important;
 	transform: none !important;
-	z-index: var(--z-overlay) !important;
+	z-index: 1 !important;
 	opacity: 1 !important;
 	visibility: visible !important;
 }
@@ -405,6 +409,51 @@ body.ios-fullscreen-active .right-panel {
 }
 
 
+/* Ensure TV control bar and buttons are visible in fullscreen */
+.tv-frame-container:fullscreen .tv-control-bar,
+.tv-frame-container:-webkit-full-screen .tv-control-bar,
+.tv-frame-container:-moz-full-screen .tv-control-bar,
+.tv-frame-container:-ms-fullscreen .tv-control-bar,
+.tv-frame-container.ios-fullscreen-active .tv-control-bar {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	z-index: 9999 !important;
+	position: absolute !important;
+	bottom: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+}
+
+.tv-frame-container:fullscreen .tv-control-buttons,
+.tv-frame-container:-webkit-full-screen .tv-control-buttons,
+.tv-frame-container:-moz-full-screen .tv-control-buttons,
+.tv-frame-container:-ms-fullscreen .tv-control-buttons,
+.tv-frame-container.ios-fullscreen-active .tv-control-buttons {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+}
+
+.tv-frame-container:fullscreen .tv-btn,
+.tv-frame-container:-webkit-full-screen .tv-btn,
+.tv-frame-container:-moz-full-screen .tv-btn,
+.tv-frame-container:-ms-fullscreen .tv-btn,
+.tv-frame-container.ios-fullscreen-active .tv-btn {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	pointer-events: auto !important;
+	position: relative !important;
+}
+
+/* Ensure TV frame is visible in fullscreen */
+.tv-frame-container.ios-fullscreen-active {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+}
+
 /* Safe area handling for notched devices */
 @supports (padding: env(safe-area-inset-top)) {
 	.tv-frame-container:fullscreen,
@@ -413,5 +462,9 @@ body.ios-fullscreen-active .right-panel {
 		padding-bottom: env(safe-area-inset-bottom);
 		padding-left: env(safe-area-inset-left);
 		padding-right: env(safe-area-inset-right);
+	}
+	
+	.tv-frame-container.ios-fullscreen-active .tv-control-buttons {
+		padding-bottom: max(12px + env(safe-area-inset-bottom, 0), 20px) !important;
 	}
 }
