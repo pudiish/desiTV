@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { lazy, Suspense } from 'react';
 import Galaxy from './components/Galaxy';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -175,13 +176,15 @@ function AppRoutes() {
  */
 export default function App() {
   return (
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <AppRoutes />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <AppRoutes />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

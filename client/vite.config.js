@@ -59,7 +59,6 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             // Split vendor chunks
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'youtube': ['react-youtube'],
           },
         },
       },
