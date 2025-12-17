@@ -15,27 +15,46 @@
 	--breakpoint-2xl: 1400px;
 
 	/* ============================================
-	   COLORS - TV Theme
+	   COLORS - Warm Vintage TV Theme
+	   Cohesive warm palette inspired by 80s/90s CRT TVs
 	   ============================================ */
-	--color-primary: #4a9eff;
-	--color-primary-hover: #6bb6ff;
-	--color-success: #39ff14;
-	--color-warning: #ff6600;
-	--color-error: #ff4444;
-	--color-text: #d4c4b0;
-	--color-text-dim: #a09080;
-	--color-text-muted: #8b7355;
+	/* Primary Accent - Warm Gold/Amber (replaces blue) */
+	--color-primary: #d4a574;
+	--color-primary-hover: #e6b888;
+	--color-primary-dim: rgba(212, 165, 116, 0.3);
+	--color-primary-glow: rgba(212, 165, 116, 0.4);
+	
+	/* Status Colors - Softer, warmer tones */
+	--color-success: #4ade80;
+	--color-success-glow: rgba(74, 222, 128, 0.3);
+	--color-warning: #f59e0b;
+	--color-warning-glow: rgba(245, 158, 11, 0.3);
+	--color-error: #ef4444;
+	--color-error-glow: rgba(239, 68, 68, 0.3);
+	
+	/* Text Colors - Warmer, better contrast (enhanced for low brightness) */
+	--color-text: #f0e6d2; /* Brighter for better visibility */
+	--color-text-dim: #d4c4b0; /* Increased from #c4b8a0 */
+	--color-text-muted: #b8a890; /* Increased from #9d8f75 */
+	--color-text-bright: #faf5e8; /* Maximum brightness */
+	
+	/* Background - Slightly brighter for visibility (maintains dark aesthetic) */
 	--color-bg: #000000;
-	--color-bg-secondary: #1a1a1a;
-	--color-border: #4a3f35;
+	--color-bg-secondary: #1f1f1f; /* Increased from #1a1a1a */
+	--color-bg-warm: #0f0a05; /* Subtle warm black */
+	--color-bg-elevated: #2a2a2a; /* For raised elements */
+	--color-border: #5a4f45; /* Increased from #4a3f35 */
+	--color-border-warm: #6a5a4a; /* Warmer, more visible border */
+	--color-border-bright: #7a6a5a; /* For active/hover states */
 
-	/* TV Frame Colors - Black Plastic Shades */
-	--tv-frame-dark: #1a1a1a;
-	--tv-frame-darker: #0f0f0f;
+	/* TV Frame Colors - Black Plastic Shades (enhanced visibility) */
+	--tv-frame-dark: #1f1f1f; /* Increased from #1a1a1a */
+	--tv-frame-darker: #151515; /* Increased from #0f0f0f */
 	--tv-frame-darkest: #000000;
-	--tv-control-bar: #151515;
-	--tv-button-base: #1a1a1a;
-	--tv-button-hover: #252525;
+	--tv-control-bar: #1a1a1a; /* Increased from #151515 */
+	--tv-button-base: #252525; /* Increased from #1a1a1a */
+	--tv-button-hover: #353535; /* Increased from #252525 */
+	--tv-button-active: #404040; /* New: for active state */
 
 	/* ============================================
 	   SPACING SCALE
@@ -107,14 +126,17 @@
 	--radius-full: 50%;
 
 	/* ============================================
-	   SHADOWS
+	   SHADOWS - Warm Vintage Glows
 	   ============================================ */
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 	--shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
 	--shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
 	--shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.6);
-	--shadow-glow-primary: 0 0 10px var(--color-primary);
-	--shadow-glow-success: 0 0 10px var(--color-success);
+	--shadow-glow-primary: 0 0 10px var(--color-primary), 0 0 20px var(--color-primary-glow);
+	--shadow-glow-success: 0 0 10px var(--color-success), 0 0 20px var(--color-success-glow);
+	--shadow-glow-warning: 0 0 10px var(--color-warning), 0 0 20px var(--color-warning-glow);
+	--shadow-glow-error: 0 0 10px var(--color-error), 0 0 20px var(--color-error-glow);
+	--shadow-warm: 0 4px 12px rgba(212, 165, 116, 0.15);
 
 	/* ============================================
 	   TRANSITIONS

@@ -9,21 +9,57 @@
 }
 
 .remote-body {
-	background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--tv-frame-darkest) 50%, var(--tv-control-bar) 100%);
+	/* Realistic remote - matte black plastic with subtle texture */
+	background: linear-gradient(180deg, 
+		#1a1a1a 0%, 
+		#0f0f0f 30%,
+		#080808 60%,
+		#050505 100%
+	);
 	border-radius: var(--radius-xl) var(--radius-xl) var(--spacing-xl) var(--spacing-xl);
 	padding: clamp(var(--spacing-md), 1.2vh, var(--spacing-lg)) clamp(var(--spacing-md), 1vw, var(--spacing-lg)) clamp(var(--spacing-lg), 1.5vh, 14px);
 	width: clamp(130px, 11vw, 160px);
 	box-shadow: 
-		var(--shadow-xl),
-		var(--shadow-md),
-		inset 0 1px 0 rgba(255, 255, 255, 0.04),
-		inset 0 -3px 8px rgba(0, 0, 0, 0.8);
-	border: 2px solid var(--tv-frame-darkest);
+		/* Realistic depth shadows */
+		0 8px 24px rgba(0, 0, 0, 0.9),
+		0 4px 12px rgba(0, 0, 0, 0.8),
+		/* Subtle inner highlights - matte plastic */
+		inset 0 1px 0 rgba(255, 255, 255, 0.03),
+		inset 0 -2px 6px rgba(0, 0, 0, 0.9),
+		/* Realistic edge shadow */
+		inset 0 0 0 1px rgba(0, 0, 0, 0.8);
+	border: 2px solid #0a0a0a; /* Darker, more realistic border */
 	position: relative;
-	opacity: 0.97;
+	opacity: 0.95; /* Slightly transparent for realism */
 	transform: scale(1);
 	transform-origin: center center;
 	transition: box-shadow var(--transition-base);
+	/* Subtle texture overlay */
+	position: relative;
+}
+
+/* Realistic remote texture - matte plastic finish */
+.remote-body::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: 
+		/* Subtle matte texture */
+		repeating-linear-gradient(
+			0deg,
+			transparent 0px,
+			transparent 1px,
+			rgba(0, 0, 0, 0.02) 1px,
+			rgba(0, 0, 0, 0.02) 2px
+		),
+		/* Very subtle top highlight */
+		linear-gradient(180deg,
+			rgba(255, 255, 255, 0.02) 0%,
+			transparent 15%
+		);
+	pointer-events: none;
+	opacity: 0.6;
 }
 
 /* Mobile Optimizations */
@@ -63,10 +99,13 @@
 
 .remote-body:hover {
 	box-shadow: 
-		0 8px 25px rgba(0, 0, 0, 0.95),
-		0 3px 10px rgba(0, 0, 0, 0.7),
-		inset 0 1px 0 rgba(255, 255, 255, 0.05),
-		inset 0 -3px 8px rgba(0, 0, 0, 0.8);
+		/* Slightly enhanced depth on hover */
+		0 10px 28px rgba(0, 0, 0, 0.95),
+		0 5px 14px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05), /* Subtle highlight */
+		inset 0 -2px 6px rgba(0, 0, 0, 0.9),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.8);
+	/* No glow - keep it realistic */
 }
 
 .remote-body::before {
@@ -104,19 +143,24 @@
 	width: clamp(32px, 3.2vw, 38px);
 	height: clamp(32px, 3.2vw, 38px);
 	border-radius: var(--radius-full);
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
-	border: 2px solid var(--tv-frame-darkest);
+	/* Realistic power button - matte black */
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+	border: 2px solid #0a0a0a; /* Dark border */
 	box-shadow: 
-		var(--shadow-lg),
-		inset 0 2px 0 rgba(255, 255, 255, 0.02);
+		/* Realistic depth */
+		0 4px 8px rgba(0, 0, 0, 0.9),
+		inset 0 2px 0 rgba(255, 255, 255, 0.02), /* Very subtle highlight */
+		inset 0 -2px 3px rgba(0, 0, 0, 0.9); /* Deep shadow */
 	cursor: pointer;
 	transition: all var(--transition-base);
 }
 
 .remote-btn.power-btn:hover:not(:disabled) {
+	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
 	box-shadow: 
-		0 4px 15px color-mix(in srgb, var(--color-error) 60%, transparent),
-		inset 0 2px 0 rgba(255, 255, 255, 0.3);
+		0 4px 12px rgba(0, 0, 0, 0.9),
+		inset 0 2px 0 rgba(255, 255, 255, 0.04), /* Slightly more highlight */
+		inset 0 -2px 3px rgba(0, 0, 0, 0.9);
 }
 
 .remote-btn.power-btn:active:not(:disabled) {
@@ -219,8 +263,9 @@
 }
 
 .remote-btn.num-btn {
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
-	border: 1.5px solid var(--tv-frame-darkest);
+	/* Realistic remote button - matte black */
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+	border: 1.5px solid #0a0a0a; /* Dark, realistic border */
 	border-radius: var(--radius-sm);
 	color: var(--color-text-dim);
 	font-size: clamp(8px, 0.9vw, 10px);
@@ -229,8 +274,10 @@
 	transition: background var(--transition-fast);
 	font-family: var(--font-primary);
 	box-shadow: 
-		var(--shadow-sm),
-		inset 0 1px 0 rgba(255,255,255,0.02);
+		/* Realistic button depth */
+		0 2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255,255,255,0.02), /* Very subtle highlight */
+		inset 0 -1px 2px rgba(0, 0, 0, 0.9); /* Deep shadow */
 	min-height: clamp(26px, 2.8vh, 30px);
 	display: flex;
 	align-items: center;
@@ -238,8 +285,13 @@
 }
 
 .remote-btn.num-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
 	color: var(--color-text-dim);
+	border-color: #151515; /* Subtle border change */
+	box-shadow: 
+		0 2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255,255,255,0.04), /* Slightly more highlight */
+		inset 0 -1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .remote-btn.num-btn:active:not(:disabled) {
@@ -249,8 +301,9 @@
 }
 
 .remote-btn.num-btn:focus:not(:disabled) {
-	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
+	outline: 2px solid var(--color-primary);
 	outline-offset: 2px;
+	box-shadow: 0 0 8px var(--color-primary-glow);
 }
 
 .remote-btn.num-btn:disabled {
@@ -290,20 +343,26 @@
 }
 
 .remote-btn.dpad-btn {
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
-	border: 2px solid var(--tv-frame-darkest);
+	/* Realistic D-pad button - matte black */
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+	border: 2px solid #0a0a0a; /* Dark, realistic border */
 	color: var(--color-text-dim);
 	font-size: clamp(7px, 0.85vw, 9px);
 	padding: clamp(7px, 0.8vh, 9px) clamp(8px, 1vw, 12px);
 	cursor: pointer;
 	transition: all var(--transition-fast);
 	font-family: var(--font-primary);
-	text-shadow: 0 0 2px color-mix(in srgb, var(--color-text-dim) 20%, transparent);
+	text-shadow: 0 0 2px rgba(0, 0, 0, 0.8); /* Subtle shadow for depth */
 	border-radius: var(--radius-sm);
 	min-height: clamp(28px, 3vh, 32px);
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	box-shadow: 
+		/* Realistic button depth */
+		0 2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255,255,255,0.02), /* Very subtle highlight */
+		inset 0 -1px 2px rgba(0, 0, 0, 0.9); /* Deep shadow */
 }
 
 .remote-btn.dpad-btn.up,
@@ -324,24 +383,30 @@
 
 .remote-btn.dpad-btn.center {
 	min-width: clamp(42px, 4.8vw, 50px);
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f); /* Realistic matte */
 	color: var(--color-text-dim);
 }
 
 .remote-btn.dpad-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
-	color: var(--color-text-dim);
-	text-shadow: 0 0 3px color-mix(in srgb, var(--color-text-dim) 30%, transparent);
+	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-button-base));
+	color: var(--color-text);
+	border-color: var(--color-border-bright);
+	text-shadow: 0 0 4px var(--color-primary-glow), 0 0 2px rgba(0, 0, 0, 0.8);
+	box-shadow: 
+		var(--shadow-sm),
+		inset 0 1px 0 rgba(255,255,255,0.12),
+		0 0 4px var(--color-primary-glow); /* Enhanced glow */
 }
 
 .remote-btn.dpad-btn:active:not(:disabled) {
 	transform: scale(0.95);
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
-	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+	background: linear-gradient(145deg, #0f0f0f, #0a0a0a); /* Pressed state */
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
 }
 
 .remote-btn.dpad-btn:focus:not(:disabled) {
-	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 
@@ -352,16 +417,16 @@
 
 /* Category Buttons - Now integrated into dpad-top-row */
 .remote-btn.category-btn {
-	/* Match dpad-btn styling for consistency */
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
-	border: 2px solid var(--tv-frame-darkest);
+	/* Realistic category button - matte black */
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+	border: 2px solid #0a0a0a; /* Dark, realistic border */
 	color: var(--color-text-dim);
 	font-size: clamp(7px, 0.85vw, 9px);
 	padding: clamp(7px, 0.8vh, 9px) clamp(8px, 1vw, 12px);
 	cursor: pointer;
 	transition: all var(--transition-fast);
 	font-family: var(--font-primary);
-	text-shadow: 0 0 2px color-mix(in srgb, var(--color-text-dim) 20%, transparent);
+	text-shadow: 0 0 2px rgba(0, 0, 0, 0.8); /* Subtle shadow */
 	border-radius: var(--radius-sm);
 	text-transform: uppercase;
 	min-height: clamp(28px, 3vh, 32px);
@@ -369,15 +434,21 @@
 	align-items: center;
 	justify-content: center;
 	box-shadow: 
-		var(--shadow-sm),
-		inset 0 1px 0 rgba(255,255,255,0.02);
+		0 2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255,255,255,0.02),
+		inset 0 -1px 2px rgba(0, 0, 0, 0.9);
 	-webkit-tap-highlight-color: transparent;
 }
 
 .remote-btn.category-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
 	color: var(--color-text-dim);
-	text-shadow: 0 0 3px color-mix(in srgb, var(--color-text-dim) 30%, transparent);
+	border-color: #151515; /* Subtle border change */
+	text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+	box-shadow: 
+		0 2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255,255,255,0.04),
+		inset 0 -1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .remote-btn.category-btn:active:not(:disabled) {
@@ -387,7 +458,8 @@
 }
 
 .remote-btn.category-btn:focus:not(:disabled) {
-	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 
@@ -402,8 +474,9 @@
 }
 
 .remote-btn.mute-btn {
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
-	border: 2px solid var(--tv-frame-darkest);
+	/* Realistic mute button - matte black */
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+	border: 2px solid #0a0a0a; /* Dark border */
 	color: var(--color-text-dim);
 	font-size: clamp(6px, 0.7vw, 8px);
 	padding: clamp(5px, 0.6vh, 7px) clamp(10px, 1.2vw, 14px);
@@ -416,16 +489,21 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	box-shadow: 
+		0 2px 4px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255,255,255,0.02),
+		inset 0 -1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .remote-btn.mute-btn.active {
-	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter when active */
 	color: var(--color-text-dim);
 }
 
 .remote-btn.mute-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, var(--color-text-dim), var(--color-text-muted));
-	color: var(--color-text);
+	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
+	color: var(--color-text-dim);
+	border-color: #151515;
 }
 
 .remote-btn.mute-btn:active:not(:disabled) {
@@ -435,7 +513,8 @@
 }
 
 .remote-btn.mute-btn:focus:not(:disabled) {
-	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 
@@ -484,17 +563,17 @@
 }
 
 .remote-btn.vcr-btn.record {
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
 	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn.play {
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
 	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn.stop {
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
 	color: var(--color-text-dim);
 }
 
@@ -502,14 +581,14 @@
 	width: clamp(20px, 2.2vw, 24px);
 	height: clamp(18px, 2vh, 22px);
 	font-size: clamp(6px, 0.7vw, 8px);
-	background: linear-gradient(145deg, var(--tv-frame-dark), var(--tv-frame-darkest));
+	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
 	color: var(--color-text-dim);
 }
 
 .remote-btn.vcr-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, var(--tv-button-hover), var(--tv-frame-dark));
+	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
 	color: var(--color-text-dim);
-	border-color: var(--color-border);
+	border-color: #151515;
 }
 
 .remote-btn.vcr-btn:active:not(:disabled) {
@@ -519,7 +598,8 @@
 }
 
 .remote-btn.vcr-btn:focus:not(:disabled) {
-	outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 

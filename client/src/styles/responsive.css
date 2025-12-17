@@ -529,7 +529,7 @@
 	right: 15px;
 	background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(13, 21, 32, 0.7) 100%);
 	border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
-	border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+	border-color: var(--color-primary);
 	border-radius: var(--radius-lg);
 	padding: var(--spacing-sm);
 	z-index: var(--z-overlay);
@@ -564,9 +564,9 @@
 	color: var(--color-primary);
 	text-shadow: 0 0 8px var(--color-primary);
 	padding: 2px 6px;
-	background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+	background: var(--color-primary-dim);
 	border-radius: var(--radius-sm);
-	border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+	border: 1px solid var(--color-primary);
 }
 
 .live-indicator {
@@ -950,7 +950,7 @@
 	.volume-box {
 		padding: 9px 7px;
 		min-width: 55px;
-		border: 1px solid #39ff14;
+		border: 1px solid var(--color-success);
 		border-radius: 5px;
 	}
 
@@ -1336,16 +1336,16 @@ transparent 2px
 }
 
 .tv-survey-header h2 {
-	color: #4a9eff;
+		color: var(--color-primary);
 	font-size: 24px;
 	margin: 0;
-	text-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 50%, transparent);
+	text-shadow: 0 0 10px var(--color-primary), 0 0 20px var(--color-primary-glow);
 }
 
 .tv-survey-close {
 	background: transparent;
-	border: 2px solid #4a9eff;
-	color: #4a9eff;
+		border: 2px solid var(--color-primary);
+		color: var(--color-primary);
 	width: 32px;
 	height: 32px;
 	border-radius: 50%;
@@ -1373,7 +1373,7 @@ transparent 2px
 
 .tv-survey-progress-bar {
 	height: 100%;
-	background: linear-gradient(90deg, #4a9eff, #6bb6ff);
+		background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
 	border-radius: 2px;
 	transition: width 0.3s ease;
 	box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 50%, transparent);
@@ -1406,7 +1406,7 @@ transparent 2px
 
 .tv-survey-button {
 	background: linear-gradient(180deg, #2a3a4a 0%, #1a2a3a 100%);
-	border: 2px solid #4a9eff;
+		border: 2px solid var(--color-primary);
 	color: #d4c4b0;
 	padding: 15px 25px;
 	border-radius: 10px;
@@ -1422,16 +1422,16 @@ transparent 2px
 
 .tv-survey-button:hover:not(:disabled) {
 	background: linear-gradient(180deg, #3a4a5a 0%, #2a3a4a 100%);
-	border-color: #6bb6ff;
+		border-color: var(--color-primary-hover);
 	transform: translateY(-2px);
-	box-shadow: 0 4px 15px color-mix(in srgb, var(--color-primary) 30%, transparent);
+	box-shadow: 0 4px 15px var(--color-primary-glow);
 }
 
 .tv-survey-button.selected {
-	background: linear-gradient(180deg, #4a9eff 0%, #3a8eef 100%);
-	border-color: #6bb6ff;
+		background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+		border-color: var(--color-primary-hover);
 	color: #fff;
-	box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 60%, transparent);
+	box-shadow: 0 0 20px var(--color-primary-glow);
 }
 
 .tv-survey-button:disabled {
@@ -1454,7 +1454,7 @@ transparent 2px
 .tv-survey-submitting {
 	text-align: center;
 	padding: 20px;
-	color: #4a9eff;
+		color: var(--color-primary);
 	font-size: 18px;
 	animation: pulse 1s ease-in-out infinite;
 }

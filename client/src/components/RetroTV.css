@@ -59,7 +59,7 @@
   align-items: center; 
   gap: 10px; 
   background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.8)); 
-  color: #7CFFBC; 
+  color: #d4a574; /* Warm vintage gold */
   cursor: pointer; 
 }
 
@@ -73,7 +73,7 @@
 
 .tap-text { 
   font-size: 1.2rem; 
-  text-shadow: 0 0 8px rgba(124,255,188,0.7); 
+  text-shadow: 0 0 8px rgba(212, 165, 116, 0.7), 0 0 16px rgba(212, 165, 116, 0.4); 
 }
 
 .crt-lines { 
@@ -83,8 +83,8 @@
   z-index: 30; 
   background: repeating-linear-gradient(
     to bottom, 
-    rgba(0,255,150,0.045) 0px, 
-    rgba(0,255,150,0.045) 1px, 
+    rgba(212, 165, 116, 0.045) 0px, 
+    rgba(212, 165, 116, 0.045) 1px, 
     transparent 2px
   ); 
   mix-blend-mode: screen; 
@@ -148,8 +148,8 @@
 
 .tv-controls button:hover {
   background: #1a1a1a;
-  border-color: #7CFFBC;
-  color: #7CFFBC;
+  border-color: #d4a574;
+  color: #d4a574;
   transform: translateY(-1px);
 }
 
@@ -181,7 +181,7 @@
 }
 
 .video-title {
-  color: #7CFFBC;
+  color: #d4a574;
   font-size: 12px;
   flex: 1;
   overflow: hidden;

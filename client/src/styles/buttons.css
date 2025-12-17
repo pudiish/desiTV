@@ -43,7 +43,8 @@ button,
 }
 
 .btn-base:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 
@@ -101,7 +102,8 @@ button,
 }
 
 .tv-btn:focus {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 
@@ -197,7 +199,8 @@ button,
 }
 
 .remote-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(74, 158, 255, 0.6);
+	outline: 2px solid var(--color-primary);
+	box-shadow: 0 0 8px var(--color-primary-glow);
 	outline-offset: 2px;
 }
 

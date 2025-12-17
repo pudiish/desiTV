@@ -199,7 +199,7 @@ export default function YouTubeAutoplayTest() {
       background: '#0a0a0a',
       padding: '20px',
       fontFamily: 'monospace',
-      color: '#7CFFBC'
+      color: '#d4a574'
     }}>
       <h1 style={{ textAlign: 'center', marginBottom: '20px', fontSize: '24px' }}>
         YouTube Autoplay Test (RetroTV Pattern)
@@ -263,7 +263,7 @@ export default function YouTubeAutoplayTest() {
                   background: '#0a0a0a',
                   border: '1px solid #333',
                   borderRadius: '4px',
-                  color: '#7CFFBC',
+                  color: '#d4a574',
                   fontFamily: 'monospace',
                   fontSize: '12px'
                 }}
@@ -300,7 +300,7 @@ export default function YouTubeAutoplayTest() {
         }}>
           <h3 style={{ marginTop: 0, color: '#4a9eff' }}>Status:</h3>
           <p style={{ 
-            color: isPlaying ? '#00ff88' : status.includes('Error') ? '#ff4444' : '#7CFFBC',
+            color: isPlaying ? '#4ade80' : status.includes('Error') ? '#ef4444' : '#d4a574',
             fontWeight: 'bold',
             margin: '10px 0'
           }}>

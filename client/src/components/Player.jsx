@@ -2086,10 +2086,10 @@ return (
 				>
 					<div style={{ fontSize: '48px', marginBottom: '16px' }}>📺</div>
 					<h2 style={{ 
-						color: '#00ff00', 
+						color: '#d4a574', 
 						fontFamily: 'monospace',
 						fontSize: '24px',
-						textShadow: '0 0 10px #00ff00',
+						textShadow: '0 0 10px rgba(212, 165, 116, 0.6), 0 0 20px rgba(212, 165, 116, 0.3)',
 						marginBottom: '8px'
 					}}>TAP TO START TV</h2>
 					<p style={{ 

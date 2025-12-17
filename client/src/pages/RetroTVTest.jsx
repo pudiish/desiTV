@@ -50,7 +50,7 @@ export default function RetroTVTest() {
         alignItems: 'center', 
         height: '100vh',
         fontFamily: 'monospace',
-        color: '#7CFFBC'
+        color: '#d4a574'
       }}>
         Loading channels...
       </div>
@@ -83,7 +83,7 @@ export default function RetroTVTest() {
     }}>
       <h1 style={{ 
         textAlign: 'center', 
-        color: '#7CFFBC', 
+        color: '#d4a574', 
         fontFamily: 'monospace',
         marginBottom: '10px'
       }}>
@@ -92,7 +92,7 @@ export default function RetroTVTest() {
       
       <div style={{
         textAlign: 'center',
-        color: '#7CFFBC',
+        color: '#d4a574',
         fontFamily: 'monospace',
         fontSize: '14px',
         marginBottom: '20px'
@@ -125,9 +125,9 @@ export default function RetroTVTest() {
             key={channel._id || index}
             onClick={() => handleChannelDirect(index)}
             style={{
-              background: index === activeChannelIndex ? '#7CFFBC' : '#1a1a1a',
-              color: index === activeChannelIndex ? '#0a0a0a' : '#7CFFBC',
-              border: '1px solid ' + (index === activeChannelIndex ? '#7CFFBC' : '#333'),
+              background: index === activeChannelIndex ? '#d4a574' : '#1a1a1a',
+              color: index === activeChannelIndex ? '#0a0a0a' : '#d4a574',
+              border: '1px solid ' + (index === activeChannelIndex ? '#d4a574' : '#333'),
               padding: '10px',
               borderRadius: '6px',
               cursor: 'pointer',
