@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig(({ mode }) => {
   // Load env file from parent directory (project root) where .env lives
@@ -15,7 +16,17 @@ export default defineConfig(({ mode }) => {
   console.log(`[Vite] Server port: ${serverPort}, Client port: ${clientPort}`)
   
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      // Bundle analyzer - generates stats.html in dist folder
+      visualizer({
+        filename: './dist/stats.html',
+        open: false,
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap', // 'sunburst' | 'treemap' | 'network'
+      }),
+    ],
 
     // No React-to-Preact aliasing; using standard React/ReactDOM
 
@@ -56,9 +67,27 @@ export default defineConfig(({ mode }) => {
       // Chunk splitting for better caching
       rollupOptions: {
         output: {
-          manualChunks: {
+          manualChunks: (id) => {
             // Split vendor chunks
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            if (id.includes('node_modules')) {
+              // React core
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+                return 'react-vendor';
+              }
+              // UI libraries
+              if (id.includes('@radix-ui') || id.includes('lucide-react') || id.includes('class-variance-authority')) {
+                return 'ui-vendor';
+              }
+              // Other vendor code
+              return 'vendor';
+            }
+            // Split large components
+            if (id.includes('/components/TVMenuV2') || id.includes('/components/TVSurvey')) {
+              return 'tv-components';
+            }
+            if (id.includes('/admin/')) {
+              return 'admin';
+            }
           },
         },
       },

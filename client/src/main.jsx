@@ -1,7 +1,35 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import errorTracking from './utils/errorTracking'
 import './styles.css'
+
+// Initialize error tracking (optional - works without Sentry)
+errorTracking.init({
+  // Sentry DSN from environment variable (optional)
+  // If not provided, will use console logging
+  sentryDsn: import.meta.env.VITE_SENTRY_DSN,
+  tracesSampleRate: 0.1, // 10% of transactions
+  sentryOptions: {
+    // Additional Sentry options
+    beforeSend(event) {
+      // Filter out browser extension errors
+      if (event.exception) {
+        const error = event.exception.values?.[0];
+        if (error?.value) {
+          if (
+            error.value.includes('runtime.lastError') ||
+            error.value.includes('content-script') ||
+            error.value.includes('AdUnit')
+          ) {
+            return null; // Don't send browser extension errors
+          }
+        }
+      }
+      return event;
+    }
+  }
+});
 
 // Suppress browser extension errors (harmless but annoying)
 if (typeof window !== 'undefined') {

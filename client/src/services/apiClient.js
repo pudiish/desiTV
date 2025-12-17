@@ -22,6 +22,8 @@ export class APIClient {
     }
     this.requestLog = []
     this.maxLogSize = config.maxLogSize || 100
+    this.csrfToken = null // CSRF token cache
+    this.csrfTokenPromise = null // Promise for token fetch in progress
   }
 
   /**
@@ -133,6 +135,64 @@ export class APIClient {
   }
 
   /**
+   * Get CSRF token from server
+   */
+  async getCsrfToken() {
+    // Return cached token if available
+    if (this.csrfToken) {
+      return this.csrfToken
+    }
+
+    // If token fetch is in progress, wait for it
+    if (this.csrfTokenPromise) {
+      return this.csrfTokenPromise
+    }
+
+    // Fetch new token
+    this.csrfTokenPromise = fetch(`${this.baseURL}/api/csrf-token`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to get CSRF token: ${response.status}`)
+        }
+        
+        // Get token from header or response body
+        const tokenFromHeader = response.headers.get('X-CSRF-Token')
+        const data = await response.json()
+        const token = tokenFromHeader || data.token
+
+        if (!token) {
+          throw new Error('CSRF token not found in response')
+        }
+
+        this.csrfToken = token
+        this.csrfTokenPromise = null
+        return token
+      })
+      .catch((error) => {
+        this.csrfTokenPromise = null
+        console.warn('[APIClient] Failed to get CSRF token:', error.message)
+        // Return null if token fetch fails (graceful degradation)
+        return null
+      })
+
+    return this.csrfTokenPromise
+  }
+
+  /**
+   * Clear CSRF token (force refresh on next request)
+   */
+  clearCsrfToken() {
+    this.csrfToken = null
+    this.csrfTokenPromise = null
+  }
+
+  /**
    * Make HTTP request
    */
   async request(config) {
@@ -146,20 +206,53 @@ export class APIClient {
       // Build URL
       const url = this.buildUrl(finalConfig.url)
 
+      // Get CSRF token for state-changing requests
+      const stateChangingMethods = ['POST', 'PUT', 'DELETE', 'PATCH']
+      const needsCsrfToken = stateChangingMethods.includes(finalConfig.method?.toUpperCase())
+      
+      let csrfToken = null
+      if (needsCsrfToken) {
+        csrfToken = await this.getCsrfToken()
+        // If token fetch failed, retry once
+        if (!csrfToken) {
+          this.clearCsrfToken() // Clear cache to force fresh fetch
+          csrfToken = await this.getCsrfToken()
+        }
+        // If still no token, log warning but proceed (server will reject with 403)
+        if (!csrfToken) {
+          console.warn('[APIClient] CSRF token unavailable, request may fail')
+        }
+      }
+
       // Create abort controller for timeout
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+      // Prepare headers
+      const headers = {
+        'Content-Type': 'application/json',
+        ...finalConfig.headers,
+      }
+
+      // Add CSRF token to headers if available
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken
+      }
 
       // Make request
       const startTime = performance.now()
       const response = await fetch(url, {
         ...finalConfig,
-        headers: {
-          'Content-Type': 'application/json',
-          ...finalConfig.headers,
-        },
+        headers,
+        credentials: 'include', // Include cookies for CSRF
         signal: controller.signal,
       })
+
+      // Update CSRF token from response header (if refreshed)
+      const newToken = response.headers.get('X-CSRF-Token')
+      if (newToken) {
+        this.csrfToken = newToken
+      }
 
       clearTimeout(timeoutId)
       const duration = performance.now() - startTime
@@ -178,6 +271,11 @@ export class APIClient {
 
       // Handle non-ok status
       if (!response.ok) {
+        // If CSRF token error, clear token to force refresh
+        if (response.status === 403 && data?.error === 'CSRF token missing' || data?.error === 'Invalid CSRF token') {
+          this.clearCsrfToken()
+        }
+
         const error = new Error(data?.message || `HTTP ${response.status}`)
         error.status = response.status
         error.data = data

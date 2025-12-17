@@ -4,10 +4,13 @@
  * Serverless version - no MongoDB dependency
  * 
  * Features:
- * - Automatic session persistence to localStorage
+ * - Automatic session persistence to localStorage (async)
  * - State recovery on page refresh/crash
  * - Simple, reliable, works offline
+ * - Non-blocking storage operations
  */
+
+import asyncStorage from './asyncStorage'
 
 class SessionManager {
 	constructor() {
@@ -38,14 +41,14 @@ class SessionManager {
 	}
 
 	/**
-	 * Initialize session - load from localStorage or create new
+	 * Initialize session - load from localStorage or create new (async)
 	 */
 	async initialize() {
 		try {
 			console.log('[SessionManager] Initializing session...')
 			
-			// Load from localStorage
-			const cachedState = this.getLocalCache()
+			// Load from localStorage (async)
+			const cachedState = await this.getLocalCache()
 			if (cachedState) {
 				this.state = cachedState
 				this.isInitialized = true
@@ -93,9 +96,9 @@ class SessionManager {
 	}
 
 	/**
-	 * Update session state - save to localStorage immediately
+	 * Update session state - save to localStorage immediately (async)
 	 */
-	updateState(updates) {
+	async updateState(updates) {
 		if (!this.isInitialized) {
 			console.warn('[SessionManager] Not initialized, initializing now')
 			this.state = this.getDefaultState()
@@ -108,26 +111,34 @@ class SessionManager {
 			...updates,
 		}
 
-		// Save to localStorage immediately
-		this.saveLocalCache()
+		// Save to localStorage immediately (async, non-blocking)
+		this.saveLocalCache().catch(err => {
+			console.warn('[SessionManager] Error saving state:', err)
+		})
 
 		this.notifyListeners('updated', this.state)
 	}
 
 	/**
 	 * Force immediate save (use on page unload)
+	 * Uses sync version for critical page unload scenarios
 	 */
 	async forceSave() {
-		this.saveLocalCache()
+		// Use sync version for page unload to ensure it completes
+		this.saveLocalCacheSync()
+		// Also try async version as backup
+		await this.saveLocalCache().catch(() => {
+			// Ignore errors - sync version already saved
+		})
 		return true
 	}
 
 	/**
-	 * Local storage management
+	 * Local storage management (async)
 	 */
-	saveLocalCache() {
+	async saveLocalCache() {
 		try {
-			localStorage.setItem(this.storageKey, JSON.stringify({
+			await asyncStorage.setItem(this.storageKey, JSON.stringify({
 				state: this.state,
 				timestamp: Date.now(),
 			}))
@@ -136,9 +147,9 @@ class SessionManager {
 			// If storage is full, try to clear old data
 			if (err.name === 'QuotaExceededError') {
 				console.warn('[SessionManager] Storage full, clearing old data')
-				this.clearLocalCache()
+				await this.clearLocalCache()
 				try {
-					localStorage.setItem(this.storageKey, JSON.stringify({
+					await asyncStorage.setItem(this.storageKey, JSON.stringify({
 						state: this.state,
 						timestamp: Date.now(),
 					}))
@@ -149,9 +160,23 @@ class SessionManager {
 		}
 	}
 
-	getLocalCache() {
+	/**
+	 * Synchronous save for critical operations (page unload)
+	 */
+	saveLocalCacheSync() {
 		try {
-			const cached = localStorage.getItem(this.storageKey)
+			asyncStorage.setItemSync(this.storageKey, JSON.stringify({
+				state: this.state,
+				timestamp: Date.now(),
+			}))
+		} catch (err) {
+			console.warn('[SessionManager] Sync save error:', err)
+		}
+	}
+
+	async getLocalCache() {
+		try {
+			const cached = await asyncStorage.getItem(this.storageKey)
 			if (cached) {
 				const { state, timestamp } = JSON.parse(cached)
 				// Use cache regardless of age (user's session)
@@ -163,8 +188,12 @@ class SessionManager {
 		return null
 	}
 
-	clearLocalCache() {
-		localStorage.removeItem(this.storageKey)
+	async clearLocalCache() {
+		await asyncStorage.removeItem(this.storageKey)
+	}
+
+	clearLocalCacheSync() {
+		asyncStorage.removeItemSync(this.storageKey)
 	}
 
 	/**

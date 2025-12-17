@@ -1,4 +1,5 @@
 import React from 'react';
+import errorTracking from '../utils/errorTracking';
 
 /**
  * ErrorBoundary - Catches React component errors and prevents white screen of death
@@ -24,7 +25,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error to console (in production, send to error tracking service)
+    // Log error to console
     console.error('[ErrorBoundary] Caught error:', error, errorInfo);
     
     this.setState({
@@ -32,11 +33,13 @@ class ErrorBoundary extends React.Component {
       errorInfo
     });
 
-    // In production, send to error tracking service (e.g., Sentry)
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Add error tracking service
-      // Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack } } });
-    }
+    // Send to error tracking service
+    errorTracking.captureException(error, {
+      component: 'ErrorBoundary',
+      type: 'reactError',
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true
+    });
   }
 
   handleReset = () => {
@@ -84,7 +87,7 @@ class ErrorBoundary extends React.Component {
           }}>
             Something went wrong. The TV needs to be reset.
           </p>
-          {process.env.NODE_ENV === 'development' && this.state.error && (
+          {(import.meta.env.DEV || import.meta.env.MODE === 'development') && this.state.error && (
             <details style={{
               marginBottom: '24px',
               padding: '16px',

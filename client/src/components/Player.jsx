@@ -7,6 +7,7 @@ import { broadcastStateManager } from '../logic/broadcast'
 import { PLAYBACK_THRESHOLDS } from '../config/thresholds'
 import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../config/constants/youtube'
 import { PLAYBACK_CONSTANTS } from '../config/constants/playback'
+import VideoSourceManager from '../utils/VideoSourceManager'
 
 /**
  * Enhanced Player Component with:
@@ -76,6 +77,7 @@ onBufferingChange = null,
 	const lastPlayAttemptRef = useRef(0) // Track last play attempt time for debouncing
 	const loadedVideoRef = useRef(null) // Cache: { videoId, offset, channelId } - track what's currently loaded
 	const loadVideoTimeoutRef = useRef(null) // Debounce video loading
+	const videoSourceManagerRef = useRef(null) // Video source fallback manager
 
 	// ===== CONSTANTS FROM CONFIG =====
 	// Use constants from config files for easy tweaking
@@ -111,8 +113,18 @@ onBufferingChange = null,
 		return `${channel._id}-${channelChangeCounterRef.current}`
 	}, [channel?._id])
 
-	// Get current video ID and start time
-	const videoId = current?.youtubeId
+	// Initialize video source manager for current video
+	const videoSourceManager = useMemo(() => {
+		if (!current) return null
+		return new VideoSourceManager(current, { maxFallbacks: 3 })
+	}, [current])
+	
+	// Store in ref for use in callbacks
+	videoSourceManagerRef.current = videoSourceManager
+
+	// Get current video ID from source manager (with fallback support)
+	const currentSource = videoSourceManager?.getCurrentSource()
+	const videoId = currentSource?.id || current?.youtubeId
 	
 	// Calculate start seconds from broadcast position offset
 	const startSeconds = Math.floor(offset)
@@ -1476,7 +1488,7 @@ onBufferingChange = null,
 	// Keep ref updated
 	switchToNextVideoRef.current = switchToNextVideo
 
-	// Error handler - auto-skip unavailable/restricted videos
+	// Error handler - auto-skip unavailable/restricted videos with fallback support
 	const handleVideoError = useCallback((error) => {
 		try {
 			const errorCode = error?.data || error
@@ -1496,6 +1508,40 @@ onBufferingChange = null,
 			// Check if error is permanent
 			const isPermanent = YOUTUBE_PERMANENT_ERRORS.includes(errorCode)
 			
+			// Try fallback source first (if available)
+			const sourceManager = videoSourceManagerRef.current
+			if (sourceManager && sourceManager.hasMoreSources()) {
+				console.log('[Player] Video error detected, trying fallback source...')
+				sourceManager.markCurrentSourceFailed()
+				const nextSource = sourceManager.getNextSource()
+				
+				if (nextSource) {
+					console.log(`[Player] Switching to fallback source: ${nextSource.label} (${nextSource.id})`)
+					
+					if (onBufferingChange) {
+						onBufferingChange(true, `Trying fallback source...`)
+					}
+					
+					// Reload video with fallback source
+					if (playerRef.current && ytPlayerRef.current) {
+						setTimeout(() => {
+							try {
+								ytPlayerRef.current.loadVideoById({
+									videoId: nextSource.id,
+									startSeconds: startSeconds,
+								})
+								ytPlayerRef.current.playVideo()
+								setRetryCount(0) // Reset retry count for new source
+								return // Exit early - fallback source loaded
+							} catch (err) {
+								console.error('[Player] Error loading fallback source:', err)
+							}
+						}, 500)
+					}
+				}
+			}
+			
+			// If no fallback or all fallbacks failed, proceed with normal error handling
 			if (isPermanent && current?.youtubeId) {
 				const errorMessages = {
 					2: 'INVALID VIDEO',
@@ -1533,7 +1579,7 @@ onBufferingChange = null,
 						switchToNextVideo()
 					}, 5000)
 				}
-			} else if (!errorResult.isPermanent && retryCount < MAX_RETRY_ATTEMPTS) {
+			} else if (!isPermanent && retryCount < MAX_RETRY_ATTEMPTS) {
 				// Try to recover from non-permanent errors
 				console.log('[Player] Non-permanent error, attempting retry...')
 				attemptRetry()
@@ -1546,7 +1592,7 @@ onBufferingChange = null,
 			console.error('[Player] Error in handleVideoError:', err)
 			setIsBuffering(false)
 		}
-	}, [current?.youtubeId, onBufferingChange, MAX_SKIP_ATTEMPTS, switchToNextVideo, retryCount, attemptRetry])
+	}, [current?.youtubeId, onBufferingChange, MAX_SKIP_ATTEMPTS, switchToNextVideo, retryCount, attemptRetry, startSeconds])
 
 	// RetroTV Pattern: State change handler - RESTRUCTURED for robustness
 	const onStateChange = useCallback((event) => {

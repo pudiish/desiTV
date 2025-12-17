@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
-import TVMenuV2 from '../components/TVMenuV2'
-import TVSurvey from '../components/TVSurvey'
 import SessionManager from '../utils/SessionManager'
 import analytics from '../utils/analytics'
 import performanceMonitor from '../utils/performanceMonitor'
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
+
+// Lazy load heavy components that aren't always visible
+const TVMenuV2 = lazy(() => import('../components/TVMenuV2'))
+const TVSurvey = lazy(() => import('../components/TVSurvey'))
 
 export default function Home() {
 	// RESTRUCTURED: Categories are playlists, videos are channels
@@ -733,21 +735,23 @@ export default function Home() {
 				/>
 			) : null}
 			menuComponent={menuOpen ? (
-				<TVMenuV2
-					isOpen={menuOpen}
-					onClose={() => setMenuOpen(false)}
-					channels={categories}
-					activeChannelIndex={categories.findIndex(cat => cat._id === selectedCategory?._id)}
-					onChannelSelect={(index) => {
-						const category = categories[index]
-						if (category) {
-							setCategory(category.name)
-							setMenuOpen(false)
-						}
-					}}
-					power={power}
-					playbackInfo={playbackInfo}
-				/>
+				<Suspense fallback={<div className="menu-loading">Loading menu...</div>}>
+					<TVMenuV2
+						isOpen={menuOpen}
+						onClose={() => setMenuOpen(false)}
+						channels={categories}
+						activeChannelIndex={categories.findIndex(cat => cat._id === selectedCategory?._id)}
+						onChannelSelect={(index) => {
+							const category = categories[index]
+							if (category) {
+								setCategory(category.name)
+								setMenuOpen(false)
+							}
+						}}
+						power={power}
+						playbackInfo={playbackInfo}
+					/>
+				</Suspense>
 			) : null}
 				onBufferingChange={(isBuffering, errorMsg) => {
 						setIsBuffering(isBuffering)
@@ -822,11 +826,15 @@ export default function Home() {
 		</div>
 		
 		{/* Simple TV-like Survey - appears after watching for a few minutes */}
-		<TVSurvey
-			isOpen={surveyOpen}
-			onClose={() => setSurveyOpen(false)}
-			ageGroup={userAgeGroup}
-		/>
+		{surveyOpen && (
+			<Suspense fallback={null}>
+				<TVSurvey
+					isOpen={surveyOpen}
+					onClose={() => setSurveyOpen(false)}
+					ageGroup={userAgeGroup}
+				/>
+			</Suspense>
+		)}
 		</>
 	)
 }
