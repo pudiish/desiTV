@@ -1,6 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
+const createCors = require('./middleware/cors');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
@@ -47,6 +47,28 @@ app.use(requestSizeLimit);
 // General rate limiter (100 requests per 15 minutes per IP)
 app.use(generalLimiter);
 
+// ===== HTTPS ENFORCEMENT (Production Only) =====
+// Redirect HTTP to HTTPS in production for security
+if (isProduction) {
+	app.use((req, res, next) => {
+		// Check if request is already HTTPS
+		// x-forwarded-proto is set by reverse proxies (Vercel, Render, etc.)
+		const isSecure = req.secure || 
+			req.header('x-forwarded-proto') === 'https' ||
+			req.header('x-forwarded-proto') === 'https,' ||
+			req.header('x-forwarded-proto')?.startsWith('https');
+		
+		if (!isSecure) {
+			// Redirect to HTTPS
+			const host = req.header('host') || req.hostname;
+			const url = req.url;
+			return res.redirect(301, `https://${host}${url}`);
+		}
+		
+		next();
+	});
+}
+
 // ===== CORS CONFIGURATION =====
 // Get local network IP for logging
 const getLocalIP = () => {
@@ -82,7 +104,7 @@ const corsOptions = {
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 	allowedHeaders: ['Content-Type', 'Authorization'],
 };
-app.use(cors(corsOptions));
+app.use(createCors(corsOptions));
 
 // ===== MIDDLEWARE =====
 app.use(express.json({ limit: '1mb' }));
@@ -119,8 +141,21 @@ const sessionRoutes = require('./routes/session');
 const monitoringRoutes = require('./routes/monitoring');
 const analyticsRoutes = require('./routes/analytics');
 
+// ===== CSRF PROTECTION =====
+const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
+
+// CSRF token endpoint (must be before CSRF protection, excluded from rate limiting)
+app.get('/api/csrf-token', getCsrfToken);
+
 // Apply API rate limiter to all API routes (60 requests per minute)
+// Rate limiting before CSRF to prevent abuse
 app.use('/api', apiLimiter);
+
+// Apply CSRF protection to all API routes (except GET, HEAD, OPTIONS)
+app.use('/api', csrfProtection);
+
+// Optional: Refresh CSRF token on successful requests
+app.use('/api', csrfRefresh);
 
 // Mount routes
 app.use('/api/channels', channelRoutes);
@@ -171,20 +206,26 @@ app.post('/api/regenerate-json', async (req, res) => {
 });
 
 // ===== DATABASE CONNECTION & SERVER START =====
-mongoose.connect(process.env.MONGO_URI, mongoOptions)
+const dbConnectionManager = require('./utils/dbConnection');
+
+// Register connection callback
+dbConnectionManager.onConnection(async () => {
+	console.log(`[DesiTV™] MongoDB connected (${isProduction ? 'production' : 'development'})`);
+	
+	// Ensure channels.json exists and is populated from MongoDB
+	try {
+		const { ensureChannelsJSON } = require('./utils/generateJSON');
+		const jsonData = await ensureChannelsJSON();
+		console.log(`[DesiTV™] channels.json ready with ${jsonData.channels.length} channels`);
+	} catch (jsonErr) {
+		console.warn('[DesiTV™] Warning: Failed to ensure channels.json:', jsonErr.message);
+		console.warn('[DesiTV™] Server will continue, but JSON may need manual regeneration');
+	}
+});
+
+// Start database connection with retry logic
+dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 	.then(async () => {
-		console.log(`[DesiTV™] MongoDB connected (${isProduction ? 'production' : 'development'})`);
-		
-		// Ensure channels.json exists and is populated from MongoDB
-		try {
-			const { ensureChannelsJSON } = require('./utils/generateJSON');
-			const jsonData = await ensureChannelsJSON();
-			console.log(`[DesiTV™] channels.json ready with ${jsonData.channels.length} channels`);
-		} catch (jsonErr) {
-			console.warn('[DesiTV™] Warning: Failed to ensure channels.json:', jsonErr.message);
-			console.warn('[DesiTV™] Server will continue, but JSON may need manual regeneration');
-		}
-		
 		// Bind to 0.0.0.0 to allow network access
 		const HOST = process.env.HOST || '0.0.0.0';
 		const server = app.listen(PORT, HOST, () => {
@@ -208,7 +249,7 @@ mongoose.connect(process.env.MONGO_URI, mongoOptions)
 		const shutdown = async (signal) => {
 			console.log('Received', signal, 'shutting down server...');
 			try {
-				await mongoose.disconnect();
+				await dbConnectionManager.disconnect();
 				server.close(() => {
 					console.log('Server closed');
 					process.exit(0);
@@ -223,4 +264,9 @@ mongoose.connect(process.env.MONGO_URI, mongoOptions)
 		process.on('SIGTERM', () => shutdown('SIGTERM'));
 		process.once('SIGUSR2', () => shutdown('SIGUSR2'));
 	})
-	.catch(err => console.error('Mongo connection error', err));
+	.catch(err => {
+		console.error('[DesiTV™] ❌ Failed to start server:', err.message);
+		console.error('[DesiTV™] Database connection will retry automatically...');
+		// Don't exit - let the connection manager handle retries
+		// Server can still start and serve static JSON fallback
+	});

@@ -13,7 +13,7 @@
  * - MongoDB Atlas: 512MB storage, 100 connections
  */
 
-const rateLimit = require('express-rate-limit');
+const { createRateLimiter } = require('./rateLimiter');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
@@ -27,7 +27,7 @@ const hpp = require('hpp');
  * 1000 requests per 15 minutes per IP (safe for testing)
  * Production: Reduce to 500 for tighter security
  */
-const generalLimiter = rateLimit({
+const generalLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // 1000 requests per 15 minutes (testing, reduce for production)
   message: {
@@ -35,12 +35,10 @@ const generalLimiter = rateLimit({
     message: 'Please try again later',
     retryAfter: 900
   },
-  standardHeaders: true,
-  legacyHeaders: false,
   // Skip rate limiting for health checks and static assets
   skip: (req) => req.path === '/health' || req.path.startsWith('/assets'),
-  // Use default keyGenerator (handles IPv6 correctly)
-  validate: { xForwardedForHeader: false }
+  // Use IP from request
+  keyGenerator: (req) => req.ip || req.connection.remoteAddress || 'unknown'
 });
 
 /**
@@ -48,7 +46,7 @@ const generalLimiter = rateLimit({
  * Safe for testing: 30 attempts per 15 minutes (2 per minute)
  * Production: Reduce to 5-10 attempts for security
  */
-const authLimiter = rateLimit({
+const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 30, // 30 login attempts (safe for testing, reduce for production)
   message: {
@@ -56,9 +54,7 @@ const authLimiter = rateLimit({
     message: 'Account temporarily locked. Try again in 15 minutes.',
     retryAfter: 900
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false }
+  keyGenerator: (req) => req.ip || req.connection.remoteAddress || 'unknown'
 });
 
 /**
@@ -66,7 +62,7 @@ const authLimiter = rateLimit({
  * 600 requests per minute per IP (safe for dashboard testing)
  * Production: Reduce to 200-300 for security
  */
-const apiLimiter = rateLimit({
+const apiLimiter = createRateLimiter({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 600, // 600 requests per minute (dashboard testing, reduce for production)
   message: {
@@ -74,18 +70,16 @@ const apiLimiter = rateLimit({
     message: 'Too many API requests. Please slow down.',
     retryAfter: 60
   },
-  standardHeaders: true,
-  legacyHeaders: false,
   // Skip internal monitoring endpoints from rate limiting
   skip: (req) => req.path.includes('/monitoring/') || req.path.includes('/broadcast-state/'),
-  validate: { xForwardedForHeader: false }
+  keyGenerator: (req) => req.ip || req.connection.remoteAddress || 'unknown'
 });
 
 /**
  * Admin route rate limiter
  * 30 requests per minute (admin operations should be less frequent)
  */
-const adminLimiter = rateLimit({
+const adminLimiter = createRateLimiter({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 30, // 30 requests per minute
   message: {
@@ -93,9 +87,7 @@ const adminLimiter = rateLimit({
     message: 'Too many admin requests.',
     retryAfter: 60
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false }
+  keyGenerator: (req) => req.ip || req.connection.remoteAddress || 'unknown'
 });
 
 // ===== SECURITY HEADERS (HELMET) =====
@@ -114,6 +106,12 @@ const helmetConfig = helmet({
   },
   crossOriginEmbedderPolicy: false, // Required for YouTube embeds
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  // Add Strict-Transport-Security header for HTTPS enforcement
+  strictTransportSecurity: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
 });
 
 // ===== REQUEST SANITIZATION =====

@@ -50,3 +50,5 @@ coverage/
 # Build artifacts
 *.tgz
 
+.jest-cache
+coverage

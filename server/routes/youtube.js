@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 
 function parseISODuration(duration) {
   // Simple ISO 8601 duration parser to seconds (PT#H#M#S)
@@ -21,16 +20,34 @@ router.post('/metadata', async (req, res) => {
   try {
     // request status to check embeddable flag as well
     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=${encodeURIComponent(youtubeId)}&key=${KEY}`;
-    const r = await axios.get(url);
-    const item = r.data.items && r.data.items[0];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ 
+        message: 'YouTube API error', 
+        error: errorData || response.statusText 
+      });
+    }
+    
+    const data = await response.json();
+    const item = data.items && data.items[0];
     if (!item) return res.status(404).json({ message: 'Video not found' });
     const title = item.snippet.title;
     const duration = parseISODuration(item.contentDetails.duration || 'PT0S');
     const embeddable = item.status && typeof item.status.embeddable !== 'undefined' ? item.status.embeddable : true;
     res.json({ title, duration, embeddable });
   } catch (err) {
-    console.error('YouTube API error', err?.response?.data || err.message);
-    res.status(500).json({ message: 'YouTube API error', error: err?.response?.data || err.message });
+    console.error('YouTube API error', err.message);
+    res.status(500).json({ message: 'YouTube API error', error: err.message });
   }
 });
 

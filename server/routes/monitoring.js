@@ -6,6 +6,7 @@
 const express = require('express')
 const router = express.Router()
 const mongoose = require('mongoose')
+const dbConnectionManager = require('../utils/dbConnection')
 
 // Track server metrics
 let serverMetrics = {
@@ -22,6 +23,7 @@ let serverMetrics = {
 router.get('/health', (req, res) => {
   const uptime = Date.now() - serverMetrics.startTime
   const dbConnected = mongoose.connection.readyState === 1
+  const dbState = dbConnectionManager.getState()
 
   res.json({
     status: dbConnected ? 'healthy' : 'unhealthy',
@@ -31,6 +33,8 @@ router.get('/health', (req, res) => {
     database: {
       connected: dbConnected,
       state: mongoose.connection.readyState,
+      connectionState: dbState.state,
+      retryCount: dbState.retryCount,
     },
     server: {
       requests: serverMetrics.requestCount,
@@ -70,15 +74,22 @@ router.get('/endpoints', (req, res) => {
  */
 router.get('/services', (req, res) => {
   const dbConnected = mongoose.connection.readyState === 1
+  const dbState = dbConnectionManager.getState()
+  const dbStatus = dbConnected ? 'operational' : (dbState.state === 'connecting' ? 'connecting' : 'down')
+  const dbDetails = dbConnected 
+    ? 'MongoDB connected' 
+    : (dbState.state === 'connecting' 
+      ? `MongoDB connecting (retry ${dbState.retryCount})` 
+      : 'MongoDB disconnected')
 
   res.json({
     timestamp: new Date().toISOString(),
     services: [
       {
         name: 'Database',
-        status: dbConnected ? 'operational' : 'down',
+        status: dbStatus,
         responseTime: 0,
-        details: dbConnected ? 'MongoDB connected' : 'MongoDB disconnected',
+        details: dbDetails,
       },
       {
         name: 'API Server',

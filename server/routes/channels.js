@@ -168,12 +168,25 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
     // Helper function to fetch YouTube metadata using oEmbed (no API key required)
     async function fetchYouTubeMetadata(videoId) {
       try {
-        const axios = require('axios');
         const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-        const response = await axios.get(oembedUrl, { timeout: 5000 });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(oembedUrl, { 
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          return null;
+        }
+        
+        const data = await response.json();
         return {
-          title: response.data.title || 'Untitled',
-          author: response.data.author_name
+          title: data.title || 'Untitled',
+          author: data.author_name
         };
       } catch (err) {
         // oEmbed failed, return null
@@ -263,7 +276,6 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
 
     // Fetch metadata for videos - prefer oEmbed (no API key required), fallback to YouTube API
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-    const axios = require('axios');
 
     let addedCount = 0;
     let skippedCount = 0;
@@ -288,11 +300,22 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
             // Fallback to YouTube Data API if oEmbed fails and API key is available
             try {
               const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
-              const metadataRes = await axios.get(metadataUrl, { timeout: 5000 });
-              if (metadataRes.data.items && metadataRes.data.items[0]) {
-                video.title = metadataRes.data.items[0].snippet.title;
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              
+              const metadataRes = await fetch(metadataUrl, { 
+                signal: controller.signal,
+                headers: { 'Accept': 'application/json' }
+              });
+              
+              clearTimeout(timeoutId);
+              
+              if (metadataRes.ok) {
+                const data = await metadataRes.json();
+                if (data.items && data.items[0]) {
+                  video.title = data.items[0].snippet.title;
                 // Parse duration if available
-                const durationStr = metadataRes.data.items[0].contentDetails?.duration;
+                  const durationStr = data.items[0].contentDetails?.duration;
                 if (durationStr) {
                   const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
                   if (match) {
@@ -300,6 +323,7 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
                     const minutes = parseInt(match[2] || 0, 10);
                     const seconds = parseInt(match[3] || 0, 10);
                     video.duration = hours * 3600 + minutes * 60 + seconds;
+                    }
                   }
                 }
               }
