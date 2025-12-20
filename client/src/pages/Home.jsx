@@ -203,6 +203,17 @@ export default function Home() {
 		return () => clearInterval(updateStatus)
 	}, [power, selectedCategory, videosInCategory, activeVideoIndex, statusMessage])
 
+	// Keep ref in sync with selectedCategory (safety net)
+	useEffect(() => {
+		if (selectedCategory && categories.length > 0) {
+			const categoryIndex = categories.findIndex(cat => cat._id === selectedCategory._id)
+			if (categoryIndex !== -1 && currentCategoryIndexRef.current !== categoryIndex) {
+				console.log(`[Home] Syncing ref: ${currentCategoryIndexRef.current} -> ${categoryIndex} (${selectedCategory.name})`)
+				currentCategoryIndexRef.current = categoryIndex
+			}
+		}
+	}, [selectedCategory, categories])
+
 	// Initialize shutdown sound
 	useEffect(() => {
 		shutdownSoundRef.current = new Audio('/sounds/tv-shutdown-386167.mp3')
@@ -222,9 +233,14 @@ export default function Home() {
 		
 		// Update ref immediately for synchronous access (before state update)
 		const categoryIndex = categories.findIndex(cat => cat._id === category._id)
-		if (categoryIndex !== -1) {
-			currentCategoryIndexRef.current = categoryIndex
+		if (categoryIndex === -1) {
+			console.warn(`[Home] Category index not found for: ${categoryName}`)
+			return
 		}
+		
+		// CRITICAL: Always update ref to keep it in sync
+		currentCategoryIndexRef.current = categoryIndex
+		console.log(`[Home] Setting category: ${categoryName} at index ${categoryIndex} (total: ${categories.length})`)
 		
 		setSelectedCategory(category)
 		
@@ -326,12 +342,38 @@ export default function Home() {
 			console.log('[Home] Categories set:', allCategories.map(c => c.name))
 				
 				// If session was restored, use saved state
+				let categoryRestored = false
 				if (sessionResult.restored && sessionResult.state) {
 					const savedState = sessionResult.state
 					console.log('[Home] Restoring session from localStorage:', savedState)
-					// Restore selected category (logic only, not JSX)
-					// (No code needed here, logic continues below)
+					
+					// Restore selected category and update ref
+					if (savedState.activeCategoryId || savedState.activeCategoryName) {
+						const restoredCategory = allCategories.find(cat => 
+							cat._id === savedState.activeCategoryId || 
+							cat.name === savedState.activeCategoryName
+						)
+						
+						if (restoredCategory) {
+							const restoredIndex = allCategories.findIndex(cat => cat._id === restoredCategory._id)
+							if (restoredIndex !== -1) {
+								currentCategoryIndexRef.current = restoredIndex
+								setSelectedCategory(restoredCategory)
+								categoryRestored = true
+								console.log(`[Home] Restored category: ${restoredCategory.name} at index ${restoredIndex}`)
+							}
+						}
+					}
 				}
+				
+				// If no category was restored, set first category and initialize ref
+				if (!categoryRestored && allCategories.length > 0) {
+					currentCategoryIndexRef.current = 0
+					setSelectedCategory(allCategories[0])
+					console.log(`[Home] ${sessionResult.restored ? 'No restored category' : 'New session'}, using first: ${allCategories[0].name}`)
+				}
+				
+				setSessionRestored(true)
 			} catch (err) {
 				console.error('Error initializing app:', err)
 				setStatusMessage('ERROR LOADING. PLEASE REFRESH.')
@@ -562,6 +604,10 @@ export default function Home() {
 			if (currentIndex === -1) {
 				// No valid category found, use first category
 				currentIndex = 0
+				currentCategoryIndexRef.current = 0
+			} else {
+				// Sync ref with found index
+				currentCategoryIndexRef.current = currentIndex
 			}
 		}
 		
@@ -569,12 +615,17 @@ export default function Home() {
 		const nextIndex = (currentIndex + 1) % categories.length
 		const nextCategory = categories[nextIndex]
 		
-		if (nextCategory) {
-			// Update ref immediately for next click
-			currentCategoryIndexRef.current = nextIndex
-			setCategory(nextCategory.name)
-			setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
+		if (!nextCategory) {
+			console.warn(`[Home] Next category not found at index ${nextIndex}`)
+			return
 		}
+		
+		console.log(`[Home] Category UP: ${currentIndex} -> ${nextIndex} (${nextCategory.name})`)
+		
+		// Update ref immediately for next click (before setCategory)
+		currentCategoryIndexRef.current = nextIndex
+		setCategory(nextCategory.name)
+		setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
 	}
 
 	function handleCategoryDown() {
@@ -589,6 +640,10 @@ export default function Home() {
 			if (currentIndex === -1) {
 				// No valid category found, use first category
 				currentIndex = 0
+				currentCategoryIndexRef.current = 0
+			} else {
+				// Sync ref with found index
+				currentCategoryIndexRef.current = currentIndex
 			}
 		}
 		
@@ -598,12 +653,17 @@ export default function Home() {
 			: currentIndex - 1
 		const prevCategory = categories[prevIndex]
 		
-		if (prevCategory) {
-			// Update ref immediately for next click
-			currentCategoryIndexRef.current = prevIndex
-			setCategory(prevCategory.name)
-			setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
+		if (!prevCategory) {
+			console.warn(`[Home] Previous category not found at index ${prevIndex}`)
+			return
 		}
+		
+		console.log(`[Home] Category DOWN: ${currentIndex} -> ${prevIndex} (${prevCategory.name})`)
+		
+		// Update ref immediately for next click (before setCategory)
+		currentCategoryIndexRef.current = prevIndex
+		setCategory(prevCategory.name)
+		setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
 	}
 
 	function handleMenuToggle() {
