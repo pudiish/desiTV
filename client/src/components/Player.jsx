@@ -80,6 +80,54 @@ onBufferingChange = null,
 	const videoSourceManagerRef = useRef(null) // Video source fallback manager
 	const videoValidationCacheRef = useRef(new Map()) // Cache validation results: Map<videoId, { valid: boolean, timestamp: number }>
 
+	// Video validation utility - check video status before loading
+	// Defined early so it can be used in useEffect hooks
+	const validateVideoBeforeLoad = useCallback(async (videoId) => {
+		if (!videoId) return { valid: false, reason: 'No video ID' }
+		
+		// Check cache first (valid for 5 minutes)
+		const cacheEntry = videoValidationCacheRef.current.get(videoId)
+		const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+		if (cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_DURATION) {
+			return cacheEntry.result
+		}
+		
+		try {
+			// Check video status via API
+			const response = await fetch('/api/youtube/metadata', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ youtubeId: videoId })
+			})
+			
+			if (!response.ok) {
+				// API error - assume invalid
+				const result = { valid: false, reason: 'API error' }
+				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
+				return result
+			}
+			
+			const data = await response.json()
+			
+			// Check if video is embeddable and exists
+			if (!data.embeddable) {
+				const result = { valid: false, reason: 'Not embeddable' }
+				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
+				return result
+			}
+			
+			// Video is valid
+			const result = { valid: true }
+			videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
+			return result
+		} catch (err) {
+			console.warn(`[Player] Validation error for ${videoId}:`, err.message)
+			// On validation error, allow video to load (might be network issue)
+			// But don't cache this result
+			return { valid: true } // Allow loading, let YouTube API handle it
+		}
+	}, [])
+
 	// ===== CONSTANTS FROM CONFIG =====
 	// Use constants from config files for easy tweaking
 	const STATE_UNSTARTED = YOUTUBE_STATES.UNSTARTED
@@ -1376,53 +1424,6 @@ onBufferingChange = null,
 			} catch(err) {}
 		}, 500)
 	}, [emitPlaybackProgress])
-
-	// Video validation utility - check video status before loading
-	const validateVideoBeforeLoad = useCallback(async (videoId) => {
-		if (!videoId) return { valid: false, reason: 'No video ID' }
-		
-		// Check cache first (valid for 5 minutes)
-		const cacheEntry = videoValidationCacheRef.current.get(videoId)
-		const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-		if (cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_DURATION) {
-			return cacheEntry.result
-		}
-		
-		try {
-			// Check video status via API
-			const response = await fetch('/api/youtube/metadata', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ youtubeId: videoId })
-			})
-			
-			if (!response.ok) {
-				// API error - assume invalid
-				const result = { valid: false, reason: 'API error' }
-				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
-				return result
-			}
-			
-			const data = await response.json()
-			
-			// Check if video is embeddable and exists
-			if (!data.embeddable) {
-				const result = { valid: false, reason: 'Not embeddable' }
-				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
-				return result
-			}
-			
-			// Video is valid
-			const result = { valid: true }
-			videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
-			return result
-		} catch (err) {
-			console.warn(`[Player] Validation error for ${videoId}:`, err.message)
-			// On validation error, allow video to load (might be network issue)
-			// But don't cache this result
-			return { valid: true } // Allow loading, let YouTube API handle it
-		}
-	}, [])
 
 	// Simple: play next video immediately - RESTRUCTURED for robustness
 	// Note: The next video is automatically calculated by pseudoLive algorithm on channel epoch
