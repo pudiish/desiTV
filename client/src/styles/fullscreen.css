@@ -108,6 +108,33 @@
 	left: 0 !important;
 }
 
+/* Fullscreen: Keep glass overlay visible to block all iframe interactions (same as normal mode) */
+.tv-frame-container:fullscreen .player-glass-overlay,
+.tv-frame-container:-webkit-full-screen .player-glass-overlay,
+.tv-frame-container:-moz-full-screen .player-glass-overlay,
+.tv-frame-container:-ms-fullscreen .player-glass-overlay,
+.tv-frame-container.ios-fullscreen-active .player-glass-overlay {
+	display: block !important;
+	pointer-events: auto !important;
+	z-index: 10 !important;
+	background: transparent !important;
+	cursor: default !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+}
+
+/* Fullscreen: Disable pointer events on iframe to prevent YouTube UI interactions */
+.tv-frame-container:fullscreen #desitv-player-iframe iframe,
+.tv-frame-container:-webkit-full-screen #desitv-player-iframe iframe,
+.tv-frame-container:-moz-full-screen #desitv-player-iframe iframe,
+.tv-frame-container:-ms-fullscreen #desitv-player-iframe iframe,
+.tv-frame-container.ios-fullscreen-active #desitv-player-iframe iframe {
+	pointer-events: none !important;
+}
+
 .tv-frame-container:fullscreen .youtube-iframe,
 .tv-frame-container:-webkit-full-screen .youtube-iframe,
 .tv-frame-container:-moz-full-screen .youtube-iframe,
@@ -125,9 +152,7 @@
 .tv-frame-container:fullscreen .tv-screen-glow,
 .tv-frame-container:-webkit-full-screen .tv-screen-glow,
 .tv-frame-container:fullscreen .static-effect-tv,
-.tv-frame-container:-webkit-full-screen .static-effect-tv,
-.tv-frame-container:fullscreen .player-glass-overlay,
-.tv-frame-container:-webkit-full-screen .player-glass-overlay {
+.tv-frame-container:-webkit-full-screen .static-effect-tv {
 	display: none !important;
 }
 
@@ -163,16 +188,21 @@
 	display: none !important;
 }
 
-/* Hide menu in fullscreen */
+/* Menu in fullscreen: Position relative to TV frame container, not fixed to viewport */
 .tv-frame-container:fullscreen .tv-menu-overlay,
 .tv-frame-container:-webkit-full-screen .tv-menu-overlay,
 .tv-frame-container:-moz-full-screen .tv-menu-overlay,
 .tv-frame-container:-ms-fullscreen .tv-menu-overlay,
-.tv-frame-container.ios-fullscreen-active .tv-menu-overlay,
+.tv-frame-container.ios-fullscreen-active .tv-menu-overlay {
+	position: absolute !important;
+	inset: 0 !important;
+	z-index: var(--z-menu-overlay) !important;
+}
+
 body.ios-fullscreen-active .tv-menu-overlay {
-	display: none !important;
-	visibility: hidden !important;
-	opacity: 0 !important;
+	position: fixed !important;
+	inset: 0 !important;
+	z-index: var(--z-menu-overlay) !important;
 }
 
 /* iOS Fullscreen Support */
@@ -372,8 +402,7 @@ html.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 .tv-frame-container.ios-fullscreen-active .scanlines,
 .tv-frame-container.ios-fullscreen-active .crt-scanlines,
 .tv-frame-container.ios-fullscreen-active .tv-screen-glow,
-.tv-frame-container.ios-fullscreen-active .static-effect-tv,
-.tv-frame-container.ios-fullscreen-active .player-glass-overlay {
+.tv-frame-container.ios-fullscreen-active .static-effect-tv {
 	display: none !important;
 	opacity: 0 !important;
 	visibility: hidden !important;

@@ -105,10 +105,50 @@ class YouTubeUIRemover {
 					border: none !important;
 				}
 
-				/* Ensure video fills container */
+				/* Prevent hover-triggered UI elements from appearing */
+				.ytp-player:hover .ytp-chrome,
+				.ytp-player:hover .ytp-chrome-bottom,
+				.ytp-player:hover .ytp-chrome-top,
+				.ytp-player:hover .ytp-watermark,
+				.ytp-player:hover .ytp-title,
+				.ytp-player:hover .ytp-tooltip,
+				.ytp-player-content:hover .ytp-chrome,
+				.ytp-player-content:hover .ytp-watermark,
+				.ytp-show-cards-title:hover,
+				.ytp-cards-teaser:hover,
+				.ytp-ce-element:hover,
+				.ytp-player:hover .ytp-show-cards-title,
+				.ytp-player:hover .ytp-cards-teaser,
+				.ytp-player:hover .ytp-ce-element {
+					display: none !important;
+					visibility: hidden !important;
+					opacity: 0 !important;
+					pointer-events: none !important;
+				}
+
+				/* Disable pointer events on UI containers to prevent hover interactions */
+				.ytp-chrome,
+				.ytp-chrome-bottom,
+				.ytp-chrome-top,
+				.ytp-watermark,
+				.ytp-title,
+				.ytp-tooltip,
+				.ytp-show-cards-title,
+				.ytp-cards-teaser,
+				.ytp-ce-element {
+					pointer-events: none !important;
+				}
+
+				/* Ensure video playback works - allow pointer events on video elements */
 				.html5-video-container,
+				.video-stream {
+					pointer-events: auto !important;
+					width: 100% !important;
+					height: 100% !important;
+				}
+
+				/* Ensure video fills container */
 				.html5-video-player,
-				.video-stream,
 				.ytp-player {
 					width: 100% !important;
 					height: 100% !important;
@@ -152,7 +192,9 @@ class YouTubeUIRemover {
 				'.ytp-settings', '.ytp-settings-button',
 				'.ytp-fullscreen-button', '.ytp-share-button',
 				'.ytp-add-to-watch-later-button',
-				'[data-tooltip]', '[data-tooltip-alignment]'
+				'[data-tooltip]', '[data-tooltip-alignment]',
+				'.ytp-show-cards-title', '.ytp-cards-teaser', '.ytp-ce-element',
+				'.ytp-player-content', '.ytp-player-content-container'
 			]
 
 			selectorsToHide.forEach(selector => {

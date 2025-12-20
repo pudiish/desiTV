@@ -19,17 +19,8 @@
 	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* Hide menu in fullscreen - should not be visible */
-.tv-frame-container:fullscreen .tv-menu-overlay,
-.tv-frame-container:-webkit-full-screen .tv-menu-overlay,
-.tv-frame-container:-moz-full-screen .tv-menu-overlay,
-.tv-frame-container:-ms-fullscreen .tv-menu-overlay,
-.tv-frame-container.ios-fullscreen-active .tv-menu-overlay,
-body.ios-fullscreen-active .tv-menu-overlay {
-	display: none !important;
-	visibility: hidden !important;
-	opacity: 0 !important;
-}
+/* Menu visibility in fullscreen is handled in fullscreen.css */
+/* This rule removed to allow menu to work normally in fullscreen */
 
 /* Mobile: Full-screen menu with touch-optimized controls */
 @media (max-width: 768px) {

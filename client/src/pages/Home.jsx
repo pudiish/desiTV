@@ -594,10 +594,12 @@ export default function Home() {
 		}
 	}
 
-	// Close menu on orientation change and when entering fullscreen
+// Close menu on orientation change (but allow it in fullscreen)
 	useEffect(() => {
 		const handleOrientationChange = () => {
-			if (menuOpen) {
+			// Only close menu on orientation change if not in fullscreen
+			// In fullscreen, menu should work normally
+			if (menuOpen && !isFullscreen) {
 				setMenuOpen(false)
 			}
 		}
@@ -609,14 +611,7 @@ export default function Home() {
 			window.removeEventListener('orientationchange', handleOrientationChange)
 			window.removeEventListener('resize', handleOrientationChange)
 		}
-	}, [menuOpen])
-
-	// Close menu when entering fullscreen
-	useEffect(() => {
-		if (isFullscreen && menuOpen) {
-			setMenuOpen(false)
-		}
-	}, [isFullscreen, menuOpen])
+	}, [menuOpen, isFullscreen])
 
 	function triggerStatic() {
 		setStaticActive(true)
