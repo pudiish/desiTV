@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import TVFrame from '../components/TVFrame'
 import TVRemote from '../components/TVRemote'
 import SessionManager from '../utils/SessionManager'
@@ -16,8 +16,16 @@ export default function Home() {
 	// RESTRUCTURED: Categories are playlists, videos are channels
 	const [categories, setCategories] = useState([]) // All categories (playlists)
 	const [selectedCategory, setSelectedCategory] = useState(null) // Currently selected category/playlist
-	const [videosInCategory, setVideosInCategory] = useState([]) // Videos in selected category (these are the "channels")
 	const [activeVideoIndex, setActiveVideoIndex] = useState(0) // Index of current video within category
+	
+	// Ref to track current category index synchronously (fixes race condition on rapid clicks)
+	const currentCategoryIndexRef = useRef(-1)
+	
+	// Derive videosInCategory from selectedCategory (removes redundant state)
+	const videosInCategory = useMemo(() => 
+		selectedCategory?.items || [], 
+		[selectedCategory]
+	)
 	const [power, setPower] = useState(false)
 	const [volume, setVolume] = useState(0.5)
 	const [prevVolume, setPrevVolume] = useState(0.5) // For mute toggle
@@ -212,8 +220,13 @@ export default function Home() {
 			return
 		}
 		
+		// Update ref immediately for synchronous access (before state update)
+		const categoryIndex = categories.findIndex(cat => cat._id === category._id)
+		if (categoryIndex !== -1) {
+			currentCategoryIndexRef.current = categoryIndex
+		}
+		
 		setSelectedCategory(category)
-		setVideosInCategory(category.items || [])
 		
 		// Initialize broadcast state for this category
 		try {
@@ -331,7 +344,7 @@ export default function Home() {
 					if (allCategories.length > 0) {
 						const firstCategory = allCategories[0]
 						setSelectedCategory(firstCategory)
-						setVideosInCategory(firstCategory.items || [])
+						currentCategoryIndexRef.current = 0
 						setStatusMessage(`LOADED ${allCategories.length} CATEGORIES.`)
 					} else {
 						setStatusMessage('NO CATEGORIES FOUND IN JSON FILE.')
@@ -381,7 +394,7 @@ export default function Home() {
 			// If no category is selected but categories exist, select the first
 			if (!selectedCategory && categories.length > 0) {
 				setSelectedCategory(categories[0])
-				setVideosInCategory(categories[0].items || [])
+				currentCategoryIndexRef.current = 0
 			}
 			// Show buffering overlay for 2 seconds when powering on
 			setIsBuffering(true)
@@ -540,15 +553,25 @@ export default function Home() {
 	function handleCategoryUp() {
 		if (!power || categories.length === 0) return
 		
-		// Find current category index
-		const currentIndex = categories.findIndex(cat => cat._id === selectedCategory?._id)
-		if (currentIndex === -1) return
+		// Use ref for immediate, synchronous access (fixes race condition)
+		let currentIndex = currentCategoryIndexRef.current
+		
+		// Fallback: if ref is invalid, find from selectedCategory
+		if (currentIndex === -1 || currentIndex >= categories.length) {
+			currentIndex = categories.findIndex(cat => cat._id === selectedCategory?._id)
+			if (currentIndex === -1) {
+				// No valid category found, use first category
+				currentIndex = 0
+			}
+		}
 		
 		// Switch to next category (wrap around)
 		const nextIndex = (currentIndex + 1) % categories.length
 		const nextCategory = categories[nextIndex]
 		
 		if (nextCategory) {
+			// Update ref immediately for next click
+			currentCategoryIndexRef.current = nextIndex
 			setCategory(nextCategory.name)
 			setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
 		}
@@ -557,9 +580,17 @@ export default function Home() {
 	function handleCategoryDown() {
 		if (!power || categories.length === 0) return
 		
-		// Find current category index
-		const currentIndex = categories.findIndex(cat => cat._id === selectedCategory?._id)
-		if (currentIndex === -1) return
+		// Use ref for immediate, synchronous access (fixes race condition)
+		let currentIndex = currentCategoryIndexRef.current
+		
+		// Fallback: if ref is invalid, find from selectedCategory
+		if (currentIndex === -1 || currentIndex >= categories.length) {
+			currentIndex = categories.findIndex(cat => cat._id === selectedCategory?._id)
+			if (currentIndex === -1) {
+				// No valid category found, use first category
+				currentIndex = 0
+			}
+		}
 		
 		// Switch to previous category (wrap around)
 		const prevIndex = currentIndex === 0 
@@ -568,6 +599,8 @@ export default function Home() {
 		const prevCategory = categories[prevIndex]
 		
 		if (prevCategory) {
+			// Update ref immediately for next click
+			currentCategoryIndexRef.current = prevIndex
 			setCategory(prevCategory.name)
 			setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
 		}
