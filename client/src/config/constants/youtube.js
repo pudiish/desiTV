@@ -43,7 +43,7 @@ export const YOUTUBE_PLAYER_CONFIG = {
 export const YOUTUBE_PERMANENT_ERRORS = [
 	YOUTUBE_ERROR_CODES.NOT_FOUND,
 	YOUTUBE_ERROR_CODES.NOT_EMBEDDABLE,
-	YOUTUBE_ERROR_CODES.RESTRICTED,
+	// RESTRICTED (150) removed - will be handled by pre-validation and immediate skip
 	2, // Invalid ID
 	5, // HTML5 error
 ]

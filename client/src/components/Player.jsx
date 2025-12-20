@@ -78,6 +78,7 @@ onBufferingChange = null,
 	const loadedVideoRef = useRef(null) // Cache: { videoId, offset, channelId } - track what's currently loaded
 	const loadVideoTimeoutRef = useRef(null) // Debounce video loading
 	const videoSourceManagerRef = useRef(null) // Video source fallback manager
+	const videoValidationCacheRef = useRef(new Map()) // Cache validation results: Map<videoId, { valid: boolean, timestamp: number }>
 
 	// ===== CONSTANTS FROM CONFIG =====
 	// Use constants from config files for easy tweaking
@@ -451,9 +452,29 @@ onBufferingChange = null,
 			return
 		}
 
-		// Debounce video loading to avoid rapid reloads
-		loadVideoTimeoutRef.current = setTimeout(() => {
+		// Pre-validate video before loading (prevents restricted videos from playing)
+		const loadVideoWithValidation = async () => {
 			if (!ytPlayerRef.current || !videoId || !channel?._id) return
+
+			// Validate video before loading (with timeout to avoid blocking)
+			try {
+				const validation = await Promise.race([
+					validateVideoBeforeLoad(videoId),
+					new Promise((resolve) => setTimeout(() => resolve({ valid: true }), 2000)) // 2s timeout - allow loading if validation takes too long
+				])
+				
+				if (!validation.valid) {
+					console.log(`[Player] Video ${videoId} failed validation: ${validation.reason}, skipping to next...`)
+					// Immediately skip to next video without loading
+					if (switchToNextVideoRef.current) {
+						switchToNextVideoRef.current()
+					}
+					return
+				}
+			} catch (err) {
+				console.warn('[Player] Validation error, allowing video to load:', err)
+				// On validation error, allow video to load (might be network issue)
+			}
 
 			// Ensure player is fully initialized
 			if (typeof ytPlayerRef.current.loadVideoById !== 'function') {
@@ -477,7 +498,7 @@ onBufferingChange = null,
 				return
 			}
 
-			console.log(`[Player] Loading video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
+			console.log(`[Player] Loading validated video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
 			
 			e7Ref.current = true
 			clipSeekTimeRef.current = startSeconds
@@ -494,6 +515,11 @@ onBufferingChange = null,
 			} catch (err) {
 				console.error('[Player] Error loading video:', err)
 			}
+		}
+
+		// Debounce video loading to avoid rapid reloads
+		loadVideoTimeoutRef.current = setTimeout(() => {
+			loadVideoWithValidation()
 		}, 100) // Small debounce to batch rapid changes
 
 		return () => {
@@ -502,7 +528,7 @@ onBufferingChange = null,
 				loadVideoTimeoutRef.current = null
 			}
 		}
-	}, [videoId, channel?._id, startSeconds])
+	}, [videoId, channel?._id, startSeconds, validateVideoBeforeLoad])
 
 	// Effect: Play static video on initial mount (before YouTube loads)
 	useEffect(() => {
@@ -1351,6 +1377,53 @@ onBufferingChange = null,
 		}, 500)
 	}, [emitPlaybackProgress])
 
+	// Video validation utility - check video status before loading
+	const validateVideoBeforeLoad = useCallback(async (videoId) => {
+		if (!videoId) return { valid: false, reason: 'No video ID' }
+		
+		// Check cache first (valid for 5 minutes)
+		const cacheEntry = videoValidationCacheRef.current.get(videoId)
+		const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+		if (cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_DURATION) {
+			return cacheEntry.result
+		}
+		
+		try {
+			// Check video status via API
+			const response = await fetch('/api/youtube/metadata', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ youtubeId: videoId })
+			})
+			
+			if (!response.ok) {
+				// API error - assume invalid
+				const result = { valid: false, reason: 'API error' }
+				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
+				return result
+			}
+			
+			const data = await response.json()
+			
+			// Check if video is embeddable and exists
+			if (!data.embeddable) {
+				const result = { valid: false, reason: 'Not embeddable' }
+				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
+				return result
+			}
+			
+			// Video is valid
+			const result = { valid: true }
+			videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
+			return result
+		} catch (err) {
+			console.warn(`[Player] Validation error for ${videoId}:`, err.message)
+			// On validation error, allow video to load (might be network issue)
+			// But don't cache this result
+			return { valid: true } // Allow loading, let YouTube API handle it
+		}
+	}, [])
+
 	// Simple: play next video immediately - RESTRUCTURED for robustness
 	// Note: The next video is automatically calculated by pseudoLive algorithm on channel epoch
 	// We just trigger the video switch and let broadcastPosition hook recalculate
@@ -1541,6 +1614,21 @@ onBufferingChange = null,
 				}
 			}
 			
+			// Handle error 150 (RESTRICTED) - immediate skip, no retries, no messages
+			if (errorCode === YOUTUBE_ERROR_CODES.RESTRICTED && current?.youtubeId) {
+				console.log(`[Player] Video ${current.youtubeId} is restricted, skipping immediately...`)
+				// Mark as invalid in validation cache
+				videoValidationCacheRef.current.set(current.youtubeId, {
+					result: { valid: false, reason: 'Restricted' },
+					timestamp: Date.now()
+				})
+				// Immediate skip - no delay, no messages, smooth transition
+				if (switchToNextVideoRef.current) {
+					switchToNextVideoRef.current()
+				}
+				return // Exit early - no further error handling
+			}
+			
 			// If no fallback or all fallbacks failed, proceed with normal error handling
 			if (isPermanent && current?.youtubeId) {
 				const errorMessages = {
@@ -1548,7 +1636,6 @@ onBufferingChange = null,
 					5: 'PLAYBACK ERROR',
 					100: 'VIDEO NOT FOUND',
 					101: 'EMBEDDING DISABLED',
-					150: 'VIDEO RESTRICTED'
 				}
 				const errorMsg = errorMessages[errorCode] || `ERROR ${errorCode}`
 				console.warn(`[Player] ${errorMsg} - Video ${current.youtubeId}, auto-skipping...`)
