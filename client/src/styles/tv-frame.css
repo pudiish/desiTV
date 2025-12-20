@@ -755,42 +755,39 @@
 		opacity: 0.25 !important;
 	}
 	
-	/* Button labels on mobile - improved visibility */
+	/* Button labels on mobile - balanced visibility that blends with UI */
 	.tv-btn .btn-label {
 		position: absolute !important;
 		bottom: -18px !important;
 		left: 50% !important;
 		transform: translateX(-50%) !important;
-		font-size: clamp(9px, 1.2vw, 11px) !important; /* Increased from 5-6px for better visibility */
+		font-size: clamp(8px, 1vw, 10px) !important; /* Slightly larger than desktop but not too big */
 		font-family: var(--font-primary) !important;
-		color: rgba(255, 255, 255, 0.85) !important; /* Increased from 0.25 for much better visibility */
+		color: var(--color-text-dim) !important; /* Use theme color to blend with UI */
 		text-shadow: 
-			0 0 3px rgba(0, 0, 0, 0.95),
-			0 0 2px var(--color-primary-glow),
-			0 1px 2px rgba(0, 0, 0, 0.8) !important; /* Enhanced shadow for contrast */
+			0 0 3px rgba(0, 0, 0, 0.9),
+			0 0 1px var(--color-primary-glow) !important; /* Subtle shadow for readability */
 		white-space: nowrap !important;
 		pointer-events: none !important;
 		letter-spacing: 0.3px !important;
-		opacity: 1 !important; /* Full opacity for maximum visibility */
+		opacity: 0.75 !important; /* Balanced opacity - visible but not overpowering */
 		text-indent: 0 !important;
 		line-height: 1.2 !important;
 		display: block !important;
 		visibility: visible !important;
-		font-weight: 500 !important; /* Increased from 200 for better readability */
-		transition: color 0.2s ease, text-shadow 0.2s ease !important;
+		font-weight: 400 !important; /* Normal weight to blend with UI */
+		transition: color 0.2s ease, opacity 0.2s ease !important;
 	}
 	
-	/* Enhanced label visibility on interaction */
+	/* Subtle enhancement on interaction */
 	.tv-btn:hover .btn-label,
 	.tv-btn:focus .btn-label,
 	.tv-btn:active .btn-label {
-		color: rgba(255, 255, 255, 1) !important; /* Full white on interaction */
+		color: var(--color-text) !important; /* Slightly brighter on interaction */
+		opacity: 0.9 !important; /* More visible when active */
 		text-shadow: 
-			0 0 4px rgba(0, 0, 0, 0.95),
-			0 0 3px var(--color-primary-glow),
-			0 0 6px var(--color-primary-glow),
-			0 1px 2px rgba(0, 0, 0, 0.9) !important; /* Even stronger shadow on interaction */
-		font-weight: 600 !important; /* Bolder on interaction */
+			0 0 3px rgba(0, 0, 0, 0.95),
+			0 0 2px var(--color-primary-glow) !important; /* Slightly enhanced shadow */
 	}
 	
 	.tv-btn.small {
