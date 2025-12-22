@@ -7,14 +7,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { lazy, Suspense } from 'react';
-import Galaxy from './components/Galaxy';
-import ErrorBoundary from './components/ErrorBoundary';
+import { Galaxy, ErrorBoundary } from './components/common';
 import './App.css';
 
 const Home = lazy(() => import('./pages/Home'));
 const Landing = lazy(() => import('./pages/Landing'));
-const RetroTVTest = lazy(() => import('./pages/RetroTVTest'));
-const YouTubeAutoplayTest = lazy(() => import('./pages/YouTubeAutoplayTest'));
+const RetroTVTest = lazy(() => import('./pages/dev/RetroTVTest'));
+const YouTubeAutoplayTest = lazy(() => import('./pages/dev/YouTubeAutoplayTest'));
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
 const AdminLogin = lazy(() => import('./pages/AdminLoginNew'));
 

@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
-import TVFrame from '../components/TVFrame'
-import TVRemote from '../components/TVRemote'
-import SessionManager from '../utils/SessionManager'
-import analytics from '../utils/analytics'
-import performanceMonitor from '../utils/performanceMonitor'
+import { TVFrame, TVRemote } from '../components/tv'
+import { SessionManager } from '../services/storage'
+import { analytics, performanceMonitor } from '../services/analytics'
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
 
 // Lazy load heavy components that aren't always visible
-const TVMenuV2 = lazy(() => import('../components/TVMenuV2'))
-const TVSurvey = lazy(() => import('../components/TVSurvey'))
+const TVMenuV2 = lazy(() => import('../components/tv').then(m => ({ default: m.TVMenuV2 })))
+const TVSurvey = lazy(() => import('../components/tv').then(m => ({ default: m.TVSurvey })))
 
 export default function Home() {
 	// RESTRUCTURED: Categories are playlists, videos are channels

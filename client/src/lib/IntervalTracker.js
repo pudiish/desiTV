@@ -3,7 +3,7 @@
  * Helps prevent memory leaks by ensuring all intervals are cleaned up
  * 
  * Usage:
- *   import intervalTracker from './utils/IntervalTracker'
+ *   import intervalTracker from './lib/IntervalTracker'
  *   const id = intervalTracker.setInterval(fn, delay, 'Player')
  *   intervalTracker.clearInterval(id)
  */

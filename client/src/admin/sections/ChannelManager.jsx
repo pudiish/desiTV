@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import HybridStateManager from '../../services/HybridStateManager'
+import { HybridStateManager } from '../../logic/state'
 import '../AdminDashboard.css'
 
 // Error Boundary for ChannelManager

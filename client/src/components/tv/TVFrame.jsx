@@ -1,10 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import Player from './Player'
-import StaticEffect from './StaticEffect'
-import BufferingOverlay from './BufferingOverlay'
-import WhatsNextPreview from './WhatsNextPreview'
-import CRTInfoOverlay from './CRTInfoOverlay'
+import { Player } from '../player'
+import { StaticEffect, BufferingOverlay, WhatsNextPreview, CRTInfoOverlay } from '../overlays'
 
 export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)

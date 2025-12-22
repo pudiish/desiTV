@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
-import errorTracking from './utils/errorTracking'
+import { errorTracking } from './services/analytics'
 import './styles.css'
 
 // Initialize error tracking (optional - works without Sentry)

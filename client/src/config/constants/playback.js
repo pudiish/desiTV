@@ -4,7 +4,10 @@
  * All playback-related constants (non-threshold values)
  */
 
-export const PLAYBACK_CONSTANTS = {
+export const PLAYBACK = {
+	// Video duration
+	DEFAULT_VIDEO_DURATION: 300, // seconds - default if not specified
+	
 	// Volume
 	DEFAULT_VOLUME: 0.5, // default volume level (0-1)
 	MIN_VOLUME: 0,
@@ -37,7 +40,7 @@ export const PLAYBACK_HEALTH = {
 }
 
 export default {
-	PLAYBACK_CONSTANTS,
+	PLAYBACK,
 	PLAYBACK_STATES,
 	PLAYBACK_HEALTH,
 }

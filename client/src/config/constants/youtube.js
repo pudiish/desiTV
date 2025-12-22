@@ -21,10 +21,10 @@ export const YOUTUBE_ERROR_CODES = {
 	RESTRICTED: 150,
 }
 
-export const YOUTUBE_PLAYER_CONFIG = {
+export const YOUTUBE_PLAYER = {
 	HOST: 'https://www.youtube-nocookie.com',
 	PLAYER_VARS: {
-		autoplay: 0, // We control autoplay manually
+		autoplay: 1,
 		controls: 0,
 		disablekb: 1,
 		modestbranding: 1,
@@ -51,7 +51,7 @@ export const YOUTUBE_PERMANENT_ERRORS = [
 export default {
 	YOUTUBE_STATES,
 	YOUTUBE_ERROR_CODES,
-	YOUTUBE_PLAYER_CONFIG,
+	YOUTUBE_PLAYER,
 	YOUTUBE_PERMANENT_ERRORS,
 }
 
