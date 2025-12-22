@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { apiClient } from '../../services/apiClient'
 import '../AdminDashboard.css'
 
 const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/
@@ -77,31 +78,20 @@ export default function VideoChannelManager() {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/channels/${selectedChannel}/add-video`, {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          youtubeId: videoId
-        })
+      // Use apiClient which handles CSRF tokens automatically
+      await apiClient.post(`/api/channels/${selectedChannel}/add-video`, {
+        title: title.trim(),
+        youtubeId: videoId
       })
 
-      const data = await response.json()
-      if (response.ok) {
-        setMessage({ type: 'success', text: '✅ Video added successfully!' })
-        setTimeout(() => {
-          setTitle('')
-          setYoutubeInput('')
-          setVideoId('')
-        }, 1000)
-      } else {
-        setMessage({ type: 'error', text: `❌ ${data.message || 'Failed to add video'}` })
-      }
+      setMessage({ type: 'success', text: '✅ Video added successfully!' })
+      setTimeout(() => {
+        setTitle('')
+        setYoutubeInput('')
+        setVideoId('')
+      }, 1000)
     } catch (err) {
-      setMessage({ type: 'error', text: `❌ ${err.message}` })
+      setMessage({ type: 'error', text: `❌ ${err.message || 'Failed to add video'}` })
     } finally {
       setLoading(false)
     }

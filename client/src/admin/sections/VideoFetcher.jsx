@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { apiClient } from '../../services/apiClient'
 import '../AdminDashboard.css'
 
 export default function VideoFetcher() {
@@ -72,19 +73,11 @@ export default function VideoFetcher() {
 				selectedVideos.map((vid) => fetchVideoDetails(vid))
 			)
 
-			const response = await fetch(`/api/channels/${channelId}/add-videos`, {
-				method: 'POST',
-				headers: { 
-					...getAuthHeaders(),
-					'Content-Type': 'application/json' 
-				},
-				body: JSON.stringify({ videos: videoDetails.filter(Boolean) }),
+			// Use apiClient which handles CSRF tokens automatically
+			await apiClient.post(`/api/channels/${channelId}/add-videos`, {
+				videos: videoDetails.filter(Boolean)
 			})
 
-			if (!response.ok) {
-				const data = await response.json()
-				throw new Error(data.message || 'Failed to add videos')
-			}
 			setSelectedVideos([])
 			if (window.adminNotify)
 				window.adminNotify(`Added ${selectedVideos.length} videos to channel`, 'success')

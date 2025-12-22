@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { HybridStateManager } from '../../logic/state'
+import { apiClient } from '../../services/apiClient'
 import '../AdminDashboard.css'
 
 // Error Boundary for ChannelManager
@@ -120,17 +121,8 @@ function ChannelManagerContent() {
 
 		setDeletingVideo(videoId)
 		try {
-			const response = await fetch(`/api/channels/${channelId}/videos/${videoId}`, { 
-				method: 'DELETE',
-				headers: {
-					...getAuthHeaders(),
-					'Content-Type': 'application/json'
-				}
-			})
-			if (!response.ok) {
-				const data = await response.json()
-				throw new Error(data.message || 'Failed to delete video')
-			}
+			// Use apiClient which handles CSRF tokens automatically
+			await apiClient.delete(`/api/channels/${channelId}/videos/${videoId}`)
 			// Update selected channel
 			setSelectedChannel(prev => ({
 				...prev,
