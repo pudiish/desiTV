@@ -6,8 +6,8 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { apiClient } from '../services/apiClient';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '';
 const TOKEN_KEY = 'desiTV_admin_token';
 const ADMIN_KEY = 'desiTV_admin_info';
 
@@ -89,17 +89,11 @@ export function AuthProvider({ children }) {
    */
   const login = useCallback(async (username, password) => {
     try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+      // Use apiClient which handles CSRF tokens automatically
+      const data = await apiClient.post('/api/auth/login', {
+        username,
+        password,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { success: false, error: data.message || 'Login failed' };
-      }
 
       // Store auth data
       localStorage.setItem(TOKEN_KEY, data.token);

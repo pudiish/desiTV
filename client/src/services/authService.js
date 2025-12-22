@@ -5,6 +5,7 @@
  */
 
 import { STORAGE } from '../config/constants';
+import { apiClient } from './apiClient';
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 // Token storage keys
@@ -76,37 +77,11 @@ export const isAuthenticated = () => {
  */
 export const login = async (username, password) => {
   try {
-    // Add timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Server not responding. Please check if the server is running.')), 5000)
-    );
-    
-    const fetchPromise = fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
+    // Use apiClient which handles CSRF tokens automatically
+    const data = await apiClient.post('/api/auth/login', {
+      username,
+      password,
     });
-    
-    const response = await Promise.race([fetchPromise, timeoutPromise]);
-    
-    // Handle non-OK responses
-    if (!response.ok) {
-      let errorMessage = 'Login failed';
-      try {
-        const data = await response.json();
-        errorMessage = data.message || errorMessage;
-      } catch (e) {
-        // If response is not JSON, use status text
-        errorMessage = response.status === 500 
-          ? 'Server error. Please check if the server is running.'
-          : `Login failed: ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
     
     // Store token and admin info
     localStorage.setItem(TOKEN_KEY, data.token);
@@ -118,7 +93,7 @@ export const login = async (username, password) => {
     // Provide user-friendly error messages
     const errorMessage = error.message.includes('fetch') || error.message.includes('network')
       ? 'Server not responding. Please check if the server is running.'
-      : error.message;
+      : error.message || 'Login failed';
     return { success: false, error: errorMessage };
   }
 };
