@@ -622,8 +622,8 @@ export default function Home() {
 		
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = nextIndex
-		setCategory(nextCategory.name)
-		setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
+			setCategory(nextCategory.name)
+			setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
 	}
 
 	function handleCategoryDown() {
@@ -660,8 +660,8 @@ export default function Home() {
 		
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = prevIndex
-		setCategory(prevCategory.name)
-		setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
+			setCategory(prevCategory.name)
+			setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
 	}
 
 	function handleMenuToggle() {
