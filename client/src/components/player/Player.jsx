@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import { useBroadcastPosition } from '../hooks/useBroadcastPosition'
-import { YouTubeUIRemover, VideoSourceManager, mediaSessionManager } from '../services/media'
-import { unifiedPlaybackManager } from '../logic/playback'
-import { broadcastStateManager } from '../logic/broadcast'
-import { PLAYBACK_THRESHOLDS } from '../config/thresholds'
-import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../config/constants/youtube'
-import { PLAYBACK } from '../config/constants/playback'
+import { useBroadcastPosition } from '../../hooks/useBroadcastPosition'
+import { YouTubeUIRemover, VideoSourceManager, mediaSessionManager } from '../../services/media'
+import { unifiedPlaybackManager } from '../../logic/playback'
+import { broadcastStateManager } from '../../logic/broadcast'
+import { PLAYBACK_THRESHOLDS } from '../../config/thresholds'
+import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../../config/constants/youtube'
+import { PLAYBACK } from '../../config/constants/playback'
 
 /**
  * Enhanced Player Component with:

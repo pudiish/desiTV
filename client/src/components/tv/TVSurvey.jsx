@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { analytics } from '../services/analytics'
+import { analytics } from '../../services/analytics'
 
 /**
  * TVSurvey - Simple, TV-like survey component

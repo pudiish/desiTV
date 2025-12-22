@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { broadcastStateManager } from '../logic/broadcast'
+import { broadcastStateManager } from '../../logic/broadcast'
 
 /**
  * TVMenuV2 - Category/Playlist selector menu

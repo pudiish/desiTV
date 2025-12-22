@@ -1,5 +1,5 @@
 import React from 'react';
-import { errorTracking } from '../services/analytics';
+import { errorTracking } from '../../services/analytics';
 
 /**
  * ErrorBoundary - Catches React component errors and prevents white screen of death

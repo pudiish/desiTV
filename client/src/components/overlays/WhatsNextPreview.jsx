@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { getPseudoLiveItem } from '../logic/broadcast'
+import { getPseudoLiveItem } from '../../logic/broadcast'
 
 /**
  * WhatsNextPreview - Shows what's currently playing and up next
