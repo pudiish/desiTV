@@ -10,6 +10,7 @@
 
 import { envConfig } from '../config/environment'
 import { API_ENDPOINTS, TIMING } from '../config/constants'
+import { getToken, logout } from './authService'
 
 export class APIClient {
   constructor(config = {}) {
@@ -234,6 +235,12 @@ export class APIClient {
         ...finalConfig.headers,
       }
 
+      // Add Authorization header if token exists
+      const authToken = getToken()
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`
+      }
+
       // Add CSRF token to headers if available
       if (csrfToken) {
         headers['X-CSRF-Token'] = csrfToken
@@ -271,8 +278,22 @@ export class APIClient {
 
       // Handle non-ok status
       if (!response.ok) {
+        // Handle 401 Unauthorized - token expired/invalid
+        if (response.status === 401) {
+          logout()
+          // Redirect to login if not already there
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/admin/login')) {
+            window.location.href = '/admin/login'
+          }
+          const error = new Error('Session expired. Please login again.')
+          error.status = 401
+          error.data = data
+          error.response = response
+          throw error
+        }
+
         // If CSRF token error, clear token to force refresh
-        if (response.status === 403 && data?.error === 'CSRF token missing' || data?.error === 'Invalid CSRF token') {
+        if (response.status === 403 && (data?.error === 'CSRF token missing' || data?.error === 'Invalid CSRF token')) {
           this.clearCsrfToken()
         }
 
