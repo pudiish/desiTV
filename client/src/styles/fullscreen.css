@@ -182,6 +182,12 @@
 	transform: perspective(800px) rotateX(-1.5deg) scale(0.995) !important;
 	transform-origin: center center !important;
 	transform-style: flat !important;
+	/* CRT COLOR FILTER - authentic TV look */
+	filter: 
+		saturate(1.15)
+		contrast(1.08)
+		brightness(0.97)
+		sepia(0.03) !important;
 }
 
 .tv-frame-container:fullscreen .player-wrapper,
@@ -543,6 +549,12 @@ html.ios-fullscreen-active .tv-frame-container .tv-frame {
 	transform: perspective(800px) rotateX(-1.5deg) scale(0.995) !important;
 	transform-origin: center center !important;
 	transform-style: flat !important;
+	/* CRT COLOR FILTER - authentic TV look */
+	filter: 
+		saturate(1.15)
+		contrast(1.08)
+		brightness(0.97)
+		sepia(0.03) !important;
 }
 
 .tv-frame-container.ios-fullscreen-active .player-wrapper,

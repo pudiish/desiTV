@@ -89,10 +89,10 @@ EOF
   echo ""
 fi
 
-echo "📁 Loading .env from project root"
-set -a
-source .env
-set +a
+  echo "📁 Loading .env from project root"
+  set -a
+  source .env
+  set +a
 
 # Set defaults if not provided
 PORT="${PORT:-5000}"
@@ -266,7 +266,7 @@ if [ -n "$pids" ]; then
       echo "   Skipping system process PID $pid"
     fi
   done
-  sleep 1
+sleep 1
 else
   echo "   ✅ Port $CLIENT_PORT is free"
 fi
