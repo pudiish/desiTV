@@ -98,7 +98,13 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 						element.msRequestFullscreen?.()
 					
 					if (promise) {
-						promise.catch(() => {
+						promise.then(() => {
+							// Fullscreen API succeeded - update state
+							setIsFullscreen(true)
+							if (onFullscreenChange) {
+								onFullscreenChange(true)
+							}
+						}).catch(() => {
 							// Fallback to CSS fullscreen
 							document.documentElement.classList.add('ios-fullscreen-active')
 							document.body.classList.add('ios-fullscreen-active')
@@ -384,17 +390,30 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			className="tv-frame-container"
 			ref={tvFrameRef}
 		>
-			<div 
-				className="tv-frame"
-				onMouseEnter={() => { setShowPreview(true); }}
-				onMouseLeave={() => { setShowPreview(false); }}
-			>
+<div 
+			className="tv-frame bpl-sanyo-style"
+			onMouseEnter={() => { setShowPreview(true); }}
+			onMouseLeave={() => { setShowPreview(false); }}
+			style={isFullscreen ? {
+				// ABSOLUTE MAXIMUM TV size - fill entire screen
+				// 99vh/99vw with min() ensures 4:3 ratio at maximum size
+				width: 'min(calc(99vh * 1.333), 99vw)',
+				minWidth: 'min(calc(99vh * 1.333), 99vw)',
+				maxWidth: 'min(calc(99vh * 1.333), 99vw)',
+				height: 'min(99vh, calc(99vw * 0.75))',
+				minHeight: 'min(99vh, calc(99vw * 0.75))',
+				maxHeight: 'min(99vh, calc(99vw * 0.75))',
+				aspectRatio: '4/3',
+				flexShrink: 0,
+				flexGrow: 0,
+			} : undefined}
+		>
 				<div className="tv-screen" onClick={handleScreenClick}>
 					{!power ? (
 						<div className="tv-off-screen">
 							<div className="scanlines" />
 							<div className="tv-off-message">
-								CLICK POWER TO START
+								POWER DABAO AUR SHURU KARO
 							</div>
 						</div>
 					) : (
@@ -421,9 +440,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							) : (
 								<div className="tv-off-screen">
 									<div className="scanlines" />
-									<div className="tv-off-message">
-										NO CHANNEL SELECTED
-									</div>
+								<div className="tv-off-message">
+									CHANNEL SELECT KARO
+								</div>
 								</div>
 							)}
 							{/* Hide scanlines in fullscreen */}
@@ -589,6 +608,11 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							</svg>
 							<span className="btn-label">PWR</span>
 						</button>
+					</div>
+					{/* Brand Logo - Right side of control bar */}
+					<div className="tv-brand-logo">
+						<span className="brand-text">DESITV</span>
+						<span className="brand-model">SANYO</span>
 					</div>
 				</div>
 			</div>

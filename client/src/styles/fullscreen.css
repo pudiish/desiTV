@@ -1,102 +1,219 @@
 /**
- * Fullscreen Styles - Consolidated fullscreen selectors
- * Uses CSS custom properties to avoid repetition
+ * Fullscreen Styles - 2000s CRT TV
+ * Warm charcoal frame - comfortable viewing
  */
 
-/* Fullscreen selector group - applies to all vendor prefixes */
+/* ===========================================
+   FULLSCREEN CONTAINER
+   =========================================== */
+
 .tv-frame-container:fullscreen,
 .tv-frame-container:-webkit-full-screen,
 .tv-frame-container:-moz-full-screen,
 .tv-frame-container:-ms-fullscreen {
-	background: #000 !important;
+	background: #0a0a0a !important;
+	position: fixed !important;
+	inset: 0 !important;
+	width: 100vw !important;
+	height: 100vh !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
 	padding: 0 !important;
 	margin: 0 !important;
 	overflow: hidden !important;
-	transform: scale(1.15) !important;
-	transform-origin: center center !important;
+	z-index: 99999 !important;
 }
 
-/* Mobile fullscreen - no scale */
-@media (max-width: 767px) {
-	.tv-frame-container:fullscreen,
-	.tv-frame-container:-webkit-full-screen {
-		transform: scale(1) !important;
-	}
-}
+/* ===========================================
+   TV FRAME - Warm Charcoal
+   =========================================== */
 
-/* Hide TV frame decorations in fullscreen */
 .tv-frame-container:fullscreen .tv-frame,
 .tv-frame-container:-webkit-full-screen .tv-frame,
 .tv-frame-container:-moz-full-screen .tv-frame,
 .tv-frame-container:-ms-fullscreen .tv-frame {
-	width: 100% !important;
-	height: 100% !important;
-	max-width: none !important;
-	padding: 0 !important;
-	margin: 0 !important;
-	border-radius: 0 !important;
-	box-shadow: none !important;
-	background: #000 !important;
-	border: none !important;
-	background-image: none !important;
+	/* Maximum size while keeping 4:3 */
+	width: min(calc(98vh * 1.333), 98vw) !important;
+	min-width: min(calc(98vh * 1.333), 98vw) !important;
+	max-width: min(calc(98vh * 1.333), 98vw) !important;
+	height: min(98vh, calc(98vw * 0.75)) !important;
+	min-height: min(98vh, calc(98vw * 0.75)) !important;
+	max-height: min(98vh, calc(98vw * 0.75)) !important;
+	aspect-ratio: 4/3 !important;
+	flex-shrink: 0 !important;
+	flex-grow: 0 !important;
+	
+	/* Compact bezels */
+	padding: 1.5% 3% 2% 3% !important;
+	border-radius: clamp(14px, 2vw, 22px) !important;
+	
+	/* WARM CHARCOAL - comfortable for eyes */
+	background: linear-gradient(180deg, 
+		#3a3a3a 0%,
+		#2d2d2d 10%,
+		#252525 50%,
+		#1f1f1f 90%,
+		#1a1a1a 100%
+	) !important;
+	
+	/* Soft shadows */
+	box-shadow:
+		0 10px 40px rgba(0, 0, 0, 0.6),
+		0 5px 20px rgba(0, 0, 0, 0.4),
+		inset 0 1px 2px rgba(255, 255, 255, 0.1),
+		inset 0 0 15px rgba(0, 0, 0, 0.3),
+		0 0 0 1px rgba(60, 60, 60, 0.3) !important;
+	
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	justify-content: flex-start !important;
+	position: relative !important;
 }
 
+/* Simple top highlight */
 .tv-frame-container:fullscreen .tv-frame::before,
 .tv-frame-container:-webkit-full-screen .tv-frame::before,
 .tv-frame-container:-moz-full-screen .tv-frame::before,
 .tv-frame-container:-ms-fullscreen .tv-frame::before {
-	display: none;
+	display: block !important;
+	content: "" !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	height: 25% !important;
+	background: linear-gradient(180deg, 
+		rgba(255, 255, 255, 0.08) 0%,
+		rgba(255, 255, 255, 0.03) 20%,
+		transparent 50%
+	) !important;
+	border-radius: clamp(14px, 2vw, 22px) clamp(14px, 2vw, 22px) 0 0 !important;
+	pointer-events: none !important;
+	z-index: 1 !important;
 }
 
-/* Fullscreen tv-screen */
+/* Simple side shadows - no grills */
+.tv-frame-container:fullscreen .tv-frame::after,
+.tv-frame-container:-webkit-full-screen .tv-frame::after,
+.tv-frame-container:-moz-full-screen .tv-frame::after,
+.tv-frame-container:-ms-fullscreen .tv-frame::after {
+	display: block !important;
+	content: "" !important;
+	position: absolute !important;
+	inset: 0 !important;
+	pointer-events: none !important;
+	border-radius: inherit !important;
+	box-shadow:
+		inset 2px 0 8px rgba(0, 0, 0, 0.15),
+		inset -2px 0 8px rgba(0, 0, 0, 0.15) !important;
+	z-index: 1 !important;
+}
+
+/* ===========================================
+   TV SCREEN - Proper aspect ratio
+   =========================================== */
+
 .tv-frame-container:fullscreen .tv-screen,
 .tv-frame-container:-webkit-full-screen .tv-screen,
 .tv-frame-container:-moz-full-screen .tv-screen,
 .tv-frame-container:-ms-fullscreen .tv-screen {
 	width: 100% !important;
-	height: 100% !important;
-	border: none !important;
-	border-radius: 0 !important;
-	box-shadow: none !important;
+	height: auto !important;
+	aspect-ratio: 4/3 !important;
+	flex: 1 1 auto !important;
+	max-height: calc(100% - 50px) !important; /* Room for compact control bar */
+	
+	/* Clean bezel */
+	border: clamp(3px, 0.4vw, 5px) solid #151515 !important;
+	border-radius: clamp(6px, 0.8vw, 10px) !important;
 	background: #000 !important;
-	transform: perspective(2000px) rotateX(0.3deg) !important;
+	
+	/* Clean recessed effect */
+	box-shadow: 
+		0 0 0 2px #1a1a1a,
+		inset 0 4px 15px rgba(0, 0, 0, 0.6),
+		inset 0 -2px 10px rgba(0, 0, 0, 0.4),
+		inset 3px 0 10px rgba(0, 0, 0, 0.3),
+		inset -3px 0 10px rgba(0, 0, 0, 0.3) !important;
+	
+	position: relative !important;
+	overflow: hidden !important;
 }
 
-/* Remove transform in fullscreen for content */
+/* Keep CRT glass effect on screen */
+.tv-frame-container:fullscreen .tv-screen::after,
+.tv-frame-container:-webkit-full-screen .tv-screen::after,
+.tv-frame-container:-moz-full-screen .tv-screen::after,
+.tv-frame-container:-ms-fullscreen .tv-screen::after {
+	display: block !important;
+	content: "" !important;
+	position: absolute !important;
+	inset: 0 !important;
+	background: radial-gradient(
+		ellipse 90% 70% at 50% 50%,
+		transparent 0%,
+		transparent 40%,
+		rgba(0, 0, 0, 0.1) 70%,
+		rgba(0, 0, 0, 0.2) 100%
+	) !important;
+	pointer-events: none !important;
+	z-index: 5 !important;
+	border-radius: inherit !important;
+}
+
+/* ===========================================
+   VIDEO CONTENT - Fill screen properly
+   =========================================== */
+
 .tv-frame-container:fullscreen .tv-screen > *,
 .tv-frame-container:-webkit-full-screen .tv-screen > *,
 .tv-frame-container:-moz-full-screen .tv-screen > *,
 .tv-frame-container:-ms-fullscreen .tv-screen > * {
-	transform: none;
-	border-radius: 0;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	border-radius: clamp(4px, 0.6vw, 8px) !important;
+	transform: none !important;
+	overflow: hidden !important;
 }
 
-/* Fullscreen player wrapper */
 .tv-frame-container:fullscreen .player-wrapper,
 .tv-frame-container:-webkit-full-screen .player-wrapper,
 .tv-frame-container:-moz-full-screen .player-wrapper,
 .tv-frame-container:-ms-fullscreen .player-wrapper {
 	width: 100% !important;
 	height: 100% !important;
-	transform: none !important;
-	animation: none !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
 }
 
-/* Fullscreen YouTube container */
 .tv-frame-container:fullscreen .youtube-player-container,
 .tv-frame-container:-webkit-full-screen .youtube-player-container,
 .tv-frame-container:-moz-full-screen .youtube-player-container,
 .tv-frame-container:-ms-fullscreen .youtube-player-container {
 	width: 100% !important;
 	height: 100% !important;
-	transform: none !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
 }
 
-/* Fullscreen iframe */
 .tv-frame-container:fullscreen #desitv-player-iframe,
 .tv-frame-container:-webkit-full-screen #desitv-player-iframe,
 .tv-frame-container:-moz-full-screen #desitv-player-iframe,
-.tv-frame-container:-ms-fullscreen #desitv-player-iframe,
+.tv-frame-container:-ms-fullscreen #desitv-player-iframe {
+	width: 100% !important;
+	height: 100% !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+}
+
 .tv-frame-container:fullscreen #desitv-player-iframe iframe,
 .tv-frame-container:-webkit-full-screen #desitv-player-iframe iframe,
 .tv-frame-container:-moz-full-screen #desitv-player-iframe iframe,
@@ -106,19 +223,126 @@
 	position: absolute !important;
 	top: 0 !important;
 	left: 0 !important;
+	border: none !important;
 }
 
-/* Fullscreen: Keep glass overlay visible to block all iframe interactions (same as normal mode) */
+/* ===========================================
+   CONTROL BAR - Compact, subtle
+   =========================================== */
+
+.tv-frame-container:fullscreen .tv-control-bar,
+.tv-frame-container:-webkit-full-screen .tv-control-bar,
+.tv-frame-container:-moz-full-screen .tv-control-bar,
+.tv-frame-container:-ms-fullscreen .tv-control-bar {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	width: 100% !important;
+	position: relative !important;
+	z-index: 10 !important;
+	margin-top: clamp(4px, 0.5vh, 6px) !important;
+	padding: clamp(4px, 0.5vw, 6px) clamp(8px, 1vw, 12px) !important;
+	background: linear-gradient(180deg, #2a2a2a 0%, #1e1e1e 100%) !important;
+	justify-content: space-between !important;
+	align-items: center !important;
+}
+
+.tv-frame-container:fullscreen .tv-control-buttons,
+.tv-frame-container:-webkit-full-screen .tv-control-buttons,
+.tv-frame-container:-moz-full-screen .tv-control-buttons,
+.tv-frame-container:-ms-fullscreen .tv-control-buttons {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	gap: clamp(3px, 0.4vw, 5px) !important;
+	justify-content: flex-end !important;
+	flex: 0 0 auto !important;
+	margin-left: auto !important;
+}
+
+.tv-frame-container:fullscreen .tv-btn,
+.tv-frame-container:-webkit-full-screen .tv-btn,
+.tv-frame-container:-moz-full-screen .tv-btn,
+.tv-frame-container:-ms-fullscreen .tv-btn {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	pointer-events: auto !important;
+	width: clamp(16px, 1.8vw, 20px) !important;
+	height: clamp(16px, 1.8vw, 20px) !important;
+	min-width: clamp(16px, 1.8vw, 20px) !important;
+	min-height: clamp(16px, 1.8vw, 20px) !important;
+}
+
+.tv-frame-container:fullscreen .tv-btn.power,
+.tv-frame-container:-webkit-full-screen .tv-btn.power,
+.tv-frame-container:-moz-full-screen .tv-btn.power,
+.tv-frame-container:-ms-fullscreen .tv-btn.power {
+	width: clamp(18px, 2vw, 22px) !important;
+	height: clamp(18px, 2vw, 22px) !important;
+	min-width: clamp(18px, 2vw, 22px) !important;
+	min-height: clamp(18px, 2vw, 22px) !important;
+}
+
+.tv-frame-container:fullscreen .tv-btn .btn-label,
+.tv-frame-container:-webkit-full-screen .tv-btn .btn-label,
+.tv-frame-container:-moz-full-screen .tv-btn .btn-label,
+.tv-frame-container:-ms-fullscreen .tv-btn .btn-label {
+	display: none !important;
+}
+
+/* ===========================================
+   BRAND LOGO - Subtle, inside control bar
+   =========================================== */
+
+.tv-frame-container:fullscreen .tv-brand-logo,
+.tv-frame-container:-webkit-full-screen .tv-brand-logo,
+.tv-frame-container:-moz-full-screen .tv-brand-logo,
+.tv-frame-container:-ms-fullscreen .tv-brand-logo {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	margin-left: 0 !important;
+	margin-right: auto !important;
+	flex: 0 0 auto !important;
+	gap: clamp(4px, 0.5vw, 6px) !important;
+	order: -1 !important;
+}
+
+.tv-frame-container:fullscreen .tv-brand-logo .brand-text,
+.tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-text,
+.tv-frame-container:-moz-full-screen .tv-brand-logo .brand-text,
+.tv-frame-container:-ms-fullscreen .tv-brand-logo .brand-text {
+	font-size: clamp(9px, 1vw, 12px) !important;
+}
+
+.tv-frame-container:fullscreen .tv-brand-logo .brand-model,
+.tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-model,
+.tv-frame-container:-moz-full-screen .tv-brand-logo .brand-model,
+.tv-frame-container:-ms-fullscreen .tv-brand-logo .brand-model {
+	font-size: clamp(7px, 0.8vw, 10px) !important;
+}
+
+.tv-frame-container:fullscreen .tv-brand-logo::after,
+.tv-frame-container:-webkit-full-screen .tv-brand-logo::after,
+.tv-frame-container:-moz-full-screen .tv-brand-logo::after,
+.tv-frame-container:-ms-fullscreen .tv-brand-logo::after {
+	width: clamp(4px, 0.5vw, 6px) !important;
+	height: clamp(4px, 0.5vw, 6px) !important;
+}
+
+/* ===========================================
+   OVERLAYS - Glass overlay for interaction blocking
+   =========================================== */
+
 .tv-frame-container:fullscreen .player-glass-overlay,
 .tv-frame-container:-webkit-full-screen .player-glass-overlay,
 .tv-frame-container:-moz-full-screen .player-glass-overlay,
-.tv-frame-container:-ms-fullscreen .player-glass-overlay,
-.tv-frame-container.ios-fullscreen-active .player-glass-overlay {
+.tv-frame-container:-ms-fullscreen .player-glass-overlay {
 	display: block !important;
 	pointer-events: auto !important;
-	z-index: 10 !important;
+	z-index: 6 !important;
 	background: transparent !important;
-	cursor: default !important;
 	position: absolute !important;
 	top: 0 !important;
 	left: 0 !important;
@@ -126,25 +350,19 @@
 	height: 100% !important;
 }
 
-/* Fullscreen: Disable pointer events on iframe to prevent YouTube UI interactions */
+/* Disable pointer events on iframe */
 .tv-frame-container:fullscreen #desitv-player-iframe iframe,
 .tv-frame-container:-webkit-full-screen #desitv-player-iframe iframe,
 .tv-frame-container:-moz-full-screen #desitv-player-iframe iframe,
-.tv-frame-container:-ms-fullscreen #desitv-player-iframe iframe,
-.tv-frame-container.ios-fullscreen-active #desitv-player-iframe iframe {
+.tv-frame-container:-ms-fullscreen #desitv-player-iframe iframe {
 	pointer-events: none !important;
 }
 
-.tv-frame-container:fullscreen .youtube-iframe,
-.tv-frame-container:-webkit-full-screen .youtube-iframe,
-.tv-frame-container:-moz-full-screen .youtube-iframe,
-.tv-frame-container:-ms-fullscreen .youtube-iframe {
-	width: 100vw !important;
-	height: 100vh !important;
-	border-radius: 0 !important;
-}
+/* ===========================================
+   HIDE OTHER ELEMENTS
+   =========================================== */
 
-/* Hide elements in fullscreen */
+/* Hide scanlines and effects for performance */
 .tv-frame-container:fullscreen .scanlines,
 .tv-frame-container:-webkit-full-screen .scanlines,
 .tv-frame-container:fullscreen .tap-to-unmute,
@@ -156,79 +374,72 @@
 	display: none !important;
 }
 
-/* CRT scanlines subtle in fullscreen */
-.tv-frame-container:fullscreen .crt-scanlines,
-.tv-frame-container:-webkit-full-screen .crt-scanlines {
-	opacity: 0.15 !important;
-	z-index: var(--z-overlay) !important;
+/* Hide right panel, remote, and ALL other content in fullscreen */
+.tv-frame-container:fullscreen ~ *,
+.tv-frame-container:-webkit-full-screen ~ *,
+.tv-frame-container:-moz-full-screen ~ *,
+.tv-frame-container:-ms-fullscreen ~ *,
+.tv-frame-container.ios-fullscreen-active ~ * {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
 }
 
-/* Hide content wrapper when parent is fullscreen */
-.tv-frame-container:fullscreen .content-wrapper,
-.tv-frame-container:-webkit-full-screen .content-wrapper,
-.tv-frame-container:-moz-full-screen .content-wrapper,
-.tv-frame-container:-ms-fullscreen .content-wrapper {
-	padding: 0 !important;
-	gap: 0 !important;
-	margin: 0 !important;
-}
-
-/* Hide main container and remote when fullscreen is active */
-.tv-frame-container:fullscreen ~ .main-container,
-.tv-frame-container:-webkit-full-screen ~ .main-container,
-.tv-frame-container:-moz-full-screen ~ .main-container,
-.tv-frame-container:-ms-fullscreen ~ .main-container {
-	display: none;
-}
-
-.content-wrapper:has(.tv-frame-container:fullscreen) .right-panel,
-.content-wrapper:has(.tv-frame-container:-webkit-full-screen) .right-panel,
-.content-wrapper:has(.tv-frame-container:-moz-full-screen) .right-panel,
-.content-wrapper:has(.tv-frame-container:-ms-fullscreen) .right-panel {
+/* Also hide the remote overlay inside the container */
+.tv-frame-container:fullscreen .remote-overlay-wrapper,
+.tv-frame-container:-webkit-full-screen .remote-overlay-wrapper,
+.tv-frame-container.ios-fullscreen-active .remote-overlay-wrapper {
 	display: none !important;
 }
 
-/* Menu in fullscreen: Position relative to TV frame container, not fixed to viewport */
+/* Hide right-panel specifically */
+.tv-frame-container:fullscreen + .right-panel,
+.tv-frame-container:-webkit-full-screen + .right-panel,
+.tv-frame-container.ios-fullscreen-active + .right-panel,
+body.ios-fullscreen-active .right-panel,
+html.ios-fullscreen-active .right-panel {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	position: absolute !important;
+	left: -9999px !important;
+}
+
+.content-wrapper:has(.tv-frame-container:fullscreen) .right-panel,
+.content-wrapper:has(.tv-frame-container:-webkit-full-screen) .right-panel {
+	display: none !important;
+}
+
+/* ===========================================
+   MENU OVERLAY
+   =========================================== */
+
 .tv-frame-container:fullscreen .tv-menu-overlay,
 .tv-frame-container:-webkit-full-screen .tv-menu-overlay,
 .tv-frame-container:-moz-full-screen .tv-menu-overlay,
-.tv-frame-container:-ms-fullscreen .tv-menu-overlay,
-.tv-frame-container.ios-fullscreen-active .tv-menu-overlay {
+.tv-frame-container:-ms-fullscreen .tv-menu-overlay {
 	position: absolute !important;
 	inset: 0 !important;
-	z-index: var(--z-menu-overlay) !important;
+	z-index: 100 !important;
 }
 
-body.ios-fullscreen-active .tv-menu-overlay {
-	position: fixed !important;
-	inset: 0 !important;
-	z-index: var(--z-menu-overlay) !important;
-}
+/* ===========================================
+   BODY STYLES IN FULLSCREEN
+   =========================================== */
 
-/* iOS Fullscreen Support */
 @supports selector(:has(*)) {
 	body:has(.tv-frame-container:fullscreen),
-	body:has(.tv-frame-container:-webkit-full-screen),
-	body:has(.tv-frame-container:-moz-full-screen),
-	body:has(.tv-frame-container:-ms-fullscreen) {
+	body:has(.tv-frame-container:-webkit-full-screen) {
 		overflow: hidden !important;
 		margin: 0 !important;
 		padding: 0 !important;
-		width: 100vw !important;
-		height: 100vh !important;
 	}
 }
 
-body.fullscreen-active,
-body.ios-fullscreen-active {
-	overflow: hidden !important;
-	margin: 0 !important;
-	padding: 0 !important;
-	width: 100vw !important;
-	height: 100vh !important;
-}
+/* ===========================================
+   iOS/CSS FULLSCREEN - Same approach
+   =========================================== */
 
-/* iOS/Android CSS Fullscreen - Fill entire browser viewport */
 html.ios-fullscreen-active,
 body.ios-fullscreen-active {
 	position: fixed !important;
@@ -240,267 +451,317 @@ body.ios-fullscreen-active {
 	padding: 0 !important;
 }
 
-body.ios-fullscreen-active {
-	position: fixed !important;
-	inset: 0 !important;
-	width: 100vw !important;
-	height: 100vh !important;
-	overflow: hidden !important;
-}
-
 .tv-frame-container.ios-fullscreen-active {
 	position: fixed !important;
 	inset: 0 !important;
 	width: 100vw !important;
 	height: 100vh !important;
-	max-width: 100vw !important;
-	max-height: 100vh !important;
-	z-index: var(--z-ios-fullscreen) !important;
+	z-index: var(--z-ios-fullscreen, 99999) !important;
+	
+	/* Dark background */
 	background: #000 !important;
-	padding: 0 !important;
-	margin: 0 !important;
+	
+	/* Center the TV */
 	display: flex !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-	align-items: stretch !important;
-	justify-content: stretch !important;
-	overflow: hidden !important;
-	top: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-	bottom: 0 !important;
+	align-items: center !important;
+	justify-content: center !important;
+	/* Zero padding to maximize TV size */
+	padding: 0 !important;
 }
 
-.tv-frame-container.ios-fullscreen-active .tv-frame {
-	width: 100vw !important;
-	height: 100vh !important;
-	max-width: 100vw !important;
-	max-height: 100vh !important;
-	border-radius: 0 !important;
-	padding: 0 !important;
-	margin: 0 !important;
-	flex: 1 1 auto !important;
+.tv-frame-container.ios-fullscreen-active .tv-frame,
+body.ios-fullscreen-active .tv-frame-container .tv-frame,
+html.ios-fullscreen-active .tv-frame-container .tv-frame {
+	/* Maximum size keeping 4:3 */
+	width: min(calc(98vh * 1.333), 98vw) !important;
+	min-width: min(calc(98vh * 1.333), 98vw) !important;
+	max-width: min(calc(98vh * 1.333), 98vw) !important;
+	height: min(98vh, calc(98vw * 0.75)) !important;
+	min-height: min(98vh, calc(98vw * 0.75)) !important;
+	max-height: min(98vh, calc(98vw * 0.75)) !important;
+	aspect-ratio: 4/3 !important;
+	flex-shrink: 0 !important;
+	flex-grow: 0 !important;
+	
+	/* Warm charcoal */
+	padding: 1.5% 3% 2% 3% !important;
+	border-radius: clamp(14px, 2vw, 22px) !important;
+	
+	background: linear-gradient(180deg, 
+		#3a3a3a 0%,
+		#2d2d2d 10%,
+		#252525 50%,
+		#1f1f1f 90%,
+		#1a1a1a 100%
+	) !important;
+	
+	box-shadow:
+		0 10px 40px rgba(0, 0, 0, 0.6),
+		0 5px 20px rgba(0, 0, 0, 0.4),
+		inset 0 1px 2px rgba(255, 255, 255, 0.1),
+		0 0 0 1px rgba(60, 60, 60, 0.3) !important;
+	
 	display: flex !important;
 	flex-direction: column !important;
-	background: #000 !important;
-	aspect-ratio: unset !important;
 	position: relative !important;
-	z-index: 1 !important;
 }
 
 .tv-frame-container.ios-fullscreen-active .tv-screen {
 	width: 100% !important;
-	height: 100% !important;
-	border: none !important;
-	border-radius: 0 !important;
-	background: #000 !important;
+	height: auto !important;
+	aspect-ratio: 4/3 !important;
 	flex: 1 1 auto !important;
+	max-height: calc(100% - 50px) !important;
+	
+	/* Clean bezel */
+	border: clamp(3px, 0.4vw, 5px) solid #151515 !important;
+	border-radius: clamp(6px, 0.8vw, 10px) !important;
+	background: #000 !important;
+	
+	/* Clean recessed effect */
+	box-shadow: 
+		0 0 0 2px #1a1a1a,
+		inset 0 4px 15px rgba(0, 0, 0, 0.6),
+		inset 0 -2px 10px rgba(0, 0, 0, 0.4),
+		inset 3px 0 10px rgba(0, 0, 0, 0.3),
+		inset -3px 0 10px rgba(0, 0, 0, 0.3) !important;
+	
 	position: relative !important;
-	overflow: visible !important;
+	overflow: hidden !important;
+}
+
+.tv-frame-container.ios-fullscreen-active .tv-screen > * {
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	transform: none !important;
 }
 
 .tv-frame-container.ios-fullscreen-active .player-wrapper,
 .tv-frame-container.ios-fullscreen-active .youtube-player-container,
 .tv-frame-container.ios-fullscreen-active #desitv-player-iframe {
-	width: 100vw !important;
-	height: 100vh !important;
-	position: absolute !important;
-	top: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-	bottom: 0 !important;
-	transform: none !important;
-	z-index: 1 !important;
-}
-
-.tv-frame-container.ios-fullscreen-active #desitv-player-iframe {
-	background: #000 !important;
-	overflow: hidden !important;
-	clip-path: inset(0) !important;
-	contain: layout style paint;
-	width: 100vw !important;
-	height: 100vh !important;
-}
-
-.tv-frame-container.ios-fullscreen-active #desitv-player-iframe iframe {
-	width: 100vw !important;
-	height: 100vh !important;
-	position: fixed !important;
-	top: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-	bottom: 0 !important;
-	z-index: var(--z-overlay) !important;
-	pointer-events: auto !important;
-	border: none !important;
-	overflow: hidden !important;
-	clip-path: inset(0) !important;
-}
-
-.tv-frame-container.ios-fullscreen-active .youtube-player-container > div {
-	width: 100vw !important;
-	height: 100vh !important;
-	position: absolute !important;
-	top: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-	bottom: 0 !important;
-	z-index: var(--z-overlay) !important;
-}
-
-/* Ensure viewport units work correctly - fill entire browser */
-html.ios-fullscreen-active {
-	width: 100vw !important;
-	height: 100vh !important;
-	overflow: hidden !important;
-	position: fixed !important;
-	inset: 0 !important;
-}
-
-/* Prevent body scroll in fullscreen */
-html.ios-fullscreen-active body {
-	overflow: hidden !important;
-	position: fixed !important;
-	width: 100vw !important;
-	height: 100vh !important;
-}
-
-/* Hide scrollbars */
-html.ios-fullscreen-active::-webkit-scrollbar,
-body.ios-fullscreen-active::-webkit-scrollbar {
-	display: none !important;
-}
-
-body.ios-fullscreen-active .main-container,
-html.ios-fullscreen-active .main-container {
-	overflow: hidden !important;
-}
-
-/* Don't hide content-wrapper - we need TV frame container to be visible */
-/* Hide only the right panel and other non-TV elements */
-body.ios-fullscreen-active .content-wrapper,
-html.ios-fullscreen-active .content-wrapper {
-	position: relative !important;
-	overflow: visible !important;
-	/* Allow TV frame container to break out */
-}
-
-body.ios-fullscreen-active .right-panel {
-	display: none !important;
-}
-
-/* Hide other content in content-wrapper except TV frame container */
-body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container),
-html.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
-	display: none !important;
-}
-
-.tv-frame-container.ios-fullscreen-active .tv-screen::after,
-.tv-frame-container.ios-fullscreen-active .tv-screen::before,
-.tv-frame-container.ios-fullscreen-active .tv-frame::before,
-.tv-frame-container.ios-fullscreen-active .tv-frame::after,
-.tv-frame-container.ios-fullscreen-active .scanlines,
-.tv-frame-container.ios-fullscreen-active .crt-scanlines,
-.tv-frame-container.ios-fullscreen-active .tv-screen-glow,
-.tv-frame-container.ios-fullscreen-active .static-effect-tv {
-	display: none !important;
-	opacity: 0 !important;
-	visibility: hidden !important;
-}
-
-.tv-frame-container.ios-fullscreen-active .tv-screen > * {
 	width: 100% !important;
 	height: 100% !important;
 	position: absolute !important;
 	top: 0 !important;
 	left: 0 !important;
-	transform: none !important;
-	z-index: 1 !important;
-	opacity: 1 !important;
+}
+
+.tv-frame-container.ios-fullscreen-active #desitv-player-iframe iframe {
+	width: 100% !important;
+	height: 100% !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	border: none !important;
+	pointer-events: none !important;
+}
+
+/* Keep decorations visible in iOS fullscreen */
+.tv-frame-container.ios-fullscreen-active .tv-frame::before,
+.tv-frame-container.ios-fullscreen-active .tv-frame::after {
+	display: block !important;
 	visibility: visible !important;
+	opacity: 1 !important;
 }
 
-.tv-frame-container.ios-fullscreen-active .youtube-player-container,
-.tv-frame-container.ios-fullscreen-active .youtube-player-container > div,
-.tv-frame-container.ios-fullscreen-active #desitv-player-iframe {
-	pointer-events: auto !important;
-}
-
-/* Ensure remote overlay works in iOS fullscreen */
-/* Desktop only - mobile uses TV frame buttons */
-@media (min-width: 769px) {
-	body.ios-fullscreen-active .remote-overlay,
-	.tv-frame-container.ios-fullscreen-active .remote-overlay {
-		z-index: calc(var(--z-ios-fullscreen) + 5) !important;
-		position: fixed !important;
-		pointer-events: auto !important;
-	}
-
-	body.ios-fullscreen-active .remote-overlay.visible {
-		pointer-events: auto !important;
-		z-index: calc(var(--z-ios-fullscreen) + 5) !important;
-	}
-
-	body.ios-fullscreen-active .remote-trigger-sensor,
-	.tv-frame-container.ios-fullscreen-active .remote-trigger-sensor {
-		z-index: calc(var(--z-ios-fullscreen) + 1) !important;
-		position: fixed !important;
-		pointer-events: auto !important;
-	}
-}
-
-
-/* Ensure TV control bar and buttons are visible in fullscreen */
-.tv-frame-container:fullscreen .tv-control-bar,
-.tv-frame-container:-webkit-full-screen .tv-control-bar,
-.tv-frame-container:-moz-full-screen .tv-control-bar,
-.tv-frame-container:-ms-fullscreen .tv-control-bar,
 .tv-frame-container.ios-fullscreen-active .tv-control-bar {
 	display: flex !important;
 	visibility: visible !important;
 	opacity: 1 !important;
-	z-index: 9999 !important;
-	position: absolute !important;
-	bottom: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-}
-
-.tv-frame-container:fullscreen .tv-control-buttons,
-.tv-frame-container:-webkit-full-screen .tv-control-buttons,
-.tv-frame-container:-moz-full-screen .tv-control-buttons,
-.tv-frame-container:-ms-fullscreen .tv-control-buttons,
-.tv-frame-container.ios-fullscreen-active .tv-control-buttons {
-	display: flex !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-}
-
-.tv-frame-container:fullscreen .tv-btn,
-.tv-frame-container:-webkit-full-screen .tv-btn,
-.tv-frame-container:-moz-full-screen .tv-btn,
-.tv-frame-container:-ms-fullscreen .tv-btn,
-.tv-frame-container.ios-fullscreen-active .tv-btn {
-	display: flex !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-	pointer-events: auto !important;
 	position: relative !important;
 }
 
-/* Ensure TV frame is visible in fullscreen - duplicate removed, already defined above */
+.tv-frame-container.ios-fullscreen-active .tv-brand-logo {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+}
 
-/* Safe area handling for notched devices */
+.tv-frame-container.ios-fullscreen-active .player-glass-overlay {
+	display: block !important;
+	pointer-events: auto !important;
+	z-index: 6 !important;
+}
+
+/* Hide other content */
+body.ios-fullscreen-active .right-panel,
+body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
+	display: none !important;
+}
+
+/* Hide scanlines in iOS fullscreen */
+.tv-frame-container.ios-fullscreen-active .scanlines,
+.tv-frame-container.ios-fullscreen-active .tv-screen-glow,
+.tv-frame-container.ios-fullscreen-active .static-effect-tv {
+	display: none !important;
+}
+
+/* ===========================================
+   REMOTE OVERLAY IN FULLSCREEN
+   =========================================== */
+
+@media (min-width: 769px) {
+	.tv-frame-container:fullscreen .remote-overlay,
+	.tv-frame-container:-webkit-full-screen .remote-overlay,
+	.tv-frame-container.ios-fullscreen-active .remote-overlay {
+		z-index: 1000 !important;
+		position: fixed !important;
+		pointer-events: auto !important;
+	}
+
+	.tv-frame-container:fullscreen .remote-trigger-sensor,
+	.tv-frame-container:-webkit-full-screen .remote-trigger-sensor,
+	.tv-frame-container.ios-fullscreen-active .remote-trigger-sensor {
+		z-index: 999 !important;
+		position: fixed !important;
+		pointer-events: auto !important;
+	}
+}
+
+/* ===========================================
+   SAFE AREA HANDLING - Only apply safe areas, no extra padding
+   =========================================== */
+
 @supports (padding: env(safe-area-inset-top)) {
 	.tv-frame-container:fullscreen,
-	.tv-frame-container:-webkit-full-screen {
-		padding-top: env(safe-area-inset-top);
-		padding-bottom: env(safe-area-inset-bottom);
-		padding-left: env(safe-area-inset-left);
-		padding-right: env(safe-area-inset-right);
+	.tv-frame-container:-webkit-full-screen,
+	.tv-frame-container.ios-fullscreen-active {
+		/* Only use safe area insets - no extra padding */
+		padding-top: env(safe-area-inset-top, 0) !important;
+		padding-bottom: env(safe-area-inset-bottom, 0) !important;
+		padding-left: env(safe-area-inset-left, 0) !important;
+		padding-right: env(safe-area-inset-right, 0) !important;
+	}
+}
+
+/* ===========================================
+   MOBILE FULLSCREEN - MAXIMUM TV SIZE
+   =========================================== */
+
+@media (max-width: 767px) {
+	.tv-frame-container:fullscreen .tv-frame,
+	.tv-frame-container:-webkit-full-screen .tv-frame,
+	.tv-frame-container.ios-fullscreen-active .tv-frame {
+		/* Mobile portrait: MAXIMIZE - use min() for best fit */
+		width: min(calc(99vh * 1.333), 99vw) !important;
+		min-width: min(calc(99vh * 1.333), 99vw) !important;
+		max-width: min(calc(99vh * 1.333), 99vw) !important;
+		height: min(99vh, calc(99vw * 0.75)) !important;
+		min-height: min(99vh, calc(99vw * 0.75)) !important;
+		max-height: min(99vh, calc(99vw * 0.75)) !important;
+		aspect-ratio: 4/3 !important;
+		
+		/* Slightly smaller padding for mobile */
+		padding: 2% 3% 3% 3% !important;
+		border-radius: clamp(12px, 2vw, 20px) !important;
 	}
 	
-	.tv-frame-container.ios-fullscreen-active .tv-control-buttons {
-		padding-bottom: max(12px + env(safe-area-inset-bottom, 0), 20px) !important;
+	.tv-frame-container:fullscreen,
+	.tv-frame-container:-webkit-full-screen,
+	.tv-frame-container.ios-fullscreen-active {
+		/* Zero padding to maximize TV size */
+		padding: 0 !important;
+	}
+	
+	/* Smaller control bar on mobile */
+	.tv-frame-container:fullscreen .tv-control-bar,
+	.tv-frame-container:-webkit-full-screen .tv-control-bar,
+	.tv-frame-container.ios-fullscreen-active .tv-control-bar {
+		margin-top: clamp(6px, 1vh, 10px) !important;
+	}
+	
+	/* Smaller buttons on mobile */
+	.tv-frame-container:fullscreen .tv-btn,
+	.tv-frame-container:-webkit-full-screen .tv-btn,
+	.tv-frame-container.ios-fullscreen-active .tv-btn {
+		width: clamp(28px, 6vw, 36px) !important;
+		height: clamp(28px, 6vw, 36px) !important;
+		min-width: clamp(28px, 6vw, 36px) !important;
+		min-height: clamp(28px, 6vw, 36px) !important;
+	}
+	
+	/* Smaller brand logo on mobile */
+	.tv-frame-container:fullscreen .tv-brand-logo,
+	.tv-frame-container:-webkit-full-screen .tv-brand-logo,
+	.tv-frame-container.ios-fullscreen-active .tv-brand-logo {
+		bottom: clamp(6px, 1vw, 10px) !important;
+		right: clamp(6px, 1vw, 10px) !important;
+	}
+	
+	.tv-frame-container:fullscreen .tv-brand-logo .brand-text,
+	.tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-text,
+	.tv-frame-container.ios-fullscreen-active .tv-brand-logo .brand-text {
+		font-size: clamp(10px, 2.5vw, 14px) !important;
+	}
+	
+	.tv-frame-container:fullscreen .tv-brand-logo .brand-model,
+	.tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-model,
+	.tv-frame-container.ios-fullscreen-active .tv-brand-logo .brand-model {
+		font-size: clamp(6px, 1.5vw, 9px) !important;
+	}
+}
+
+/* ===========================================
+   LANDSCAPE MOBILE - MAXIMUM TV SIZE
+   =========================================== */
+
+@media (max-width: 767px) and (orientation: landscape) {
+	.tv-frame-container:fullscreen .tv-frame,
+	.tv-frame-container:-webkit-full-screen .tv-frame,
+	.tv-frame-container.ios-fullscreen-active .tv-frame {
+		/* Landscape mobile: MAXIMIZE - 99% of available space */
+		width: min(calc(99vh * 1.333), 99vw) !important;
+		min-width: min(calc(99vh * 1.333), 99vw) !important;
+		max-width: min(calc(99vh * 1.333), 99vw) !important;
+		height: min(99vh, calc(99vw * 0.75)) !important;
+		min-height: min(99vh, calc(99vw * 0.75)) !important;
+		max-height: min(99vh, calc(99vw * 0.75)) !important;
+		aspect-ratio: 4/3 !important;
+		
+		/* Tight padding for landscape */
+		padding: 1.5% 2% 2.5% 2% !important;
+		border-radius: clamp(10px, 1.5vw, 16px) !important;
+	}
+	
+	.tv-frame-container:fullscreen,
+	.tv-frame-container:-webkit-full-screen,
+	.tv-frame-container.ios-fullscreen-active {
+		/* Zero padding to maximize TV size */
+		padding: 0 !important;
+	}
+	
+	/* Compact control bar in landscape */
+	.tv-frame-container:fullscreen .tv-control-bar,
+	.tv-frame-container:-webkit-full-screen .tv-control-bar,
+	.tv-frame-container.ios-fullscreen-active .tv-control-bar {
+		margin-top: clamp(4px, 0.8vh, 8px) !important;
+	}
+	
+	/* Even smaller buttons in landscape mobile */
+	.tv-frame-container:fullscreen .tv-btn,
+	.tv-frame-container:-webkit-full-screen .tv-btn,
+	.tv-frame-container.ios-fullscreen-active .tv-btn {
+		width: clamp(24px, 5vh, 32px) !important;
+		height: clamp(24px, 5vh, 32px) !important;
+		min-width: clamp(24px, 5vh, 32px) !important;
+		min-height: clamp(24px, 5vh, 32px) !important;
+	}
+	
+	/* Smaller icons in landscape */
+	.tv-frame-container:fullscreen .tv-btn .btn-icon,
+	.tv-frame-container:-webkit-full-screen .tv-btn .btn-icon,
+	.tv-frame-container.ios-fullscreen-active .tv-btn .btn-icon {
+		width: clamp(12px, 2.5vh, 16px) !important;
+		height: clamp(12px, 2.5vh, 16px) !important;
+	}
+	
+	/* Hide button labels in landscape to save space */
+	.tv-frame-container:fullscreen .tv-btn .btn-label,
+	.tv-frame-container:-webkit-full-screen .tv-btn .btn-label,
+	.tv-frame-container.ios-fullscreen-active .tv-btn .btn-label {
+		display: none !important;
 	}
 }
