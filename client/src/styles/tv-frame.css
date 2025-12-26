@@ -638,6 +638,33 @@
 	.tv-frame::after {
 		display: none !important;
 	}
+	
+	/* ============================================
+	   MOBILE SCREEN GUARD - Block iframe interactions
+	   ============================================ */
+	
+	/* Disable pointer events on iframe - same as desktop */
+	.tv-screen #desitv-player-iframe iframe,
+	.tv-screen .youtube-player-container iframe,
+	#desitv-player-iframe iframe,
+	.youtube-player-container iframe {
+		pointer-events: none !important;
+	}
+	
+	/* Enable glass overlay to catch all touches - same as desktop */
+	.player-glass-overlay {
+		position: absolute !important;
+		top: 0 !important;
+		left: 0 !important;
+		width: 100% !important;
+		height: 100% !important;
+		pointer-events: auto !important;
+		z-index: 6 !important;
+		background: transparent !important;
+		-webkit-tap-highlight-color: transparent !important;
+		touch-action: manipulation !important;
+		cursor: pointer !important;
+	}
 }
 
 /* ============================================
@@ -691,6 +718,28 @@
 	
 	.tv-brand-logo .brand-model {
 		font-size: clamp(5px, 1.2vh, 7px) !important;
+	}
+	
+	/* Landscape mobile screen guard - same as portrait */
+	.tv-screen #desitv-player-iframe iframe,
+	.tv-screen .youtube-player-container iframe,
+	#desitv-player-iframe iframe,
+	.youtube-player-container iframe {
+		pointer-events: none !important;
+	}
+	
+	.player-glass-overlay {
+		position: absolute !important;
+		top: 0 !important;
+		left: 0 !important;
+		width: 100% !important;
+		height: 100% !important;
+		pointer-events: auto !important;
+		z-index: 6 !important;
+		background: transparent !important;
+		-webkit-tap-highlight-color: transparent !important;
+		touch-action: manipulation !important;
+		cursor: pointer !important;
 	}
 }
 
