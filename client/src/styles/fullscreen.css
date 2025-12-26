@@ -177,8 +177,11 @@
 	width: 100% !important;
 	height: 100% !important;
 	border-radius: clamp(4px, 0.6vw, 8px) !important;
-	transform: none !important;
 	overflow: hidden !important;
+	/* CRT CONVEX GLASS EFFECT - curved screen illusion */
+	transform: perspective(800px) rotateX(-1.5deg) scale(0.995) !important;
+	transform-origin: center center !important;
+	transform-style: flat !important;
 }
 
 .tv-frame-container:fullscreen .player-wrapper,
@@ -536,7 +539,10 @@ html.ios-fullscreen-active .tv-frame-container .tv-frame {
 	left: 0 !important;
 	width: 100% !important;
 	height: 100% !important;
-	transform: none !important;
+	/* CRT CONVEX GLASS EFFECT - curved screen illusion */
+	transform: perspective(800px) rotateX(-1.5deg) scale(0.995) !important;
+	transform-origin: center center !important;
+	transform-style: flat !important;
 }
 
 .tv-frame-container.ios-fullscreen-active .player-wrapper,
