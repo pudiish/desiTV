@@ -35,9 +35,10 @@
 /* 2. Base Styles - Reset, typography, base elements */
 @import './styles/base.css';
 
-/* 3. Common Utilities - Shared transforms and CRT effects */
+/* 3. Common Utilities - Shared transforms, CRT effects, and utilities */
 @import './styles/transforms.css';
 @import './styles/crt-effects.css';
+@import './styles/utilities.css';
 
 /* 4. Layout - Main containers, grids, flex layouts */
 @import './styles/layout.css';
