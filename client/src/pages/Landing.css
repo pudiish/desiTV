@@ -1,150 +1,216 @@
 @import '../theme/landing-theme.css';
 
-/* Responsive */
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
 @media (max-width: 768px) {
-	.landing-content {
-		padding: var(--spacing-2xl) var(--spacing-lg);
-		gap: var(--spacing-3xl);
+	.landing-content-single {
+		padding: clamp(30px, 8vh, 60px) clamp(15px, 4vw, 25px) !important;
+		gap: clamp(25px, 5vh, 40px) !important;
 	}
 
-	.retro-title {
-		font-size: clamp(3rem, 10vw, 5rem) !important;
-		letter-spacing: clamp(1px, 0.3vw, 4px) !important;
+	.hero-title {
+		font-size: clamp(2rem, 12vw, 3.5rem) !important;
+		letter-spacing: clamp(2px, 0.5vw, 4px) !important;
+		margin-bottom: var(--spacing-sm) !important;
 	}
 
-	.tagline {
-		font-size: clamp(0.95rem, 3vw, 1.2rem) !important;
+	.hero-subtitle {
+		font-size: clamp(0.85rem, 3vw, 1.1rem) !important;
+		letter-spacing: clamp(1px, 0.3vw, 3px) !important;
 	}
 
-	.game-cards-container {
-		grid-template-columns: 1fr !important;
-		gap: var(--spacing-xl) !important;
-		padding: var(--spacing-2xl) var(--spacing-lg) !important;
+	.hero-tagline {
+		font-size: clamp(0.65rem, 2.5vw, 0.8rem) !important;
+		margin-top: var(--spacing-sm) !important;
 	}
 
-	.game-card {
-		padding: var(--spacing-2xl) !important;
+	.features-minimal {
+		gap: var(--spacing-sm) !important;
+		flex-wrap: wrap !important;
+		justify-content: center !important;
+		width: 100% !important;
 	}
 
-	.card-icon {
-		font-size: 2.5rem !important;
+	.feature-badge {
+		padding: var(--spacing-xs) var(--spacing-md) !important;
+		flex: 0 1 auto !important;
+		min-width: fit-content !important;
 	}
 
-	.instructions-grid {
-		grid-template-columns: 1fr !important;
-		gap: var(--spacing-sm);
+	.feature-badge span {
+		font-size: clamp(0.6rem, 2.5vw, 0.75rem) !important;
+		white-space: nowrap !important;
 	}
 
-	.instruction-item {
-		padding: var(--spacing-md) !important;
+	.tooltip {
+		font-size: clamp(0.65rem, 2vw, 0.7rem) !important;
+		padding: var(--spacing-xs) var(--spacing-sm) !important;
+		white-space: normal !important;
+		max-width: 200px !important;
+		text-align: center !important;
 	}
 
-	.enter-button {
-		padding: clamp(16px, 3vh, 20px) clamp(40px, 8vw, 60px) !important;
-		font-size: clamp(1rem, 3vw, 1.2rem) !important;
-		width: 90%;
-		max-width: 400px;
+	.landing-cta {
+		width: 100% !important;
 	}
 
-	.links-container {
-		flex-direction: column;
-		gap: var(--spacing-sm);
+	.tv-button {
+		width: 100% !important;
+		max-width: 100% !important;
+		padding: clamp(14px, 3vh, 18px) clamp(20px, 6vw, 30px) !important;
+		font-size: clamp(0.85rem, 3.5vw, 1rem) !important;
+		letter-spacing: clamp(1px, 0.2vw, 2px) !important;
 	}
 
-	.info-link {
-		text-align: center;
-		width: 100%;
-		justify-content: center;
+	.controls-hint {
+		flex-direction: column !important;
+		gap: var(--spacing-sm) !important;
+		align-items: center !important;
+		width: 100% !important;
 	}
 
-	.contact-social {
-		flex-direction: column;
+	.hint-item {
+		font-size: clamp(0.7rem, 2.5vw, 0.8rem) !important;
+		justify-content: center !important;
 	}
 
-	.contact-link {
-		width: 100%;
-		text-align: center;
+	.hint-item kbd {
+		font-size: clamp(0.6rem, 2vw, 0.7rem) !important;
+		padding: 2px 5px !important;
+		min-width: 18px !important;
 	}
 
-	.info-toggle-button {
-		width: 90%;
-		max-width: 400px;
-	}
-}
-
-@media (max-width: 480px) {
-	.landing-content {
-		width: 100%;
-		padding: var(--spacing-xl) var(--spacing-md);
-		gap: var(--spacing-2xl);
+	.legal-section {
+		width: 100% !important;
+		max-width: 100% !important;
+		margin-top: var(--spacing-lg) !important;
 	}
 
-	.retro-title {
-		font-size: clamp(2.5rem, 12vw, 4rem) !important;
-		letter-spacing: clamp(1px, 0.2vw, 3px) !important;
-		margin-bottom: var(--spacing-md) !important;
-	}
-
-	.tagline {
-		font-size: clamp(0.9rem, 4vw, 1.1rem) !important;
-		letter-spacing: 0.5px !important;
-	}
-
-	.game-cards-container {
-		grid-template-columns: 1fr !important;
-		gap: var(--spacing-lg) !important;
-		padding: var(--spacing-xl) var(--spacing-md) !important;
-	}
-
-	.game-card {
-		padding: var(--spacing-xl) !important;
-	}
-
-	.card-icon {
-		font-size: 2rem !important;
-	}
-
-	.card-title {
-		font-size: clamp(1.1rem, 5vw, 1.4rem) !important;
-	}
-
-	.enter-button {
-		padding: clamp(14px, 4vh, 18px) clamp(36px, 10vw, 50px) !important;
-		font-size: clamp(0.95rem, 4vw, 1.1rem) !important;
-		width: 100%;
-		max-width: 100%;
-	}
-
-	.instructions-grid {
-		gap: var(--spacing-xs) !important;
-		grid-template-columns: 1fr !important;
-	}
-
-	.instruction-item {
-		padding: var(--spacing-sm) !important;
-		gap: var(--spacing-xs) !important;
-	}
-
-	.instruction-item strong {
-		font-size: clamp(0.85rem, 3vw, 0.95rem) !important;
-	}
-
-	.instruction-item span {
-		font-size: clamp(0.75rem, 2.5vw, 0.85rem) !important;
-	}
-
-	.contact-email {
-		font-size: clamp(0.85rem, 3vw, 0.95rem) !important;
-		padding: var(--spacing-sm) !important;
-	}
-
-	.contact-link {
-		font-size: clamp(0.8rem, 3vw, 0.9rem) !important;
+	.legal-details {
 		padding: var(--spacing-sm) var(--spacing-md) !important;
 	}
 
-	.info-toggle-button {
-		width: 100%;
-		max-width: 100%;
+	.legal-details summary {
+		font-size: clamp(0.7rem, 2.5vw, 0.8rem) !important;
+	}
+
+	.legal-text {
+		font-size: clamp(0.65rem, 2.2vw, 0.75rem) !important;
+		line-height: 1.6 !important;
+		padding-top: var(--spacing-sm) !important;
+		margin-top: var(--spacing-sm) !important;
+	}
+
+	.landing-footer {
+		flex-direction: column !important;
+		gap: var(--spacing-xs) !important;
+		font-size: clamp(0.65rem, 2.2vw, 0.75rem) !important;
+		text-align: center !important;
+	}
+
+	.landing-footer span {
+		display: none !important; /* Hide separators on mobile */
+	}
+}
+
+/* ============================================
+   SMALL MOBILE (Portrait phones)
+   ============================================ */
+
+@media (max-width: 480px) {
+	.landing-content-single {
+		padding: clamp(20px, 6vh, 40px) clamp(12px, 3vw, 20px) !important;
+		gap: clamp(20px, 4vh, 30px) !important;
+	}
+
+	.hero-title {
+		font-size: clamp(1.75rem, 14vw, 2.5rem) !important;
+		letter-spacing: clamp(1px, 0.4vw, 3px) !important;
+	}
+
+	.hero-subtitle {
+		font-size: clamp(0.8rem, 3.5vw, 1rem) !important;
+		letter-spacing: clamp(0.5px, 0.25vw, 2px) !important;
+	}
+
+	.hero-tagline {
+		font-size: clamp(0.6rem, 3vw, 0.75rem) !important;
+	}
+
+	.features-minimal {
+		flex-direction: column !important;
+		gap: var(--spacing-xs) !important;
+		width: 100% !important;
+	}
+
+	.feature-badge {
+		width: 100% !important;
+		text-align: center !important;
+		padding: var(--spacing-xs) var(--spacing-sm) !important;
+	}
+
+	.feature-badge span {
+		font-size: clamp(0.55rem, 3vw, 0.7rem) !important;
+	}
+
+	.tv-button {
+		padding: clamp(12px, 3.5vh, 16px) clamp(18px, 7vw, 25px) !important;
+		font-size: clamp(0.8rem, 4vw, 0.95rem) !important;
+	}
+
+	.controls-hint {
+		gap: var(--spacing-xs) !important;
+	}
+
+	.hint-item {
+		font-size: clamp(0.65rem, 3vw, 0.75rem) !important;
+	}
+
+	.legal-details {
+		padding: var(--spacing-xs) var(--spacing-sm) !important;
+	}
+
+	.legal-text {
+		font-size: clamp(0.6rem, 2.8vw, 0.7rem) !important;
+		line-height: 1.5 !important;
+	}
+}
+
+/* ============================================
+   LANDSCAPE MOBILE
+   ============================================ */
+
+@media (max-width: 768px) and (orientation: landscape) {
+	.landing-content-single {
+		padding: clamp(20px, 5vh, 40px) clamp(15px, 4vw, 30px) !important;
+		gap: clamp(15px, 3vh, 25px) !important;
+	}
+
+	.hero-title {
+		font-size: clamp(1.5rem, 8vw, 2.5rem) !important;
+		margin-bottom: var(--spacing-xs) !important;
+	}
+
+	.hero-subtitle {
+		font-size: clamp(0.75rem, 2.5vw, 1rem) !important;
+	}
+
+	.features-minimal {
+		flex-direction: row !important;
+		gap: var(--spacing-xs) !important;
+		flex-wrap: wrap !important;
+	}
+
+	.feature-badge {
+		flex: 0 1 auto !important;
+		padding: var(--spacing-xs) var(--spacing-sm) !important;
+	}
+
+	.controls-hint {
+		flex-direction: row !important;
+		gap: var(--spacing-sm) !important;
+		flex-wrap: wrap !important;
 	}
 }
