@@ -1,0 +1,70 @@
+/**
+ * Transform Utilities - Common 3D transforms and perspective effects
+ * Reusable transform classes for consistent effects across components
+ */
+
+/* ============================================
+   PERSPECTIVE UTILITIES
+   ============================================ */
+
+/* Base perspective container */
+.perspective-container {
+	transform-style: preserve-3d;
+	perspective: 800px;
+}
+
+.perspective-container-mobile {
+	transform-style: preserve-3d;
+	perspective: 600px;
+}
+
+/* ============================================
+   CONVEX SCREEN TRANSFORMS
+   ============================================ */
+
+/* Desktop convex screen effect */
+.convex-screen {
+	transform: perspective(800px) rotateX(-1.5deg) scale(0.995);
+	transform-origin: center center;
+	transform-style: flat;
+}
+
+/* Mobile convex screen effect */
+.convex-screen-mobile {
+	transform: perspective(600px) rotateX(-1.2deg) scale(0.996);
+	transform-origin: center center;
+	transform-style: flat;
+}
+
+/* Fullscreen convex screen */
+.convex-screen-fullscreen {
+	transform: perspective(800px) rotateX(-1.5deg) scale(0.995) !important;
+	transform-origin: center center !important;
+	transform-style: flat !important;
+}
+
+/* ============================================
+   SCALE UTILITIES
+   ============================================ */
+
+.scale-hover {
+	transition: transform 0.15s ease;
+}
+
+.scale-hover:hover {
+	transform: scale(1.05);
+}
+
+.scale-active:active {
+	transform: scale(0.95);
+}
+
+/* ============================================
+   GPU ACCELERATION
+   ============================================ */
+
+.gpu-accelerated {
+	will-change: transform;
+	transform: translateZ(0);
+}
+

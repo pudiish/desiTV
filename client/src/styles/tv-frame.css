@@ -144,29 +144,86 @@
 	background: transparent !important;
 }
 
-/* Simple CRT vignette overlay */
+/* ============================================
+   CRT EFFECTS - See crt-effects.css for common patterns
+   ============================================ */
+
+/* CRT Phosphor Glow + Vignette overlay */
 .tv-screen::after {
 	content: "";
 	position: absolute;
 	inset: 0;
 	width: 100%;
 	height: 100%;
-	/* Simple vignette - subtle edge darkening */
-	background: radial-gradient(
-		ellipse 90% 80% at 50% 50%,
-		transparent 0%,
-		transparent 60%,
-		rgba(0, 0, 0, 0.15) 85%,
-		rgba(0, 0, 0, 0.3) 100%
-	);
+	background: 
+		/* Phosphor glow - subtle warm center glow */
+		radial-gradient(
+			ellipse 70% 60% at 50% 45%,
+			rgba(255, 248, 220, 0.04) 0%,
+			transparent 50%
+		),
+		/* Vignette - darker edges like real CRT */
+		radial-gradient(
+			ellipse 85% 75% at 50% 50%,
+			transparent 0%,
+			transparent 55%,
+			rgba(0, 0, 0, 0.12) 75%,
+			rgba(0, 0, 0, 0.25) 90%,
+			rgba(0, 0, 0, 0.4) 100%
+		);
 	pointer-events: none;
 	z-index: 5;
 	border-radius: inherit;
 }
 
+/* CRT Scanlines - horizontal lines */
+.tv-screen::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	background: repeating-linear-gradient(
+		0deg,
+		transparent 0px,
+		transparent 2px,
+		rgba(0, 0, 0, 0.03) 2px,
+		rgba(0, 0, 0, 0.03) 4px
+	);
+	pointer-events: none;
+	z-index: 6;
+	border-radius: inherit;
+	animation: crt-scanline-flicker 0.1s linear infinite;
+}
+
+@keyframes crt-scanline-flicker {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.97; }
+}
+
+/* RGB Chromatic Aberration - color fringing at edges */
+.tv-screen {
+	position: relative;
+}
+
+/* Color bleeding overlay - simulates RGB phosphor bleed */
+.tv-screen > *::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	box-shadow:
+		inset 1px 0 2px rgba(255, 0, 0, 0.015),
+		inset -1px 0 2px rgba(0, 255, 255, 0.015);
+	pointer-events: none;
+	z-index: 4;
+	border-radius: inherit;
+	mix-blend-mode: screen;
+}
+
 /* Fullscreen tv-screen styles are now in fullscreen.css */
 
-/* Screen content - CRT convex glass effect */
+/* Screen content - CRT convex glass effect + color filter */
+/* Uses common patterns from crt-effects.css and transforms.css */
 .tv-screen > * {
 	width: 100% !important;
 	height: 100% !important;
@@ -184,10 +241,16 @@
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
-	/* CRT CONVEX GLASS EFFECT - curved screen illusion */
+	/* CRT CONVEX GLASS EFFECT - see transforms.css */
 	transform: perspective(800px) rotateX(-1.5deg) scale(0.995);
 	transform-origin: center center;
 	transform-style: flat;
+	/* CRT COLOR FILTER - see crt-effects.css */
+	filter: 
+		saturate(1.15)
+		contrast(1.08)
+		brightness(0.97)
+		sepia(0.03);
 }
 
 /* Fullscreen content styles are now in fullscreen.css */
@@ -418,12 +481,29 @@
 			inset -2px 0 8px rgba(0, 0, 0, 0.25) !important;
 	}
 	
-	/* Mobile screen content - CRT CONVEX GLASS EFFECT */
+	/* Mobile screen content - CRT effects */
 	.tv-screen > * {
 		/* CRT curved screen illusion - works on mobile too */
 		transform: perspective(600px) rotateX(-1.2deg) scale(0.996) !important;
 		transform-origin: center center !important;
 		transform-style: flat !important;
+		/* CRT color filter - slightly reduced for mobile */
+		filter: 
+			saturate(1.12)
+			contrast(1.06)
+			brightness(0.98)
+			sepia(0.02) !important;
+	}
+	
+	/* Mobile scanlines - more subtle */
+	.tv-screen::before {
+		background: repeating-linear-gradient(
+			0deg,
+			transparent 0px,
+			transparent 3px,
+			rgba(0, 0, 0, 0.02) 3px,
+			rgba(0, 0, 0, 0.02) 6px
+		) !important;
 	}
 	
 	/* Mobile control bar - compact and integrated */

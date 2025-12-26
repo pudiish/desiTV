@@ -32,13 +32,14 @@
 
 /* Fullscreen styles are in fullscreen.css */
 
-/* CRT glass radial vignette and convex effect overlay */
-.tv-screen::after {
+/* CRT glass radial vignette - alternative style */
+/* Note: Main CRT effects are in crt-effects.css */
+/* This is an alternative vignette style for player-specific use */
+.player-wrapper .tv-screen::after {
 	content: "";
 	position: absolute;
 	inset: 0;
 	background: 
-		/* Radial vignette for convex glass effect */
 		radial-gradient(
 			ellipse 90% 70% at 50% 50%,
 			transparent 0%,
@@ -46,7 +47,6 @@
 			rgba(0, 0, 0, 0.15) 70%,
 			rgba(0, 0, 0, 0.3) 100%
 		),
-		/* Subtle sepia/brown tint */
 		rgba(107, 93, 79, 0.03);
 	pointer-events: none;
 	z-index: var(--z-content-overlay);

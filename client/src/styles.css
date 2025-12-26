@@ -13,35 +13,55 @@
  * 8. Responsive (media queries - must be last)
  */
 
+/**
+ * Main Stylesheet - Imports all modular CSS files
+ * This file serves as the entry point for all styles
+ * 
+ * Module Order (important for cascade):
+ * 1. Design Tokens (CSS variables)
+ * 2. Base Styles (reset, typography)
+ * 3. Common Utilities (transforms, CRT effects)
+ * 4. Layout (containers, grids)
+ * 5. Components (buttons, etc.)
+ * 6. Feature Modules (TV frame, remote, menu, player)
+ * 7. Effects (animations, additional effects)
+ * 8. Fullscreen (fullscreen styles)
+ * 9. Responsive (media queries - must be last)
+ */
+
 /* 1. Design Tokens - Must be imported first */
 @import './styles/tokens.css';
 
 /* 2. Base Styles - Reset, typography, base elements */
 @import './styles/base.css';
 
-/* 3. Layout - Main containers, grids, flex layouts */
+/* 3. Common Utilities - Shared transforms and CRT effects */
+@import './styles/transforms.css';
+@import './styles/crt-effects.css';
+
+/* 4. Layout - Main containers, grids, flex layouts */
 @import './styles/layout.css';
 
-/* 4. Buttons - Common button patterns */
+/* 5. Buttons - Common button patterns */
 @import './styles/buttons.css';
 
-/* 5. TV Frame - TV frame, screen, control bar */
+/* 6. TV Frame - TV frame, screen, control bar */
 @import './styles/tv-frame.css';
 
-/* 6. Remote Control - Remote body, controls, display */
+/* 7. Remote Control - Remote body, controls, display */
 @import './styles/remote.css';
 
-/* 7. Player - YouTube player, iframe, overlays */
+/* 8. Player - YouTube player, iframe, overlays */
 @import './styles/player.css';
 
-/* 8. Menu - TV menu overlay, channels, settings */
+/* 9. Menu - TV menu overlay, channels, settings */
 @import './styles/menu.css';
 
-/* 9. Effects - Animations and CRT effects */
+/* 10. Effects - Animations and additional effects */
 @import './styles/effects.css';
 
-/* 10. Fullscreen - Consolidated fullscreen styles */
+/* 11. Fullscreen - Consolidated fullscreen styles */
 @import './styles/fullscreen.css';
 
-/* 11. Responsive - All media queries (must be last) */
+/* 12. Responsive - All media queries (must be last) */
 @import './styles/responsive.css';
