@@ -10,13 +10,22 @@
 	position: fixed;
 	inset: 0;
 	background: rgba(0, 0, 0, 0.85);
-	z-index: var(--z-menu-overlay) !important;
+	z-index: var(--z-menu-overlay);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	animation: menu-fade-in var(--transition-slow) ease;
 	/* Safe area padding for notched devices */
 	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+	/* Performance: containment for menu overlay */
+	contain: layout style paint;
+}
+
+/* Performance: Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+	.tv-menu-overlay {
+		animation: none;
+	}
 }
 
 /* Menu visibility in fullscreen is handled in fullscreen.css */
@@ -147,14 +156,15 @@
 	max-width: 900px;
 	max-height: 85vh;
 	overflow: hidden;
+	/* Performance: containment for menu */
+	contain: layout style paint;
+	/* Optimized shadows - reduced layers for performance */
 	box-shadow: 
-		/* Warm vintage glow */
-		0 0 50px var(--color-primary-glow),
+		/* Warm vintage glow - combined */
 		0 0 100px var(--color-primary-glow),
-		/* Black plastic depth */
+		/* Black plastic depth - combined inner shadows */
 		inset 0 2px 6px rgba(255, 255, 255, 0.04),
-		inset 0 -3px 8px rgba(0, 0, 0, 0.7),
-		inset 0 0 30px rgba(0, 0, 0, 0.5);
+		inset 0 -3px 8px rgba(0, 0, 0, 0.7);
 	animation: menu-slide-in var(--transition-slow) ease;
 	/* Subtle warm texture */
 	position: relative;

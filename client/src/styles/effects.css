@@ -29,6 +29,18 @@
 	transform: translateZ(0);
 }
 
+/* Performance: Pause animation when not visible or user prefers reduced motion */
+.scanlines:not(:hover):not(:focus-within) {
+	animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.scanlines {
+		animation: none;
+		will-change: auto;
+	}
+}
+
 @keyframes scanline-move {
 	0% { transform: translateY(0); }
 	100% { transform: translateY(4px); }
@@ -52,6 +64,19 @@
 	mix-blend-mode: overlay;
 	will-change: transform;
 	transform: translateZ(0);
+	contain: layout style paint;
+}
+
+/* Performance: Pause when not actively viewed */
+.crt-scanlines:not(:hover):not(:focus-within) {
+	animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.crt-scanlines {
+		animation: none;
+		will-change: auto;
+	}
 }
 
 /* Static Effect - Optimized */
@@ -69,7 +94,19 @@
 	max-height: 100%;
 	contain: layout style paint;
 	will-change: transform, opacity;
-	z-index: var(--z-screen-overlay);
+}
+
+/* Performance: Only animate when active, pause otherwise */
+.static-effect-tv:not(.active) {
+	animation-play-state: paused;
+	will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.static-effect-tv {
+		animation: none;
+		will-change: auto;
+	}
 }
 
 .static-noise-overlay {
@@ -193,6 +230,20 @@
 	animation: crt-flicker-animation 0.15s infinite;
 	pointer-events: none;
 	will-change: opacity;
+	contain: layout style paint;
+}
+
+/* Performance: Pause when not needed */
+.crt-flicker:not(.active) {
+	animation-play-state: paused;
+	will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.crt-flicker {
+		animation: none;
+		will-change: auto;
+	}
 }
 
 @keyframes crt-flicker-animation {

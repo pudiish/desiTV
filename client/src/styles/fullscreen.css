@@ -57,22 +57,23 @@
 		#1a1a1a 100%
 	) !important;
 	
-	/* Soft shadows */
+	/* Optimized shadows - reduced layers for performance */
 	box-shadow:
 		0 10px 40px rgba(0, 0, 0, 0.6),
-		0 5px 20px rgba(0, 0, 0, 0.4),
-		inset 0 1px 2px rgba(255, 255, 255, 0.1),
-		inset 0 0 15px rgba(0, 0, 0, 0.3),
-		0 0 0 1px rgba(60, 60, 60, 0.3) !important;
+		0 5px 20px rgba(0, 0, 0, 0.4) !important;
+	/* Border via separate property for better performance */
+	border: 1px solid rgba(60, 60, 60, 0.3) !important;
 	
 	display: flex !important;
 	flex-direction: column !important;
 	align-items: center !important;
 	justify-content: flex-start !important;
 	position: relative !important;
+	/* Performance: strict containment in fullscreen */
+	contain: layout style paint !important;
 }
 
-/* Simple top highlight */
+/* Simple top highlight + inner shadows */
 .tv-frame-container:fullscreen .tv-frame::before,
 .tv-frame-container:-webkit-full-screen .tv-frame::before,
 .tv-frame-container:-moz-full-screen .tv-frame::before,
@@ -92,6 +93,11 @@
 	border-radius: clamp(14px, 2vw, 22px) clamp(14px, 2vw, 22px) 0 0 !important;
 	pointer-events: none !important;
 	z-index: 1 !important;
+	/* Inner shadows moved here for better performance */
+	box-shadow: 
+		inset 0 1px 2px rgba(255, 255, 255, 0.1),
+		inset 0 0 15px rgba(0, 0, 0, 0.3) !important;
+	contain: layout style paint !important;
 }
 
 /* Simple side shadows - no grills */
@@ -130,7 +136,7 @@
 	border-radius: clamp(6px, 0.8vw, 10px) !important;
 	background: #000 !important;
 	
-	/* Clean recessed effect */
+	/* Optimized recessed effect - reduced shadow layers */
 	box-shadow: 
 		0 0 0 2px #1a1a1a,
 		inset 0 4px 15px rgba(0, 0, 0, 0.6),
@@ -140,6 +146,8 @@
 	
 	position: relative !important;
 	overflow: hidden !important;
+	/* Performance: strict containment in fullscreen */
+	contain: layout style paint !important;
 }
 
 /* Keep CRT glass effect on screen */
