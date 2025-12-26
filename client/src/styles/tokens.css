@@ -55,6 +55,67 @@
 	--tv-button-base: #252525; /* Increased from #1a1a1a */
 	--tv-button-hover: #353535; /* Increased from #252525 */
 	--tv-button-active: #404040; /* New: for active state */
+	
+	/* TV Frame Gradient Colors - Warm Charcoal */
+	--tv-frame-gradient-start: #3a3a3a;
+	--tv-frame-gradient-mid: #2d2d2d;
+	--tv-frame-gradient-center: #252525;
+	--tv-frame-gradient-end: #1f1f1f;
+	--tv-frame-gradient-bottom: #1a1a1a;
+	
+	/* TV Frame Additional Shades */
+	--tv-frame-mid: #2a2a2a;
+	--tv-frame-light: #353535;
+	--tv-frame-highlight: #454545;
+	--tv-bezel-inner: #151515;
+	--tv-screen-edge: #0f0f0f;
+	--tv-screen-bg: #000000;
+	
+	/* TV Control Bar Colors */
+	--tv-control-bar-start: #2a2a2a;
+	--tv-control-bar-mid: #222222;
+	--tv-control-bar-end: #1c1c1c;
+	
+	/* TV Button Colors */
+	--tv-button-gradient-start: #3a3a3a;
+	--tv-button-gradient-mid: #282828;
+	--tv-button-gradient-end: #1a1a1a;
+	--tv-button-hover-start: #454545;
+	--tv-button-hover-mid: #333333;
+	--tv-button-hover-end: #252525;
+	
+	/* Remote Control Colors */
+	--remote-bg-start: #1a1a1a;
+	--remote-bg-mid: #0f0f0f;
+	--remote-bg-dark: #080808;
+	--remote-bg-darkest: #050505;
+	--remote-border: #0a0a0a;
+	--remote-button-base: #1a1a1a;
+	--remote-button-hover: #252525;
+	
+	/* Shadow Colors - Reusable */
+	--shadow-black-light: rgba(0, 0, 0, 0.2);
+	--shadow-black-medium: rgba(0, 0, 0, 0.3);
+	--shadow-black-heavy: rgba(0, 0, 0, 0.4);
+	--shadow-black-strong: rgba(0, 0, 0, 0.5);
+	--shadow-black-very-strong: rgba(0, 0, 0, 0.6);
+	--shadow-black-extreme: rgba(0, 0, 0, 0.8);
+	--shadow-black-max: rgba(0, 0, 0, 0.9);
+	--shadow-white-subtle: rgba(255, 255, 255, 0.02);
+	--shadow-white-light: rgba(255, 255, 255, 0.03);
+	--shadow-white-medium: rgba(255, 255, 255, 0.04);
+	--shadow-white-bright: rgba(255, 255, 255, 0.08);
+	--shadow-white-highlight: rgba(255, 255, 255, 0.1);
+	--shadow-white-brighter: rgba(255, 255, 255, 0.12);
+	--shadow-white-brightest: rgba(255, 255, 255, 0.15);
+	--shadow-white-brightest-alt: rgba(255, 255, 255, 0.2);
+	--shadow-border-subtle: rgba(60, 60, 60, 0.2);
+	--shadow-border-medium: rgba(60, 60, 60, 0.3);
+	
+	/* CRT Effect Colors */
+	--crt-phosphor-glow: rgba(255, 248, 220, 0.04);
+	--crt-chromatic-red: rgba(255, 0, 0, 0.015);
+	--crt-chromatic-cyan: rgba(0, 255, 255, 0.015);
 
 	/* ============================================
 	   SPACING SCALE

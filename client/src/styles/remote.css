@@ -11,10 +11,10 @@
 .remote-body {
 	/* Realistic remote - matte black plastic with subtle texture */
 	background: linear-gradient(180deg, 
-		#1a1a1a 0%, 
-		#0f0f0f 30%,
-		#080808 60%,
-		#050505 100%
+		var(--remote-bg-start) 0%, 
+		var(--remote-bg-mid) 30%,
+		var(--remote-bg-dark) 60%,
+		var(--remote-bg-darkest) 100%
 	);
 	border-radius: var(--radius-xl) var(--radius-xl) var(--spacing-xl) var(--spacing-xl);
 	padding: clamp(var(--spacing-md), 1.2vh, var(--spacing-lg)) clamp(var(--spacing-md), 1vw, var(--spacing-lg)) clamp(var(--spacing-lg), 1.5vh, 14px);
@@ -22,9 +22,9 @@
 	/* Optimized shadows - reduced layers for performance */
 	box-shadow: 
 		/* Realistic depth shadows */
-		0 8px 24px rgba(0, 0, 0, 0.9),
-		0 4px 12px rgba(0, 0, 0, 0.8);
-	border: 2px solid #0a0a0a; /* Darker, more realistic border */
+		0 8px 24px var(--shadow-black-max),
+		0 4px 12px var(--shadow-black-extreme);
+	border: 2px solid var(--remote-border); /* Darker, more realistic border */
 	position: relative;
 	opacity: 0.95; /* Slightly transparent for realism */
 	transform: scale(1);
@@ -46,21 +46,21 @@
 			0deg,
 			transparent 0px,
 			transparent 1px,
-			rgba(0, 0, 0, 0.02) 1px,
-			rgba(0, 0, 0, 0.02) 2px
+			var(--shadow-black-light) 1px,
+			var(--shadow-black-light) 2px
 		),
 		/* Very subtle top highlight */
 		linear-gradient(180deg,
-			rgba(255, 255, 255, 0.02) 0%,
+			var(--shadow-white-subtle) 0%,
 			transparent 15%
 		);
 	pointer-events: none;
 	opacity: 0.6;
 	/* Inner shadows moved here for better performance */
 	box-shadow: 
-		inset 0 1px 0 rgba(255, 255, 255, 0.03),
-		inset 0 -2px 6px rgba(0, 0, 0, 0.9),
-		inset 0 0 0 1px rgba(0, 0, 0, 0.8);
+		inset 0 1px 0 var(--shadow-white-light),
+		inset 0 -2px 6px var(--shadow-black-max),
+		inset 0 0 0 1px var(--shadow-black-extreme);
 	contain: layout style paint;
 }
 
@@ -105,7 +105,7 @@
 		0 10px 28px rgba(0, 0, 0, 0.95),
 		0 5px 14px rgba(0, 0, 0, 0.8),
 		inset 0 1px 0 rgba(255, 255, 255, 0.05), /* Subtle highlight */
-		inset 0 -2px 6px rgba(0, 0, 0, 0.9),
+		inset 0 -2px 6px var(--shadow-black-max),
 		inset 0 0 0 1px rgba(0, 0, 0, 0.8);
 	/* No glow - keep it realistic */
 }
@@ -146,23 +146,23 @@
 	height: clamp(32px, 3.2vw, 38px);
 	border-radius: var(--radius-full);
 	/* Realistic power button - matte black */
-	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
-	border: 2px solid #0a0a0a; /* Dark border */
+	background: linear-gradient(145deg, var(--remote-button-base), var(--remote-bg-mid));
+	border: 2px solid var(--remote-border); /* Dark border */
 	box-shadow: 
 		/* Realistic depth */
-		0 4px 8px rgba(0, 0, 0, 0.9),
-		inset 0 2px 0 rgba(255, 255, 255, 0.02), /* Very subtle highlight */
-		inset 0 -2px 3px rgba(0, 0, 0, 0.9); /* Deep shadow */
+		0 4px 8px var(--shadow-black-max),
+		inset 0 2px 0 var(--shadow-white-subtle), /* Very subtle highlight */
+		inset 0 -2px 3px var(--shadow-black-max); /* Deep shadow */
 	cursor: pointer;
 	transition: all var(--transition-base);
 }
 
 .remote-btn.power-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
+	background: linear-gradient(145deg, var(--remote-button-hover), var(--remote-button-base)); /* Slightly brighter */
 	box-shadow: 
-		0 4px 12px rgba(0, 0, 0, 0.9),
-		inset 0 2px 0 rgba(255, 255, 255, 0.04), /* Slightly more highlight */
-		inset 0 -2px 3px rgba(0, 0, 0, 0.9);
+		0 4px 12px var(--shadow-black-max),
+		inset 0 2px 0 var(--shadow-white-medium), /* Slightly more highlight */
+		inset 0 -2px 3px var(--shadow-black-max);
 }
 
 .remote-btn.power-btn:active:not(:disabled) {
@@ -182,7 +182,7 @@
 	border-color: var(--tv-frame-darkest);
 	box-shadow: 
 		0 4px 15px rgba(0, 0, 0, 0.6),
-		inset 0 2px 0 rgba(255, 255, 255, 0.03);
+		inset 0 2px 0 var(--shadow-white-light);
 }
 
 .remote-btn.power-btn:disabled {
@@ -267,7 +267,7 @@
 .remote-btn.num-btn {
 	/* Realistic remote button - matte black */
 	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
-	border: 1.5px solid #0a0a0a; /* Dark, realistic border */
+	border: 1.5px solid var(--remote-border); /* Dark, realistic border */
 	border-radius: var(--radius-sm);
 	color: var(--color-text-dim);
 	font-size: clamp(8px, 0.9vw, 10px);
@@ -279,7 +279,7 @@
 		/* Realistic button depth */
 		0 2px 4px rgba(0, 0, 0, 0.8),
 		inset 0 1px 0 rgba(255,255,255,0.02), /* Very subtle highlight */
-		inset 0 -1px 2px rgba(0, 0, 0, 0.9); /* Deep shadow */
+		inset 0 -1px 2px var(--shadow-black-max); /* Deep shadow */
 	min-height: clamp(26px, 2.8vh, 30px);
 	display: flex;
 	align-items: center;
@@ -287,7 +287,7 @@
 }
 
 .remote-btn.num-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
+	background: linear-gradient(145deg, var(--remote-button-hover), var(--remote-button-base)); /* Slightly brighter */
 	color: var(--color-text-dim);
 	border-color: #151515; /* Subtle border change */
 	box-shadow: 
@@ -364,7 +364,7 @@
 		/* Realistic button depth */
 		0 2px 4px rgba(0, 0, 0, 0.8),
 		inset 0 1px 0 rgba(255,255,255,0.02), /* Very subtle highlight */
-		inset 0 -1px 2px rgba(0, 0, 0, 0.9); /* Deep shadow */
+		inset 0 -1px 2px var(--shadow-black-max); /* Deep shadow */
 }
 
 .remote-btn.dpad-btn.up,
@@ -443,7 +443,7 @@
 }
 
 .remote-btn.category-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
+	background: linear-gradient(145deg, var(--remote-button-hover), var(--remote-button-base)); /* Slightly brighter */
 	color: var(--color-text-dim);
 	border-color: #151515; /* Subtle border change */
 	text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
@@ -477,8 +477,8 @@
 
 .remote-btn.mute-btn {
 	/* Realistic mute button - matte black */
-	background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
-	border: 2px solid #0a0a0a; /* Dark border */
+	background: linear-gradient(145deg, var(--remote-button-base), var(--remote-bg-mid));
+	border: 2px solid var(--remote-border); /* Dark border */
 	color: var(--color-text-dim);
 	font-size: clamp(6px, 0.7vw, 8px);
 	padding: clamp(5px, 0.6vh, 7px) clamp(10px, 1.2vw, 14px);
@@ -503,7 +503,7 @@
 }
 
 .remote-btn.mute-btn:hover:not(:disabled) {
-	background: linear-gradient(145deg, #252525, #1a1a1a); /* Slightly brighter */
+	background: linear-gradient(145deg, var(--remote-button-hover), var(--remote-button-base)); /* Slightly brighter */
 	color: var(--color-text-dim);
 	border-color: #151515;
 }
