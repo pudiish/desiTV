@@ -614,9 +614,10 @@
 	}
 	
 	.tv-brand-logo .brand-text {
-		font-size: clamp(8px, 2.2vw, 11px) !important;
-		letter-spacing: clamp(0.3px, 0.08vw, 1px) !important;
-		color: #555555 !important;
+		font-size: clamp(6px, 1.5vw, 8px) !important;
+		letter-spacing: clamp(0.2px, 0.05vw, 0.8px) !important;
+		color: #444444 !important;
+		font-weight: 500 !important;
 	}
 	
 	.tv-brand-logo .brand-model {
@@ -713,7 +714,9 @@
 	}
 	
 	.tv-brand-logo .brand-text {
-		font-size: clamp(7px, 1.8vh, 10px) !important;
+		font-size: clamp(5px, 1.2vh, 7px) !important;
+		font-weight: 500 !important;
+		color: #444444 !important;
 	}
 	
 	.tv-brand-logo .brand-model {
@@ -803,12 +806,11 @@
 
 .tv-brand-logo .brand-text {
 	font-family: Arial, sans-serif;
-	font-size: clamp(9px, 1vw, 12px);
-	font-weight: 700;
-	letter-spacing: clamp(0.5px, 0.1vw, 1.5px);
+	font-size: clamp(7px, 0.8vw, 10px);
+	font-weight: 500;
+	letter-spacing: clamp(0.3px, 0.08vw, 1px);
 	text-transform: uppercase;
-	color: #4a4a4a;
-	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+	color: #404040;
 }
 
 .tv-brand-logo .brand-model {
@@ -832,11 +834,18 @@
 	margin-left: clamp(2px, 0.3vw, 4px);
 }
 
-/* LED on */
-.tv-frame:has(.tv-screen:not(.tv-off-screen)) .tv-brand-logo::after {
+/* LED on - syncs with remote power state */
+.tv-frame.tv-frame-power-on .tv-brand-logo::after {
 	background: radial-gradient(circle at 30% 30%, #50ff50, #00aa00);
 	box-shadow: 0 0 3px #00ff00, 0 0 6px rgba(0, 255, 0, 0.4);
 	animation: led-pulse 2s ease-in-out infinite;
+}
+
+/* LED off - when power is off */
+.tv-frame.tv-frame-power-off .tv-brand-logo::after {
+	background: #151515;
+	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+	animation: none;
 }
 
 @keyframes led-pulse {

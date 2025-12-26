@@ -221,7 +221,7 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			ref={tvFrameRef}
 		>
 <div 
-			className="tv-frame bpl-sanyo-style"
+			className={`tv-frame bpl-sanyo-style ${power ? 'tv-frame-power-on' : 'tv-frame-power-off'}`}
 			onMouseEnter={() => { setShowPreview(true); }}
 			onMouseLeave={() => { setShowPreview(false); }}
 			style={isFullscreen ? {
