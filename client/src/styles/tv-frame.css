@@ -344,143 +344,261 @@
 	opacity: 0.7;
 }
 
-/* Mobile: Unified frame - screen + console as one solid block */
+/* ============================================
+   MOBILE VIEW - Clean, focused viewing experience
+   No fullscreen - optimized for portrait viewing
+   ============================================ */
 @media (max-width: 768px) {
+	/* Mobile frame container - centered, no padding issues */
+	.tv-frame-container {
+		width: 100% !important;
+		height: auto !important;
+		display: flex !important;
+		align-items: flex-start !important;
+		justify-content: center !important;
+		padding: 10px !important;
+		box-sizing: border-box !important;
+	}
+	
+	/* Custom mobile TV frame - optimized for any phone */
 	.tv-frame {
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
 		aspect-ratio: unset !important;
 		min-height: fit-content !important;
-		height: auto !important;
-		/* Unified frame - wraps both screen and console */
-		padding: clamp(8px, 2.5vw, 14px) !important;
-		padding-bottom: clamp(6px, 1.5vw, 10px) !important;
-		overflow: visible !important;
-		contain: none !important;
+		
+		/* Unified frame styling */
+		padding: clamp(10px, 3vw, 16px) !important;
+		padding-bottom: clamp(8px, 2vw, 12px) !important;
+		border-radius: clamp(12px, 3.5vw, 18px) !important;
+		
+		/* Clean, warm charcoal frame */
+		background: linear-gradient(180deg, 
+			#383838 0%,
+			#2c2c2c 20%,
+			#242424 60%,
+			#1c1c1c 100%
+		) !important;
+		
+		/* Subtle, elegant shadow */
+		box-shadow:
+			0 4px 16px rgba(0, 0, 0, 0.4),
+			0 2px 6px rgba(0, 0, 0, 0.25),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06),
+			inset 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+		
+		/* Flex layout */
 		display: flex !important;
 		flex-direction: column !important;
-		border-radius: clamp(14px, 4vw, 22px) !important;
+		align-items: center !important;
 		gap: 0 !important;
-		/* Solid frame background */
-		background: linear-gradient(180deg, 
-			#3a3a3a 0%,
-			#2d2d2d 15%,
-			#252525 50%,
-			#1f1f1f 85%,
-			#1a1a1a 100%
-		) !important;
-		box-shadow:
-			0 6px 20px rgba(0, 0, 0, 0.5),
-			0 3px 10px rgba(0, 0, 0, 0.3),
-			inset 0 1px 2px rgba(255, 255, 255, 0.08),
-			inset 0 -1px 3px rgba(0, 0, 0, 0.4) !important;
+		overflow: visible !important;
+		contain: none !important;
 	}
 	
+	/* Mobile screen - clean and focused */
 	.tv-screen {
-		aspect-ratio: 4/3 !important;
-		flex: 0 0 auto;
 		width: 100% !important;
-		border-radius: clamp(6px, 1.5vw, 10px) !important;
+		aspect-ratio: 4/3 !important;
+		flex: 0 0 auto !important;
+		border-radius: clamp(6px, 1.8vw, 10px) !important;
+		border-width: clamp(2px, 0.5vw, 4px) !important;
+		
+		/* Subtle inner glow for depth */
+		box-shadow: 
+			0 0 0 1px #1a1a1a,
+			inset 0 3px 12px rgba(0, 0, 0, 0.5),
+			inset 0 -2px 8px rgba(0, 0, 0, 0.35),
+			inset 2px 0 8px rgba(0, 0, 0, 0.25),
+			inset -2px 0 8px rgba(0, 0, 0, 0.25) !important;
 	}
 	
-	/* Mobile control bar - blends into frame */
+	/* Mobile control bar - compact and integrated */
 	.tv-control-bar {
 		width: 100% !important;
 		height: auto !important;
 		flex: 0 0 auto !important;
 		margin: 0 !important;
-		margin-top: clamp(6px, 1.5vw, 10px) !important;
-		padding: 0 !important;
-		border-radius: 0 !important;
-		/* Transparent - part of the unified frame */
-		background: transparent !important;
-		box-shadow: none !important;
+		margin-top: clamp(8px, 2vw, 12px) !important;
+		padding: clamp(4px, 1vw, 8px) clamp(2px, 0.5vw, 4px) !important;
+		border-radius: clamp(6px, 1.5vw, 10px) !important;
+		
+		/* Subtle control panel background */
+		background: linear-gradient(180deg, 
+			rgba(50, 50, 50, 0.6) 0%,
+			rgba(35, 35, 35, 0.4) 100%
+		) !important;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+		
 		display: flex !important;
 		align-items: center !important;
 		justify-content: space-between !important;
-		gap: clamp(4px, 1vw, 8px) !important;
+		gap: clamp(6px, 1.5vw, 10px) !important;
 		position: relative !important;
-		z-index: 100 !important;
+		z-index: 10 !important;
 	}
 	
 	.tv-control-bar::before { display: none !important; }
 	
-	/* Buttons - right side */
+	/* Mobile buttons container */
 	.tv-control-buttons {
 		display: flex !important;
 		align-items: center !important;
-		gap: clamp(2px, 0.6vw, 4px) !important;
+		gap: clamp(4px, 1.2vw, 8px) !important;
 		flex-wrap: nowrap !important;
 		justify-content: flex-end !important;
-		flex: 0 0 auto !important;
+		flex: 1 1 auto !important;
 		margin-left: auto !important;
 	}
 	
+	/* Mobile control buttons - touch-friendly size */
 	.tv-btn {
-		width: clamp(20px, 5vw, 26px) !important;
-		height: clamp(20px, 5vw, 26px) !important;
-		min-width: clamp(20px, 5vw, 26px) !important;
-		min-height: clamp(20px, 5vw, 26px) !important;
+		width: clamp(28px, 7vw, 36px) !important;
+		height: clamp(28px, 7vw, 36px) !important;
+		min-width: clamp(28px, 7vw, 36px) !important;
+		min-height: clamp(28px, 7vw, 36px) !important;
 		border-radius: 50% !important;
-		background: linear-gradient(145deg, #3a3a3a 0%, #282828 50%, #1a1a1a 100%) !important;
+		
+		background: linear-gradient(145deg, #404040 0%, #303030 50%, #222222 100%) !important;
 		box-shadow: 
-			inset 0 1px 1px rgba(255, 255, 255, 0.06), 
-			inset 0 -1px 1px rgba(0, 0, 0, 0.25),
-			0 1px 2px rgba(0, 0, 0, 0.2) !important;
+			inset 0 1px 1px rgba(255, 255, 255, 0.08), 
+			inset 0 -1px 1px rgba(0, 0, 0, 0.3),
+			0 2px 4px rgba(0, 0, 0, 0.25) !important;
+		
 		flex-shrink: 0 !important;
+		-webkit-tap-highlight-color: transparent !important;
+		touch-action: manipulation !important;
 	}
 	
 	.tv-btn:active {
-		transform: scale(0.95) !important;
+		transform: scale(0.92) !important;
+		background: linear-gradient(145deg, #353535 0%, #282828 50%, #1c1c1c 100%) !important;
 	}
 	
 	.tv-btn .btn-icon {
-		width: clamp(9px, 2.2vw, 12px) !important;
-		height: clamp(9px, 2.2vw, 12px) !important;
-		opacity: 0.45 !important;
-		stroke: rgba(255, 255, 255, 0.55) !important;
+		width: clamp(12px, 3vw, 16px) !important;
+		height: clamp(12px, 3vw, 16px) !important;
+		opacity: 0.55 !important;
+		stroke: rgba(255, 255, 255, 0.65) !important;
 	}
 	
 	.tv-btn .btn-label {
 		display: none !important;
 	}
 	
+	/* Power button - slightly larger, red tint */
 	.tv-btn.power {
-		width: clamp(22px, 5.5vw, 28px) !important;
-		height: clamp(22px, 5.5vw, 28px) !important;
-		min-width: clamp(22px, 5.5vw, 28px) !important;
-		min-height: clamp(22px, 5.5vw, 28px) !important;
-		background: linear-gradient(145deg, #3a2828 0%, #2a1a1a 50%, #1a0a0a 100%) !important;
+		width: clamp(32px, 8vw, 40px) !important;
+		height: clamp(32px, 8vw, 40px) !important;
+		min-width: clamp(32px, 8vw, 40px) !important;
+		min-height: clamp(32px, 8vw, 40px) !important;
+		background: linear-gradient(145deg, #442828 0%, #322020 50%, #221414 100%) !important;
+	}
+	
+	.tv-btn.power:active {
+		background: linear-gradient(145deg, #3a2222 0%, #2a1a1a 50%, #1c1010 100%) !important;
 	}
 	
 	.tv-btn.power .btn-icon {
-		width: clamp(10px, 2.5vw, 13px) !important;
-		height: clamp(10px, 2.5vw, 13px) !important;
-		stroke: rgba(255, 180, 180, 0.65) !important;
+		width: clamp(14px, 3.5vw, 18px) !important;
+		height: clamp(14px, 3.5vw, 18px) !important;
+		stroke: rgba(255, 160, 160, 0.7) !important;
 	}
 	
-	/* Brand logo - left side */
+	/* HIDE FULLSCREEN BUTTON ON MOBILE */
+	.tv-btn.fullscreen-btn {
+		display: none !important;
+	}
+	
+	/* Brand logo - left side, compact */
 	.tv-brand-logo {
 		margin-left: 0 !important;
 		margin-right: auto !important;
-		gap: clamp(2px, 0.5vw, 4px) !important;
+		gap: clamp(3px, 0.8vw, 6px) !important;
 		flex: 0 0 auto !important;
 		order: -1 !important;
+		padding-left: clamp(2px, 0.5vw, 4px) !important;
 	}
 	
 	.tv-brand-logo .brand-text {
-		font-size: clamp(7px, 1.8vw, 10px) !important;
-		letter-spacing: clamp(0.2px, 0.05vw, 0.8px) !important;
-		color: #454545 !important;
+		font-size: clamp(8px, 2.2vw, 11px) !important;
+		letter-spacing: clamp(0.3px, 0.08vw, 1px) !important;
+		color: #555555 !important;
 	}
 	
 	.tv-brand-logo .brand-model {
-		font-size: clamp(5px, 1.2vw, 7px) !important;
-		color: #3a3a3a !important;
+		font-size: clamp(6px, 1.5vw, 8px) !important;
+		color: #444444 !important;
 	}
 	
 	.tv-brand-logo::after {
-		width: clamp(3px, 0.8vw, 4px) !important;
-		height: clamp(3px, 0.8vw, 4px) !important;
-		margin-left: clamp(1px, 0.3vw, 2px) !important;
+		width: clamp(4px, 1vw, 6px) !important;
+		height: clamp(4px, 1vw, 6px) !important;
+		margin-left: clamp(2px, 0.5vw, 4px) !important;
+	}
+	
+	/* Hide decorative elements that don't work well on mobile */
+	.tv-frame::before {
+		display: none !important;
+	}
+	
+	.tv-frame::after {
+		display: none !important;
+	}
+}
+
+/* ============================================
+   MOBILE LANDSCAPE - Maximized viewing
+   ============================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+	.tv-frame-container {
+		padding: 5px !important;
+		align-items: center !important;
+	}
+	
+	.tv-frame {
+		max-width: min(calc(95vh * 1.333), 95vw) !important;
+		width: auto !important;
+		padding: clamp(6px, 1.5vh, 10px) !important;
+		padding-bottom: clamp(4px, 1vh, 8px) !important;
+	}
+	
+	.tv-control-bar {
+		margin-top: clamp(4px, 1vh, 8px) !important;
+		padding: clamp(2px, 0.5vh, 4px) !important;
+	}
+	
+	.tv-btn {
+		width: clamp(24px, 5vh, 32px) !important;
+		height: clamp(24px, 5vh, 32px) !important;
+		min-width: clamp(24px, 5vh, 32px) !important;
+		min-height: clamp(24px, 5vh, 32px) !important;
+	}
+	
+	.tv-btn.power {
+		width: clamp(28px, 6vh, 36px) !important;
+		height: clamp(28px, 6vh, 36px) !important;
+		min-width: clamp(28px, 6vh, 36px) !important;
+		min-height: clamp(28px, 6vh, 36px) !important;
+	}
+	
+	.tv-btn .btn-icon {
+		width: clamp(10px, 2.5vh, 14px) !important;
+		height: clamp(10px, 2.5vh, 14px) !important;
+	}
+	
+	.tv-btn.power .btn-icon {
+		width: clamp(12px, 3vh, 16px) !important;
+		height: clamp(12px, 3vh, 16px) !important;
+	}
+	
+	.tv-brand-logo .brand-text {
+		font-size: clamp(7px, 1.8vh, 10px) !important;
+	}
+	
+	.tv-brand-logo .brand-model {
+		font-size: clamp(5px, 1.2vh, 7px) !important;
 	}
 }
 

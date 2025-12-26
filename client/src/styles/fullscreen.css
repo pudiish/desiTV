@@ -638,130 +638,41 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 }
 
 /* ===========================================
-   MOBILE FULLSCREEN - MAXIMUM TV SIZE
+   MOBILE - NO FULLSCREEN SUPPORT
+   Fullscreen is desktop-only feature
    =========================================== */
 
 @media (max-width: 767px) {
-	.tv-frame-container:fullscreen .tv-frame,
-	.tv-frame-container:-webkit-full-screen .tv-frame,
-	.tv-frame-container.ios-fullscreen-active .tv-frame {
-		/* Mobile portrait: MAXIMIZE - use min() for best fit */
-		width: min(calc(99vh * 1.333), 99vw) !important;
-		min-width: min(calc(99vh * 1.333), 99vw) !important;
-		max-width: min(calc(99vh * 1.333), 99vw) !important;
-		height: min(99vh, calc(99vw * 0.75)) !important;
-		min-height: min(99vh, calc(99vw * 0.75)) !important;
-		max-height: min(99vh, calc(99vw * 0.75)) !important;
-		aspect-ratio: 4/3 !important;
-		
-		/* Slightly smaller padding for mobile */
-		padding: 2% 3% 3% 3% !important;
-		border-radius: clamp(12px, 2vw, 20px) !important;
-	}
-	
-	.tv-frame-container:fullscreen,
-	.tv-frame-container:-webkit-full-screen,
-	.tv-frame-container.ios-fullscreen-active {
-		/* Zero padding to maximize TV size */
-		padding: 0 !important;
-	}
-	
-	/* Smaller control bar on mobile */
-	.tv-frame-container:fullscreen .tv-control-bar,
-	.tv-frame-container:-webkit-full-screen .tv-control-bar,
-	.tv-frame-container.ios-fullscreen-active .tv-control-bar {
-		margin-top: clamp(6px, 1vh, 10px) !important;
-	}
-	
-	/* Smaller buttons on mobile */
-	.tv-frame-container:fullscreen .tv-btn,
-	.tv-frame-container:-webkit-full-screen .tv-btn,
-	.tv-frame-container.ios-fullscreen-active .tv-btn {
-		width: clamp(28px, 6vw, 36px) !important;
-		height: clamp(28px, 6vw, 36px) !important;
-		min-width: clamp(28px, 6vw, 36px) !important;
-		min-height: clamp(28px, 6vw, 36px) !important;
-	}
-	
-	/* Smaller brand logo on mobile */
-	.tv-frame-container:fullscreen .tv-brand-logo,
-	.tv-frame-container:-webkit-full-screen .tv-brand-logo,
-	.tv-frame-container.ios-fullscreen-active .tv-brand-logo {
-		bottom: clamp(6px, 1vw, 10px) !important;
-		right: clamp(6px, 1vw, 10px) !important;
-	}
-	
-	.tv-frame-container:fullscreen .tv-brand-logo .brand-text,
-	.tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-text,
-	.tv-frame-container.ios-fullscreen-active .tv-brand-logo .brand-text {
-		font-size: clamp(10px, 2.5vw, 14px) !important;
-	}
-	
-	.tv-frame-container:fullscreen .tv-brand-logo .brand-model,
-	.tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-model,
-	.tv-frame-container.ios-fullscreen-active .tv-brand-logo .brand-model {
-		font-size: clamp(6px, 1.5vw, 9px) !important;
-	}
-}
-
-/* ===========================================
-   LANDSCAPE MOBILE - MAXIMUM TV SIZE
-   =========================================== */
-
-@media (max-width: 767px) and (orientation: landscape) {
-	.tv-frame-container:fullscreen .tv-frame,
-	.tv-frame-container:-webkit-full-screen .tv-frame,
-	.tv-frame-container.ios-fullscreen-active .tv-frame {
-		/* Landscape mobile: MAXIMIZE - 99% of available space */
-		width: min(calc(99vh * 1.333), 99vw) !important;
-		min-width: min(calc(99vh * 1.333), 99vw) !important;
-		max-width: min(calc(99vh * 1.333), 99vw) !important;
-		height: min(99vh, calc(99vw * 0.75)) !important;
-		min-height: min(99vh, calc(99vw * 0.75)) !important;
-		max-height: min(99vh, calc(99vw * 0.75)) !important;
-		aspect-ratio: 4/3 !important;
-		
-		/* Tight padding for landscape */
-		padding: 1.5% 2% 2.5% 2% !important;
-		border-radius: clamp(10px, 1.5vw, 16px) !important;
-	}
-	
-	.tv-frame-container:fullscreen,
-	.tv-frame-container:-webkit-full-screen,
-	.tv-frame-container.ios-fullscreen-active {
-		/* Zero padding to maximize TV size */
-		padding: 0 !important;
-	}
-	
-	/* Compact control bar in landscape */
-	.tv-frame-container:fullscreen .tv-control-bar,
-	.tv-frame-container:-webkit-full-screen .tv-control-bar,
-	.tv-frame-container.ios-fullscreen-active .tv-control-bar {
-		margin-top: clamp(4px, 0.8vh, 8px) !important;
-	}
-	
-	/* Even smaller buttons in landscape mobile */
-	.tv-frame-container:fullscreen .tv-btn,
-	.tv-frame-container:-webkit-full-screen .tv-btn,
-	.tv-frame-container.ios-fullscreen-active .tv-btn {
-		width: clamp(24px, 5vh, 32px) !important;
-		height: clamp(24px, 5vh, 32px) !important;
-		min-width: clamp(24px, 5vh, 32px) !important;
-		min-height: clamp(24px, 5vh, 32px) !important;
-	}
-	
-	/* Smaller icons in landscape */
-	.tv-frame-container:fullscreen .tv-btn .btn-icon,
-	.tv-frame-container:-webkit-full-screen .tv-btn .btn-icon,
-	.tv-frame-container.ios-fullscreen-active .tv-btn .btn-icon {
-		width: clamp(12px, 2.5vh, 16px) !important;
-		height: clamp(12px, 2.5vh, 16px) !important;
-	}
-	
-	/* Hide button labels in landscape to save space */
-	.tv-frame-container:fullscreen .tv-btn .btn-label,
-	.tv-frame-container:-webkit-full-screen .tv-btn .btn-label,
-	.tv-frame-container.ios-fullscreen-active .tv-btn .btn-label {
+	/* Hide fullscreen button on mobile */
+	.tv-btn.fullscreen-btn {
 		display: none !important;
+	}
+	
+	/* Prevent any fullscreen classes from activating on mobile */
+	.tv-frame-container.ios-fullscreen-active {
+		position: relative !important;
+		width: 100% !important;
+		height: auto !important;
+		inset: unset !important;
+		z-index: auto !important;
+		background: transparent !important;
+		padding: 10px !important;
+	}
+	
+	.tv-frame-container.ios-fullscreen-active .tv-frame {
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
+		min-height: unset !important;
+		max-height: unset !important;
+	}
+	
+	/* Reset body/html classes on mobile */
+	html.ios-fullscreen-active,
+	body.ios-fullscreen-active {
+		position: relative !important;
+		width: auto !important;
+		height: auto !important;
+		overflow: auto !important;
 	}
 }

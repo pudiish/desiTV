@@ -37,11 +37,17 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}
 
-	const toggleFullscreen = useCallback(() => {
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+	// Check if mobile device
+	const isMobileDevice = () => {
+		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
+	}
+
+	const toggleFullscreen = useCallback(() => {
+		// NO FULLSCREEN ON MOBILE - return early
+		if (isMobileDevice()) {
+			return
+		}
 
 		const isCurrentlyFullscreen = !!(
 			document.fullscreenElement ||
@@ -76,47 +82,32 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 				onFullscreenChange(false)
 			}
 		} else {
-			// Enter fullscreen
-			if (isIOS || isMobile) {
-				// Mobile: CSS-based fullscreen
-				document.documentElement.classList.add('ios-fullscreen-active')
-				document.body.classList.add('ios-fullscreen-active')
-				if (tvFrameRef.current) {
-					tvFrameRef.current.classList.add('ios-fullscreen-active')
-				}
-				setIsFullscreen(true)
-				if (onFullscreenChange) {
-					onFullscreenChange(true)
-				}
-			} else {
-				// Desktop: Standard Fullscreen API
-				const element = tvFrameRef.current
-				if (element) {
-					const promise = element.requestFullscreen?.() ||
-						element.webkitRequestFullscreen?.() ||
-						element.mozRequestFullScreen?.() ||
-						element.msRequestFullscreen?.()
-					
-					if (promise) {
-						promise.then(() => {
-							// Fullscreen API succeeded - update state
-							setIsFullscreen(true)
-							if (onFullscreenChange) {
-								onFullscreenChange(true)
-							}
-						}).catch(() => {
-							// Fallback to CSS fullscreen
-							document.documentElement.classList.add('ios-fullscreen-active')
-							document.body.classList.add('ios-fullscreen-active')
-							if (tvFrameRef.current) {
-								tvFrameRef.current.classList.add('ios-fullscreen-active')
-							}
-							setIsFullscreen(true)
-							if (onFullscreenChange) {
-								onFullscreenChange(true)
-							}
-						})
-					}
+			// Desktop only: Standard Fullscreen API
+			const element = tvFrameRef.current
+			if (element) {
+				const promise = element.requestFullscreen?.() ||
+					element.webkitRequestFullscreen?.() ||
+					element.mozRequestFullScreen?.() ||
+					element.msRequestFullscreen?.()
+				
+				if (promise) {
+					promise.then(() => {
+						setIsFullscreen(true)
+						if (onFullscreenChange) {
+							onFullscreenChange(true)
+						}
+					}).catch(() => {
+						// Fallback to CSS fullscreen for desktop
+						document.documentElement.classList.add('ios-fullscreen-active')
+						document.body.classList.add('ios-fullscreen-active')
+						if (tvFrameRef.current) {
+							tvFrameRef.current.classList.add('ios-fullscreen-active')
+						}
+						setIsFullscreen(true)
+						if (onFullscreenChange) {
+							onFullscreenChange(true)
+						}
+					})
 				}
 			}
 		}
@@ -220,169 +211,8 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 		}
 	}, [toggleFullscreen, onFullscreenChange])
 
-	// Handle orientation change - auto fullscreen on landscape (mobile only)
-	useEffect(() => {
-		// Detect iOS specifically
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-		
-		// Detect mobile device
-		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-			(window.innerWidth <= 768 && 'ontouchstart' in window)
-
-		if (!isMobile) return // Only for mobile devices
-
-		// Check if currently in landscape
-		const checkIsLandscape = () => {
-			return window.innerWidth > window.innerHeight || 
-				   window.matchMedia('(orientation: landscape)').matches ||
-				   (window.screen && window.screen.orientation && 
-				    (window.screen.orientation.angle === 90 || window.screen.orientation.angle === -90))
-		}
-
-		// Check if currently in fullscreen
-		const checkIsFullscreen = () => {
-			return !!(
-				document.fullscreenElement ||
-				document.webkitFullscreenElement ||
-				document.mozFullScreenElement ||
-				document.msFullscreenElement ||
-				document.body.classList.contains('ios-fullscreen-active') ||
-				(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
-			)
-		}
-
-		const handleOrientationChange = () => {
-			// Multiple checks with delays to handle all orientation change scenarios
-			const checks = [0, 100, 300, 500] // Progressive delays
-			
-			checks.forEach(delay => {
-				setTimeout(() => {
-					const isLandscape = checkIsLandscape()
-					const isCurrentlyFullscreen = checkIsFullscreen()
-
-					if (isLandscape && !isCurrentlyFullscreen && power) {
-						// Rotated to landscape - enter fullscreen IMMEDIATELY
-						if (isIOS) {
-							// iOS: Use CSS-based fullscreen to fill browser viewport
-							document.body.classList.add('ios-fullscreen-active')
-							document.documentElement.classList.add('ios-fullscreen-active')
-							if (tvFrameRef.current) {
-								tvFrameRef.current.classList.add('ios-fullscreen-active')
-							}
-							setIsFullscreen(true)
-							if (onFullscreenChange) {
-								onFullscreenChange(true)
-							}
-						} else {
-							// Android/Other: Try Fullscreen API first, fallback to CSS
-							const iframeContainer = document.getElementById('desitv-player-iframe')
-							if (iframeContainer) {
-								try {
-									// Try iframe container first
-									if (iframeContainer.requestFullscreen) {
-										iframeContainer.requestFullscreen().catch(() => {
-											// Fallback to CSS fullscreen
-											enterCSSFullscreen()
-										})
-									} else if (iframeContainer.webkitRequestFullscreen) {
-										iframeContainer.webkitRequestFullscreen()
-									} else {
-										enterCSSFullscreen()
-									}
-								} catch (error) {
-									// Fallback to CSS fullscreen
-									enterCSSFullscreen()
-								}
-							} else {
-								enterCSSFullscreen()
-							}
-						}
-					} else if (!isLandscape && isCurrentlyFullscreen) {
-						// Rotated to portrait - exit fullscreen
-						if (isIOS) {
-							// iOS: Remove CSS fullscreen classes
-							document.body.classList.remove('ios-fullscreen-active')
-							document.documentElement.classList.remove('ios-fullscreen-active')
-							if (tvFrameRef.current) {
-								tvFrameRef.current.classList.remove('ios-fullscreen-active')
-							}
-							setIsFullscreen(false)
-							if (onFullscreenChange) {
-								onFullscreenChange(false)
-							}
-						} else {
-							// Android/Other: Use Fullscreen API exit
-							try {
-								if (document.exitFullscreen) {
-									document.exitFullscreen().catch(() => {
-										exitCSSFullscreen()
-									})
-								} else if (document.webkitExitFullscreen) {
-									document.webkitExitFullscreen()
-								} else if (document.mozCancelFullScreen) {
-									document.mozCancelFullScreen()
-								} else if (document.msExitFullscreen) {
-									document.msExitFullscreen()
-								} else {
-									exitCSSFullscreen()
-								}
-							} catch (error) {
-								exitCSSFullscreen()
-							}
-						}
-					}
-				}, delay)
-			})
-		}
-
-		// CSS fullscreen helper (fallback for all platforms)
-		const enterCSSFullscreen = () => {
-			document.body.classList.add('ios-fullscreen-active')
-			document.documentElement.classList.add('ios-fullscreen-active')
-			if (tvFrameRef.current) {
-				tvFrameRef.current.classList.add('ios-fullscreen-active')
-			}
-			setIsFullscreen(true)
-			if (onFullscreenChange) {
-				onFullscreenChange(true)
-			}
-		}
-
-		const exitCSSFullscreen = () => {
-			document.body.classList.remove('ios-fullscreen-active')
-			document.documentElement.classList.remove('ios-fullscreen-active')
-			if (tvFrameRef.current) {
-				tvFrameRef.current.classList.remove('ios-fullscreen-active')
-			}
-			setIsFullscreen(false)
-			if (onFullscreenChange) {
-				onFullscreenChange(false)
-			}
-		}
-
-		// Check initial orientation
-		if (checkIsLandscape() && power && !checkIsFullscreen()) {
-			handleOrientationChange()
-		}
-
-		// Listen to orientation change events
-		window.addEventListener('orientationchange', handleOrientationChange)
-		window.addEventListener('resize', handleOrientationChange)
-		
-		// Also listen to screen orientation API if available
-		if (window.screen && window.screen.orientation) {
-			window.screen.orientation.addEventListener('change', handleOrientationChange)
-		}
-
-		return () => {
-			window.removeEventListener('orientationchange', handleOrientationChange)
-			window.removeEventListener('resize', handleOrientationChange)
-			if (window.screen && window.screen.orientation) {
-				window.screen.orientation.removeEventListener('change', handleOrientationChange)
-			}
-		}
-	}, [power, onFullscreenChange, setIsFullscreen])
+	// NO AUTO-FULLSCREEN ON MOBILE
+	// Mobile users view content in normal mode - no orientation-triggered fullscreen
 
 
 	return (
