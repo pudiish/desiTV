@@ -36,8 +36,9 @@ export default function Landing() {
 			<div className="landing-content-single">
 				{/* Hero */}
 				<div className="landing-hero">
-					<h1 className="hero-title">DesiTV</h1>
-					<p className="hero-subtitle">24/7 Indian Entertainment</p>
+					<h1 className="hero-title">DesiTV™</h1>
+					<p className="hero-subtitle">Purana Zamana, Naya Andaaz</p>
+					<p className="hero-tagline">🎬 Retro Indian Entertainment</p>
 				</div>
 
 				{/* Features - Minimal */}
@@ -47,24 +48,24 @@ export default function Landing() {
 						onMouseEnter={() => setHoveredItem('free')}
 						onMouseLeave={() => setHoveredItem(null)}
 					>
-						<span>FREE</span>
-						{hoveredItem === 'free' && <div className="tooltip">No subscriptions, no payments</div>}
+						<span>MUFT MEIN</span>
+						{hoveredItem === 'free' && <div className="tooltip">Bilkul free, koi subscription nahi</div>}
 					</div>
 					<div 
 						className="feature-badge"
 						onMouseEnter={() => setHoveredItem('live')}
 						onMouseLeave={() => setHoveredItem(null)}
 					>
-						<span>LIVE</span>
-						{hoveredItem === 'live' && <div className="tooltip">Continuous 24/7 broadcasts</div>}
+						<span>24/7 LIVE</span>
+						{hoveredItem === 'live' && <div className="tooltip">Din raat non-stop entertainment</div>}
 					</div>
 					<div 
 						className="feature-badge"
 						onMouseEnter={() => setHoveredItem('desi')}
 						onMouseLeave={() => setHoveredItem(null)}
 					>
-						<span>DESI</span>
-						{hoveredItem === 'desi' && <div className="tooltip">Indian movies, music, shows</div>}
+						<span>FULL DESI</span>
+						{hoveredItem === 'desi' && <div className="tooltip">Bollywood, Indie, Classics sab kuch</div>}
 					</div>
 				</div>
 
@@ -78,10 +79,10 @@ export default function Landing() {
 						{isLoading ? (
 							<>
 								<span className="loader"></span>
-								{cleanupComplete ? 'LOADING...' : 'PREPARING...'}
+								{cleanupComplete ? 'CHALO...' : 'TAIYAAR HO RAHE HAIN...'}
 							</>
 						) : (
-							<>▶ TUNE IN</>
+							<>📺 TUNE KARO</>
 						)}
 					</button>
 				</div>
@@ -89,10 +90,10 @@ export default function Landing() {
 				{/* Controls Hint */}
 				<div className="controls-hint">
 					<div className="hint-item">
-						<kbd>◄</kbd><kbd>►</kbd> <span>Channels</span>
+						<kbd>↑</kbd><kbd>↓</kbd> <span>Channel Badlo</span>
 					</div>
 					<div className="hint-item">
-						<kbd>+</kbd><kbd>-</kbd> <span>Volume</span>
+						<kbd>←</kbd><kbd>→</kbd> <span>Volume</span>
 					</div>
 					<div className="hint-item">
 						<kbd>ESC</kbd> <span>Menu</span>

@@ -2070,7 +2070,7 @@ onBufferingChange = null,
 	if (!channel) {
 		return (
 			<div className="player-wrapper player-loading">
-				<div className="tv-off-message">NO CHANNEL</div>
+				<div className="tv-off-message">CHANNEL SELECT KARO</div>
 			</div>
 		)
 	}
@@ -2078,7 +2078,7 @@ onBufferingChange = null,
 	if (items.length === 0) {
 		return (
 			<div className="player-wrapper player-loading">
-				<div className="tv-off-message">NO VIDEOS IN CHANNEL</div>
+				<div className="tv-off-message">IS CHANNEL MEIN VIDEO NAHI</div>
 			</div>
 		)
 	}
@@ -2086,7 +2086,7 @@ onBufferingChange = null,
 	if (!current) {
 		return (
 			<div className="player-wrapper player-loading">
-				<div className="tv-off-message">LOADING VIDEO...</div>
+				<div className="tv-off-message">VIDEO AA RAHA HAI...</div>
 			</div>
 		)
 }
@@ -2177,19 +2177,19 @@ return (
 						fontSize: '24px',
 						textShadow: '0 0 10px rgba(212, 165, 116, 0.6), 0 0 20px rgba(212, 165, 116, 0.3)',
 						marginBottom: '8px'
-					}}>TAP TO START TV</h2>
+					}}>TV CHALU KARO</h2>
 					<p style={{ 
 						color: '#888', 
 						fontFamily: 'monospace',
 						fontSize: '14px',
 						marginBottom: '16px'
-					}}>Experience retro television</p>
+					}}>Purana Zamana, Naya Andaaz</p>
 					<div style={{ 
 						color: '#fff', 
 						fontFamily: 'monospace',
 						fontSize: '16px',
 						animation: 'pulse 2s infinite'
-					}}>👆 Tap anywhere</div>
+					}}>👆 Yahan Touch Karo</div>
 				</div>
 			)}
 			{/* Tap to unmute indicator - only show when muted autoplay is active and user hasn't interacted */}
@@ -2214,7 +2214,7 @@ return (
 						pointerEvents: 'auto',
 					}}
 				>
-					🔇 TAP FOR SOUND
+					🔇 AWAAZ KE LIYE TOUCH KARO
 				</div>
 			)}
 			{/* Retry indicator overlay */}

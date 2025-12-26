@@ -8,6 +8,8 @@
     "dev": "nodemon index.js --watch ./",
     "start": "node index.js",
     "seed": "node seed.js",
+    "reorganize": "node reorganize-channels.js",
+    "fetch-metadata": "node scripts/fetch-video-metadata.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

@@ -40,11 +40,21 @@
 }
 
 .hero-subtitle {
-	font-size: clamp(0.9rem, 2vw, 1.1rem);
+	font-size: clamp(1rem, 2.2vw, 1.3rem);
 	color: var(--color-text-dim);
 	margin: 0;
-	letter-spacing: 2px;
+	letter-spacing: 3px;
 	font-family: var(--font-primary);
+	font-style: italic;
+}
+
+.hero-tagline {
+	font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+	color: var(--color-text-muted);
+	margin: var(--spacing-md) 0 0 0;
+	letter-spacing: 1px;
+	font-family: var(--font-primary);
+	opacity: 0.8;
 }
 
 /* Features - Minimal Badges */

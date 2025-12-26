@@ -5,6 +5,8 @@ import { analytics, performanceMonitor } from '../services/analytics'
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
+import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgramming'
+import { useEasterEggs } from '../hooks/useEasterEggs'
 
 // Lazy load heavy components that aren't always visible
 const TVMenuV2 = lazy(() => import('../components/tv').then(m => ({ default: m.TVMenuV2 })))
@@ -28,7 +30,7 @@ export default function Home() {
 	const [volume, setVolume] = useState(0.5)
 	const [prevVolume, setPrevVolume] = useState(0.5) // For mute toggle
 	const [staticActive, setStaticActive] = useState(false)
-	const [statusMessage, setStatusMessage] = useState('WELCOME BACK! CLICK ON POWER BUTTON TO BEGIN JOURNEY.')
+	const [statusMessage, setStatusMessage] = useState(`${getTimeBasedGreeting()} POWER BUTTON DABAO AUR SHURU KARO!`)
 	const [isBuffering, setIsBuffering] = useState(false)
 	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
 	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
@@ -40,6 +42,15 @@ export default function Home() {
 	const [remoteOverlayVisible, setRemoteOverlayVisible] = useState(false) // Slide-up remote visibility
 	const [surveyOpen, setSurveyOpen] = useState(false) // Survey visibility
 	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
+	const [easterEggMessage, setEasterEggMessage] = useState(null) // Easter egg popup
+	
+	// Easter eggs hook - shows special messages for secret codes
+	const { lastEasterEgg } = useEasterEggs((egg) => {
+		setEasterEggMessage(egg)
+		setStatusMessage(egg.message)
+		// Auto-clear after duration
+		setTimeout(() => setEasterEggMessage(null), egg.duration || 3000)
+	})
 	const lastPlaybackInfoRef = useRef(null) // Throttle updates to UI
 	const surveyTimerRef = useRef(null) // Timer to show survey after watching
 	const watchStartTimeRef = useRef(null) // Track when user started watching
@@ -317,7 +328,7 @@ export default function Home() {
 			
 			if (!allCategories || allCategories.length === 0) {
 				console.error('[Home] No categories loaded!')
-				setStatusMessage('NO CATEGORIES FOUND. CHECKING CHANNELS.JSON FILE...')
+				setStatusMessage('CHANNELS NAHI MILE. CHECK KARO...')
 				// Try to reload once more
 				try {
 					await channelManager.reload()
@@ -326,7 +337,7 @@ export default function Home() {
 						setCategories(retryCategories)
 						setStatusMessage(`LOADED ${retryCategories.length} CATEGORIES.`)
 					} else {
-						setStatusMessage('NO CATEGORIES FOUND. PLEASE CHECK CHANNELS.JSON FILE.')
+						setStatusMessage('CHANNELS NAHI MILE. FILE CHECK KARO.')
 					}
 				} catch (reloadErr) {
 					console.error('[Home] Reload failed:', reloadErr)
@@ -364,17 +375,22 @@ export default function Home() {
 					}
 				}
 				
-				// If no category was restored, set first category and initialize ref
+				// If no category was restored, use time-based suggestion
 				if (!categoryRestored && allCategories.length > 0) {
-					currentCategoryIndexRef.current = 0
-					setSelectedCategory(allCategories[0])
-					console.log(`[Home] ${sessionResult.restored ? 'No restored category' : 'New session'}, using first: ${allCategories[0].name}`)
+					// Get time-based channel suggestion
+					const timeSuggestion = getTimeSuggestion(allCategories)
+					const defaultCategory = timeSuggestion.channel || allCategories[0]
+					const categoryIndex = allCategories.findIndex(cat => cat._id === defaultCategory._id)
+					
+					currentCategoryIndexRef.current = categoryIndex !== -1 ? categoryIndex : 0
+					setSelectedCategory(defaultCategory)
+					console.log(`[Home] ${sessionResult.restored ? 'No restored category' : 'New session'}, using time-based: ${defaultCategory.name} (${timeSuggestion.slotName})`)
 				}
 				
 				setSessionRestored(true)
 			} catch (err) {
 				console.error('Error initializing app:', err)
-				setStatusMessage('ERROR LOADING. PLEASE REFRESH.')
+				setStatusMessage('ERROR! PAGE REFRESH KARO.')
 				
 				// Try to load categories anyway
 				try {
@@ -387,13 +403,13 @@ export default function Home() {
 						currentCategoryIndexRef.current = 0
 						setStatusMessage(`LOADED ${allCategories.length} CATEGORIES.`)
 					} else {
-						setStatusMessage('NO CATEGORIES FOUND IN JSON FILE.')
+						setStatusMessage('CHANNELS NAHI MILE.')
 					}
 					
 					setSessionRestored(true)
 				} catch (loadErr) {
 					console.error('Failed to load categories:', loadErr)
-					setStatusMessage('ERROR LOADING CATEGORIES FROM JSON FILE.')
+					setStatusMessage('CHANNELS LOAD NAHI HUE.')
 				}
 			}
 		}
@@ -438,7 +454,7 @@ export default function Home() {
 			}
 			// Show buffering overlay for 2 seconds when powering on
 			setIsBuffering(true)
-			setBufferErrorMessage('POWERING ON...')
+			setBufferErrorMessage('CHALU HO RAHA HAI...')
 			setTimeout(() => {
 				setIsBuffering(false)
 				setBufferErrorMessage('')
@@ -454,7 +470,7 @@ export default function Home() {
 				}
 			}, 2500)
 		} else {
-			setStatusMessage('TV OFF. CLICK POWER TO START.')
+			setStatusMessage('TV BAND HAI. POWER DABAO AUR MASTI SHURU!')
 			setIsBuffering(false)
 			setBufferErrorMessage('')
 			setMenuOpen(false) // Close menu when TV turns off
@@ -487,7 +503,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(nextIndex)
-		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${nextIndex + 1}`)
+		setStatusMessage(`⏭️ ${selectedCategory.name} - Video ${nextIndex + 1}`)
 		switchVideo(nextIndex)
 		
 		// Track analytics
@@ -521,7 +537,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(newIndex)
-		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${newIndex + 1}`)
+		setStatusMessage(`⏮️ ${selectedCategory.name} - Video ${newIndex + 1}`)
 		switchVideo(newIndex)
 	}
 
@@ -530,7 +546,7 @@ export default function Home() {
 			const newVol = Math.min(1, prev + 0.1)
 			setCrtVolume(newVol)
 			setCrtIsMuted(false)
-			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
+			setStatusMessage(`🔊 AWAAZ: ${Math.round(newVol * 100)}%`)
 			return newVol
 		})
 	}
@@ -540,7 +556,7 @@ export default function Home() {
 			const newVol = Math.max(0, prev - 0.1)
 			setCrtVolume(newVol)
 			setCrtIsMuted(false)
-			setStatusMessage(`VOLUME: ${Math.round(newVol * 100)}%`)
+			setStatusMessage(`🔊 AWAAZ: ${Math.round(newVol * 100)}%`)
 			analytics.trackVolumeChange(newVol, 'down')
 			return newVol
 		})
@@ -552,7 +568,7 @@ export default function Home() {
 			setVolume(0)
 			setCrtVolume(0)
 			setCrtIsMuted(true)
-			setStatusMessage('MUTED')
+			setStatusMessage('🔇 AWAAZ BAND')
 			analytics.trackVolumeChange(0, 'mute')
 		} else {
 			setVolume(prevVolume || 0.5)
@@ -565,7 +581,7 @@ export default function Home() {
 	function handleChannelDirect(index) {
 		if (!power || videosInCategory.length === 0 || !selectedCategory) return
 		if (index < 0 || index >= videosInCategory.length) {
-			setStatusMessage(`VIDEO ${index + 1} NOT AVAILABLE`)
+			setStatusMessage(`VIDEO ${index + 1} AVAILABLE NAHI HAI`)
 			return
 		}
 		
@@ -586,7 +602,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(index)
-		setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - Video ${index + 1}`)
+		setStatusMessage(`🎬 ${selectedCategory.name} - Video ${index + 1}`)
 		switchVideo(index)
 	}
 
@@ -623,7 +639,7 @@ export default function Home() {
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = nextIndex
 			setCategory(nextCategory.name)
-			setStatusMessage(`CATEGORY: ${nextCategory.name.toUpperCase()}`)
+			setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
 	}
 
 	function handleCategoryDown() {
@@ -661,7 +677,7 @@ export default function Home() {
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = prevIndex
 			setCategory(prevCategory.name)
-			setStatusMessage(`CATEGORY: ${prevCategory.name.toUpperCase()}`)
+			setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
 	}
 
 	function handleMenuToggle() {
@@ -762,7 +778,7 @@ export default function Home() {
 	// Handle category selection (this becomes the active playlist)
 	function handleSelectCategory(categoryName) {
 		setCategory(categoryName)
-		setStatusMessage(`SELECTED: ${categoryName}. CHANNEL UP/DOWN TO SWITCH VIDEOS.`)
+		setStatusMessage(`✅ ${categoryName} SELECTED. CHANNEL BADALNE KE LIYE ↑↓`)
 	}
 
 		return (
@@ -920,6 +936,16 @@ export default function Home() {
 					ageGroup={userAgeGroup}
 				/>
 			</Suspense>
+		)}
+		
+		{/* Easter Egg Popup */}
+		{easterEggMessage && (
+			<div className="easter-egg-popup">
+				<div className="easter-egg-content">
+					<span className="easter-egg-emoji">{easterEggMessage.emoji}</span>
+					<span className="easter-egg-text">{easterEggMessage.message}</span>
+				</div>
+			</div>
 		)}
 		</>
 	)

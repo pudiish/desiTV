@@ -164,13 +164,13 @@ export default function TVMenuV2({
             className={`tab-btn ${activeTab === 'channels' ? 'active' : ''}`}
             onClick={() => setActiveTab('channels')}
           >
-            📺 CATEGORIES
+            📺 CHANNELS
           </button>
           <button
             className={`tab-btn ${activeTab === 'queue' ? 'active' : ''}`}
             onClick={() => setActiveTab('queue')}
           >
-            📋 UP NEXT
+            📋 AAGE KYA
           </button>
         </div>
 
@@ -211,7 +211,7 @@ export default function TVMenuV2({
                     <div className="channel-info">
                       <div className="channel-name">{category.name}</div>
                       <div className="now-playing">
-                        <span className="now-label">NOW:</span>
+                        <span className="now-label">ABHI:</span>
                         <span className="now-title">
                           {displayTitle ? displayTitle.substring(0, 35) : 'No content'}
                           {displayTitle && displayTitle.length > 35 ? '...' : ''}
@@ -219,7 +219,7 @@ export default function TVMenuV2({
                       </div>
                       {displayNext && (
                         <div className="next-up">
-                          <span className="next-label">NEXT:</span>
+                          <span className="next-label">AAGE:</span>
                           <span className="next-title">
                             {displayNext.title?.substring(0, 30)}
                             {displayNext.title?.length > 30 ? '...' : ''}
@@ -241,18 +241,18 @@ export default function TVMenuV2({
           {activeTab === 'queue' && (
             <div className="queue-view">
               <div className="queue-header">
-                <h3>📺 {activeCategory?.name || 'No Category'}</h3>
-                <span className="queue-subtitle">What's Playing</span>
+                <h3>📺 {activeCategory?.name || 'Channel Select Karo'}</h3>
+                <span className="queue-subtitle">Kya Chal Raha Hai</span>
               </div>
 
               {!hasActivePlaylist && (
-                <div className="queue-empty">No playlist available.</div>
+                <div className="queue-empty">Playlist nahi mili.</div>
               )}
 
               {/* Now Playing */}
               {hasActivePlaylist && (
                 <div className="queue-item now-playing-item">
-                  <div className="queue-badge now">▶ NOW</div>
+                  <div className="queue-badge now">▶ ABHI</div>
                   <div className="queue-info">
                     <div className="queue-title">{nowTitle}</div>
                     <div className="queue-progress">
@@ -265,7 +265,7 @@ export default function TVMenuV2({
               {/* Up Next */}
               {computedNextVideo && (
                 <div className="queue-item next-item">
-                  <div className="queue-badge next">⏭ NEXT</div>
+                  <div className="queue-badge next">⏭ AAGE</div>
                   <div className="queue-info">
                     <div className="queue-title">{computedNextVideo.title}</div>
                     <div className="queue-duration">{formatTime(computedNextVideo.duration)}</div>
@@ -276,7 +276,7 @@ export default function TVMenuV2({
               {/* Upcoming */}
               {hasActivePlaylist && activeCategoryItems.length > 2 && (
                 <>
-                  <div className="queue-divider">UPCOMING</div>
+                  <div className="queue-divider">BAAD MEIN</div>
                   {[1, 2, 3].map((offset) => {
                     const idx = (computedNextIndex + offset) % activeCategoryItems.length
                     const video = activeCategoryItems[idx]

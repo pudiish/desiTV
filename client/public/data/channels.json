@@ -1,844 +1,1593 @@
 {
-  "version": 1765659102679,
-  "generatedAt": "2025-12-14T02:21:42.679324Z",
+  "version": 1766775632182,
+  "generatedAt": "2025-12-26T19:00:32.182Z",
   "channels": [
     {
-      "_id": "693dc781931c3f5f058b8710",
-      "name": "music",
-      "playlistStartEpoch": "2020-01-01T00:00:00",
+      "_id": "694ed8b94d03b58a6b561954",
+      "name": "Cartoon Adda",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
       "items": [
         {
-          "_id": "693dc786931c3f5f058b8714",
-          "title": "Yemaaya Chesave - Vintunnavaa Telugu Video | Naga Chaitanya, Samantha",
-          "youtubeId": "Wbs6pPJgBnA",
-          "duration": 30,
-          "year": 2025,
+          "title": "shin-chan cartoon Hungama TV channel full episode",
+          "youtubeId": "KgVtb8pNUFM",
+          "duration": 460,
+          "year": 2023,
           "tags": [],
-          "category": null
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561955"
         },
         {
-          "_id": "693dc7c3931c3f5f058b871a",
-          "title": "Haan Tu Hain - Full Video | Jannat | Emraan Hashmi, Sonal Chauhan | KK | Pritam | Sayeed Quadri",
-          "youtubeId": "V1fbOsHBlZE",
-          "duration": 30,
+          "title": "Shinchan in Hindi | Shinchan New episode | shinchan old episode in hindi",
+          "youtubeId": "sx_Jhqz63s4",
+          "duration": 406,
+          "year": 2025,
+          "tags": [
+            "shinchan",
+            "shinchan new episode",
+            "shinchan in Hindi",
+            "SHINCHAN",
+            "shin Chan"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561956"
+        },
+        {
+          "title": "Shinchan old episode in Hindi 2025 #shinchan #shinchanhindi #village #viral #shorts #cartoon ",
+          "youtubeId": "lFjltjEDcWs",
+          "duration": 1815,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561957"
+        },
+        {
+          "title": "Shinchan in hindi | Shinchan old episodes in hindi without zoom effect 2023 | Shinchan food episode.",
+          "youtubeId": "sDcqgsJvecA",
+          "duration": 261,
+          "year": 2023,
+          "tags": [],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561958"
+        },
+        {
+          "title": "Shinchan in Hindi | Full “Shinchan Full Episode in Hindi | Thug Life Moments You Can’t Miss!",
+          "youtubeId": "gq_ZvLt_xPI",
+          "duration": 652,
+          "year": 2025,
+          "tags": [],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561959"
+        },
+        {
+          "title": "ShinChan's Superhero Action Kamen 😍 | ShinChan In Hindi | ",
+          "youtubeId": "1wWCqkCIHKA",
+          "duration": 273,
+          "year": 2025,
+          "tags": [],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b56195a"
+        },
+        {
+          "title": "Shinchan hindi action kamen Full Episode 🔥 | Back to the Past 2000s | #shinchanhindi #shinchan",
+          "youtubeId": "fwlGKpgMrtc",
+          "duration": 1023,
+          "year": 2021,
+          "tags": [],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b56195b"
+        },
+        {
+          "title": "Shinchan | All New Season | Now Streaming | DisneyPlus Hotstar",
+          "youtubeId": "qV0PIc5rjPA",
+          "duration": 30,
+          "year": 2024,
+          "tags": [
+            "DisneyPlus Hotstar",
+            "Hotstar",
+            "Disney Plus"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b56195c"
+        },
+        {
+          "title": "Shinchan Season 15 Episode 4 in Hindi | शिनचैन का नया धमाका | Full HD Episode Without Zoom (2025)",
+          "youtubeId": "QE-Aj6C3wfw",
+          "duration": 1254,
+          "year": 2025,
+          "tags": [
+            "shinchan season 15 episode 3 in hindi",
+            "shinchan new episode 2025",
+            "shinchan latest episode full hd",
+            "shinchan without zoom",
+            "cartoon in hindi 2025"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b56195d"
+        },
+        {
+          "title": "Shinchan New Hindi Dubbed full Episode - Shinchan Gaya School - Shinchan Himawari",
+          "youtubeId": "90_Hf5Bynyc",
+          "duration": 4113,
+          "year": 2025,
+          "tags": [
+            "Shinchan New Hindi Dubbed full Episode - Shinchan Gaya School - Shinchan Himawari",
+            "shinchan",
+            "shinchannewmovie",
+            "shinchan hindi movie",
+            "shinchan new episode"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b56195e"
+        },
+        {
+          "title": "Shinchan S19 Episode 2 hindi dubbed full episode ",
+          "youtubeId": "AT45hqKX56A",
+          "duration": 351,
+          "year": 2025,
+          "tags": [
+            "shinchan",
+            "doremon",
+            "pokemon",
+            "jujutsu kaisen",
+            "Naruto"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b56195f"
+        },
+        {
+          "title": "shinchan episode in hindi #shinchan",
+          "youtubeId": "btEEWjLa1Jc",
+          "duration": 435,
+          "year": 2024,
+          "tags": [],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561960"
+        },
+        {
+          "title": "Shin chan new episode in Hindi 🥶🥶",
+          "youtubeId": "7pefMuMB2Mg",
+          "duration": 812,
+          "year": 2025,
+          "tags": [],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561961"
+        },
+        {
+          "title": "Shinchan in Hindi New Episode Without Zoom Effect | Shinchan Movie in Hindi | Shinchan Cartoon",
+          "youtubeId": "x2juH8lbtgM",
+          "duration": 824,
+          "year": 2025,
+          "tags": [
+            "Shinchan",
+            "Shinchan in Hindi",
+            "Shinchan Cartoon",
+            "Shinchan Videos",
+            "Shinchan Movie in Hindi"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561964"
+        },
+        {
+          "title": "Hindi Cartoon Shinchan Ep 5 || SHINCHAN NEW EPISODE 2024 || Hindi Dub without zoom effect",
+          "youtubeId": "gZ2Akx4C32E",
+          "duration": 982,
+          "year": 2024,
+          "tags": [
+            "Hindi",
+            "Cartoon",
+            "Shinchan",
+            "Hindi Cartoon",
+            "viral"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561965"
+        },
+        {
+          "title": "shinchan new episode in hindi | shin chan: shiro & coal town No commentary #vssxm #schinchan",
+          "youtubeId": "TiwxlecvAeE",
+          "duration": 1784,
+          "year": 2025,
+          "tags": [
+            "No commentary",
+            "Vssxm",
+            "Vssxm shinchan",
+            "shin-chan all episode in hindi",
+            "shin-chan cartoon"
+          ],
+          "category": "Toons",
+          "_id": "694ed8b94d03b58a6b561967"
         }
-      ]
+      ],
+      "__v": 1
     },
     {
-      "_id": "693dc810931c3f5f058b871e",
-      "name": "9xm",
-      "playlistStartEpoch": "2020-01-01T00:00:00",
+      "_id": "694ed8b94d03b58a6b561968",
+      "name": "Hassi Ke Phatke",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
       "items": [
         {
-          "_id": "693dc818931c3f5f058b8722",
-          "title": "'Chittiyaan Kalaiyaan' FULL VIDEO SONG | Roy | Meet Bros Anjjan, Kanika Kapoor | T-SERIES",
-          "youtubeId": "zpsVpnvFfZQ",
+          "title": "Best Comedy Scenes | Paresh Rawal, Rajpal, Shakti Kapoor | Bollywood Comedy Movies | Hungama Scenes",
+          "youtubeId": "3BoTdLJb-h4",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Comedy",
+          "_id": "694ed8b94d03b58a6b561969"
         },
         {
-          "_id": "693dc823931c3f5f058b8727",
-          "title": "Full Video: Masakali | Delhi 6 | Abhishek Bachchan, Sonam Kapoor | A.R. Rahman |  Mohit Chauhan",
-          "youtubeId": "SS3lIQdKP-A",
+          "title": "Hulchul - Part 6 | Paresh Rawal, Akshaye Khanna & Arshad Warsi | Best Comedy Movie Scenes",
+          "youtubeId": "T-VEzb3WgJY",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Comedy",
+          "_id": "694ed8b94d03b58a6b56196a"
         },
         {
-          "_id": "693dc82c931c3f5f058b872d",
-          "title": "Khuda Jaane | Full Song | Bachna Ae Haseeno | Ranbir Kapoor, Deepika | Vishal & Shekhar, KK, Shilpa",
-          "youtubeId": "cmMiyZaSELo",
+          "title": "Best of Comedy Scenes | Movie Mere Baap Phele Aap | Paresh Rawal - Rajpal Yadav - Akshay Khanna",
+          "youtubeId": "4g4vr2Zi4Ec",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Comedy",
+          "_id": "694ed8b94d03b58a6b56196b"
         },
         {
-          "_id": "693dc836931c3f5f058b8734",
-          "title": "Kajra Re | Full Song | Bunty Aur Babli | Aishwarya, Abhishek, Amitabh Bachchan | Shankar-Ehsaan-Loy",
-          "youtubeId": "4dsFQFCvVGU",
+          "title": "Movie Golmaal Fun Unlimited | Movie In Parts - 04 |Arshad Warsi - Sharman Joshi | Best Comedy Scenes",
+          "youtubeId": "jD5ufQ3z5MU",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Comedy",
+          "_id": "694ed8b94d03b58a6b56196c"
         },
         {
-          "_id": "693dc83f931c3f5f058b873c",
-          "title": "MATARGASHTI full VIDEO Song | TAMASHA Songs 2015 | Ranbir Kapoor, Deepika Padukone | T-Series",
-          "youtubeId": "6vKucgAeF_Q",
+          "title": "Comedy Scenes Superhit Comedy Movie Golmaal Fun Unlimited | Arshad Warsi - Sharman Joshi -Ajay Devgn",
+          "youtubeId": "54ZcZdw67nI",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Comedy",
+          "_id": "694ed8b94d03b58a6b56196d"
         },
         {
-          "_id": "693dc849931c3f5f058b8745",
-          "title": "Fevicol Se Full Video Song Dabangg 2 (Official) ★ Kareena Kapoor ★ Salman Khan",
-          "youtubeId": "zE7Pwgl6sLA",
+          "title": "उदय शेट्टी KA SWAG (नाना पाटेकर) | Best Scenes Of Nana Patekar | Uday Shetty Comedy | Welcome Movie",
+          "youtubeId": "big3jtp_W3M",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
-        },
+          "category": "Comedy",
+          "_id": "694ed8b94d03b58a6b56196e"
+        }
+      ],
+      "__v": 0
+    },
+    {
+      "_id": "694ed8b94d03b58a6b56196f",
+      "name": "Desi Beats",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
         {
-          "_id": "693dc852931c3f5f058b874f",
-          "title": "\"Senorita Zindagi Na Milegi Dobara\" Full HD Video Song | Farhan Akhtar, Hrithik Roshan, Abhay Deol",
-          "youtubeId": "yDv0WSgXJVg",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc85b931c3f5f058b875a",
-          "title": "Nashe Si Chadh Gayi Song | Befikre | Ranveer Singh, Vaani Kapoor | Arijit Singh | Vishal and Shekhar",
-          "youtubeId": "Wd2B8OAotU8",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc868931c3f5f058b8766",
-          "title": "Bheegi Si Bhaagi Si Full Video - Raajneeti|Ranbir,Katrina|Mohit Chauhan, Antara M|Pritam",
-          "youtubeId": "yHWPO9DDnsk",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc871931c3f5f058b8773",
           "title": "Yo Yo Honey Singh: DIL CHORI (Video) Simar Kaur, Ishers | Hans Raj Hans | Sonu Ke Titu Ki Sweety",
           "youtubeId": "xWi8nDUjHGA",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561970"
         },
         {
-          "_id": "693dc87c931c3f5f058b8781",
-          "title": "'Gallan Goodiyaan' Full VIDEO Song | Dil Dhadakne Do | T-Series",
-          "youtubeId": "jCEdTq3j-0U",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc886931c3f5f058b8790",
-          "title": "Chikni Chameli - Full Video | Agneepath | Katrina, Hrithik | Shreya | Ajay-Atul",
-          "youtubeId": "MQM7CNoAsBI",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc891931c3f5f058b87a0",
-          "title": "Aa Re Pritam Pyaare - Lyrical Video | Rowdy Rathore | Akshay Kumar | Mamta Sharma | Sajid Wajid",
-          "youtubeId": "EY8oryof0bU",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc89a931c3f5f058b87b1",
-          "title": "Kamli Song | Dhoom:3 | Katrina Kaif,  Aamir Khan | Sunidhi Chauhan | Pritam | Amitabh Bhattacharya",
-          "youtubeId": "C8kSrkz8Hz8",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8a3931c3f5f058b87c3",
-          "title": "Tera Hone Laga Hoon Lyrical - Ajab Prem Ki Ghazab Kahani | Atif Aslam | Ranbir, Katrina K | Pritam",
-          "youtubeId": "rTuxUAuJRyY",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8af931c3f5f058b87d6",
-          "title": "Badtameez Dil Full Song HD Yeh Jawaani Hai Deewani | PRITAM | Ranbir Kapoor, Deepika Padukone",
-          "youtubeId": "II2EO3Nw4m0",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8bc931c3f5f058b87ea",
-          "title": "Kala Chashma | Baar Baar Dekho | Sidharth M Katrina K | Prem, Hardeep, Badshah, Kam, Neha, Indeep",
-          "youtubeId": "k4yXQkG2s1E",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8ca931c3f5f058b87ff",
-          "title": "Tumhi Ho Bandhu - Full Video Song | Cocktail | Saif Ai Khan, Deepika Padukone & Diana Penty | Pritam",
-          "youtubeId": "o1RducJbUdc",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8d6931c3f5f058b8815",
-          "title": "The Breakup Song Full Video - ADHM|Ranbir, Anushka|Arijit,Badshah,Jonita,Nakash|Pritam",
-          "youtubeId": "kd5KqlmcHNo",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8e5931c3f5f058b882c",
-          "title": "Kar Gayi Chull - Kapoor & Sons | Sidharth Malhotra, Alia Bhatt | Badshah | Amaal Mallik | Fazilpuria",
-          "youtubeId": "NTHz9ephYTw",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8f1931c3f5f058b8844",
-          "title": "Teri Ore | Singh Is Kinng | Akshay Kumar| Katrina Kaif| Pritam| Rahat Fateh Ali Khan| Shreya Ghoshal",
-          "youtubeId": "GLEx6bhPu7s",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc8fb931c3f5f058b885d",
           "title": "Exclusive: LOVE DOSE Full Video Song | Yo Yo Honey Singh, Urvashi Rautela | Desi Kalakaar",
           "youtubeId": "TvngY4unjn4",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561971"
         },
         {
-          "_id": "693dc905931c3f5f058b8877",
           "title": "Suit Full Video Song | Guru Randhawa Feat. Arjun | T-Series",
           "youtubeId": "uQ763VvqiEM",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561972"
         },
         {
-          "_id": "693dc928931c3f5f058b8892",
-          "title": "Hookha Bar",
-          "youtubeId": "b4b1cMVZOUU",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc932931c3f5f058b88ae",
-          "title": "Saibo Full Video - Shor In The City |Radhika Apte,Tusshar | Shreya Ghoshal,Tochi Raina",
-          "youtubeId": "GtNrQy90Ih4",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc93a931c3f5f058b88cb",
-          "title": "Balam Pichkari Full Song Video Yeh Jawaani Hai Deewani | PRITAM | Ranbir Kapoor, Deepika Padukone",
-          "youtubeId": "0WtRNGubWGA",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc94a931c3f5f058b88e9",
           "title": "Main Tera Boyfriend Song | Raabta | Arijit S | Neha K Meet Bros | Sushant Singh Rajput Kriti Sanon",
           "youtubeId": "FQS7i2z1CoA",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561973"
         },
         {
-          "_id": "693dc953931c3f5f058b8908",
-          "title": "The Humma Song – OK Jaanu | Shraddha Kapoor | Aditya Roy Kapur | @ARRahman, Badshah, Tanishk",
-          "youtubeId": "1tVL11ULjYY",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc95e931c3f5f058b8928",
-          "title": "FULL VIDEO: \"Pee Loon\" | Once Upon A Time in Mumbai | Emraan Hashmi, Prachi  | Pritam| Mohit Chauhan",
-          "youtubeId": "D8XFTglfSMg",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc969931c3f5f058b8949",
-          "title": "Jaane Kyun Full Video - Dostana|John,Abhishek,Priyanka|Vishal Dadlani|Vishal & Shekhar",
-          "youtubeId": "n0PoVxBMUyE",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc970931c3f5f058b896b",
-          "title": "Na Ja - Pav Dharia (Official Video) | 4K Video | Dance Hit | Punjabi Songs | #pavdharia  #najanaja",
-          "youtubeId": "Q-GOFPM01d0",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc97d931c3f5f058b898e",
-          "title": "Pehli Nazar Mein Kaise Jaado Kar Diya | Atif Aslam Hits | Race I Akshaye, Bipasha & Saif Ali",
-          "youtubeId": "BadBAMnPX0I",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc986931c3f5f058b89b2",
-          "title": "Lat Lag Gayee Lyrical - Race 2 | Saif Ali Khan, Jacqueline | Benny Dayal, Shalmali | Pritam | Party",
-          "youtubeId": "KxCjVIFxZNo",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc993931c3f5f058b89d7",
           "title": "Manali Trance | Yo Yo Honey Singh & Neha Kakkar | The Shaukeens | Lisa Haydon | Akshay Kumar",
           "youtubeId": "vZ_NpLWuL00",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561974"
         },
         {
-          "_id": "693dc9a4931c3f5f058b89fd",
+          "title": "MI AMOR - SHARN | MEET | PRG (OFFICIAL VIDEO) LATEST PUNJABI SONGS 2025",
+          "youtubeId": "z1VdU6ZwRwY",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561975"
+        },
+        {
+          "title": "Blue Eyes Full Video Song Yo Yo Honey Singh | Blockbuster Song Of 2013",
+          "youtubeId": "NbyHNASFi6U",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561976"
+        },
+        {
+          "title": "Official: Desi Kalakaar Full VIDEO Song | Yo Yo Honey Singh | Honey Singh New Songs 2014",
+          "youtubeId": "KhnVcAC5bIM",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561977"
+        },
+        {
+          "title": "Angreji Beat (Full Song): Yo Yo Honey Singh |Gippy Grewal|International Villager | New Punjabi Songs",
+          "youtubeId": "Iu8210k9WQc",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561978"
+        },
+        {
+          "title": "Dope Shope - Yo Yo Honey Singh and Deep Money - Brand New Punjabi Songs HD - International Villager",
+          "youtubeId": "IyYC3Ayr1f0",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561979"
+        },
+        {
+          "title": "Gabru | yo yo honey singh | Pyaar tenu karde gabru j star 360p",
+          "youtubeId": "-SPEaQncoPQ",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b56197a"
+        },
+        {
+          "title": "Lungi Dance - Full Video Song | Chennai Express | Yo Yo Honey Singh, Shahrukh Khan, Deepika",
+          "youtubeId": "HVFb5-MrP4A",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b56197b"
+        },
+        {
+          "title": "Party All Night Feat. Honey Singh (Full Video) Boss | Akshay Kumar, Sonakshi Sinha",
+          "youtubeId": "Wd7H311MrWA",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b56197c"
+        },
+        {
+          "title": "Song Making: ABCD Song Feat. YO YO Honey Singh | Yaariyan | Divya Khosla Kumar | Himansh K, Rakul P",
+          "youtubeId": "PYslBHdYpeY",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b56197d"
+        },
+        {
+          "title": "ALCOHOLIC - FULL VIDEO HD | The Shaukeens | Yo Yo Honey Singh | Akshay Kumar & Lisa Haydon",
+          "youtubeId": "UarDmusg3YQ",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b56197e"
+        },
+        {
+          "title": "\"Subha Hone Na De Full Song\"| Desi Boyz | Akshay Kumar ,John Abraham | Pritam |  Mika Singh, Kumaar",
+          "youtubeId": "Y7G-tYRzwYY",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b56197f"
+        },
+        {
+          "title": "Lonely",
+          "youtubeId": "W2QiCgB_l7M",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561980"
+        },
+        {
+          "title": "Party With The Bhoothnath Song (Official) | Bhoothnath Returns | Amitabh Bachchan, Yo Yo Honey Singh",
+          "youtubeId": "W7kdKf_aqX4",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561981"
+        },
+        {
+          "title": "Yo Yo Honey Singh: Aankhon Aankhon Full AUDIO Song | Bhaag Johnny |",
+          "youtubeId": "AtYqQksCR3A",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561982"
+        },
+        {
+          "title": "Dheere Dheere Se Meri Zindagi Video Song (OFFICIAL) Hrithik Roshan, Sonam Kapoor | Yo Yo Honey Singh",
+          "youtubeId": "nCD2hj6zJEc",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561983"
+        },
+        {
+          "title": "\"Diljit Dosanjh\" | Honey Singh | Panga Full Audio Song | The Next Level | New Punjabi Songs",
+          "youtubeId": "Lehoo5XXKPc",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561984"
+        },
+        {
+          "title": "Glassi Song Full Video Jassi Sekhon | First Impression",
+          "youtubeId": "38itCB0m5jw",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561985"
+        },
+        {
+          "title": "MTV Spoken Word feat Yo Yo Honey Singh - Bring Me Back | Full Official Music Video",
+          "youtubeId": "gAt_hSIIUMU",
+          "duration": 30,
+          "tags": [],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561986"
+        },
+        {
+          "title": "10 Mint (Official Video)| Sippy Gill |Laddi Gill | Megha S |New Punjabi Songs |Latest Punjabi Songs",
+          "youtubeId": "Xc1sdGMF9rc",
+          "duration": 339,
+          "year": null,
+          "tags": [
+            "sippy gill",
+            "10mint",
+            "sippy gill new song",
+            "new punjabi song",
+            "new punjabi song 2024",
+            "sippy gill new song 2024",
+            "sippy gill all songs",
+            "laddi gill new song",
+            "laddi gill punjabi song",
+            "latest punjabi songs",
+            "ew punjabi song 2024 latest this week",
+            "new punjabi songs",
+            "new punjabi songs 2024",
+            "latest punjabi songs 2024",
+            "sippy gill punjabi song",
+            "sippy gill 10 mint",
+            "sippy gill song",
+            "megha sharma",
+            "laddi gill all songs",
+            "punjabi song",
+            "punjabi song 2024",
+            "punjabi music",
+            "speed records"
+          ],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561987"
+        },
+        {
+          "title": "Time Table Official Video Song - Kulwinder Billa - Punjabi Popular Songs - Moviebox Record Label",
+          "youtubeId": "6tpLUszWs9M",
+          "duration": 249,
+          "year": null,
+          "tags": [
+            "time table song",
+            "kulwinder billa time table",
+            "time table kulwinder billa song",
+            "time table official video",
+            "kulwinder billa new song",
+            "punjabi song time table",
+            "time table full song",
+            "kulwinder billa hit songs",
+            "latest punjabi song",
+            "kulwinder billa songs 2025",
+            "time table punjabi song",
+            "kulwinder billa official video",
+            "punjabi hits",
+            "punjabi romantic song",
+            "punjabi love song",
+            "punjabi music",
+            "punjabi video song",
+            "kulwinder billa time table video",
+            "superhit punjabi song"
+          ],
+          "category": "Punjabi & Indie",
+          "_id": "694ed8b94d03b58a6b561988"
+        }
+      ],
+      "__v": 1
+    },
+    {
+      "_id": "694ed8b94d03b58a6b56198c",
+      "name": "Club Nights",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "title": "'Chittiyaan Kalaiyaan' FULL VIDEO SONG | Roy | Meet Bros Anjjan, Kanika Kapoor | T-SERIES",
+          "youtubeId": "zpsVpnvFfZQ",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b56198d"
+        },
+        {
+          "title": "Fevicol Se Full Video Song Dabangg 2 (Official) ★ Kareena Kapoor ★ Salman Khan",
+          "youtubeId": "zE7Pwgl6sLA",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b56198e"
+        },
+        {
+          "title": "Chikni Chameli - Full Video | Agneepath | Katrina, Hrithik | Shreya | Ajay-Atul",
+          "youtubeId": "MQM7CNoAsBI",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b56198f"
+        },
+        {
+          "title": "Kamli Song | Dhoom:3 | Katrina Kaif,  Aamir Khan | Sunidhi Chauhan | Pritam | Amitabh Bhattacharya",
+          "youtubeId": "C8kSrkz8Hz8",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561990"
+        },
+        {
+          "title": "Badtameez Dil Full Song HD Yeh Jawaani Hai Deewani | PRITAM | Ranbir Kapoor, Deepika Padukone",
+          "youtubeId": "II2EO3Nw4m0",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561991"
+        },
+        {
+          "title": "Kala Chashma | Baar Baar Dekho | Sidharth M Katrina K | Prem, Hardeep, Badshah, Kam, Neha, Indeep",
+          "youtubeId": "k4yXQkG2s1E",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561992"
+        },
+        {
+          "title": "The Breakup Song Full Video - ADHM|Ranbir, Anushka|Arijit,Badshah,Jonita,Nakash|Pritam",
+          "youtubeId": "kd5KqlmcHNo",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561993"
+        },
+        {
+          "title": "Kar Gayi Chull - Kapoor & Sons | Sidharth Malhotra, Alia Bhatt | Badshah | Amaal Mallik | Fazilpuria",
+          "youtubeId": "NTHz9ephYTw",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561994"
+        },
+        {
+          "title": "The Humma Song – OK Jaanu | Shraddha Kapoor | Aditya Roy Kapur | @ARRahman, Badshah, Tanishk",
+          "youtubeId": "1tVL11ULjYY",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561995"
+        },
+        {
+          "title": "Na Ja - Pav Dharia (Official Video) | 4K Video | Dance Hit | Punjabi Songs | #pavdharia  #najanaja",
+          "youtubeId": "Q-GOFPM01d0",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561996"
+        },
+        {
+          "title": "Lat Lag Gayee Lyrical - Race 2 | Saif Ali Khan, Jacqueline | Benny Dayal, Shalmali | Pritam | Party",
+          "youtubeId": "KxCjVIFxZNo",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561997"
+        },
+        {
           "title": "Nachde Ne Saare - Full Video | Baar Baar Dekho | Sidharth Malhotra & Katrina Kaif | Jasleen Royal",
           "youtubeId": "HgIW7P4dsXU",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561998"
         },
         {
-          "_id": "693dc9b4931c3f5f058b8a24",
-          "title": "Teri Baaton Mein Aisa Uljha Jiya (Title Track): Shahid Kapoor, Kriti Sanon | Raghav,Tanishk,Asees",
-          "youtubeId": "XLqmL9cPN1E",
-          "duration": 30,
-          "year": 2025,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dc9bd931c3f5f058b8a4c",
           "title": "Besharmi Ki Height | Full Video Song | Main Tera Hero | Varun Dhawan, Ileana D'Cruz, Nargis Fakhri",
           "youtubeId": "IFYJNLZT_B0",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b561999"
         },
         {
-          "_id": "693dc9c6931c3f5f058b8a75",
           "title": "Full Video: Pappu Can't Dance | Jaane Tu Ya Jaane Na | Imran Khan | A.R. Rahman",
           "youtubeId": "dbdtBQ16CXc",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b56199a"
         },
         {
-          "_id": "693dc9cf931c3f5f058b8a9f",
           "title": "Patola Video Song | Blackmail | Irrfan Khan & Kirti Kulhari | Guru Randhawa",
           "youtubeId": "z-ZEHL4Df-A",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b56199b"
         },
         {
-          "_id": "693dc9df931c3f5f058b8aca",
           "title": "Naah -  Harrdy Sandhu Feat. Nora Fatehi | Jaani | B Praak | Official Music Video",
           "youtubeId": "8qs2dZO6wcc",
           "duration": 30,
           "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Party Anthems",
+          "_id": "694ed8b94d03b58a6b56199c"
+        },
+        {
+          "title": "Mera Naam Mary Best Video - Brothers|Kareena Kapoor, Sidharth Malhotra|Chinmayi Sripada",
+          "youtubeId": "uUM87Kji6V4",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Uncategorized",
+          "_id": "694ed8b94d03b58a6b5619ca"
+        },
+        {
+          "title": "3 - Why This Kolaveri Di Official Video | Dhanush | Anirudh Ravichander | Shruti Haasan",
+          "youtubeId": "YR12Z8f1Dh8",
+          "duration": 249,
+          "year": null,
+          "tags": [
+            "Dhanush",
+            "Anirudh songs",
+            "Anirudh videos",
+            "why this",
+            "why this kolaveri",
+            "whtis kola",
+            "3 videos",
+            "why his kolaveri tamil",
+            "3 - Why This Kolaveri Di Video",
+            "3 Songs",
+            "3 Videos",
+            "3 Trailers",
+            "3 Full Song",
+            "3 HD Videos",
+            "3 Movie Songs",
+            "3 Movie Videos",
+            "3 Full HD Videos",
+            "3 Official Songs",
+            "3 Official Videos",
+            "Why This Kolaveri Di",
+            "Why This Kolaveri Di Song",
+            "Why This Kolaveri Di Video",
+            "Why This Kolaveri Di HD Song",
+            "Why This Kolaveri Di HD Video",
+            "Anirudh Ravichander",
+            "Why This Kolaveri Di Viral"
+          ],
+          "category": "Uncategorized",
+          "_id": "694ed8b94d03b58a6b5619d9"
         }
-      ]
+      ],
+      "__v": 2
     },
     {
-      "_id": "693dce18931c3f5f058b8b1c",
-      "name": "South",
-      "playlistStartEpoch": "2020-01-01T00:00:00",
+      "_id": "694ed8b94d03b58a6b56199d",
+      "name": "Late Night Love",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
       "items": [
         {
-          "_id": "693dce27931c3f5f058b8b20",
-          "title": "Untitled",
-          "youtubeId": "twA4pHMJrFs",
+          "title": "Khuda Jaane | Full Song | Bachna Ae Haseeno | Ranbir Kapoor, Deepika | Vishal & Shekhar, KK, Shilpa",
+          "youtubeId": "cmMiyZaSELo",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b56199e"
         },
         {
-          "_id": "693dce27931c3f5f058b8b21",
-          "title": "Untitled",
-          "youtubeId": "m1Y3T7AoaKw",
+          "title": "Nashe Si Chadh Gayi Song | Befikre | Ranveer Singh, Vaani Kapoor | Arijit Singh | Vishal and Shekhar",
+          "youtubeId": "Wd2B8OAotU8",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b56199f"
         },
         {
-          "_id": "693dce27931c3f5f058b8b22",
-          "title": "Untitled",
-          "youtubeId": "hCt-H4-5wco",
+          "title": "Bheegi Si Bhaagi Si Full Video - Raajneeti|Ranbir,Katrina|Mohit Chauhan, Antara M|Pritam",
+          "youtubeId": "yHWPO9DDnsk",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a0"
         },
         {
-          "_id": "693dce27931c3f5f058b8b23",
-          "title": "Untitled",
-          "youtubeId": "gpVA5mx73UE",
+          "title": "Aa Re Pritam Pyaare - Lyrical Video | Rowdy Rathore | Akshay Kumar | Mamta Sharma | Sajid Wajid",
+          "youtubeId": "EY8oryof0bU",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a1"
         },
         {
-          "_id": "693dce27931c3f5f058b8b24",
-          "title": "Untitled",
-          "youtubeId": "57ekGrvcWuo",
+          "title": "Tera Hone Laga Hoon Lyrical - Ajab Prem Ki Ghazab Kahani | Atif Aslam | Ranbir, Katrina K | Pritam",
+          "youtubeId": "rTuxUAuJRyY",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a2"
         },
         {
-          "_id": "693dce27931c3f5f058b8b25",
-          "title": "Untitled",
-          "youtubeId": "YECx5ERW6T0",
+          "title": "Tumhi Ho Bandhu - Full Video Song | Cocktail | Saif Ai Khan, Deepika Padukone & Diana Penty | Pritam",
+          "youtubeId": "o1RducJbUdc",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a3"
         },
         {
-          "_id": "693dce27931c3f5f058b8b26",
-          "title": "Untitled",
-          "youtubeId": "QIIhvD5AUuw",
+          "title": "Teri Ore | Singh Is Kinng | Akshay Kumar| Katrina Kaif| Pritam| Rahat Fateh Ali Khan| Shreya Ghoshal",
+          "youtubeId": "GLEx6bhPu7s",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a4"
         },
         {
-          "_id": "693dce27931c3f5f058b8b27",
-          "title": "Untitled",
-          "youtubeId": "Fs9cB-tN3Lc",
+          "title": "Saibo Full Video - Shor In The City |Radhika Apte,Tusshar | Shreya Ghoshal,Tochi Raina",
+          "youtubeId": "GtNrQy90Ih4",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a5"
         },
         {
-          "_id": "693dce27931c3f5f058b8b28",
-          "title": "Untitled",
-          "youtubeId": "TTGQX0CXlL0",
+          "title": "FULL VIDEO: \"Pee Loon\" | Once Upon A Time in Mumbai | Emraan Hashmi, Prachi  | Pritam| Mohit Chauhan",
+          "youtubeId": "D8XFTglfSMg",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a6"
         },
         {
-          "_id": "693dce27931c3f5f058b8b29",
-          "title": "Untitled",
-          "youtubeId": "v-hL3sks2qI",
+          "title": "Jaane Kyun Full Video - Dostana|John,Abhishek,Priyanka|Vishal Dadlani|Vishal & Shekhar",
+          "youtubeId": "n0PoVxBMUyE",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a7"
         },
         {
-          "_id": "693dce27931c3f5f058b8b2a",
-          "title": "Untitled",
+          "title": "Pehli Nazar Mein Kaise Jaado Kar Diya | Atif Aslam Hits | Race I Akshaye, Bipasha & Saif Ali",
+          "youtubeId": "BadBAMnPX0I",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a8"
+        },
+        {
+          "title": "Teri Baaton Mein Aisa Uljha Jiya (Title Track): Shahid Kapoor, Kriti Sanon | Raghav,Tanishk,Asees",
+          "youtubeId": "XLqmL9cPN1E",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619a9"
+        },
+        {
+          "title": "#FeelMyLove Song | Arya Songs Telugu | AlluArjun Hits | Telugu Love Songs | Aditya Music Telugu",
+          "youtubeId": "F38CjUxfMUc",
+          "duration": 314,
+          "year": null,
+          "tags": [
+            "Arya",
+            "Arya full songs",
+            "Allu arjun",
+            "Dsp",
+            "Feel My Love Full Song With Lyrics",
+            "Feel my love arya songs",
+            "Feel my love lyrical song",
+            "Feel my love song",
+            "Fell my love alluarjun songs",
+            "Arya Movie songs",
+            "Arya movie lyrical songs",
+            "Feel my love",
+            "Kk telugu songs",
+            "Allu arjun arya movie songs",
+            "Aarya songs",
+            "love melody songs telugu",
+            "Telugu songs",
+            "Telugu songs lyrics",
+            "peaceful songs in telugu",
+            "latest telugu songs",
+            "new telugu songs",
+            "2023 trending telugu songs",
+            "songs telugu",
+            "telugu hit songs"
+          ],
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619aa"
+        },
+        {
+          "title": "Olya Sanjveli - Premachi Goshta | Marathi Love Songs | Atul Kulkarni, Sagarika Ghatge",
+          "youtubeId": "Ofopo3YlN8w",
+          "duration": 328,
+          "year": null,
+          "tags": [
+            "olya sanjveli marathi song",
+            "olya sanjveli",
+            "premachi goshta songs",
+            "eka premachi goshta songs",
+            "premachi goshta",
+            "marathi romantic songs",
+            "marathi movies",
+            "marathi songs",
+            "marathi song मराठी गाणी",
+            "marathi songs 2018",
+            "marathi songs new",
+            "new marathi songs",
+            "marathi",
+            "sagarika ghatge",
+            "sagarika ghatge songs",
+            "latest marathi songs",
+            "marathi love songs",
+            "marathi song",
+            "sar sukhachi shravani",
+            "love songs",
+            "olya sanj veli",
+            "marathi love song",
+            "ओल्या सांजवेळी",
+            "kitida navyane tula female"
+          ],
+          "category": "Romantic Melodies",
+          "_id": "694ed8b94d03b58a6b5619ae"
+        },
+        {
+          "title": "Teri Khair Mangdi - Baar Baar Dekho | Sidharth Malhotra & Katrina Kaif | Bilal Saeed",
+          "youtubeId": "dMByhaezv9A",
+          "duration": 30,
+          "year": 2025,
+          "tags": [],
+          "category": "Uncategorized",
+          "_id": "694ed8b94d03b58a6b5619cb"
+        },
+        {
+          "title": "Bakhuda Tumhi Ho | Atif Aslam | Alka Yagnik | Kismat Konnection | 2009",
+          "youtubeId": "1-Z6bd7SRBA",
+          "duration": 283,
+          "year": 2009,
+          "tags": [
+            "bakhuda tumhi ho lyrics",
+            "bakhuda tumhi ho status",
+            "kismat konnection",
+            "kisnmat konnection songs",
+            "vidya balan",
+            "vidya balan songs",
+            "shahid kapoor",
+            "shahid kapoor songs",
+            "dance songs",
+            "love songs",
+            "romantic songs",
+            "tips official",
+            "atif aslam",
+            "atif",
+            "atif aslam songs",
+            "alka yagnik",
+            "alka yagnik songs",
+            "bakhuda tumhi ho",
+            "hindi love songs",
+            "best hindi songs",
+            "romantic hindi songs",
+            "popular hindi songs",
+            "tum hi ho",
+            "bakhuda tum hi ho",
+            "shahid kapoor and vidya balan songs",
+            "bakhuda tumhi ho song"
+          ],
+          "category": "Uncategorized",
+          "_id": "694ed8b94d03b58a6b5619d4"
+        },
+        {
+          "title": "Phir Aur Kya Chahiye| Zara Hatke Zara Bachke| Vicky K, Sara Ali K, Arijit Singh,Sachin-Jigar,Amitabh",
+          "youtubeId": "8sLS2knUa6Y",
+          "duration": 216,
+          "year": null,
+          "tags": [
+            "phir aur kya chahiye",
+            "phir aur kya chahiye by arijit singh",
+            "zara hatke zara bachke",
+            "zara hatke zara bachke songs",
+            "phir aur kya chahiye lyrics",
+            "vicky kaushal new song",
+            "sara ali khan new song",
+            "vicky kaushal",
+            "sara ali khan",
+            "arijit singh songs",
+            "best of arijit singh song",
+            "tu meri roja",
+            "new hindi song 2023",
+            "latest romantic song",
+            "tu hai to mujhe fir aur kya chahiye",
+            "new song",
+            "song",
+            "new song 2023",
+            "songs",
+            "arijit singh new song",
+            "tu hi to mujhe aur kya chahiye",
+            "tere vaste"
+          ],
+          "category": "Uncategorized",
+          "_id": "694ed8b94d03b58a6b5619df"
+        }
+      ],
+      "__v": 2
+    },
+    {
+      "_id": "694ed8b94d03b58a6b5619af",
+      "name": "Retro Gold",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "title": "Full Video: Masakali | Delhi 6 | Abhishek Bachchan, Sonam Kapoor | A.R. Rahman |  Mohit Chauhan",
           "youtubeId": "SS3lIQdKP-A",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b0"
         },
         {
-          "_id": "693dce27931c3f5f058b8b2b",
-          "title": "Untitled",
-          "youtubeId": "V8zXLMIjlcw",
+          "title": "Kajra Re | Full Song | Bunty Aur Babli | Aishwarya, Abhishek, Amitabh Bachchan | Shankar-Ehsaan-Loy",
+          "youtubeId": "4dsFQFCvVGU",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b1"
         },
         {
-          "_id": "693dce27931c3f5f058b8b2c",
-          "title": "Untitled",
-          "youtubeId": "lZORMUufA_Y",
+          "title": "MATARGASHTI full VIDEO Song | TAMASHA Songs 2015 | Ranbir Kapoor, Deepika Padukone | T-Series",
+          "youtubeId": "6vKucgAeF_Q",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b2"
         },
         {
-          "_id": "693dce27931c3f5f058b8b2d",
-          "title": "Untitled",
-          "youtubeId": "CzD9mKQHR80",
+          "title": "\"Senorita Zindagi Na Milegi Dobara\" Full HD Video Song | Farhan Akhtar, Hrithik Roshan, Abhay Deol",
+          "youtubeId": "yDv0WSgXJVg",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b3"
         },
         {
-          "_id": "693dce27931c3f5f058b8b2e",
-          "title": "Untitled",
-          "youtubeId": "neOasLBWoy0",
+          "title": "'Gallan Goodiyaan' Full VIDEO Song | Dil Dhadakne Do | T-Series",
+          "youtubeId": "jCEdTq3j-0U",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b4"
         },
         {
-          "_id": "693dce27931c3f5f058b8b2f",
-          "title": "Untitled",
-          "youtubeId": "W9mrvDWUR9g",
+          "title": "Balam Pichkari Full Song Video Yeh Jawaani Hai Deewani | PRITAM | Ranbir Kapoor, Deepika Padukone",
+          "youtubeId": "0WtRNGubWGA",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b5"
         },
         {
-          "_id": "693dce27931c3f5f058b8b30",
-          "title": "Untitled",
-          "youtubeId": "uI_ug1H6u0k",
+          "title": "Magadheera Song | Oke Okkadu Telugu Movie Songs | Arjun Sarja | Manisha Koirala | AR Rahman",
+          "youtubeId": "n1DmW3TWLvM",
           "duration": 30,
-          "year": null,
+          "year": 2025,
           "tags": [],
-          "category": null
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b6"
         },
         {
-          "_id": "693dce27931c3f5f058b8b31",
-          "title": "Untitled",
-          "youtubeId": "dlvuzoECCwg",
-          "duration": 30,
+          "title": "Nuvvostanante Nenoddantana Video Songs | Niluvaddam Ninne Video Song | Siddharth",
+          "youtubeId": "fdEzDqiSC3U",
+          "duration": 268,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "Niluvaddam Video Song",
+            "Nuvvostanante Nenoddantana Movie Video Songs",
+            "Siddharth Songs",
+            "Trisha Songs",
+            "Veda Songs",
+            "Nuvvostanante Nenodantana Full Songs",
+            "MS Raju Nuvvosthanante Nenoddantana Songs",
+            "Devi Sri Prasad Songs",
+            "Telugu Hit Songs",
+            "HD Video Songs",
+            "DSP Music",
+            "Telugu Movie Songs",
+            "Siddharth Hits",
+            "Prabhudeva Movie Songs",
+            "Trisha Hits",
+            "Sri Balaji Video"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b7"
         },
         {
-          "_id": "693dce27931c3f5f058b8b32",
-          "title": "Untitled",
-          "youtubeId": "ztPa6vkM-yY",
-          "duration": 30,
+          "title": "Mellaga Karagani Video Song | Varsham Movie Songs | Prabhas,Trisha | TeluguOne",
+          "youtubeId": "TBX-PJyifts",
+          "duration": 306,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "Mellaga Video Song",
+            "Telugu Melody Songs",
+            "varsham movie songs",
+            "Telugu Songs",
+            "Prabhas Hit Songs",
+            "varsham mellaga karagani Video song",
+            "varsham jukebox",
+            "teluguone",
+            "prabhas varsham songs",
+            "varsham songs",
+            "varsham video songs",
+            "dsp songs",
+            "dsp varsham songs",
+            "spb charan songs",
+            "devi sri prasad hit songs telugu",
+            "prabhas trisha movie songs",
+            "prabhas hit movie songs",
+            "trisha rain song",
+            "telugu hit rain songs",
+            "devi sri songs",
+            "varsham",
+            "Mellaga Karagani Video Song",
+            "telugu romantic songs"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b8"
         },
         {
-          "_id": "693dce27931c3f5f058b8b33",
-          "title": "Untitled",
-          "youtubeId": "GFljvZMZI0U",
-          "duration": 30,
+          "title": "Nijanga Nenena Video Song With Lyrics | Kotha Bangaru Lokam Songs | Varun Sandesh | Shweta Basu",
+          "youtubeId": "VD_TnMP7k44",
+          "duration": 292,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "Nijanga Nenena Full Video Song With Lyrics",
+            "Kotha Bangaru Lokam Movie Songs",
+            "Varun Sandesh",
+            "Shweta Basu Prasad",
+            "Latest Telugu Songs",
+            "telugu latest songs",
+            "Kotha Bangaru Lokam songs",
+            "Kotha Bangaru Lokam video songs",
+            "Nijanga Nenena",
+            "Nijanga Nenena video song",
+            "movies",
+            "Anantha Sriram",
+            "Anantha Sriram hits",
+            "Karthik",
+            "Karthik hits",
+            "latest telugu songs",
+            "telugu hit songs",
+            "telugu video songs",
+            "telugu video songs new",
+            "Telugu Songs Latest",
+            "Telugu New Songs",
+            "Mickey J Meyer"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619b9"
         },
         {
-          "_id": "693dce27931c3f5f058b8b34",
-          "title": "Untitled",
-          "youtubeId": "XgdY_s1LsZc",
-          "duration": 30,
+          "title": "Oye Video Songs | Oye Oye (Title Song) Video Song | Siddharth, Shamili | Sri Balaji Video",
+          "youtubeId": "nmAI4ut_Yro",
+          "duration": 280,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "Oye Oye Title Video Song",
+            "Oye Movie Video Songs",
+            "Siddharth Songs",
+            "Shamili Songs",
+            "Oye Movie Songs",
+            "Oy Full Songs",
+            "Yuvan Shankar Raja Oye Movie Songs",
+            "Oye Video Songs Juke Box",
+            "Anand Ranga Oye Movie Songs",
+            "Telugu Movie Songs",
+            "Yuvan Shankar Raja Music",
+            "DVV Danayya Movie Songs",
+            "Krishnudu Oye Movie Songs",
+            "Siddharth Hits",
+            "Shamili Hits",
+            "Sri Balaji Video"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619ba"
         },
         {
-          "_id": "693dce27931c3f5f058b8b35",
-          "title": "Untitled",
-          "youtubeId": "bE0fhtiE65g",
-          "duration": 30,
+          "title": "Rooba Rooba Video Song | Orange - ఆరెంజ్ Telugu Movie Songs | Ram Charan | Genelia | Vega  Music",
+          "youtubeId": "hgQeo55s4So",
+          "duration": 270,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "Orange",
+            "ఆరెంజ్",
+            "Telugu",
+            "Songs",
+            "Orange Telugu",
+            "Orange Telugu Movie",
+            "Orange Telugu Movie Song",
+            "Orange Telugu Movie Songs",
+            "Rooba Rooba",
+            "Rooba Rooba Song",
+            "Rooba Rooba Songs",
+            "Rooba Rooba Video",
+            "Rooba Rooba Full Video Song",
+            "Orange Movie Songs",
+            "Genelia D'Souza",
+            "Shazahn Padamsee",
+            "orange songs",
+            "orange full songs",
+            "telugu new songs",
+            "ram charan tej",
+            "orange movie scenes",
+            "orange climax",
+            "orange video songs",
+            "orange movie",
+            "rooba rooba video song",
+            "ram charan songs",
+            "orange movie video songs"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619bb"
         },
         {
-          "_id": "693dce27931c3f5f058b8b36",
-          "title": "Untitled",
-          "youtubeId": "MfRLVlUjlC8",
-          "duration": 30,
+          "title": "Pilichina Ranantava Song With Telugu Lyrics | Athadu Movie | Mahesh Babu, Trisha |Maa Paata Mee Nota",
+          "youtubeId": "_QwXjd_1plk",
+          "duration": 317,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "pilichina ranantava song",
+            "Pilichina Ranantava",
+            "Pilichina ranantava telugu lyrics",
+            "lyrical songs telugu",
+            "athadu songs",
+            "mahesh babu songs",
+            "New Telugu Songs",
+            "Songs Telugu",
+            "Telugu Songs 2025",
+            "Telugu Lyrical Songs",
+            "Telugu Melody Songs",
+            "Telugu Lyrics",
+            "Songs Telugu 2025",
+            "Telugu New Songs",
+            "Latest Telugu Songs",
+            "Telugu Hit Songs",
+            "Hit Songs Telugu",
+            "Telugu Songs New",
+            "Best Telugu Songs",
+            "Telugu Love Songs",
+            "Telugu Popular Songs",
+            "Telugu Trending Songs",
+            "Telugu Songs",
+            "Maa Paata Mee Nota"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619bc"
         },
         {
-          "_id": "693dce27931c3f5f058b8b37",
-          "title": "Untitled",
-          "youtubeId": "vFV3xOgospo",
-          "duration": 30,
+          "title": "Happy Days Songs | O My Friend Video Song | Varun Sandesh, Tamannah | Sri Balaji Video",
+          "youtubeId": "uK5LolHVZ0w",
+          "duration": 266,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "O My Friend Video Song",
+            "Happy Days Full Songs",
+            "Happy Days Video Songs",
+            "Varun Sandesh Hits",
+            "Tamannah Hit Songs",
+            "Telugu Hit Songs",
+            "Happy Days Movie Songs Juke Box",
+            "Nikhil Songs",
+            "Mickey J Meyer Songs",
+            "Telugu Movie Songs",
+            "Happy Days Full Video Songs",
+            "Tollywood Songs",
+            "HD Video Songs",
+            "Sekhar Kammula Hits",
+            "Kamalinee Mukherjee Movie Songs",
+            "Telugu Latest Songs",
+            "Sri Balaji Video"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619bd"
         },
         {
-          "_id": "693dce27931c3f5f058b8b38",
-          "title": "Untitled",
-          "youtubeId": "TIOZUdc0aL8",
-          "duration": 30,
+          "title": "Panchadara Bomma Full Video Song || Magadheera Movie || Ram Charan, Kajal Agarwal",
+          "youtubeId": "qTE453yc1rc",
+          "duration": 275,
           "year": null,
-          "tags": [],
-          "category": null
+          "tags": [
+            "Magadheera Telugu Movie",
+            "Magadheera",
+            "Magadheera video songs",
+            "Magadheera movie comedy",
+            "Magadheera full songs",
+            "Ramcharan Movies",
+            "Ramcharan Video Songs",
+            "Ramcharan Songs",
+            "Kajal agrawal Movies",
+            "Kajal Agrawal Songs",
+            "Kajal Agrawal Video Songs",
+            "Telugu Full Movies",
+            "latest telugu movie",
+            "Telugu Movies",
+            "Telugu Movies 2015",
+            "Telugu videos songs",
+            "latest video songs",
+            "telugu full video songs",
+            "latest full video songs",
+            "latest songs",
+            "songs juke box",
+            "latest songs jukebox",
+            "video songs jukebox"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619be"
+        },
+        {
+          "title": "Prema Prema Full Video Song | Prema Desam Movie Songs | Abbas, Vineeth, Tabu | A R Rahman",
+          "youtubeId": "xH8ih1kiYjo",
+          "duration": 360,
+          "year": null,
+          "tags": [
+            "Prema Prema Song",
+            "Prema Prema",
+            "Ar Rahman Hits",
+            "Prema Prema Video Song",
+            "Ar Rahman Songs",
+            "Premadesam",
+            "Premadesam songs",
+            "Abbas",
+            "Tabu",
+            "Ar Rahman",
+            "Ar Rahman Telugu Songs",
+            "Premadesam Movie",
+            "Prema Desam Songs",
+            "Bhuvana Chandra Songs",
+            "Abbas Movie Songs",
+            "Spb Songs",
+            "Telugu Love Songs",
+            "Old Songs Telugu",
+            "Telugu Video Songs",
+            "Telugu Movie Songs",
+            "Telugu Melody Songs",
+            "Telugu Hit Songs",
+            "Best Telugu Songs",
+            "Telugu Popular Songs",
+            "Telugu Songs",
+            "Songs Telugu",
+            "Telugu Songs 2025",
+            "Song",
+            "Aditya Music"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619bf"
+        },
+        {
+          "title": "Oye Raju Kannullo Nuvve | Aayudham | Rajasekhar | Udit Narayan, Usha | Telugu Hit Songs",
+          "youtubeId": "P3PKuW6CSFQ",
+          "duration": 273,
+          "year": null,
+          "tags": [
+            "telugu trending songs",
+            "aayudham movie songs",
+            "vandemataram srinivas",
+            "aayudham telugu movie songs",
+            "ayudham movie songs",
+            "aayudham video songs",
+            "aayudham songs",
+            "aayudham telugu full length movie",
+            "telugu songs",
+            "aayudham telugu movie",
+            "telugu popular songs",
+            "aayudham telugu full movie",
+            "aayudham",
+            "telugu viral songs",
+            "telugu audio songs",
+            "Telugu hit songs",
+            "oye raju kannullo nuvve song",
+            "telugu hit songs",
+            "best telugu songs",
+            "oye raju kannullo nuvve song lyrics in telugu"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c0"
+        },
+        {
+          "title": "Telugu Super Hit Video Song - Ye Swapnalokala",
+          "youtubeId": "OqY5cW32Vl8",
+          "duration": 326,
+          "year": null,
+          "tags": [
+            "volga",
+            "videos",
+            "Suswagatham",
+            "Suswagatham Songs",
+            "Suswagatham Video Songs",
+            "Suswagatham Movie",
+            "Pawan Kalyan Suswagatham",
+            "Pawan Kalyan Movies",
+            "Pawan Kalyan Songs",
+            "Pawan Kalyan Latest Songs",
+            "latest Telugu Songs",
+            "Telugu Songs",
+            "New Telugu Songs",
+            "New Songs",
+            "2018 Telugu Songs",
+            "Telugu Super Hit Video Song - Ye Swapnalokala"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c1"
+        },
+        {
+          "title": "Chinuku Thadiki Thodugu Puvvamma | Nee Sneham | Aarti Agarwal | Usha | Telugu Hit Songs",
+          "youtubeId": "x7vsIXmzjcY",
+          "duration": 221,
+          "year": null,
+          "tags": [
+            "nee sneham movie",
+            "rp patnaik telugu songs",
+            "rp patnaik telugu songs hits",
+            "uday kiran songs",
+            "uday kiran hit video songs",
+            "uday kiran hit songs",
+            "aarti agarwal songs telugu",
+            "nee sneham telugu songs",
+            "nee sneham telugu cinema songs",
+            "telugu songs",
+            "telugu love songs",
+            "2000 telugu hit songs",
+            "Chinuku Tadiki Thodugu Puvvamma",
+            "chinuku tadiki thodugu puvvamma song",
+            "chinuku thadiki chiguru video song from nee sneham",
+            "chinuku thadiki song",
+            "chinuku thadiki song by usha",
+            "nee sneham movie songs"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c2"
+        },
+        {
+          "title": "Full Video: Tum Se Hi | Jab We Met | Kareena Kapoor, Shahid Kapoor | Mohit Chauhan | Pritam",
+          "youtubeId": "mt9xg0mmt28",
+          "duration": 258,
+          "year": null,
+          "tags": [
+            "Tum Se Hi",
+            "Jab We Met",
+            "Mohit Chauhan",
+            "Irshad Kamil",
+            "Pritam",
+            "Kareena Kapoor",
+            "Shahid Kapoor",
+            "Hindi Bollywood Song",
+            "Hindi Songs",
+            "Hindi Romantic Songs",
+            "Romantic Songs",
+            "Love Songs",
+            "Tum Se Hi Full Song",
+            "Jab We Met Movie Songs",
+            "Mohit Chauhan Songs",
+            "Kareena Kapoor Songs",
+            "Shahid Kapoor Songs",
+            "Hindi Movies",
+            "tseries movies",
+            "Bollywood Song",
+            "official song",
+            "Latest Bollywood Song",
+            "Bollywood Romantic Song",
+            "Latest Hindi Song",
+            "tseries songs",
+            "tseries",
+            "yt:crop=16:9",
+            "Tumse Hi"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c3"
+        },
+        {
+          "title": "Kal Ho Naa Ho Full Video - Title Track | Shah Rukh Khan, Saif Ali Khan, Preity Zinta | Sonu Nigam",
+          "youtubeId": "g0eO74UmRBs",
+          "duration": 288,
+          "year": null,
+          "tags": [
+            "Kal Ho Naa Ho",
+            "kal ho na ho songs",
+            "Shah Rukh Khan",
+            "Preity Zinta",
+            "and Saif Ali Khan",
+            "Sonu Nigam",
+            "Sonu Nigam Songs",
+            "Best Of Sonu Nigam",
+            "Kal Ho Naa Ho Movie",
+            "Sonu Nigam All songs",
+            "Preity woman",
+            "Latest Hindi Song",
+            "Trending Songs",
+            "New Music Hindi",
+            "Latest Hit Song",
+            "Super Hit Song",
+            "Latest Bollywood Song",
+            "Latest Romantic Song",
+            "New Song",
+            "New Hindi Song",
+            "Best Bollywood Song",
+            "Love Song",
+            "Best Hindi Song",
+            "Sony Music India",
+            "Latest Hits"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c4"
+        },
+        {
+          "title": "Dil Diyan Gallan Song | Tiger Zinda Hai | Salman Khan, Katrina Kaif | Atif Aslam | Vishal & Shekhar",
+          "youtubeId": "SAcpESN_Fk4",
+          "duration": 185,
+          "year": null,
+          "tags": [
+            "salman khan song",
+            "katrina kaif song",
+            "dil diyan gallan song",
+            "tiger zinda hai songs",
+            "atif aslam songs",
+            "hindi songs",
+            "lagu india",
+            "salman khan songs",
+            "dil diya galla song",
+            "dil diya gallan song",
+            "kachi doriya song",
+            "vishal shekhar song",
+            "tiger zinda hai movie songs",
+            "เพลงอินเดีย",
+            "tenu lakhan to chupake rakha",
+            "atif aslam romantic song",
+            "kacchi doriyon doriyon",
+            "Tu jeena haan mera",
+            "bollywood best romantic song",
+            "salman khan hit song",
+            "Salkat love song",
+            "spy universe song",
+            "yrf romantic song"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c5"
+        },
+        {
+          "title": "\"Tum Hi Ho\" Aashiqui 2 Full Song With Lyrics | Aditya Roy Kapur, Shraddha Kapoor",
+          "youtubeId": "Umqb9KENgmk",
+          "duration": 268,
+          "year": null,
+          "tags": [
+            "tumhi ho aashiqui 2",
+            "tumhi ho full song",
+            "tum hi ho aashiqui 2",
+            "aashiqui 2 movie songs",
+            "tum hi ho aashiqui 2 mithoon",
+            "mithoon songs",
+            "kyuki tum hi ho aashiqui 2",
+            "aashiqui 2 songs",
+            "aashiqui 2 movie trailer",
+            "aashiqui 2 hindi movie 2013",
+            "ab tum hi ho meri aashiqui",
+            "aashiqui 2 tum hi ho",
+            "romantic songs 2012",
+            "bollywood movie songs",
+            "latest hindi songs",
+            "aashiqui 2 official trailer",
+            "full movies 2012",
+            "aashiqui songs",
+            "tum hi ho full song aashiqui 2"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c6"
+        },
+        {
+          "title": "Arabic Kuthu - Video Song | Beast | Thalapathy Vijay | Pooja Hegde | Sun Pictures | Nelson | Anirudh",
+          "youtubeId": "KUN5Uf9mObQ",
+          "duration": 282,
+          "year": null,
+          "tags": [
+            "Arabic kuthu video song",
+            "halamithi habibo video",
+            "arbic kuthu song video",
+            "arabic kuthu full video",
+            "arabic kuthu song",
+            "Sun pictures",
+            "Beast movie song",
+            "arabic kuthu beast song",
+            "arabic kuthu video song",
+            "arabic kuthu video",
+            "Arabic kuthu",
+            "arabic kuthu song video",
+            "halamithi habibo song",
+            "halamithi habibo",
+            "halamithi habibo beast",
+            "arabic kuthu dance",
+            "arabic kuthu reels",
+            "arabic kuthu dance vijay",
+            "beast movie",
+            "Beast movie video",
+            "beast movie video song",
+            "arabic kuthu songs"
+          ],
+          "category": "Bollywood Classics",
+          "_id": "694ed8b94d03b58a6b5619c7"
         }
-      ]
-    },
-    {
-      "_id": "693dcfb5931c3f5f058b8b5a",
-      "name": "Shinchan",
-      "playlistStartEpoch": "2020-01-01T00:00:00",
-      "items": [
-        {
-          "_id": "693dcfc0931c3f5f058b8b5e",
-          "title": "Untitled",
-          "youtubeId": "KgVtb8pNUFM",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b5f",
-          "title": "Untitled",
-          "youtubeId": "sx_Jhqz63s4",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b60",
-          "title": "Untitled",
-          "youtubeId": "lFjltjEDcWs",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b61",
-          "title": "Untitled",
-          "youtubeId": "sDcqgsJvecA",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b62",
-          "title": "Untitled",
-          "youtubeId": "gq_ZvLt_xPI",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b63",
-          "title": "Untitled",
-          "youtubeId": "1wWCqkCIHKA",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b64",
-          "title": "Untitled",
-          "youtubeId": "fwlGKpgMrtc",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b65",
-          "title": "Untitled",
-          "youtubeId": "qV0PIc5rjPA",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b66",
-          "title": "Untitled",
-          "youtubeId": "QE-Aj6C3wfw",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b67",
-          "title": "Untitled",
-          "youtubeId": "90_Hf5Bynyc",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b68",
-          "title": "Untitled",
-          "youtubeId": "AT45hqKX56A",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b69",
-          "title": "Untitled",
-          "youtubeId": "btEEWjLa1Jc",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b6a",
-          "title": "Untitled",
-          "youtubeId": "7pefMuMB2Mg",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b6b",
-          "title": "Untitled",
-          "youtubeId": "_Jg4oK-m5Xw",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b6c",
-          "title": "Untitled",
-          "youtubeId": "kbt6E9c_u40",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b6d",
-          "title": "Untitled",
-          "youtubeId": "i6qkNsWWAS4",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b6e",
-          "title": "Untitled",
-          "youtubeId": "t3VCsddtKx8",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b6f",
-          "title": "Untitled",
-          "youtubeId": "x2juH8lbtgM",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b71",
-          "title": "Untitled",
-          "youtubeId": "gZ2Akx4C32E",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b72",
-          "title": "Untitled",
-          "youtubeId": "DaMB__XdpQc",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b73",
-          "title": "Untitled",
-          "youtubeId": "MfonzdJrN0Q",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b74",
-          "title": "Untitled",
-          "youtubeId": "YgaB8fnQ8RA",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        },
-        {
-          "_id": "693dcfc0931c3f5f058b8b76",
-          "title": "Untitled",
-          "youtubeId": "TiwxlecvAeE",
-          "duration": 30,
-          "year": null,
-          "tags": [],
-          "category": null
-        }
-      ]
+      ],
+      "__v": 0
     }
   ]
 }

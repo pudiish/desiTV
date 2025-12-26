@@ -17,9 +17,6 @@ export default function TVRemote({
 	onVolumeDown,
 	onMute,
 	onMenuToggle,
-	onPlayPause,
-	onStop,
-	onRecord,
 	activeChannelIndex,
 	totalChannels,
 	menuOpen = false,
@@ -344,44 +341,10 @@ export default function TVRemote({
 					</button>
 				</div>
 
-				{/* VCR Controls */}
-				<div className="vcr-section">
-					<div className="vcr-label">━━ VCR ━━</div>
-					<div className="vcr-buttons">
-						<button 
-							className="remote-btn vcr-btn record"
-							onClick={handleMobileClick(() => { playButtonSound(); onRecord && onRecord(); })}
-							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onRecord && onRecord(); })}
-							disabled={!power}
-							title="Record"
-						>
-							⏺
-						</button>
-						<button 
-							className="remote-btn vcr-btn play"
-							onClick={handleMobileClick(() => { playButtonSound(); onPlayPause && onPlayPause(); })}
-							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onPlayPause && onPlayPause(); })}
-							disabled={!power}
-							title="Play/Pause"
-						>
-							▶
-						</button>
-						<button 
-							className="remote-btn vcr-btn stop"
-							onClick={handleMobileClick(() => { playButtonSound(); onStop && onStop(); })}
-							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onStop && onStop(); })}
-							disabled={!power}
-							title="Stop"
-						>
-							⏹
-						</button>
-					</div>
-					<div className="vcr-buttons secondary">
-						<button className="remote-btn vcr-btn small" disabled={!power}>⏮</button>
-						<button className="remote-btn vcr-btn small" disabled={!power}>⏪</button>
-						<button className="remote-btn vcr-btn small" disabled={!power}>⏩</button>
-						<button className="remote-btn vcr-btn small" disabled={!power}>⏭</button>
-					</div>
+				{/* DesiTV Branding */}
+				<div className="desitv-brand-section">
+					<div className="brand-label">━━ DESI TV ━━</div>
+					<div className="brand-tagline">Purana Zamana, Naya Andaaz</div>
 				</div>
 
 				{/* Volume Indicator */}
@@ -396,12 +359,10 @@ export default function TVRemote({
 					<div className="volume-percent">{Math.round(volume * 100)}%</div>
 				</div>
 
-				{/* Keyboard Hints */}
+				{/* Keyboard Hints - Simplified */}
 				<div className="keyboard-hints">
-					<div className="hint">↑↓ CH</div>
-					<div className="hint">←→ VOL</div>
-					<div className="hint">0-9 DIRECT</div>
-					<div className="hint">M MUTE</div>
+					<div className="hint">↑↓ CHANNEL</div>
+					<div className="hint">←→ VOLUME</div>
 				</div>
 			</div>
 		</div>
