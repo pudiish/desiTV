@@ -322,7 +322,10 @@
 .tv-frame-container:-webkit-full-screen .tv-brand-logo .brand-text,
 .tv-frame-container:-moz-full-screen .tv-brand-logo .brand-text,
 .tv-frame-container:-ms-fullscreen .tv-brand-logo .brand-text {
-	font-size: clamp(9px, 1vw, 12px) !important;
+	font-size: clamp(7px, 0.8vw, 10px) !important;
+	font-weight: 500 !important;
+	color: #404040 !important;
+	letter-spacing: clamp(0.3px, 0.08vw, 1px) !important;
 }
 
 .tv-frame-container:fullscreen .tv-brand-logo .brand-model,
