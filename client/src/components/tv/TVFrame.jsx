@@ -439,10 +439,9 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							<span className="btn-label">PWR</span>
 						</button>
 					</div>
-					{/* Brand Logo - Right side of control bar */}
+					{/* Brand Logo - Left side of control bar */}
 					<div className="tv-brand-logo">
 						<span className="brand-text">DESITV</span>
-						<span className="brand-model">SANYO</span>
 					</div>
 				</div>
 			</div>
