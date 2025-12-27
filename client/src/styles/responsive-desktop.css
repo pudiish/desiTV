@@ -1,0 +1,82 @@
+/**
+ * Responsive Styles - Desktop (1024px+)
+ * Large desktop and standard desktop breakpoints
+ */
+
+/* Large Desktop (1400px+) - TV and remote side by side */
+@media (min-width: 1400px) {
+	.tv-frame {
+		/* Fixed size - no change */
+	}
+	
+	.right-panel {
+		width: clamp(180px, 16vw, 220px);
+	}
+	
+	.remote-body {
+		width: clamp(180px, 16vw, 220px);
+		padding: clamp(12px, 1.5vh, 16px) clamp(12px, 1.3vw, 16px) clamp(16px, 2vh, 20px);
+	}
+}
+
+/* Standard Desktop (1024px - 1399px) */
+@media (min-width: 1024px) and (max-width: 1399px) {
+	.tv-frame {
+		/* Fixed size - no change */
+	}
+	
+	.right-panel {
+		width: clamp(170px, 15vw, 210px);
+	}
+	
+	.remote-body {
+		width: clamp(170px, 15vw, 210px);
+		padding: clamp(11px, 1.3vh, 13px) clamp(11px, 1.1vw, 13px) clamp(13px, 1.7vh, 17px);
+	}
+}
+
+/* Tablet Landscape (768px - 1023px) - Side by side but smaller */
+@media (min-width: 768px) and (max-width: 1023px) {
+	.content-wrapper {
+		gap: 20px;
+		padding: 12px 18px;
+	}
+	
+	.tv-frame {
+		/* Responsive on tablet - maintains aspect ratio */
+		width: 100% !important;
+		max-width: 800px !important;
+		height: auto !important;
+		aspect-ratio: 4/3 !important;
+		padding: 2% 4% 3% 4% !important;
+	}
+	
+	@supports not (aspect-ratio: 4/3) {
+		.tv-frame {
+			height: calc((100vw - 36px) * 0.75) !important;
+			max-height: 70vh !important;
+		}
+	}
+	
+	.right-panel {
+		width: clamp(150px, 14vw, 190px);
+	}
+	
+	.remote-body {
+		width: clamp(150px, 14vw, 190px);
+		padding: clamp(10px, 1.1vh, 12px) clamp(10px, 1vw, 12px) clamp(12px, 1.5vh, 16px);
+	}
+	
+	/* Smaller buttons on tablet */
+	.remote-btn {
+		width: clamp(28px, 2.8vw, 34px);
+		height: clamp(28px, 2.8vw, 34px);
+		font-size: clamp(8px, 0.8vw, 10px);
+	}
+	
+	.tv-btn {
+		width: clamp(24px, 2.4vw, 30px);
+		height: clamp(24px, 2.4vw, 30px);
+		font-size: clamp(8px, 0.8vw, 10px);
+	}
+}
