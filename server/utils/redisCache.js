@@ -76,6 +76,18 @@ class HybridCache {
 		const redisUrl = process.env.REDIS_URL || process.env.REDISCLOUD_URL || 'redis://localhost:6379'
 		const redisPassword = process.env.REDIS_PASSWORD
 		
+		// Validate Redis URL format
+		if (!redisUrl || (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://'))) {
+			const errorMsg = `Invalid Redis URL format. Expected redis:// or rediss://, got: ${redisUrl ? 'undefined' : redisUrl}`
+			if (this.fallbackEnabled) {
+				console.warn(`[Redis] ${errorMsg} - Using fallback cache`)
+				this.redisConnected = false
+				return
+			} else {
+				throw new Error(`Redis URL not configured correctly: ${errorMsg}. Set REDIS_URL environment variable or enable fallback with REDIS_FALLBACK_ENABLED=true`)
+			}
+		}
+		
 		try {
 			// Create Redis client
 			const clientOptions = {
@@ -143,8 +155,11 @@ class HybridCache {
 			if (this.fallbackEnabled) {
 				console.warn('[Redis] Failed to initialize:', err.message, '- Using fallback cache')
 			} else {
-				console.error('[Redis] ❌ Failed to initialize:', err.message, '- Fallback disabled!')
-				throw new Error(`Redis initialization failed and fallback is disabled: ${err.message}`)
+				console.error('[Redis] ❌ Failed to initialize:', err.message)
+				console.error('[Redis] ⚠️  Fallback is disabled but server will continue without Redis')
+				console.error('[Redis] 💡 To fix: Set REDIS_URL in environment variables or enable fallback with REDIS_FALLBACK_ENABLED=true')
+				// Don't throw - allow server to start without Redis
+				// Cache operations will fail gracefully
 			}
 			this.redisConnected = false
 		}
