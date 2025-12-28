@@ -30,8 +30,9 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
 	
 	try {
 		// Always fetch from server (no-cache to prevent browser caching)
+		// PERFORMANCE: Use dedupeFetch to prevent duplicate requests
 		// OPTIMIZED: Enhanced cache-busting headers for faster sync
-		const response = await fetch('/api/global-epoch', {
+		const response = await dedupeFetch('/api/global-epoch', {
 			cache: 'no-store', // Prevent browser caching
 			headers: {
 				'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -50,6 +51,22 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
 		// Validate epoch is valid
 		if (isNaN(epoch.getTime())) {
 			throw new Error('Invalid epoch date received from server')
+		}
+		
+		// VALIDATION: Check checksum if provided (silent background sync)
+		if (data.checksum && cachedEpoch) {
+			const needsRefresh = await validateAndRefreshEpoch(
+				cachedEpoch,
+				data.checksum,
+				async () => {
+					// Silent refresh - already fetched, just update cache
+					cachedEpoch = epoch
+					cacheTimestamp = Date.now()
+				}
+			)
+			if (needsRefresh) {
+				console.log('[GlobalEpoch] ✅ Silently synced epoch (checksum mismatch fixed)')
+			}
 		}
 		
 		// Check if epoch changed (shouldn't happen, but log if it does)

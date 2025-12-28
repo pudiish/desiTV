@@ -22,6 +22,17 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/images/tv-badge.svg" />
     <link rel="alternate icon" href="/images/tv-badge.svg" />
+    
+    <!-- PERFORMANCE OPTIMIZATION: Resource Hints -->
+    <!-- Preconnect to YouTube for faster video loading -->
+    <link rel="preconnect" href="https://www.youtube.com" crossorigin />
+    <link rel="dns-prefetch" href="https://www.youtube.com" />
+    <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
+    <link rel="dns-prefetch" href="https://i.ytimg.com" />
+    
+    <!-- Preload critical API endpoint -->
+    <link rel="preload" href="/api/global-epoch" as="fetch" crossorigin />
+    <link rel="preload" href="/api/channels" as="fetch" crossorigin />
   </head>
   <body>
     <div id="root"></div>

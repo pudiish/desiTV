@@ -7,6 +7,7 @@ import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
 import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgramming'
 import { useEasterEggs } from '../hooks/useEasterEggs'
+import { checksumSyncService } from '../services/checksumSync'
 
 // Lazy load heavy components that aren't always visible
 const TVMenuV2 = lazy(() => import('../components/tv').then(m => ({ default: m.TVMenuV2 })))
@@ -171,6 +172,8 @@ export default function Home() {
 			if (sessionSaveTimeoutRef.current) {
 				clearTimeout(sessionSaveTimeoutRef.current)
 			}
+			// Stop checksum sync on unmount
+			checksumSyncService.stop()
 		}
 	}, [])
 
@@ -261,6 +264,9 @@ export default function Home() {
 			broadcastStateManager.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[Home] ⚠️ Global epoch refresh failed:', err)
 			})
+			
+			// PROACTIVE: Trigger fast checksum sync on category switch
+			checksumSyncService.triggerFastSync()
 		} catch (err) {
 			console.error('[Home] Error initializing category state:', err)
 		}
@@ -326,6 +332,19 @@ export default function Home() {
 				
 				// Start periodic epoch refresh to maintain sync
 				broadcastStateManager.startEpochRefresh()
+				
+				// ULTRA-FAST VALIDATION: Start checksum sync service (max 2s latency)
+				// - Checks every 2 seconds (meets max latency requirement)
+				// - Fast sync on critical moments (100ms debounce)
+				// - Immediate validation on startup (500ms)
+				checksumSyncService.start()
+				
+				// ULTRA-FAST: Force immediate sync after initial load (1s delay)
+				setTimeout(() => {
+					checksumSyncService.forceSync().catch(err => {
+						console.warn('[Home] Initial checksum sync failed:', err)
+					})
+				}, 1000) // After 1 second for faster initial sync
 				
 				// Load channel states (but NOT epoch - epoch comes from server only)
 				broadcastStateManager.loadFromStorage()

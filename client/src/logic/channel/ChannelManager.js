@@ -5,9 +5,13 @@
  * - Categories (like "Cult", "Music") are playlists
  * - Videos within a category are "channels" you switch between
  * - Channel Up/Down switches videos within the selected category
+ * PERFORMANCE: Uses request deduplication to prevent duplicate API calls
+ * VALIDATION: Uses checksum validation for silent background sync
  */
 
 import { envConfig } from '../../config/environment'
+import { dedupeFetch } from '../../utils/requestDeduplication'
+import { validateAndRefreshChannels } from '../../utils/checksumValidator'
 
 class ChannelManager {
 	constructor() {
@@ -65,9 +69,30 @@ class ChannelManager {
 				}
 				
 				if (apiResponse && apiResponse.ok) {
-					// API returns array directly
-					rawChannels = await apiResponse.json()
-					if (Array.isArray(rawChannels) && rawChannels.length > 0) {
+					// API returns data with checksum
+					const responseData = await apiResponse.json()
+					
+					// Extract channels and checksum (support both formats)
+					const channelsData = responseData.data || responseData
+					const serverChecksum = responseData.checksum
+					
+					if (Array.isArray(channelsData) && channelsData.length > 0) {
+						// VALIDATION: Check checksum if we have cached channels
+						if (serverChecksum && this.rawChannels && this.rawChannels.length > 0) {
+							const needsRefresh = await validateAndRefreshChannels(
+								this.rawChannels,
+								serverChecksum,
+								async () => {
+									// Silent refresh - already fetched, just update
+									rawChannels = channelsData
+								}
+							)
+							if (needsRefresh) {
+								console.log('[ChannelManager] ✅ Silently synced channels (checksum mismatch fixed)')
+							}
+						}
+						
+						rawChannels = channelsData
 						console.log('[ChannelManager] ✓ Loaded channels from API:', rawChannels.length, 'channels')
 					} else {
 						console.warn('[ChannelManager] API returned empty array, trying static file fallback')

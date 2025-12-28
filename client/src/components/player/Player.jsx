@@ -7,6 +7,7 @@ import { PLAYBACK_THRESHOLDS } from '../../config/thresholds'
 import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../../config/constants/youtube'
 import { PLAYBACK } from '../../config/constants/playback'
 import { joinChannel, leaveChannel } from '../../services/api/viewerCountService'
+import { loadYouTubeAPI } from '../../utils/youtubeLoader'
 
 /**
  * Enhanced Player Component with:
@@ -17,7 +18,11 @@ import { joinChannel, leaveChannel } from '../../services/api/viewerCountService
  * - Unified position calculation via useBroadcastPosition hook
  * - iPhone/iOS autoplay support (muted autoplay, then unmute)
  */
-export default function Player({ 
+/**
+ * PERFORMANCE: Memoized Player component to prevent unnecessary re-renders
+ * Only re-renders when channel, power, or volume changes
+ */
+const Player = React.memo(function Player({ 
 channel, 
 onVideoEnd, 
 	onChannelChange, 
@@ -576,6 +581,9 @@ onBufferingChange = null,
 
 			console.log(`[Player] Loading validated video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
 			
+			// PROACTIVE: Trigger sync before loading video (critical moment)
+			checksumSyncService.triggerFastSync()
+			
 			e7Ref.current = true
 			clipSeekTimeRef.current = startSeconds
 			
@@ -705,13 +713,17 @@ onBufferingChange = null,
 		}
 	}, [])
 
-	// RetroTV Pattern: Player initialization using window.onYouTubeIframeAPIReady
+	// PERFORMANCE OPTIMIZATION: Lazy load YouTube API
+	// RetroTV Pattern: Player initialization using lazy-loaded YouTube API
 	useEffect(() => {
 		if (!videoId || !channel?._id) {
 			return
 		}
 
-		// RetroTV pattern: Use window.onYouTubeIframeAPIReady callback
+		// Lazy load YouTube API if not already loaded
+		let isMounted = true
+		let cleanup = null
+
 		const initYouTubePlayer = () => {
 			if (!window.YT || !window.YT.Player) {
 				return false
@@ -2275,6 +2287,16 @@ return (
 					<div className="error-message">PLAYBACK ERROR - RECOVERING...</div>
 				</div>
 			)}
-</div>
-)
-}
+		</div>
+	)
+}, (prevProps, nextProps) => {
+	// Custom comparison for React.memo - only re-render if critical props change
+	// This prevents unnecessary re-renders on every position update
+	return (
+		prevProps.channel?._id === nextProps.channel?._id &&
+		prevProps.power === nextProps.power &&
+		prevProps.volume === nextProps.volume
+	)
+})
+
+export default Player

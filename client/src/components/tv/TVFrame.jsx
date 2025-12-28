@@ -4,7 +4,11 @@ import { Player } from '../player'
 import { StaticEffect, BufferingOverlay, WhatsNextPreview, EnhancedWhatsNextPreview, CRTInfoOverlay, PlaylistTransitionOverlay } from '../overlays'
 import { getUserTimezone } from '../../services/api/timezoneService'
 
-export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
+/**
+ * TVFrame Component - PERFORMANCE OPTIMIZED
+ * Memoized to prevent unnecessary re-renders
+ */
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
@@ -526,4 +530,15 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 			)}
 		</div>
 	)
-}
+}, (prevProps, nextProps) => {
+	// Custom comparison for React.memo - only re-render if critical props change
+	return (
+		prevProps.power === nextProps.power &&
+		prevProps.activeChannel?._id === nextProps.activeChannel?._id &&
+		prevProps.volume === nextProps.volume &&
+		prevProps.staticActive === nextProps.staticActive &&
+		prevProps.isBuffering === nextProps.isBuffering
+	)
+})
+
+export default TVFrame

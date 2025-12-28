@@ -247,8 +247,12 @@ export class APIClient {
       }
 
       // Make request
+      // PERFORMANCE: Use dedupeFetch for GET requests to prevent duplicates
       const startTime = performance.now()
-      const response = await fetch(url, {
+      const fetchFn = finalConfig.method?.toUpperCase() === 'GET' 
+        ? (await import('../../utils/requestDeduplication')).dedupeFetch
+        : fetch
+      const response = await fetchFn(url, {
         ...finalConfig,
         headers,
         credentials: 'include', // Include cookies for CSRF
