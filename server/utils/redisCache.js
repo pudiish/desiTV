@@ -73,8 +73,29 @@ class HybridCache {
 			return
 		}
 		
-		const redisUrl = process.env.REDIS_URL || process.env.REDISCLOUD_URL || 'redis://localhost:6379'
-		const redisPassword = process.env.REDIS_PASSWORD
+		// Support both full URL or separate components
+		let redisUrl = process.env.REDIS_URL || process.env.REDISCLOUD_URL
+		let redisPassword = process.env.REDIS_PASSWORD
+		
+		// If URL not provided, try building from components
+		if (!redisUrl && process.env.REDIS_HOST) {
+			const host = process.env.REDIS_HOST
+			const port = process.env.REDIS_PORT || '6379'
+			const username = process.env.REDIS_USERNAME || 'default'
+			const password = redisPassword || ''
+			redisUrl = `redis://${username}:${password}@${host}:${port}`
+			console.log(`[Redis] Built URL from components: redis://${username}:****@${host}:${port}`)
+		}
+		
+		// Fallback to localhost if nothing set
+		if (!redisUrl) {
+			redisUrl = 'redis://localhost:6379'
+		}
+		
+		// Log the URL (mask password for security)
+		const maskedUrl = redisUrl ? redisUrl.replace(/:[^:@]+@/, ':****@') : 'undefined'
+		console.log(`[Redis] Connecting to: ${maskedUrl}`)
+		console.log(`[Redis] URL length: ${redisUrl ? redisUrl.length : 0} characters`)
 		
 		// Validate Redis URL format
 		if (!redisUrl || (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://'))) {
@@ -86,6 +107,11 @@ class HybridCache {
 			} else {
 				throw new Error(`Redis URL not configured correctly: ${errorMsg}. Set REDIS_URL environment variable or enable fallback with REDIS_FALLBACK_ENABLED=true`)
 			}
+		}
+		
+		// Check if URL seems truncated (common issue with long URLs in env vars)
+		if (redisUrl.length < 50 || !redisUrl.includes('.com') && !redisUrl.includes('.net')) {
+			console.warn(`[Redis] ⚠️  URL seems short or incomplete. Full URL: ${maskedUrl}`)
 		}
 		
 		try {

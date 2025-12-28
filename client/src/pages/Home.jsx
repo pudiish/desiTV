@@ -253,9 +253,13 @@ export default function Home() {
 		
 		setSelectedCategory(category)
 		
-		// Initialize broadcast state for this category
+		// Initialize broadcast state for this category (synchronized)
 		try {
 			broadcastStateManager.initializeChannel(category)
+			// Force refresh of global epoch to ensure sync
+			broadcastStateManager.initializeGlobalEpoch().catch(err => {
+				console.warn('[Home] Global epoch refresh failed, using cached:', err)
+			})
 		} catch (err) {
 			console.error('[Home] Error initializing category state:', err)
 		}
@@ -609,8 +613,21 @@ export default function Home() {
 		switchVideo(index)
 	}
 
+	// Debounce category changes to prevent rapid switching
+	const categoryChangeTimeoutRef = useRef(null)
+	const isChangingCategoryRef = useRef(false)
+
 	function handleCategoryUp() {
 		if (!power || categories.length === 0) return
+		if (isChangingCategoryRef.current) {
+			console.log('[Home] Category change already in progress, ignoring...')
+			return
+		}
+		
+		// Clear any pending category change
+		if (categoryChangeTimeoutRef.current) {
+			clearTimeout(categoryChangeTimeoutRef.current)
+		}
 		
 		// Use ref for immediate, synchronous access (fixes race condition)
 		let currentIndex = currentCategoryIndexRef.current
@@ -637,16 +654,42 @@ export default function Home() {
 			return
 		}
 		
+		// Prevent duplicate changes
+		if (nextCategory._id === selectedCategory?._id) {
+			console.log(`[Home] Already on category ${nextCategory.name}, skipping...`)
+			return
+		}
+		
 		console.log(`[Home] Category UP: ${currentIndex} -> ${nextIndex} (${nextCategory.name})`)
+		
+		// Mark as changing
+		isChangingCategoryRef.current = true
 		
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = nextIndex
+		
+		// Debounce the actual category change
+		categoryChangeTimeoutRef.current = setTimeout(() => {
 			setCategory(nextCategory.name)
 			setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
+			// Reset flag after state update completes
+			setTimeout(() => {
+				isChangingCategoryRef.current = false
+			}, 300)
+		}, 50) // Small delay to batch rapid clicks
 	}
 
 	function handleCategoryDown() {
 		if (!power || categories.length === 0) return
+		if (isChangingCategoryRef.current) {
+			console.log('[Home] Category change already in progress, ignoring...')
+			return
+		}
+		
+		// Clear any pending category change
+		if (categoryChangeTimeoutRef.current) {
+			clearTimeout(categoryChangeTimeoutRef.current)
+		}
 		
 		// Use ref for immediate, synchronous access (fixes race condition)
 		let currentIndex = currentCategoryIndexRef.current
@@ -675,12 +718,29 @@ export default function Home() {
 			return
 		}
 		
+		// Prevent duplicate changes
+		if (prevCategory._id === selectedCategory?._id) {
+			console.log(`[Home] Already on category ${prevCategory.name}, skipping...`)
+			return
+		}
+		
 		console.log(`[Home] Category DOWN: ${currentIndex} -> ${prevIndex} (${prevCategory.name})`)
+		
+		// Mark as changing
+		isChangingCategoryRef.current = true
 		
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = prevIndex
+		
+		// Debounce the actual category change
+		categoryChangeTimeoutRef.current = setTimeout(() => {
 			setCategory(prevCategory.name)
 			setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
+			// Reset flag after state update completes
+			setTimeout(() => {
+				isChangingCategoryRef.current = false
+			}, 300)
+		}, 50) // Small delay to batch rapid clicks
 	}
 
 	function handleMenuToggle() {

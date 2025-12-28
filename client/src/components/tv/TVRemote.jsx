@@ -56,9 +56,20 @@ export default function TVRemote({
 		if (onTapTrigger) onTapTrigger()
 	}
 
+	// Track if touch event was handled to prevent double-firing
+	const touchHandledRef = useRef(false)
+
 	// Mobile-friendly handler that prevents double-firing on touch devices
 	const handleMobileClick = (handler, preventDefault = true) => {
 		return (e) => {
+			// If touch was already handled, ignore click (prevents double-firing)
+			if (touchHandledRef.current) {
+				e.preventDefault()
+				e.stopPropagation()
+				touchHandledRef.current = false // Reset for next interaction
+				return
+			}
+			
 			if (preventDefault) {
 				e.preventDefault()
 				e.stopPropagation()
@@ -72,7 +83,12 @@ export default function TVRemote({
 		return (e) => {
 			e.preventDefault()
 			e.stopPropagation()
+			touchHandledRef.current = true // Mark touch as handled
 			handler()
+			// Reset after a short delay
+			setTimeout(() => {
+				touchHandledRef.current = false
+			}, 300)
 		}
 	}
 
