@@ -15,9 +15,9 @@ export const BROADCAST_THRESHOLDS = {
 	SESSION_MIN_SAVE_INTERVAL: 1000, // milliseconds - minimum interval between saves
 	SESSION_SAVE_AUTO_INTERVAL: 3000, // milliseconds - auto-save interval
 
-	// State sync
-	BROADCAST_SYNC_INTERVAL: 5000, // milliseconds - sync state to server
-	POSITION_REFRESH_INTERVAL: 1000, // milliseconds - how often to recalculate position
+	// State sync - OPTIMIZED FOR FASTER SYNC
+	BROADCAST_SYNC_INTERVAL: 3000, // milliseconds - sync state to server (reduced from 5s for faster sync)
+	POSITION_REFRESH_INTERVAL: 500, // milliseconds - how often to recalculate position (reduced from 1s for 2x faster updates)
 
 	// Storage
 	MAX_CHANNEL_STATES: 10, // maximum channel states to keep in localStorage

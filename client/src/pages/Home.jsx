@@ -256,7 +256,8 @@ export default function Home() {
 		// Initialize broadcast state for this category (synchronized)
 		try {
 			broadcastStateManager.initializeChannel(category)
-			// Force refresh of global epoch to ensure sync (especially important for mobile/desktop sync)
+			// AGGRESSIVE SYNC: Force immediate refresh of global epoch on category switch
+			// This ensures users are perfectly synced when switching channels (optimized for faster sync)
 			broadcastStateManager.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[Home] ⚠️ Global epoch refresh failed:', err)
 			})

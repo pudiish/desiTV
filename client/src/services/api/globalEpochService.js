@@ -8,7 +8,7 @@
 import { getUserTimezone } from './timezoneService'
 
 const EPOCH_CACHE_KEY = 'desitv-global-epoch-cached'
-const EPOCH_CACHE_TTL = 5 * 60 * 1000 // 5 minutes (reduced for better sync)
+const EPOCH_CACHE_TTL = 1.5 * 60 * 1000 // 1.5 minutes (optimized for faster sync - 3.3x faster than before)
 
 let cachedEpoch = null
 let cacheTimestamp = null
@@ -30,11 +30,13 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
 	
 	try {
 		// Always fetch from server (no-cache to prevent browser caching)
+		// OPTIMIZED: Enhanced cache-busting headers for faster sync
 		const response = await fetch('/api/global-epoch', {
 			cache: 'no-store', // Prevent browser caching
 			headers: {
-				'Cache-Control': 'no-cache',
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
 				'Pragma': 'no-cache',
+				'Expires': '0',
 			}
 		})
 		

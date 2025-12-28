@@ -446,14 +446,15 @@ class BroadcastStateManager {
 			clearInterval(this.epochRefreshInterval)
 		}
 
-		// Refresh epoch every 5 minutes to ensure sync
+		// Refresh epoch every 1.5 minutes for faster sync (optimized from 5 minutes)
+		// This ensures users stay synchronized within 1.5 minutes instead of 5 minutes
 		this.epochRefreshInterval = setInterval(() => {
 			this.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[BroadcastState] Periodic epoch refresh failed:', err)
 			})
-		}, 5 * 60 * 1000) // 5 minutes
+		}, 1.5 * 60 * 1000) // 1.5 minutes (3.3x faster sync)
 
-		console.log('[BroadcastState] Started periodic epoch refresh (every 5 minutes)')
+		console.log('[BroadcastState] Started periodic epoch refresh (every 1.5 minutes)')
 	}
 
 	/**
