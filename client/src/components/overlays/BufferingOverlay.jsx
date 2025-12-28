@@ -104,7 +104,7 @@ export default function BufferingOverlay({ isBuffering = false, duration = 2000,
 				pointerEvents: 'none' // Allow clicks through to YouTube player underneath
 			}}
 		>
-			{/* Static noise video */}
+			{/* Static noise video - gracefully handle missing file */}
 			<video
 				ref={videoRef}
 				src={videoPath}
@@ -123,12 +123,15 @@ export default function BufferingOverlay({ isBuffering = false, duration = 2000,
 					console.log('[BufferingOverlay] Video metadata loaded')
 					if (videoRef.current && isBuffering) {
 						videoRef.current.play().catch(err => {
-							console.error('[BufferingOverlay] Failed to play after metadata:', err)
+							// Silently handle - video is optional
+							console.warn('[BufferingOverlay] Video play failed (non-critical):', err.message)
 						})
 					}
 				}}
 				onError={(e) => {
-					console.error('[BufferingOverlay] Video error:', e.target.error)
+					// Silently handle missing video file - just show black screen
+					console.warn('[BufferingOverlay] Video file not available (non-critical):', e.target.error?.message || 'Unknown error')
+					// Video element will just not display, black background will show
 				}}
 			/>
 

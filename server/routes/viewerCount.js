@@ -33,9 +33,15 @@ router.post('/:channelId/join', async (req, res) => {
 			channelName || 'Unknown Channel'
 		)
 		
-		// Clear cache (use short key)
-		const channelHash = channelId.toString().substring(18, 24)
-		await cache.delete(`vc:${channelHash}`)
+		// Clear cache (use short key) - handle short channelIds gracefully
+		try {
+			const channelHash = channelId.toString().length >= 24 
+				? channelId.toString().substring(18, 24)
+				: channelId.toString().substring(Math.max(0, channelId.toString().length - 6))
+			await cache.delete(`vc:${channelHash}`)
+		} catch (cacheErr) {
+			console.warn('[ViewerCount] Cache delete failed (non-critical):', cacheErr.message)
+		}
 		
 		res.json({
 			success: true,
@@ -63,9 +69,15 @@ router.post('/:channelId/leave', async (req, res) => {
 		
 		const viewerCount = await ViewerCount.decrementViewer(channelId)
 		
-		// Clear cache (use short key)
-		const channelHash = channelId.toString().substring(18, 24)
-		await cache.delete(`vc:${channelHash}`)
+		// Clear cache (use short key) - handle short channelIds gracefully
+		try {
+			const channelHash = channelId.toString().length >= 24 
+				? channelId.toString().substring(18, 24)
+				: channelId.toString().substring(Math.max(0, channelId.toString().length - 6))
+			await cache.delete(`vc:${channelHash}`)
+		} catch (cacheErr) {
+			console.warn('[ViewerCount] Cache delete failed (non-critical):', cacheErr.message)
+		}
 		
 		res.json({
 			success: true,
@@ -87,7 +99,10 @@ router.get('/:channelId', async (req, res) => {
 		const { channelId } = req.params
 		
 		// OPTIMIZED: Ultra-short cache key for free tier
-		const channelHash = channelId.toString().substring(18, 24) // Last 6 chars
+		// Handle short channelIds gracefully
+		const channelHash = channelId.toString().length >= 24 
+			? channelId.toString().substring(18, 24)
+			: channelId.toString().substring(Math.max(0, channelId.toString().length - 6))
 		const cacheKey = `vc:${channelHash}` // Shortened from 'viewer-count:xxx'
 		const cached = await cache.get(cacheKey)
 		if (cached) {

@@ -462,7 +462,12 @@ onBufferingChange = null,
 
 	// Effect: Smart video loading with caching (only load when video actually changes)
 	useEffect(() => {
-		if (!videoId || !channel?._id || !ytPlayerRef.current) return
+		if (!videoId || !channel?._id || !ytPlayerRef.current) {
+			if (!videoId) {
+				console.warn('[Player] Cannot load video - videoId is missing', { current, currIndex, itemsLength: items.length })
+			}
+			return
+		}
 
 		// Clear any pending load timeout
 		if (loadVideoTimeoutRef.current) {
@@ -2142,6 +2147,10 @@ return (
 				loop
 				muted
 				playsInline
+				onError={(e) => {
+					// Silently handle missing video file - black background will show instead
+					console.warn('[Player] Static video not available (non-critical):', e.target.error?.message || 'Unknown error')
+				}}
 				style={{
 					position: 'absolute',
 					top: 0,
