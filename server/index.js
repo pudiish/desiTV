@@ -4,6 +4,7 @@ const createCors = require('./middleware/cors');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const { warmChannelsList, startPeriodicWarming } = require('./utils/cacheWarmer');
 
 // Load project root .env first (useful when running from project root),
 // then load server/.env to allow overrides.
@@ -230,6 +231,19 @@ dbConnectionManager.onConnection(async () => {
 	} catch (jsonErr) {
 		console.warn('[DesiTV™] Warning: Failed to ensure channels.json:', jsonErr.message);
 		console.warn('[DesiTV™] Server will continue, but JSON may need manual regeneration');
+	}
+	
+	// Pre-warm cache after MongoDB connection (eliminates cold start misses)
+	try {
+		console.log('[DesiTV™] 🔥 Pre-warming cache...');
+		await warmChannelsList();
+		console.log('[DesiTV™] ✅ Cache pre-warmed successfully');
+		
+		// Start periodic cache refresh (every 5 minutes)
+		startPeriodicWarming(5);
+	} catch (cacheErr) {
+		console.warn('[DesiTV™] ⚠️  Cache pre-warming failed (non-critical):', cacheErr.message);
+		console.warn('[DesiTV™] Server will continue, cache will populate on first request');
 	}
 });
 

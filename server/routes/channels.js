@@ -6,13 +6,14 @@ const { requireAuth } = require('../middleware/auth');
 const { regenerateChannelsJSON } = require('../utils/generateJSON');
 const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
 const { getCachedPosition } = require('../utils/positionCalculator');
+const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
 
-// Cache TTL constants (in seconds) - OPTIMIZED FOR FREE TIER
-// Longer TTLs = fewer DB queries = better free tier efficiency
-// With compression, longer TTLs are safe within 25MB limit
-const CACHE_TTL = {
-  CHANNELS_LIST: 60,     // Increased from 15s - reduces DB queries by 75%
-  CHANNEL_DETAIL: 120,   // Increased from 30s - reduces DB queries by 50%
+// Cache TTL constants (in seconds) - OPTIMIZED WITH WRITE-THROUGH STRATEGY
+// Extended TTLs since write-through ensures cache consistency
+// Write-through pattern: Updates cache immediately on writes, so longer TTLs are safe
+const CACHE_TTL_CONFIG = CACHE_TTL || {
+  CHANNELS_LIST: 300,    // 5 minutes (extended - write-through ensures consistency)
+  CHANNEL_DETAIL: 600,   // 10 minutes (extended - write-through ensures consistency)
   CURRENT_VIDEO: 5,      // Kept at 5s for accuracy
 };
 
@@ -47,22 +48,11 @@ router.get('/', async (req, res) => {
     // CRITICAL: Use youtubeId (not videoId) - matches schema and client expectations
     const channels = await Channel.find().select('name playlistStartEpoch items._id items.youtubeId items.title items.duration items.thumbnail').lean();
     
-    // Minimize data: remove unnecessary fields from items
-    const minimizedChannels = channels.map(ch => ({
-      _id: ch._id,
-      name: ch.name,
-      playlistStartEpoch: ch.playlistStartEpoch,
-      items: (ch.items || []).map(item => ({
-        _id: item._id,
-        youtubeId: item.youtubeId || item.videoId, // Support both for backward compatibility
-        title: item.title,
-        duration: item.duration,
-        thumbnail: item.thumbnail,
-      })),
-    }));
+    // Minimize data using shared utility (consistent with write-through)
+    const minimizedChannels = minimizeChannels(channels);
     
-    // Cache the minimized result
-    await cache.set(cacheKey, minimizedChannels, CACHE_TTL.CHANNELS_LIST);
+    // Write-through pattern: Cache immediately after fetch
+    await cache.set(cacheKey, minimizedChannels, CACHE_TTL_CONFIG.CHANNELS_LIST);
     
     // Return minimized channels (with youtubeId) for API compatibility
     res.json(minimizedChannels);
@@ -86,35 +76,11 @@ router.get('/:id', async (req, res) => {
     const ch = await Channel.findById(req.params.id).lean();
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
-    // Minimize cached data - only essential fields
-    // CRITICAL: Use youtubeId (not videoId) - matches schema and client expectations
-    const minimizedChannel = {
-      _id: ch._id,
-      name: ch.name,
-      playlistStartEpoch: ch.playlistStartEpoch,
-      timezone: ch.timezone,
-      items: (ch.items || []).map(item => ({
-        _id: item._id,
-        youtubeId: item.youtubeId || item.videoId, // Support both for backward compatibility
-        title: item.title,
-        duration: item.duration,
-        thumbnail: item.thumbnail,
-      })),
-      // Only include time-based playlists if they exist (they're large)
-      timeBasedPlaylists: ch.timeBasedPlaylists ? Object.keys(ch.timeBasedPlaylists).reduce((acc, slot) => {
-        if (ch.timeBasedPlaylists[slot] && ch.timeBasedPlaylists[slot].length > 0) {
-          acc[slot] = ch.timeBasedPlaylists[slot].map(item => ({
-            _id: item._id,
-            youtubeId: item.youtubeId || item.videoId, // Support both for backward compatibility
-            title: item.title,
-            duration: item.duration,
-          }))
-        }
-        return acc
-      }, {}) : undefined,
-    };
+    // Minimize cached data using shared utility (consistent with write-through)
+    const minimizedChannel = minimizeChannel(ch);
     
-    await cache.set(cacheKey, minimizedChannel, CACHE_TTL.CHANNEL_DETAIL);
+    // Write-through pattern: Cache immediately after fetch
+    await cache.set(cacheKey, minimizedChannel, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
     // Return minimized channel (with youtubeId) for API compatibility
     res.json(minimizedChannel);
   } catch (err) {
@@ -459,8 +425,13 @@ router.post('/', requireAuth, async (req, res) => {
     if (exists) return res.status(400).json({ message: 'Channel already exists' });
     const ch = await Channel.create({ name, playlistStartEpoch });
     
-    // Invalidate channels list cache
-    cache.delete('ch:all');
+    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
+    const minimized = minimizeChannel(ch);
+    const channelHash = ch._id.toString().substring(18, 24);
+    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    
+    // Invalidate channels list cache (will be refreshed on next read)
+    await cache.delete('ch:all');
     
     // Regenerate channels.json
     try {
@@ -487,9 +458,13 @@ router.post('/:channelId/videos', requireAuth, async (req, res) => {
     ch.items.push({ title, youtubeId, duration: Number(duration) || 30, year, tags: tags || [], category });
     await ch.save();
     
-    // Invalidate caches for this channel
-    cache.delete('ch:all');
-    cache.deletePattern(`channel:${channelId}`);
+    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
+    const minimized = minimizeChannel(ch);
+    const channelHash = channelId.toString().substring(18, 24);
+    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    
+    // Invalidate channels list cache (will be refreshed on next read)
+    await cache.delete('ch:all');
     
     // Regenerate channels.json
     try {
@@ -543,9 +518,13 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
     
-    // Invalidate caches
-    cache.delete('ch:all');
-    cache.deletePattern(`channel:${channelId}`);
+    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
+    const minimized = minimizeChannel(updatedChannel);
+    const channelHash = channelId.toString().substring(18, 24);
+    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    
+    // Invalidate channels list cache (will be refreshed on next read)
+    await cache.delete('ch:all');
     
     // Regenerate channels.json
     try {
@@ -572,9 +551,10 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
     
-    // Invalidate all caches
-    cache.delete('ch:all');
-    cache.deletePattern(`channel:${channelId}`);
+    // WRITE-THROUGH PATTERN: Delete from cache immediately after DB delete
+    const channelHash = channelId.toString().substring(18, 24);
+    await cache.delete(`ch:${channelHash}`);
+    await cache.delete('ch:all');
     
     // Regenerate channels.json
     try {
@@ -632,9 +612,13 @@ router.post('/:id/add-video', requireAuth, async (req, res) => {
     channel.items.push(newVideo);
     await channel.save();
 
-    // Invalidate caches
-    cache.delete('ch:all');
-    cache.deletePattern(`channel:${channelId}`);
+    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
+    const minimized = minimizeChannel(channel);
+    const channelHash = channelId.toString().substring(18, 24);
+    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    
+    // Invalidate channels list cache (will be refreshed on next read)
+    await cache.delete('ch:all');
 
     // Regenerate channels.json
     try {
