@@ -4,6 +4,7 @@ const createCors = require('./middleware/cors');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const compression = require('compression');
 const { warmChannelsList, startPeriodicWarming } = require('./utils/cacheWarmer');
 
 // Load project root .env first (useful when running from project root),
@@ -38,6 +39,21 @@ const {
 securityMiddleware.forEach(middleware => {
 	app.use(middleware);
 });
+
+// HTTP Compression - OPTIMIZED FOR PERFORMANCE
+// Compress responses to reduce bandwidth and improve load times
+app.use(compression({
+	filter: (req, res) => {
+		// Don't compress if client explicitly requests no compression
+		if (req.headers['x-no-compression']) {
+			return false
+		}
+		// Use compression filter for all other requests
+		return compression.filter(req, res)
+	},
+	level: 6, // Balance between compression ratio and CPU usage (0-9, 6 is optimal)
+	threshold: 1024, // Only compress responses larger than 1KB
+}));
 
 // Connection tracker for free tier (track concurrent connections)
 app.use(connectionTracker);
@@ -338,4 +354,4 @@ process.on('SIGTERM', async () => {
 	if (cache && typeof cache.destroy === 'function') {
 		await cache.destroy();
 	}
-});
+	});

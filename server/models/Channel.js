@@ -86,5 +86,18 @@ const ChannelSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
 });
 
+// PERFORMANCE OPTIMIZATION: Add indexes for frequent queries
+// Index on name (used for lookups)
+ChannelSchema.index({ name: 1 });
+
+// Index on youtubeId in items (used for video lookups)
+ChannelSchema.index({ 'items.youtubeId': 1 });
+
+// Index on playlistStartEpoch (used for position calculations)
+ChannelSchema.index({ playlistStartEpoch: 1 });
+
+// Compound index for common queries (name + isActive)
+ChannelSchema.index({ name: 1, isActive: 1 });
+
 module.exports = mongoose.model('Channel', ChannelSchema);
 
