@@ -5,7 +5,7 @@
  * Creates the "shared experience" feeling
  */
 
-import { apiClient } from './apiClient'
+import { apiClient } from '../apiClient'
 
 let viewerCountCache = new Map() // channelId -> { count, timestamp }
 const CACHE_TTL = 30 * 1000 // 30 seconds
