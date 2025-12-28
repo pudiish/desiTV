@@ -11,7 +11,7 @@
 	overflow: hidden;
 	overflow-x: hidden;
 	position: relative;
-	background: transparent; /* Galaxy background shows through */
+	background: transparent;
 	z-index: var(--z-base);
 	width: 100%;
 	max-width: 100vw;

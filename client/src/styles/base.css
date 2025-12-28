@@ -1,8 +1,7 @@
 /**
  * Base Styles - Reset, typography, base element styles
+ * Lightweight UI - using system fonts only
  */
-
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,7 +22,7 @@
 
 body {
 	font-family: var(--font-primary);
-	background: #000000; /* Fallback black - Galaxy will overlay */
+	background: #000000;
 	color: var(--color-text);
 	margin: 0;
 	padding: 0;

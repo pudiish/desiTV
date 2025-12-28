@@ -836,7 +836,7 @@
 	overflow: hidden; /* Ensure content is clipped */
 	/* Ensure box respects parent bounds */
 	contain: layout style paint;
-	font-family: 'Press Start 2P', monospace;
+	font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
 	box-sizing: border-box; /* Include border in width calculation */
 	/* Ensure box doesn't extend beyond parent */
 	overflow: hidden;

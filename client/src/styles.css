@@ -1,32 +1,6 @@
 /**
- * Main Stylesheet - Imports all modular CSS files
- * This file serves as the entry point for all styles
- * 
- * Module Order (important for cascade):
- * 1. Design Tokens (CSS variables)
- * 2. Base Styles (reset, typography)
- * 3. Layout (containers, grids)
- * 4. Components (buttons, etc.)
- * 5. Feature Modules (TV frame, remote, menu, player)
- * 6. Effects (animations, CRT effects)
- * 7. Fullscreen (fullscreen styles)
- * 8. Responsive (media queries - must be last)
- */
-
-/**
- * Main Stylesheet - Imports all modular CSS files
- * This file serves as the entry point for all styles
- * 
- * Module Order (important for cascade):
- * 1. Design Tokens (CSS variables)
- * 2. Base Styles (reset, typography)
- * 3. Common Utilities (transforms, CRT effects)
- * 4. Layout (containers, grids)
- * 5. Components (buttons, etc.)
- * 6. Feature Modules (TV frame, remote, menu, player)
- * 7. Effects (animations, additional effects)
- * 8. Fullscreen (fullscreen styles)
- * 9. Responsive (media queries - must be last)
+ * Main Stylesheet - Lightweight UI
+ * Optimized for performance and minimal bundle size
  */
 
 /* 1. Design Tokens - Must be imported first */

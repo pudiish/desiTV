@@ -3,5 +3,5 @@
  */
 
 export { default as ErrorBoundary } from './ErrorBoundary.jsx'
-export { default as Galaxy } from './Galaxy.jsx'
+// Galaxy component removed for lightweight UI
 
