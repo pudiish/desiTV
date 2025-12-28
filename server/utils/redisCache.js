@@ -72,6 +72,10 @@ class HybridCache {
 			this.cleanupInterval = setInterval(() => this.cleanupFallback(), 60 * 1000)
 		}
 		
+		// Redis cleanup job - runs every 5 minutes
+		// Cleans up expired keys and monitors memory
+		this.redisCleanupInterval = setInterval(() => this.cleanupRedis(), 5 * 60 * 1000)
+		
 		// Initialize Redis connection only if module is available
 		if (redis) {
 			this.initializeRedis()
@@ -193,6 +197,17 @@ class HybridCache {
 			// Connect to Redis
 			await this.redisClient.connect()
 			
+			// Configure Redis for optimal memory management
+			try {
+				// Set maxmemory policy to allkeys-lru (evict least recently used when full)
+				// This ensures automatic cleanup when memory limit is reached
+				await this.redisClient.configSet('maxmemory-policy', 'allkeys-lru')
+				console.log('[Redis] Configured maxmemory-policy: allkeys-lru')
+			} catch (configErr) {
+				// Some Redis instances don't allow config changes (managed services)
+				console.log('[Redis] Could not set maxmemory-policy (may be managed service)')
+			}
+			
 		} catch (err) {
 			if (this.fallbackEnabled) {
 				console.warn('[Redis] Failed to initialize:', err.message, '- Using fallback cache')
@@ -291,8 +306,7 @@ class HybridCache {
 				// If over 80% of max memory, evict old keys
 				if (usagePercent > 80) {
 					console.warn(`[Redis] Memory usage high: ${(usedMemory / 1024 / 1024).toFixed(2)}MB (${usagePercent.toFixed(1)}%) - Evicting old keys...`)
-					// Evict keys with shortest TTL first (LRU-like behavior)
-					// This is handled by Redis maxmemory-policy, but we log it
+					await this.evictOldKeys()
 					return false
 				}
 			}
@@ -300,6 +314,80 @@ class HybridCache {
 		} catch (err) {
 			// If we can't check memory, continue anyway
 			return true
+		}
+	}
+
+	/**
+	 * Evict old keys when memory is high
+	 * Removes keys with shortest remaining TTL first
+	 */
+	async evictOldKeys() {
+		if (!this.redisConnected || !this.redisClient) return
+		
+		try {
+			// Get all keys
+			const keys = []
+			for await (const key of this.redisClient.scanIterator({ COUNT: 100 })) {
+				keys.push(key)
+			}
+			
+			if (keys.length === 0) return
+			
+			// Get TTL for each key
+			const keysWithTTL = []
+			for (const key of keys) {
+				const ttl = await this.redisClient.ttl(key)
+				if (ttl > 0) { // Only keys with TTL (not -1 or -2)
+					keysWithTTL.push({ key, ttl })
+				}
+			}
+			
+			// Sort by TTL (shortest first) and evict 20% of keys
+			keysWithTTL.sort((a, b) => a.ttl - b.ttl)
+			const keysToEvict = keysWithTTL.slice(0, Math.ceil(keysWithTTL.length * 0.2))
+			
+			if (keysToEvict.length > 0) {
+				const keysToDelete = keysToEvict.map(k => k.key)
+				await this.redisClient.del(keysToDelete)
+				console.log(`[Redis] Evicted ${keysToDelete.length} old keys to free memory`)
+			}
+		} catch (err) {
+			console.warn('[Redis] Error during eviction:', err.message)
+		}
+	}
+
+	/**
+	 * Periodic Redis cleanup job
+	 * - Removes expired keys (Redis does this automatically, but we verify)
+	 * - Checks memory usage
+	 * - Evicts old keys if needed
+	 */
+	async cleanupRedis() {
+		if (!this.redisConnected || !this.redisClient) return
+		
+		try {
+			// Check memory and evict if needed
+			await this.checkMemoryAndEvict()
+			
+			// Count keys
+			let keyCount = 0
+			for await (const _ of this.redisClient.scanIterator({ COUNT: 100 })) {
+				keyCount++
+			}
+			
+			// Log cleanup stats
+			if (keyCount > 0) {
+				const info = await this.redisClient.info('memory')
+				const usedMemoryMatch = info.match(/used_memory:(\d+)/)
+				if (usedMemoryMatch) {
+					const usedMemory = parseInt(usedMemoryMatch[1])
+					const usageMB = (usedMemory / 1024 / 1024).toFixed(2)
+					const usagePercent = ((usedMemory / MAX_MEMORY) * 100).toFixed(1)
+					console.log(`[Redis] Cleanup: ${keyCount} keys, ${usageMB}MB (${usagePercent}% of limit)`)
+				}
+			}
+		} catch (err) {
+			console.warn('[Redis] Cleanup job error:', err.message)
 		}
 	}
 
@@ -528,6 +616,10 @@ class HybridCache {
 	async destroy() {
 		if (this.cleanupInterval) {
 			clearInterval(this.cleanupInterval)
+		}
+		
+		if (this.redisCleanupInterval) {
+			clearInterval(this.redisCleanupInterval)
 		}
 		
 		if (this.redisClient) {
