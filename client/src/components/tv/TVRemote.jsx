@@ -25,16 +25,11 @@ export default function TVRemote({
 	const [channelInput, setChannelInput] = useState('')
 	const channelInputTimeout = useRef(null)
 	const shutdownSoundRef = useRef(null)
-	const buttonClickSoundRef = useRef(null)
 
 	// Initialize audio
 	useEffect(() => {
 		shutdownSoundRef.current = new Audio('/sounds/tv-shutdown-386167.mp3')
 		shutdownSoundRef.current.volume = 0.5
-		
-		// Static noise for button clicks
-		buttonClickSoundRef.current = new Audio('/sounds/tv-static-noise-291374.mp3')
-		buttonClickSoundRef.current.volume = 0.1
 	}, [])
 
 	// Play shutdown sound when TV turns off
@@ -49,10 +44,7 @@ export default function TVRemote({
 	}
 
 	const playButtonSound = () => {
-		if (buttonClickSoundRef.current) {
-			buttonClickSoundRef.current.currentTime = 0
-			buttonClickSoundRef.current.play().catch(() => {})
-		}
+		// Button sound removed - not needed
 		if (onTapTrigger) onTapTrigger()
 	}
 

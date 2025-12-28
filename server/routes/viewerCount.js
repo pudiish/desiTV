@@ -42,13 +42,16 @@ router.post('/:channelId/join', async (req, res) => {
 			})
 		}
 		
-		const viewerCount = await ViewerCount.incrementViewer(
-			channelId,
-			channelName || 'Unknown Channel'
-		).catch(err => {
-			console.warn('[ViewerCount] Increment failed (non-critical):', err.message)
-			return null
-		})
+		let viewerCount = null
+		try {
+			viewerCount = await ViewerCount.incrementViewer(
+				channelId,
+				channelName || 'Unknown Channel'
+			)
+		} catch (dbErr) {
+			console.warn('[ViewerCount] Increment failed (non-critical):', dbErr.message)
+			// Continue - viewer count is optional
+		}
 		
 		// Clear cache (use short key) - handle short channelIds gracefully
 		try {
@@ -60,8 +63,8 @@ router.post('/:channelId/join', async (req, res) => {
 			console.warn('[ViewerCount] Cache delete failed (non-critical):', cacheErr.message)
 		}
 		
-		// Return success even if viewerCount is null (database issue)
-		res.json({
+		// Always return success - viewer count is non-critical
+		return res.json({
 			success: true,
 			channelId,
 			activeViewers: viewerCount ? viewerCount.activeViewers : 0,
@@ -70,12 +73,12 @@ router.post('/:channelId/join', async (req, res) => {
 	} catch (err) {
 		// Never return 500 - viewer count is non-critical
 		console.warn('[ViewerCount] Join error (non-critical):', err.message)
-		res.json({
+		// Always return 200 OK
+		return res.json({
 			success: true,
-			channelId: req.params.channelId,
+			channelId: req.params.channelId || 'unknown',
 			activeViewers: 0,
 			totalViews: 0,
-			error: 'Viewer count unavailable',
 		})
 	}
 })
@@ -104,10 +107,13 @@ router.post('/:channelId/leave', async (req, res) => {
 			})
 		}
 		
-		const viewerCount = await ViewerCount.decrementViewer(channelId).catch(err => {
-			console.warn('[ViewerCount] Decrement failed (non-critical):', err.message)
-			return null
-		})
+		let viewerCount = null
+		try {
+			viewerCount = await ViewerCount.decrementViewer(channelId)
+		} catch (dbErr) {
+			console.warn('[ViewerCount] Decrement failed (non-critical):', dbErr.message)
+			// Continue - viewer count is optional
+		}
 		
 		// Clear cache (use short key) - handle short channelIds gracefully
 		try {
@@ -119,8 +125,8 @@ router.post('/:channelId/leave', async (req, res) => {
 			console.warn('[ViewerCount] Cache delete failed (non-critical):', cacheErr.message)
 		}
 		
-		// Return success even if viewerCount is null (database issue)
-		res.json({
+		// Always return success - viewer count is non-critical
+		return res.json({
 			success: true,
 			channelId,
 			activeViewers: viewerCount ? viewerCount.activeViewers : 0,
@@ -128,11 +134,11 @@ router.post('/:channelId/leave', async (req, res) => {
 	} catch (err) {
 		// Never return 500 - viewer count is non-critical
 		console.warn('[ViewerCount] Leave error (non-critical):', err.message)
-		res.json({
+		// Always return 200 OK
+		return res.json({
 			success: true,
-			channelId: req.params.channelId,
+			channelId: req.params.channelId || 'unknown',
 			activeViewers: 0,
-			error: 'Viewer count unavailable',
 		})
 	}
 })

@@ -57,7 +57,6 @@ onBufferingChange = null,
 	const isTransitioningRef = useRef(false)
 	const failedVideosRef = useRef(new Set())
 	const skipAttemptsRef = useRef(0)
-	const staticAudioRef = useRef(null)
 	const staticVideoRef = useRef(null) // Static video for loading/buffering
 	const staticShownRef = useRef(false) // Track if static has been shown for current video
 	const lastPlayTimeRef = useRef(Date.now())
@@ -172,7 +171,19 @@ onBufferingChange = null,
 
 	// Get current video ID from source manager (with fallback support)
 	const currentSource = videoSourceManager?.getCurrentSource()
-	const videoId = currentSource?.id || current?.youtubeId
+	const videoId = currentSource?.id || current?.youtubeId || current?.videoId || null
+	
+	// Debug: Log if videoId is missing but we have a current video
+	if (!videoId && current && items.length > 0) {
+		console.warn('[Player] VideoId missing for current video:', {
+			videoTitle: current.title || 'no title',
+			hasYoutubeId: !!current.youtubeId,
+			hasVideoId: !!current.videoId,
+			hasCurrentSource: !!currentSource,
+			videoIndex: currIndex,
+			itemsLength: items.length
+		})
+	}
 	
 	// Calculate start seconds from broadcast position offset
 	const startSeconds = Math.floor(offset)
@@ -462,9 +473,22 @@ onBufferingChange = null,
 
 	// Effect: Smart video loading with caching (only load when video actually changes)
 	useEffect(() => {
+		// Wait for videoId to be available - it might not be ready immediately
 		if (!videoId || !channel?._id || !ytPlayerRef.current) {
-			if (!videoId) {
-				console.warn('[Player] Cannot load video - videoId is missing', { current, currIndex, itemsLength: items.length })
+			if (!videoId && current && items.length > 0) {
+				// VideoId might be loading - wait a bit before warning
+				const checkTimeout = setTimeout(() => {
+					if (!videoId && current) {
+						console.warn('[Player] VideoId still missing after delay', { 
+							current: current?.title || 'no title',
+							currIndex, 
+							itemsLength: items.length,
+							hasYoutubeId: !!current?.youtubeId,
+							hasVideoSourceManager: !!videoSourceManager
+						})
+					}
+				}, 1000)
+				return () => clearTimeout(checkTimeout)
 			}
 			return
 		}
@@ -1214,15 +1238,6 @@ onBufferingChange = null,
 		}
 	}, [power])
 
-	// Effect: Hard-stop static audio when power is off to avoid lingering glitches
-	useEffect(() => {
-		if (!power && staticAudioRef.current) {
-			try {
-				staticAudioRef.current.pause()
-				staticAudioRef.current.currentTime = 0
-			} catch (err) {}
-		}
-	}, [power])
 
 	// Effect: Start/stop unified playback manager based on power state
 	useEffect(() => {
@@ -1820,16 +1835,10 @@ onBufferingChange = null,
 					}
 				}
 				
-				// Clear buffering timeout and static audio immediately
+				// Clear buffering timeout immediately
 				if (bufferTimeoutRef.current) {
 					clearTimeout(bufferTimeoutRef.current)
 					bufferTimeoutRef.current = null
-				}
-				if (staticAudioRef.current) {
-					try {
-						staticAudioRef.current.pause()
-						staticAudioRef.current.currentTime = 0
-					} catch (err) {}
 				}
 
 				// Start progress monitoring if not already running
@@ -1867,13 +1876,6 @@ onBufferingChange = null,
 							// Only show buffering UI after 3 seconds of continuous buffering
 							setIsBuffering(true)
 							setPlaybackHealth('buffering')
-							
-							if (staticAudioRef.current) {
-								try {
-									staticAudioRef.current.currentTime = 0
-									staticAudioRef.current.play().catch(() => {})
-								} catch (err) {}
-							}
 						}
 					}, 3000) // Increased from 500ms to 3 seconds to reduce static frequency
 					
@@ -2163,13 +2165,6 @@ return (
 					transition: 'opacity 0.3s ease-out',
 					pointerEvents: 'none',
 				}}
-			/>
-			{/* Static audio (separate for better control) */}
-			<audio
-				ref={staticAudioRef}
-				src="/sounds/tv-static-noise-291374.mp3"
-				preload="auto"
-				loop
 			/>
 			<div className="crt-scanlines" style={{ zIndex: 20, pointerEvents: 'none' }}></div>
 			{/* Direct YouTube IFrame API - iPhone compatible */}

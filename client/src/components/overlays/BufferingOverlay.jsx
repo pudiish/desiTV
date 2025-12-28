@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState } from 'react'
 
 export default function BufferingOverlay({ isBuffering = false, duration = 2000, errorMessage = '', videoPath = '/sounds/alb_tvn0411_1080p.mp4' }) {
 	const videoRef = useRef(null)
-	const audioRef = useRef(null)
 	const timeoutRef = useRef(null)
 	const [showOverlay, setShowOverlay] = useState(false)
 
@@ -11,14 +10,6 @@ export default function BufferingOverlay({ isBuffering = false, duration = 2000,
 			// Show buffering overlay and play video
 			setShowOverlay(true)
 			console.log('[BufferingOverlay] Starting buffering - playing video for', duration, 'ms')
-
-			// Play static audio
-			if (audioRef.current) {
-				audioRef.current.currentTime = 0
-				audioRef.current.play().catch(err => {
-					console.warn('[BufferingOverlay] Audio play failed:', err.message)
-				})
-			}
 
 			// Play the video with better handling
 			if (videoRef.current) {
@@ -56,14 +47,10 @@ export default function BufferingOverlay({ isBuffering = false, duration = 2000,
 			timeoutRef.current = setTimeout(() => {
 				console.log('[BufferingOverlay] Hiding overlay after', duration, 'ms')
 				setShowOverlay(false)
-				// Stop video and audio
+				// Stop video
 				if (videoRef.current) {
 					videoRef.current.pause()
 					videoRef.current.currentTime = 0
-				}
-				if (audioRef.current) {
-					audioRef.current.pause()
-					audioRef.current.currentTime = 0
 				}
 			}, duration)
 		} else {
@@ -72,10 +59,6 @@ export default function BufferingOverlay({ isBuffering = false, duration = 2000,
 			if (videoRef.current) {
 				videoRef.current.pause()
 				videoRef.current.currentTime = 0
-			}
-			if (audioRef.current) {
-				audioRef.current.pause()
-				audioRef.current.currentTime = 0
 			}
 			if (timeoutRef.current) {
 				clearTimeout(timeoutRef.current)
@@ -158,14 +141,6 @@ export default function BufferingOverlay({ isBuffering = false, duration = 2000,
 					{errorMessage}
 				</div>
 			)}
-
-			{/* Static noise audio */}
-			<audio
-				ref={audioRef}
-				src="/sounds/tv-static-noise-291374.mp3"
-				preload="auto"
-				loop
-			/>
 
 			{/* Scanlines effect */}
 			<div
