@@ -1,7 +1,5 @@
 /**
- * DesiTV™ Main Application
- * 
- * Restructured with proper auth flow using React Context
+ * DesiTV Main Application
  */
 
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';

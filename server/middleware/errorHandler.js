@@ -1,10 +1,8 @@
 /**
- * Error Handler Middleware
- * Handles all unhandled errors and sends appropriate responses
- * In production, can integrate with error tracking services
+ * Error handler middleware
+ * Handles unhandled errors and sends appropriate responses
  */
 
-// Simple error tracking (can be extended with Sentry server SDK)
 const trackError = (error, context = {}) => {
   const errorInfo = {
     message: error.message || String(error),

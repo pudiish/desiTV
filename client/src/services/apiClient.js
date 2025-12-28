@@ -1,11 +1,5 @@
 /**
- * API Client - Abstraction layer for HTTP requests
- * Provides:
- * - Centralized request/response handling
- * - Automatic error handling
- * - Request/response interceptors
- * - Retry logic
- * - Request logging
+ * API Client - HTTP request abstraction with interceptors and error handling
  */
 
 import { envConfig } from '../config/environment'
@@ -29,6 +23,7 @@ export class APIClient {
 
   /**
    * Add request interceptor
+   * @param {Function} interceptor - Function to modify requests
    */
   addRequestInterceptor(interceptor) {
     this.interceptors.request.push(interceptor)
@@ -36,6 +31,7 @@ export class APIClient {
 
   /**
    * Add response interceptor
+   * @param {Function} interceptor - Function to modify responses
    */
   addResponseInterceptor(interceptor) {
     this.interceptors.response.push(interceptor)
@@ -43,6 +39,7 @@ export class APIClient {
 
   /**
    * Add error interceptor
+   * @param {Function} interceptor - Function to handle errors
    */
   addErrorInterceptor(interceptor) {
     this.interceptors.error.push(interceptor)
@@ -82,7 +79,7 @@ export class APIClient {
   }
 
   /**
-   * Log request for monitoring
+   * Log request for debugging/monitoring
    */
   logRequest(config, duration, status, error = null) {
     const log = {
@@ -246,8 +243,7 @@ export class APIClient {
         headers['X-CSRF-Token'] = csrfToken
       }
 
-      // Make request
-      // PERFORMANCE: Use dedupeFetch for GET requests to prevent duplicates
+      // Use dedupeFetch for GET requests to prevent duplicates
       const startTime = performance.now()
       const fetchFn = finalConfig.method?.toUpperCase() === 'GET' 
         ? (await import('../utils/requestDeduplication')).dedupeFetch

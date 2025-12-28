@@ -9,13 +9,11 @@ const { getCachedPosition } = require('../utils/positionCalculator');
 const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
 const { addChecksum } = require('../utils/checksum');
 
-// Cache TTL constants (in seconds) - OPTIMIZED WITH WRITE-THROUGH STRATEGY
-// Extended TTLs since write-through ensures cache consistency
-// Write-through pattern: Updates cache immediately on writes, so longer TTLs are safe
+// Cache TTL constants (in seconds)
 const CACHE_TTL_CONFIG = CACHE_TTL || {
-  CHANNELS_LIST: 300,    // 5 minutes (extended - write-through ensures consistency)
-  CHANNEL_DETAIL: 600,   // 10 minutes (extended - write-through ensures consistency)
-  CURRENT_VIDEO: 5,      // Kept at 5s for accuracy
+  CHANNELS_LIST: 300,
+  CHANNEL_DETAIL: 600,
+  CURRENT_VIDEO: 5,
 };
 
 function computePseudoLive(items, startEpoch) {
@@ -35,29 +33,19 @@ function computePseudoLive(items, startEpoch) {
   return { item: items[0], offset: 0, index: 0 };
 }
 
-// List all channels (cached)
 router.get('/', async (req, res) => {
   try {
-    // OPTIMIZED: Ultra-short cache key for free tier
-    const cacheKey = 'ch:all'; // Shortened from 'channels:all' to save memory
+    const cacheKey = 'ch:all';
     const cached = await cache.get(cacheKey);
     if (cached) {
-      // VALIDATION: Add checksum to cached response
       const response = addChecksum(cached, 'channels');
       return res.json(response);
     }
 
-    // Only select essential fields to minimize cache size
-    // CRITICAL: Use youtubeId (not videoId) - matches schema and client expectations
     const channels = await Channel.find().select('name playlistStartEpoch items._id items.youtubeId items.title items.duration items.thumbnail').lean();
-    
-    // Minimize data using shared utility (consistent with write-through)
     const minimizedChannels = minimizeChannels(channels);
-    
-    // Write-through pattern: Cache immediately after fetch
     await cache.set(cacheKey, minimizedChannels, CACHE_TTL_CONFIG.CHANNELS_LIST);
     
-    // VALIDATION: Add checksum for silent background sync
     const response = addChecksum(minimizedChannels, 'channels');
     res.json(response);
   } catch (err) {
@@ -66,15 +54,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single channel (cached)
 router.get('/:id', async (req, res) => {
   try {
-    // OPTIMIZED: Ultra-short cache key
-    const channelHash = req.params.id.toString().substring(18, 24) // Last 6 chars
-    const cacheKey = `ch:${channelHash}`; // Shortened from 'channel:xxx'
+    const channelHash = req.params.id.toString().substring(18, 24);
+    const cacheKey = `ch:${channelHash}`;
     const cached = await cache.get(cacheKey);
     if (cached) {
-      // VALIDATION: Add checksum to cached response
       const response = addChecksum(cached, 'channels');
       return res.json(response);
     }
@@ -82,13 +67,9 @@ router.get('/:id', async (req, res) => {
     const ch = await Channel.findById(req.params.id).lean();
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
-    // Minimize cached data using shared utility (consistent with write-through)
     const minimizedChannel = minimizeChannel(ch);
-    
-    // Write-through pattern: Cache immediately after fetch
     await cache.set(cacheKey, minimizedChannel, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
     
-    // VALIDATION: Add checksum for silent background sync
     const response = addChecksum(minimizedChannel, 'channels');
     res.json(response);
   } catch (err) {
@@ -97,13 +78,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get current pseudo-live item + offset for a channel (enhanced with time-based playlists)
 router.get('/:id/current', async (req, res) => {
   try {
     const ch = await Channel.findById(req.params.id).lean();
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
-    // Use new position calculator (supports time-based playlists, global epoch, and timezone)
     const position = await getCachedPosition(ch, null, req);
     
     res.json({
@@ -117,7 +96,6 @@ router.get('/:id/current', async (req, res) => {
   }
 });
 
-// Get current position for a channel (alias for /current, backward compatible)
 router.get('/:id/position', async (req, res) => {
   try {
     const ch = await Channel.findById(req.params.id).lean();
@@ -137,14 +115,8 @@ router.get('/:id/position', async (req, res) => {
 });
 
 /**
- * POST /api/channels/:channelId/bulk-upload
- * Bulk upload videos from file content (admin - protected)
- * Accepts fileContent as string in formats:
- * - JSON array: [{"youtubeId": "...", "title": "..."}, ...]
- * - CSV: url,title (header row optional)
- * - TXT: Newline-separated YouTube URLs or video IDs
- * 
- * NOTE: This route must be defined before other /:id routes to ensure proper matching
+ * Bulk upload videos from file content
+ * Formats: JSON array, CSV (url,title), or TXT (newline-separated YouTube URLs/IDs)
  */
 router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
   try {
@@ -393,14 +365,10 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
       }
     }
 
-    // Save channel if any videos were added
     if (addedCount > 0) {
       await channel.save();
-
-      // Invalidate caches
-      // OPTIMIZED: Use short keys
       await cache.delete('ch:all');
-      const channelHash = channelId.toString().substring(18, 24)
+      const channelHash = channelId.toString().substring(18, 24);
       await cache.deletePattern(`ch:${channelHash}`);
 
       // Regenerate channels.json
@@ -424,7 +392,6 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
   }
 });
 
-// Create channel (admin - protected)
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { name, playlistStartEpoch } = req.body;
@@ -433,12 +400,9 @@ router.post('/', requireAuth, async (req, res) => {
     if (exists) return res.status(400).json({ message: 'Channel already exists' });
     const ch = await Channel.create({ name, playlistStartEpoch });
     
-    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
     const minimized = minimizeChannel(ch);
     const channelHash = ch._id.toString().substring(18, 24);
     await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
-    
-    // Invalidate channels list cache (will be refreshed on next read)
     await cache.delete('ch:all');
     
     // Regenerate channels.json
@@ -455,7 +419,6 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
-// Add video to channel (admin - protected)
 router.post('/:channelId/videos', requireAuth, async (req, res) => {
   try {
     const { channelId } = req.params;
@@ -466,12 +429,9 @@ router.post('/:channelId/videos', requireAuth, async (req, res) => {
     ch.items.push({ title, youtubeId, duration: Number(duration) || 30, year, tags: tags || [], category });
     await ch.save();
     
-    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
     const minimized = minimizeChannel(ch);
     const channelHash = channelId.toString().substring(18, 24);
     await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
-    
-    // Invalidate channels list cache (will be refreshed on next read)
     await cache.delete('ch:all');
     
     // Regenerate channels.json
@@ -488,7 +448,6 @@ router.post('/:channelId/videos', requireAuth, async (req, res) => {
   }
 });
 
-// Delete video (admin - protected)
 router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
   try {
     const { channelId, videoId } = req.params;
@@ -504,14 +463,12 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
     
-    // Try to delete by _id first, then by youtubeId if _id fails
     let updatedChannel = await Channel.findByIdAndUpdate(
       channelId,
       { $pull: { items: { _id: videoId } } },
       { new: true }
     );
     
-    // If no items were removed, try by youtubeId
     if (!updatedChannel || updatedChannel.items.length === ch.items.length) {
       console.log('Video not found by _id, trying by youtubeId:', videoId);
       updatedChannel = await Channel.findByIdAndUpdate(
@@ -526,12 +483,9 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
     
-    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
     const minimized = minimizeChannel(updatedChannel);
     const channelHash = channelId.toString().substring(18, 24);
     await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
-    
-    // Invalidate channels list cache (will be refreshed on next read)
     await cache.delete('ch:all');
     
     // Regenerate channels.json
@@ -548,7 +502,6 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
   }
 });
 
-// Delete channel (admin - protected)
 router.delete('/:channelId', requireAuth, async (req, res) => {
   try {
     const { channelId } = req.params;
@@ -559,7 +512,6 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
     
-    // WRITE-THROUGH PATTERN: Delete from cache immediately after DB delete
     const channelHash = channelId.toString().substring(18, 24);
     await cache.delete(`ch:${channelHash}`);
     await cache.delete('ch:all');
@@ -578,15 +530,10 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
   }
 });
 
-// Get cache stats (admin - protected)
 router.get('/admin/cache-stats', requireAuth, async (req, res) => {
   res.json(await cache.getStats());
 });
 
-/**
- * POST /api/channels/:id/add-video
- * Add a single video to a channel (admin - protected)
- */
 router.post('/:id/add-video', requireAuth, async (req, res) => {
   try {
     const { title, youtubeId } = req.body;
@@ -620,12 +567,9 @@ router.post('/:id/add-video', requireAuth, async (req, res) => {
     channel.items.push(newVideo);
     await channel.save();
 
-    // WRITE-THROUGH PATTERN: Update cache immediately after DB write
     const minimized = minimizeChannel(channel);
     const channelHash = channelId.toString().substring(18, 24);
     await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
-    
-    // Invalidate channels list cache (will be refreshed on next read)
     await cache.delete('ch:all');
 
     // Regenerate channels.json
@@ -647,10 +591,8 @@ router.post('/:id/add-video', requireAuth, async (req, res) => {
 });
 
 /**
- * POST /api/channels/bulk-add-videos
- * Bulk import multiple videos (admin - protected)
- * Accepts array of videos with format:
- * { channelId, videoId, title, description?, thumbnail? }
+ * Bulk import multiple videos
+ * Format: [{ channelId, videoId, title, description?, thumbnail? }]
  */
 router.post('/bulk-add-videos', requireAuth, async (req, res) => {
   try {

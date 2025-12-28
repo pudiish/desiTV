@@ -293,27 +293,57 @@ export class APIService {
    */
 
   async getMonitoringHealth() {
-    return this.get(API_ENDPOINTS.MONITORING_HEALTH)
+    try {
+      return await this.client.get(API_ENDPOINTS.MONITORING_HEALTH)
+    } catch (error) {
+      console.error('[APIService] Error fetching monitoring health:', error)
+      throw error
+    }
   }
 
   async getMonitoringEndpoints() {
-    return this.get(API_ENDPOINTS.MONITORING_ENDPOINTS)
+    try {
+      return await this.client.get(API_ENDPOINTS.MONITORING_ENDPOINTS)
+    } catch (error) {
+      console.error('[APIService] Error fetching monitoring endpoints:', error)
+      throw error
+    }
   }
 
   async getMonitoringServices() {
-    return this.get(API_ENDPOINTS.MONITORING_SERVICES)
+    try {
+      return await this.client.get(API_ENDPOINTS.MONITORING_SERVICES)
+    } catch (error) {
+      console.error('[APIService] Error fetching monitoring services:', error)
+      throw error
+    }
   }
 
   async getMonitoringMetrics() {
-    return this.get(API_ENDPOINTS.MONITORING_METRICS)
+    try {
+      return await this.client.get(API_ENDPOINTS.MONITORING_METRICS)
+    } catch (error) {
+      console.error('[APIService] Error fetching monitoring metrics:', error)
+      throw error
+    }
   }
 
   async getMonitoringStatus() {
-    return this.get(API_ENDPOINTS.MONITORING_STATUS)
+    try {
+      return await this.client.get(API_ENDPOINTS.MONITORING_STATUS)
+    } catch (error) {
+      console.error('[APIService] Error fetching monitoring status:', error)
+      throw error
+    }
   }
 
   async resetMonitoring() {
-    return this.post(API_ENDPOINTS.MONITORING_RESET, {})
+    try {
+      return await this.client.post(API_ENDPOINTS.MONITORING_RESET, {})
+    } catch (error) {
+      console.error('[APIService] Error resetting monitoring:', error)
+      throw error
+    }
   }
 }
 

@@ -1,8 +1,6 @@
 /**
- * broadcastStateRoutes.js
- * API endpoints for managing broadcast state persistence
- * Handles real-time timeline tracking for pseudo-live broadcasts
- * Now fully integrated with MongoDB for persistent storage
+ * Broadcast state routes
+ * Manages broadcast state persistence and timeline tracking
  */
 
 const express = require('express')
@@ -10,9 +8,8 @@ const router = express.Router()
 const BroadcastState = require('../models/BroadcastState')
 
 /**
- * GET /api/broadcast-state/all
  * Get all broadcast states (diagnostic/admin only)
- * MUST be defined before /:channelId route to avoid being caught by param matcher
+ * Must be defined before /:channelId route
  */
 router.get('/all', async (req, res) => {
 	try {
@@ -30,9 +27,8 @@ router.get('/all', async (req, res) => {
 })
 
 /**
- * GET /api/broadcast-state/:channelId
- * Retrieve current broadcast state for a channel
- * Calculates virtual position based on elapsed time since last session
+ * Get broadcast state for a channel
+ * Calculates virtual position based on elapsed time
  */
 router.get('/:channelId', async (req, res) => {
 	try {
@@ -48,22 +44,18 @@ router.get('/:channelId', async (req, res) => {
 			})
 		}
 
-		// Calculate how much time elapsed since last session ended
 		const now = new Date()
 		const lastSessionEndTime = new Date(state.lastSessionEndTime)
 		const elapsedSinceLastSessionMs = now.getTime() - lastSessionEndTime.getTime()
 		const elapsedSinceLastSessionSec = elapsedSinceLastSessionMs / 1000
 
-		// Update virtual elapsed time
 		state.virtualElapsedTime = state.virtualElapsedTime + elapsedSinceLastSessionSec
 
-		// Calculate current position in the broadcast timeline
 		let cyclePosition = state.virtualElapsedTime
 		let videoIndex = 0
 		let currentTime = 0
 
 		if (state.videoDurations && state.videoDurations.length > 0) {
-			// Find which video we're in based on accumulated duration
 			let accumulatedTime = 0
 			const playlistDuration = state.playlistTotalDuration || 3600
 
@@ -94,9 +86,7 @@ router.get('/:channelId', async (req, res) => {
 })
 
 /**
- * POST /api/broadcast-state/:channelId
  * Save or update broadcast state for a channel
- * Called periodically during playback to persist state
  */
 router.post('/:channelId', async (req, res) => {
 	try {
@@ -109,7 +99,6 @@ router.post('/:channelId', async (req, res) => {
 
 		const now = new Date()
 
-		// Use findByIdAndUpdate with upsert to create or update
 		const state = await BroadcastState.findOneAndUpdate(
 			{ channelId },
 			{
@@ -118,7 +107,7 @@ router.post('/:channelId', async (req, res) => {
 				playlistStartEpoch: stateData.playlistStartEpoch || now,
 				currentVideoIndex: stateData.currentVideoIndex || 0,
 				currentTime: stateData.currentTime || 0,
-				lastSessionEndTime: now, // Update when this save happened
+				lastSessionEndTime: now,
 				lastAccessTime: now,
 				playlistTotalDuration: stateData.playlistTotalDuration || 3600,
 				videoDurations: stateData.videoDurations || [],
@@ -143,9 +132,7 @@ router.post('/:channelId', async (req, res) => {
 })
 
 /**
- * GET /api/broadcast-state/:channelId/timeline
- * Calculate where we should be in the timeline right now
- * Accounts for time passed since last session ended
+ * Calculate current timeline position
  */
 router.get('/:channelId/timeline', async (req, res) => {
 	try {
@@ -160,15 +147,12 @@ router.get('/:channelId/timeline', async (req, res) => {
 		const playlistStart = new Date(state.playlistStartEpoch)
 		const lastSessionEnd = new Date(state.lastSessionEndTime)
 
-		// Calculate elapsed time from playlist start to now
 		const totalElapsedMs = now.getTime() - playlistStart.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
 
-		// Time passed since last session
 		const sessionGapMs = now.getTime() - lastSessionEnd.getTime()
 		const sessionGapSec = sessionGapMs / 1000
 
-		// Calculate position in current cycle
 		const playlistDurationSec = state.playlistTotalDuration || 3600
 		const cyclePosition = totalElapsedSec % playlistDurationSec
 
@@ -192,7 +176,6 @@ router.get('/:channelId/timeline', async (req, res) => {
 })
 
 /**
- * DELETE /api/broadcast-state/:channelId
  * Clear broadcast state for a channel
  */
 router.delete('/:channelId', async (req, res) => {

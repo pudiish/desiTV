@@ -1,15 +1,8 @@
 /**
- * Cache Interface for DesiTV™ API
+ * Cache interface for DesiTV API
  * 
- * This module exports the appropriate cache implementation:
- * - Redis with in-memory fallback (if Redis available)
- * - Pure in-memory cache (if Redis unavailable)
- * 
- * Usage:
- *   await cache.set('key', data, ttlSeconds)
- *   const value = await cache.get('key') // returns null if expired
- *   await cache.delete('key')
- *   await cache.clear()
+ * Exports Redis cache (with in-memory fallback) or pure in-memory cache
+ * depending on Redis availability.
  */
 
 // Try to use Redis cache, fallback to simple cache
