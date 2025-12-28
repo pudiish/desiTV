@@ -1770,6 +1770,18 @@ onBufferingChange = null,
 			switch (state) {
 				case STATE_UNSTARTED:
 					console.log('[Player] Video unstarted')
+					// MOBILE FIX: Check if player is muted and show overlay
+					if (player && !userInteracted) {
+						try {
+							const isMuted = player.isMuted?.() ?? true
+							if (isMuted) {
+								setIsMutedAutoplay(true)
+							}
+						} catch (err) {
+							// Ignore errors, keep isMutedAutoplay state
+						}
+					}
+					
 					// Mobile fix: Set watchdog timer for stuck unstarted state
 					// If still unstarted after 3 seconds, force play attempt
 					if (powerRef.current && shouldPlayRef.current) {
@@ -1782,8 +1794,10 @@ onBufferingChange = null,
 									if (userInteracted) {
 										player.unMute()
 										player.setVolume(volume * 100)
+										setIsMutedAutoplay(false)
 									} else {
 										player.mute()
+										setIsMutedAutoplay(true) // Ensure overlay shows
 									}
 									player.playVideo()
 								}
@@ -1878,6 +1892,18 @@ onBufferingChange = null,
 				break
 				
 			case STATE_BUFFERING:
+					// MOBILE FIX: Check if player is muted during buffering and show overlay
+					if (player && !userInteracted) {
+						try {
+							const isMuted = player.isMuted?.() ?? true
+							if (isMuted) {
+								setIsMutedAutoplay(true)
+							}
+						} catch (err) {
+							// Ignore errors, keep isMutedAutoplay state
+						}
+					}
+					
 					// RetroTV: Buffering - only show static after 3 seconds (not immediately)
 					// This prevents static from showing during normal brief buffering
 					if (bufferTimeoutRef.current) {
@@ -1923,6 +1949,18 @@ onBufferingChange = null,
 					
 				case STATE_VIDEO_CUED:
 					// RetroTV: Video cued - prepare for playback
+					// MOBILE FIX: Check if player is muted and show overlay
+					if (player && !userInteracted) {
+						try {
+							const isMuted = player.isMuted?.() ?? true
+							if (isMuted) {
+								setIsMutedAutoplay(true)
+							}
+						} catch (err) {
+							// Ignore errors, keep isMutedAutoplay state
+						}
+					}
+					
 					// Fast recovery manager will handle playback automatically
 					// Manual play attempt here to start immediately
 					if (powerRef.current && shouldPlayRef.current && !isTransitioningRef.current && player) {
@@ -2249,8 +2287,8 @@ return (
 					}}>👆 Yahan Touch Karo</div>
 				</div>
 			)}
-			{/* Tap to unmute indicator - only show when muted autoplay is active and user hasn't interacted */}
-			{isMutedAutoplay && !userInteracted && !showStaticOverlay && !isBuffering && !isTransitioning && (
+			{/* Tap to unmute indicator - show when muted and user hasn't interacted (MOBILE FIX: show even during static/buffering) */}
+			{isMutedAutoplay && !userInteracted && (
 				<div
 					className="tap-to-unmute"
 					onClick={handleUserInteraction}
@@ -2259,16 +2297,21 @@ return (
 						bottom: '20px',
 						left: '50%',
 						transform: 'translateX(-50%)',
-						zIndex: 15,
-						background: 'rgba(0, 0, 0, 0.7)',
+						zIndex: 20, // Higher z-index to show above static/buffering overlays
+						background: 'rgba(0, 0, 0, 0.85)',
 						color: '#fff',
-						padding: '8px 16px',
-						borderRadius: '20px',
-						fontSize: '12px',
+						padding: '10px 20px',
+						borderRadius: '25px',
+						fontSize: '14px',
 						fontFamily: 'monospace',
+						fontWeight: 'bold',
 						cursor: 'pointer',
 						animation: 'pulse 2s infinite',
 						pointerEvents: 'auto',
+						border: '2px solid rgba(255, 255, 255, 0.3)',
+						boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+						backdropFilter: 'blur(8px)',
+						WebkitBackdropFilter: 'blur(8px)',
 					}}
 				>
 					🔇 AWAAZ KE LIYE TOUCH KARO
