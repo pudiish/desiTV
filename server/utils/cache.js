@@ -24,16 +24,18 @@ try {
 	// This prevents false "not connected" messages during startup
 	setTimeout(() => {
 		if (redisCache.isRedisConnected && redisCache.isRedisConnected()) {
-			if (FALLBACK_ENABLED) {
-				console.log('[Cache] ✅ Using Redis cache with in-memory fallback')
+			const hybridMode = process.env.REDIS_HYBRID_MODE !== 'false'
+			if (hybridMode) {
+				console.log('[Cache] ✅ Hybrid mode: L1 (in-memory) + L2 (Redis) active')
 			} else {
-				console.log('[Cache] ✅ Using Redis cache only (fallback disabled)')
+				console.log('[Cache] ✅ Using L2 (Redis) cache only (hybrid mode disabled)')
 			}
 		} else {
-			if (FALLBACK_ENABLED) {
-				console.log('[Cache] Using in-memory cache (Redis not available, fallback active)')
+			const hybridMode = process.env.REDIS_HYBRID_MODE !== 'false'
+			if (hybridMode) {
+				console.log('[Cache] Using L1 (in-memory) cache only (Redis not available)')
 			} else {
-				console.error('[Cache] ❌ Redis not available and fallback is disabled!')
+				console.error('[Cache] ❌ Redis not available and hybrid mode is disabled!')
 			}
 		}
 	}, 1000) // Check after 1 second to allow Redis to connect

@@ -1,30 +1,41 @@
 /**
- * Redis Cache with Optional In-Memory Fallback
+ * Hybrid Cache: In-Memory (L1) + Redis (L2)
+ * 
+ * TWO-TIER CACHING STRATEGY:
+ * - L1 (In-Memory): Fast, local, instance-specific cache
+ * - L2 (Redis): Shared, persistent, distributed cache
+ * 
+ * Flow:
+ * 1. Check L1 (in-memory) first - fastest
+ * 2. If miss, check L2 (Redis) - shared
+ * 3. If miss, fetch from DB and populate both
  * 
  * OPTIMIZED FOR 25MB FREE TIER:
- * - Compression for large values (>1KB)
+ * - Compression for large values (>512 bytes)
  * - Short cache keys
  * - Minimal cached data (only essential fields)
  * - Memory monitoring and eviction
- * - Reduced TTLs
+ * - Optimized TTLs (shorter for L1, longer for L2)
  * 
  * Features:
  * - Automatic Redis connection management
- * - Optional graceful fallback to in-memory cache (controlled by REDIS_FALLBACK_ENABLED)
+ * - Always-on in-memory L1 cache (fastest access)
+ * - Redis L2 cache for shared/distributed access
  * - Connection pooling and retry logic
  * - JSON serialization/deserialization with compression
  * - Pattern-based key deletion
  * - Cache statistics and memory monitoring
  * 
  * Environment Variables:
- * - REDIS_FALLBACK_ENABLED: Set to 'true' to enable in-memory fallback (default: 'false')
+ * - REDIS_HYBRID_MODE: Set to 'true' to enable hybrid mode (default: 'true')
  * - REDIS_URL: Redis connection URL (default: 'redis://localhost:6379')
  * - REDIS_PASSWORD: Redis password (optional)
- * - REDIS_MAX_MEMORY: Max memory in bytes (default: 20MB for free tier safety)
+ * - REDIS_MAX_MEMORY: Max memory in bytes (default: 22MB for free tier)
  */
 
-// Check if fallback is enabled (default: false - Redis only)
-const FALLBACK_ENABLED = process.env.REDIS_FALLBACK_ENABLED === 'true'
+// Hybrid mode: Always use both in-memory (L1) and Redis (L2)
+// Set to 'false' to use Redis only (no in-memory L1)
+const HYBRID_MODE = process.env.REDIS_HYBRID_MODE !== 'false' // Default: true
 
 const zlib = require('zlib')
 const { promisify } = require('util')
@@ -44,13 +55,13 @@ try {
 	redis = require('redis')
 } catch (err) {
 	// Redis not installed
-	if (FALLBACK_ENABLED) {
-		console.warn('[RedisCache] Redis module not found, using in-memory cache only')
+	if (HYBRID_MODE) {
+		console.warn('[RedisCache] Redis module not found, using in-memory cache only (L1 only)')
 	} else {
-		console.error('[RedisCache] ❌ Redis module not found and fallback is disabled!')
+		console.error('[RedisCache] ❌ Redis module not found and hybrid mode is disabled!')
 		console.error('[RedisCache] Install redis: npm install redis')
-		console.error('[RedisCache] Or enable fallback: REDIS_FALLBACK_ENABLED=true')
-		throw new Error('Redis module not found and fallback is disabled. Install redis package or enable fallback.')
+		console.error('[RedisCache] Or enable hybrid mode: REDIS_HYBRID_MODE=true')
+		throw new Error('Redis module not found and hybrid mode is disabled. Install redis package or enable hybrid mode.')
 	}
 }
 
@@ -58,21 +69,21 @@ class HybridCache {
 	constructor() {
 		this.redisClient = null
 		this.redisConnected = false
-		this.fallbackEnabled = FALLBACK_ENABLED
-		this.fallbackCache = FALLBACK_ENABLED ? new Map() : null // In-memory fallback (only if enabled)
+		this.hybridMode = HYBRID_MODE
+		// L1 Cache: Always-on in-memory cache (fastest access)
+		this.l1Cache = new Map() // In-memory L1 cache (always enabled in hybrid mode)
+		// L2 Cache: Redis (shared/distributed cache)
 		this.stats = {
-			redisHits: 0,
-			redisMisses: 0,
-			fallbackHits: 0,
-			fallbackMisses: 0,
-			sets: 0,
-			errors: 0,
+			l1Hits: 0,      // L1 cache hits (fastest)
+			l1Misses: 0,    // L1 cache misses
+			l2Hits: 0,      // L2 (Redis) cache hits
+			l2Misses: 0,   // L2 (Redis) cache misses
+			sets: 0,       // Total sets (to both L1 and L2)
+			errors: 0,     // Errors
 		}
 		
-		// Cleanup expired fallback entries every minute (only if fallback enabled)
-		if (this.fallbackEnabled) {
-			this.cleanupInterval = setInterval(() => this.cleanupFallback(), 60 * 1000)
-		}
+		// Cleanup expired L1 entries every minute (always enabled in hybrid mode)
+		this.l1CleanupInterval = setInterval(() => this.cleanupL1(), 60 * 1000)
 		
 		// OPTIMIZED: More frequent cleanup for free tier (every 3 minutes)
 		// Free tier optimization: More aggressive cleanup to stay within limits
@@ -81,8 +92,8 @@ class HybridCache {
 		// Initialize Redis connection only if module is available
 		if (redis) {
 			this.initializeRedis()
-		} else if (!this.fallbackEnabled) {
-			throw new Error('Redis module not available and fallback is disabled')
+		} else if (!this.hybridMode) {
+			throw new Error('Redis module not available and hybrid mode is disabled')
 		}
 	}
 
@@ -122,12 +133,12 @@ class HybridCache {
 		// Validate Redis URL format
 		if (!redisUrl || (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://'))) {
 			const errorMsg = `Invalid Redis URL format. Expected redis:// or rediss://, got: ${redisUrl ? 'undefined' : redisUrl}`
-			if (this.fallbackEnabled) {
-				console.warn(`[Redis] ${errorMsg} - Using fallback cache`)
+			if (this.hybridMode) {
+				console.warn(`[Redis] ${errorMsg} - Using L1 (in-memory) cache only`)
 				this.redisConnected = false
 				return
 			} else {
-				throw new Error(`Redis URL not configured correctly: ${errorMsg}. Set REDIS_URL environment variable or enable fallback with REDIS_FALLBACK_ENABLED=true`)
+				throw new Error(`Redis URL not configured correctly: ${errorMsg}. Set REDIS_URL environment variable or enable hybrid mode with REDIS_HYBRID_MODE=true`)
 			}
 		}
 		
@@ -166,29 +177,29 @@ class HybridCache {
 			this.redisClient.on('ready', () => {
 				this.redisConnected = true
 				console.log('[Redis] ✅ Connected and ready')
-				if (this.fallbackEnabled) {
-					console.log('[Cache] ✅ Now using Redis cache with in-memory fallback')
+				if (this.hybridMode) {
+					console.log('[Cache] ✅ Hybrid mode: L1 (in-memory) + L2 (Redis) active')
 				} else {
-					console.log('[Cache] ✅ Now using Redis cache only (fallback disabled)')
+					console.log('[Cache] ✅ Using L2 (Redis) cache only (hybrid mode disabled)')
 				}
 			})
 			
 			this.redisClient.on('error', (err) => {
 				this.redisConnected = false
 				this.stats.errors++
-				if (this.fallbackEnabled) {
-					console.warn('[Redis] Error:', err.message, '- Using fallback cache')
+				if (this.hybridMode) {
+					console.warn('[Redis] L2 Error:', err.message, '- Using L1 (in-memory) cache only')
 				} else {
-					console.error('[Redis] ❌ Error:', err.message, '- Fallback disabled, cache operations will fail!')
+					console.error('[Redis] ❌ L2 Error:', err.message, '- Hybrid mode disabled, cache operations will fail!')
 				}
 			})
 			
 			this.redisClient.on('end', () => {
 				this.redisConnected = false
-				if (this.fallbackEnabled) {
-					console.warn('[Redis] Connection ended - Using fallback cache')
+				if (this.hybridMode) {
+					console.warn('[Redis] L2 Connection ended - Using L1 (in-memory) cache only')
 				} else {
-					console.error('[Redis] ❌ Connection ended - Fallback disabled, cache operations will fail!')
+					console.error('[Redis] ❌ L2 Connection ended - Hybrid mode disabled, cache operations will fail!')
 				}
 			})
 			
@@ -211,11 +222,11 @@ class HybridCache {
 			}
 			
 		} catch (err) {
-			if (this.fallbackEnabled) {
-				console.warn('[Redis] Failed to initialize:', err.message, '- Using fallback cache')
+			if (this.hybridMode) {
+				console.warn('[Redis] L2 Failed to initialize:', err.message, '- Using L1 (in-memory) cache only')
 			} else {
-				console.error('[Redis] ❌ Failed to initialize:', err.message)
-				console.error('[Redis] ⚠️  Fallback is disabled but server will continue without Redis')
+				console.error('[Redis] ❌ L2 Failed to initialize:', err.message)
+				console.error('[Redis] ⚠️  Hybrid mode is disabled but server will continue without Redis')
 				console.error('[Redis] 💡 To fix: Set REDIS_URL in environment variables or enable fallback with REDIS_FALLBACK_ENABLED=true')
 				// Don't throw - allow server to start without Redis
 				// Cache operations will fail gracefully
@@ -245,50 +256,64 @@ class HybridCache {
 	}
 
 	/**
-	 * Get value from cache (Redis first, fallback to memory)
+	 * Get value from cache (L1 first, then L2)
+	 * HYBRID MODE: Check in-memory (L1) first, then Redis (L2)
 	 * @param {string} key - Cache key
 	 * @returns {Promise<any|null>} - Cached value or null
 	 */
 	async get(key) {
-		// Try Redis first if connected
+		// STEP 1: Check L1 (in-memory) cache first - fastest
+		if (this.hybridMode && this.l1Cache) {
+			const l1Entry = this.l1Cache.get(key)
+			if (l1Entry) {
+				// Check if expired
+				if (Date.now() > l1Entry.expiresAt) {
+					this.l1Cache.delete(key)
+					this.stats.l1Misses++
+				} else {
+					// L1 HIT - return immediately (fastest path)
+					this.stats.l1Hits++
+					return l1Entry.value
+				}
+			} else {
+				this.stats.l1Misses++
+			}
+		}
+		
+		// STEP 2: Check L2 (Redis) cache - shared/distributed
 		if (this.redisConnected && this.redisClient) {
 			try {
 				const value = await this.redisClient.get(key)
 				if (value !== null && value !== '') {
-					this.stats.redisHits++
+					this.stats.l2Hits++
 					// Decompress if needed
 					const decompressed = await this.decompressValue(value)
-					return JSON.parse(decompressed)
+					const parsed = JSON.parse(decompressed)
+					
+					// Populate L1 cache with L2 result (for faster future access)
+					if (this.hybridMode && this.l1Cache) {
+						// Use shorter TTL for L1 (50% of original) - faster refresh
+						const l1TTL = 30 // Default 30 seconds for L1
+						this.l1Cache.set(key, {
+							value: parsed,
+							expiresAt: Date.now() + (l1TTL * 1000),
+							createdAt: Date.now(),
+						})
+					}
+					
+					return parsed
 				}
-				this.stats.redisMisses++
+				this.stats.l2Misses++
 			} catch (err) {
 				this.stats.errors++
-				console.warn(`[Redis] Get error for key "${key}":`, err.message)
-				// Fall through to fallback
+				console.warn(`[Redis] L2 get error for key "${key}":`, err.message)
 			}
+		} else {
+			this.stats.l2Misses++
 		}
 		
-		// Fallback to in-memory cache (only if enabled)
-		if (!this.fallbackEnabled || !this.fallbackCache) {
-			this.stats.fallbackMisses++
-			return null
-		}
-		
-		const entry = this.fallbackCache.get(key)
-		if (!entry) {
-			this.stats.fallbackMisses++
-			return null
-		}
-		
-		// Check if expired
-		if (Date.now() > entry.expiresAt) {
-			this.fallbackCache.delete(key)
-			this.stats.fallbackMisses++
-			return null
-		}
-		
-		this.stats.fallbackHits++
-		return entry.value
+		// STEP 3: Cache miss - return null (caller should fetch from DB)
+		return null
 	}
 
 	/**
@@ -468,16 +493,15 @@ class HybridCache {
 			}
 		}
 		
-		// Fallback to in-memory cache (only if enabled)
-		if (this.fallbackEnabled && this.fallbackCache) {
-			this.fallbackCache.set(key, {
+		// STEP 2: Set in L1 (in-memory) - fastest access
+		// Use shorter TTL for L1 (50% of L2 TTL) - faster refresh, less memory
+		if (this.hybridMode && this.l1Cache) {
+			const l1TTL = Math.max(30, Math.floor(ttl * 0.5)) // At least 30s, or 50% of L2 TTL
+			this.l1Cache.set(key, {
 				value,
-				expiresAt: Date.now() + (ttl * 1000),
+				expiresAt: Date.now() + (l1TTL * 1000),
 				createdAt: Date.now(),
 			})
-		} else if (!this.redisConnected) {
-			// If Redis is not connected and fallback is disabled, this is an error
-			throw new Error('Cannot set cache: Redis not connected and fallback is disabled')
 		}
 	}
 
@@ -495,9 +519,9 @@ class HybridCache {
 			}
 		}
 		
-		// Delete from fallback (only if enabled)
-		if (this.fallbackEnabled && this.fallbackCache) {
-			this.fallbackCache.delete(key)
+		// Delete from L1 (in-memory)
+		if (this.hybridMode && this.l1Cache) {
+			this.l1Cache.delete(key)
 		}
 	}
 
@@ -525,11 +549,11 @@ class HybridCache {
 			}
 		}
 		
-		// Delete from fallback (only if enabled)
-		if (this.fallbackEnabled && this.fallbackCache) {
-			for (const key of this.fallbackCache.keys()) {
+		// Delete from L1 (in-memory)
+		if (this.hybridMode && this.l1Cache) {
+			for (const key of this.l1Cache.keys()) {
 				if (key.includes(pattern)) {
-					this.fallbackCache.delete(key)
+					this.l1Cache.delete(key)
 				}
 			}
 		}
@@ -548,32 +572,39 @@ class HybridCache {
 			}
 		}
 		
-		// Clear fallback (only if enabled)
-		if (this.fallbackEnabled && this.fallbackCache) {
-			this.fallbackCache.clear()
+		// Clear L1 (in-memory)
+		if (this.hybridMode && this.l1Cache) {
+			this.l1Cache.clear()
 		}
 		this.stats = {
-			redisHits: 0,
-			redisMisses: 0,
-			fallbackHits: 0,
-			fallbackMisses: 0,
+			l1Hits: 0,
+			l1Misses: 0,
+			l2Hits: 0,
+			l2Misses: 0,
 			sets: 0,
 			errors: 0,
 		}
 	}
 
 	/**
-	 * Clean up expired fallback entries
+	 * Cleanup expired L1 (in-memory) cache entries
 	 */
-	cleanupFallback() {
-		if (!this.fallbackEnabled || !this.fallbackCache) {
-			return
-		}
+	cleanupL1() {
+		if (!this.hybridMode || !this.l1Cache) return
+		
 		const now = Date.now()
-		for (const [key, entry] of this.fallbackCache.entries()) {
+		let cleaned = 0
+		
+		for (const [key, entry] of this.l1Cache.entries()) {
 			if (now > entry.expiresAt) {
-				this.fallbackCache.delete(key)
+				this.l1Cache.delete(key)
+				cleaned++
 			}
+		}
+		
+		// Only log if significant cleanup
+		if (cleaned > 10) {
+			console.log(`[Cache] L1 cleanup: ${cleaned} expired entries (${this.l1Cache.size} remaining)`)
 		}
 	}
 
@@ -610,8 +641,8 @@ class HybridCache {
 		return {
 			...this.stats,
 			redisConnected: this.redisConnected,
-			fallbackEnabled: this.fallbackEnabled,
-			fallbackSize: this.fallbackEnabled && this.fallbackCache ? this.fallbackCache.size : 0,
+			hybridMode: this.hybridMode,
+			l1Size: this.hybridMode && this.l1Cache ? this.l1Cache.size : 0,
 			totalHits,
 			totalMisses,
 			hitRate: total > 0 ? ((totalHits / total) * 100).toFixed(2) + '%' : '0%',
@@ -654,8 +685,8 @@ class HybridCache {
 			}
 		}
 		
-		if (this.fallbackEnabled && this.fallbackCache) {
-			this.fallbackCache.clear()
+		if (this.hybridMode && this.l1Cache) {
+			this.l1Cache.clear()
 		}
 	}
 }
