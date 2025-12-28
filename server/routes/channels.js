@@ -7,6 +7,7 @@ const { regenerateChannelsJSON } = require('../utils/generateJSON');
 const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
 const { getCachedPosition } = require('../utils/positionCalculator');
 const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
+const { addChecksum } = require('../utils/checksum');
 
 // Cache TTL constants (in seconds) - OPTIMIZED WITH WRITE-THROUGH STRATEGY
 // Extended TTLs since write-through ensures cache consistency
@@ -41,7 +42,9 @@ router.get('/', async (req, res) => {
     const cacheKey = 'ch:all'; // Shortened from 'channels:all' to save memory
     const cached = await cache.get(cacheKey);
     if (cached) {
-      return res.json(cached);
+      // VALIDATION: Add checksum to cached response
+      const response = addChecksum(cached, 'channels');
+      return res.json(response);
     }
 
     // Only select essential fields to minimize cache size
@@ -54,8 +57,9 @@ router.get('/', async (req, res) => {
     // Write-through pattern: Cache immediately after fetch
     await cache.set(cacheKey, minimizedChannels, CACHE_TTL_CONFIG.CHANNELS_LIST);
     
-    // Return minimized channels (with youtubeId) for API compatibility
-    res.json(minimizedChannels);
+    // VALIDATION: Add checksum for silent background sync
+    const response = addChecksum(minimizedChannels, 'channels');
+    res.json(response);
   } catch (err) {
     console.error('GET /api/channels error', err);
     res.status(500).json({ message: 'Server error' });
@@ -70,7 +74,9 @@ router.get('/:id', async (req, res) => {
     const cacheKey = `ch:${channelHash}`; // Shortened from 'channel:xxx'
     const cached = await cache.get(cacheKey);
     if (cached) {
-      return res.json(cached);
+      // VALIDATION: Add checksum to cached response
+      const response = addChecksum(cached, 'channels');
+      return res.json(response);
     }
 
     const ch = await Channel.findById(req.params.id).lean();
@@ -81,8 +87,10 @@ router.get('/:id', async (req, res) => {
     
     // Write-through pattern: Cache immediately after fetch
     await cache.set(cacheKey, minimizedChannel, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
-    // Return minimized channel (with youtubeId) for API compatibility
-    res.json(minimizedChannel);
+    
+    // VALIDATION: Add checksum for silent background sync
+    const response = addChecksum(minimizedChannel, 'channels');
+    res.json(response);
   } catch (err) {
     console.error('GET /api/channels/:id error', err);
     res.status(500).json({ message: 'Server error' });

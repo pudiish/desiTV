@@ -10,6 +10,7 @@ const router = express.Router()
 const GlobalEpoch = require('../models/GlobalEpoch')
 const cache = require('../utils/cache')
 const { requireAuth } = require('../middleware/auth')
+const { addChecksum } = require('../utils/checksum')
 
 // Cache TTL for global epoch (2 hours - optimized for free tier)
 // Epoch never changes, so long cache is safe and reduces DB queries
@@ -27,11 +28,15 @@ router.get('/', async (req, res) => {
 		const cacheKey = 'ge' // Shortened from 'global-epoch' (saves 11 bytes per key)
 		const cached = await cache.get(cacheKey)
 		if (cached) {
+			const epochDate = new Date(cached.epoch || cached.e)
+			// VALIDATION: Add checksum to cached response
+			const response = addChecksum(epochDate.toISOString(), 'epoch')
 			return res.json({
-				epoch: new Date(cached.epoch), // Convert back from ISO string
-				timezone: cached.timezone,
-				createdAt: cached.createdAt || new Date(cached.epoch), // Fallback if not cached
+				epoch: epochDate,
+				timezone: cached.timezone || cached.tz,
+				createdAt: cached.createdAt || epochDate,
 				cached: true,
+				...response, // Include checksum
 			})
 		}
 
@@ -61,12 +66,16 @@ router.get('/', async (req, res) => {
 		// Cache for 2 hours (optimized TTL)
 		await cache.set(cacheKey, cacheData, EPOCH_CACHE_TTL)
 		
-		// Return full response with metadata
+		// VALIDATION: Add checksum for silent background sync
+		const response = addChecksum(globalEpoch.epoch.toISOString(), 'epoch')
+		
+		// Return full response with metadata and checksum
 		res.json({
 			epoch: globalEpoch.epoch,
 			timezone: globalEpoch.timezone || 'Asia/Kolkata',
 			createdAt: globalEpoch.createdAt,
 			cached: false,
+			...response, // Include checksum
 		})
 	} catch (err) {
 		console.error('[GlobalEpoch] GET error:', err)
