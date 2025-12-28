@@ -10,8 +10,8 @@ const router = express.Router()
 const ViewerCount = require('../models/ViewerCount')
 const cache = require('../utils/cache')
 
-// Cache TTL for viewer counts (30 seconds)
-const VIEWER_COUNT_CACHE_TTL = 30
+// Cache TTL for viewer counts (15 seconds - optimized for 25MB Redis)
+const VIEWER_COUNT_CACHE_TTL = 15
 
 /**
  * POST /api/viewer-count/:channelId/join
@@ -88,23 +88,29 @@ router.get('/:channelId', async (req, res) => {
 		if (cached) {
 			return res.json({
 				channelId,
-				activeViewers: cached.activeViewers,
-				totalViews: cached.totalViews,
+				activeViewers: cached.activeViewers || 0,
+				totalViews: cached.totalViews || 0,
 				cached: true,
 			})
 		}
 		
 		const viewerCount = await ViewerCount.findOne({ channelId })
 		
+		// Minimize cached data - only numbers, no metadata
 		const response = {
-			channelId,
 			activeViewers: viewerCount ? viewerCount.activeViewers : 0,
 			totalViews: viewerCount ? viewerCount.totalViews : 0,
-			cached: false,
 		}
 		
-		// Cache for 30 seconds
+		// Cache for 15 seconds (reduced from 30s)
 		await cache.set(cacheKey, response, VIEWER_COUNT_CACHE_TTL)
+		
+		// Return full response with metadata
+		res.json({
+			channelId,
+			...response,
+			cached: false,
+		})
 		
 		res.json(response)
 	} catch (err) {

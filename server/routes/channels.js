@@ -7,11 +7,11 @@ const { regenerateChannelsJSON } = require('../utils/generateJSON');
 const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
 const { getCachedPosition } = require('../utils/positionCalculator');
 
-// Cache TTL constants (in seconds)
+// Cache TTL constants (in seconds) - OPTIMIZED FOR 25MB REDIS
 const CACHE_TTL = {
-  CHANNELS_LIST: 30,     // Channel list cached for 30 seconds
-  CHANNEL_DETAIL: 60,    // Single channel cached for 1 minute
-  CURRENT_VIDEO: 5,      // Current video position cached for 5 seconds
+  CHANNELS_LIST: 15,     // Reduced from 30s - channel list is large, cache shorter
+  CHANNEL_DETAIL: 30,   // Reduced from 60s - single channel cached for 30 seconds
+  CURRENT_VIDEO: 3,      // Reduced from 5s - position cached for 3 seconds
 };
 
 function computePseudoLive(items, startEpoch) {
@@ -41,10 +41,25 @@ router.get('/', async (req, res) => {
       return res.json(cached);
     }
 
-    const channels = await Channel.find().select('name playlistStartEpoch items').lean();
+    // Only select essential fields to minimize cache size
+    const channels = await Channel.find().select('name playlistStartEpoch items._id items.videoId items.title items.duration items.thumbnail').lean();
     
-    // Cache the result
-    await cache.set(cacheKey, channels, CACHE_TTL.CHANNELS_LIST);
+    // Minimize data: remove unnecessary fields from items
+    const minimizedChannels = channels.map(ch => ({
+      _id: ch._id,
+      name: ch.name,
+      playlistStartEpoch: ch.playlistStartEpoch,
+      items: (ch.items || []).map(item => ({
+        _id: item._id,
+        videoId: item.videoId,
+        title: item.title,
+        duration: item.duration,
+        thumbnail: item.thumbnail,
+      })),
+    }));
+    
+    // Cache the minimized result
+    await cache.set(cacheKey, minimizedChannels, CACHE_TTL.CHANNELS_LIST);
     
     res.json(channels);
   } catch (err) {
@@ -65,7 +80,34 @@ router.get('/:id', async (req, res) => {
     const ch = await Channel.findById(req.params.id).lean();
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
-    await cache.set(cacheKey, ch, CACHE_TTL.CHANNEL_DETAIL);
+    // Minimize cached data - only essential fields
+    const minimizedChannel = {
+      _id: ch._id,
+      name: ch.name,
+      playlistStartEpoch: ch.playlistStartEpoch,
+      timezone: ch.timezone,
+      items: (ch.items || []).map(item => ({
+        _id: item._id,
+        videoId: item.videoId,
+        title: item.title,
+        duration: item.duration,
+        thumbnail: item.thumbnail,
+      })),
+      // Only include time-based playlists if they exist (they're large)
+      timeBasedPlaylists: ch.timeBasedPlaylists ? Object.keys(ch.timeBasedPlaylists).reduce((acc, slot) => {
+        if (ch.timeBasedPlaylists[slot] && ch.timeBasedPlaylists[slot].length > 0) {
+          acc[slot] = ch.timeBasedPlaylists[slot].map(item => ({
+            _id: item._id,
+            videoId: item.videoId,
+            title: item.title,
+            duration: item.duration,
+          }))
+        }
+        return acc
+      }, {}) : undefined,
+    };
+    
+    await cache.set(cacheKey, minimizedChannel, CACHE_TTL.CHANNEL_DETAIL);
     res.json(ch);
   } catch (err) {
     console.error('GET /api/channels/:id error', err);

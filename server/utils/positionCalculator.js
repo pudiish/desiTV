@@ -10,8 +10,9 @@ const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName, getSecondsUn
 const GlobalEpoch = require('../models/GlobalEpoch')
 const cache = require('./cache')
 
-// Cache TTL for position calculations (5 seconds - balances accuracy vs performance)
-const POSITION_CACHE_TTL = 5
+// Cache TTL for position calculations (3 seconds - optimized for 25MB Redis)
+// Reduced from 5s to save memory while maintaining good performance
+const POSITION_CACHE_TTL = 3
 
 // Default video duration if not specified
 const DEFAULT_VIDEO_DURATION = 300 // 5 minutes
@@ -148,8 +149,11 @@ async function getCachedPosition(channel, timezone = null, req = null) {
 	// Get user timezone
 	const userTimezone = timezone || (req ? getUserTimezone(req) : 'Asia/Kolkata')
 	
-	// Check cache first (include timezone in cache key for accuracy)
-	const cacheKey = `position:${channel._id}:${userTimezone}`
+	// Check cache first (shortened key for memory efficiency)
+	// Use channel ID hash instead of full ID to save space
+	const channelHash = channel._id.toString().substring(0, 8)
+	const tzHash = userTimezone.substring(0, 3) // First 3 chars of timezone
+	const cacheKey = `pos:${channelHash}:${tzHash}`
 	const cached = await cache.get(cacheKey)
 	if (cached) {
 		return cached
@@ -173,8 +177,21 @@ async function getCachedPosition(channel, timezone = null, req = null) {
 	position.nextTimeSlot = nextTimeSlot
 	position.isTransitioning = secondsUntilNextSlot < 60 // Less than 1 minute = transitioning
 	
-	// Cache for 5 seconds
-	await cache.set(cacheKey, position, POSITION_CACHE_TTL)
+	// Minimize cached position data - only essential fields
+	const minimizedPosition = {
+		videoIndex: position.videoIndex,
+		offset: position.offset,
+		timeSlot: position.currentTimeSlot,
+		nextSlot: position.nextTimeSlot,
+		secUntilNext: position.secondsUntilNextSlot,
+		// Don't cache full item object - too large
+	}
+	
+	// Cache for 3 seconds (reduced from 5s)
+	await cache.set(cacheKey, minimizedPosition, POSITION_CACHE_TTL)
+	
+	// Return full position with item
+	return position
 	
 	return position
 }

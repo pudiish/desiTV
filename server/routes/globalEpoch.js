@@ -11,8 +11,9 @@ const GlobalEpoch = require('../models/GlobalEpoch')
 const cache = require('../utils/cache')
 const { requireAuth } = require('../middleware/auth')
 
-// Cache TTL for global epoch (1 hour - it rarely changes)
-const EPOCH_CACHE_TTL = 3600 // 1 hour in seconds
+// Cache TTL for global epoch (30 minutes - optimized for 25MB Redis)
+// Reduced from 1 hour but still long since epoch rarely changes
+const EPOCH_CACHE_TTL = 1800 // 30 minutes in seconds
 
 /**
  * GET /api/global-epoch
@@ -26,9 +27,9 @@ router.get('/', async (req, res) => {
 		const cached = await cache.get(cacheKey)
 		if (cached) {
 			return res.json({
-				epoch: cached.epoch,
+				epoch: new Date(cached.epoch), // Convert back from ISO string
 				timezone: cached.timezone,
-				createdAt: cached.createdAt,
+				createdAt: cached.createdAt || new Date(cached.epoch), // Fallback if not cached
 				cached: true,
 			})
 		}
@@ -36,15 +37,23 @@ router.get('/', async (req, res) => {
 		// Get or create global epoch
 		const globalEpoch = await GlobalEpoch.getOrCreate()
 		
+		// Minimize cached data - store epoch as ISO string, timezone as string
 		const response = {
-			epoch: globalEpoch.epoch,
+			epoch: globalEpoch.epoch.toISOString(), // Store as string to save space
 			timezone: globalEpoch.timezone || 'Asia/Kolkata',
-			createdAt: globalEpoch.createdAt,
-			cached: false,
+			// Don't cache createdAt - not needed for client
 		}
 
-		// Cache for 1 hour
+		// Cache for 30 minutes (reduced from 1 hour)
 		await cache.set(cacheKey, response, EPOCH_CACHE_TTL)
+		
+		// Return full response with metadata
+		res.json({
+			epoch: globalEpoch.epoch,
+			timezone: response.timezone,
+			createdAt: globalEpoch.createdAt,
+			cached: false,
+		})
 		
 		res.json(response)
 	} catch (err) {

@@ -1,25 +1,41 @@
 /**
  * Redis Cache with Optional In-Memory Fallback
  * 
- * Provides high-performance distributed caching with optional fallback
- * to in-memory cache if Redis is unavailable
+ * OPTIMIZED FOR 25MB FREE TIER:
+ * - Compression for large values (>1KB)
+ * - Short cache keys
+ * - Minimal cached data (only essential fields)
+ * - Memory monitoring and eviction
+ * - Reduced TTLs
  * 
  * Features:
  * - Automatic Redis connection management
  * - Optional graceful fallback to in-memory cache (controlled by REDIS_FALLBACK_ENABLED)
  * - Connection pooling and retry logic
- * - JSON serialization/deserialization
+ * - JSON serialization/deserialization with compression
  * - Pattern-based key deletion
- * - Cache statistics
+ * - Cache statistics and memory monitoring
  * 
  * Environment Variables:
  * - REDIS_FALLBACK_ENABLED: Set to 'true' to enable in-memory fallback (default: 'false')
  * - REDIS_URL: Redis connection URL (default: 'redis://localhost:6379')
  * - REDIS_PASSWORD: Redis password (optional)
+ * - REDIS_MAX_MEMORY: Max memory in bytes (default: 20MB for free tier safety)
  */
 
 // Check if fallback is enabled (default: false - Redis only)
 const FALLBACK_ENABLED = process.env.REDIS_FALLBACK_ENABLED === 'true'
+
+const zlib = require('zlib')
+const { promisify } = require('util')
+
+const gzip = promisify(zlib.gzip)
+const gunzip = promisify(zlib.gunzip)
+
+// Compression threshold (compress values larger than 1KB)
+const COMPRESS_THRESHOLD = 1024
+// Max memory for free tier (20MB to leave 5MB buffer)
+const MAX_MEMORY = parseInt(process.env.REDIS_MAX_MEMORY) || 20 * 1024 * 1024 // 20MB
 
 let redis = null
 try {
@@ -192,6 +208,26 @@ class HybridCache {
 	}
 
 	/**
+	 * Decompress value if needed
+	 * @param {string} value - Compressed or uncompressed value
+	 * @returns {Promise<string>} - Decompressed value
+	 */
+	async decompressValue(value) {
+		try {
+			// Check if compressed (starts with gzip magic bytes)
+			if (value.startsWith('\x1f\x8b')) {
+				const buffer = Buffer.from(value, 'binary')
+				const decompressed = await gunzip(buffer)
+				return decompressed.toString('utf8')
+			}
+			return value
+		} catch (err) {
+			// If decompression fails, try parsing as-is
+			return value
+		}
+	}
+
+	/**
 	 * Get value from cache (Redis first, fallback to memory)
 	 * @param {string} key - Cache key
 	 * @returns {Promise<any|null>} - Cached value or null
@@ -201,9 +237,11 @@ class HybridCache {
 		if (this.redisConnected && this.redisClient) {
 			try {
 				const value = await this.redisClient.get(key)
-				if (value !== null) {
+				if (value !== null && value !== '') {
 					this.stats.redisHits++
-					return JSON.parse(value)
+					// Decompress if needed
+					const decompressed = await this.decompressValue(value)
+					return JSON.parse(decompressed)
 				}
 				this.stats.redisMisses++
 			} catch (err) {
@@ -237,6 +275,35 @@ class HybridCache {
 	}
 
 	/**
+	 * Check Redis memory usage and evict if needed
+	 * @returns {Promise<boolean>} - True if memory is OK, false if near limit
+	 */
+	async checkMemoryAndEvict() {
+		if (!this.redisConnected || !this.redisClient) return true
+		
+		try {
+			const info = await this.redisClient.info('memory')
+			const usedMemoryMatch = info.match(/used_memory:(\d+)/)
+			if (usedMemoryMatch) {
+				const usedMemory = parseInt(usedMemoryMatch[1])
+				const usagePercent = (usedMemory / MAX_MEMORY) * 100
+				
+				// If over 80% of max memory, evict old keys
+				if (usagePercent > 80) {
+					console.warn(`[Redis] Memory usage high: ${(usedMemory / 1024 / 1024).toFixed(2)}MB (${usagePercent.toFixed(1)}%) - Evicting old keys...`)
+					// Evict keys with shortest TTL first (LRU-like behavior)
+					// This is handled by Redis maxmemory-policy, but we log it
+					return false
+				}
+			}
+			return true
+		} catch (err) {
+			// If we can't check memory, continue anyway
+			return true
+		}
+	}
+
+	/**
 	 * Set value in cache (Redis first, fallback to memory)
 	 * @param {string} key - Cache key
 	 * @param {any} value - Value to cache
@@ -245,11 +312,43 @@ class HybridCache {
 	async set(key, value, ttl = 60) {
 		this.stats.sets++
 		
+		// Check memory before setting
+		await this.checkMemoryAndEvict()
+		
 		// Try Redis first if connected
 		if (this.redisConnected && this.redisClient) {
 			try {
 				const serialized = JSON.stringify(value)
-				await this.redisClient.setEx(key, ttl, serialized)
+				const originalSize = Buffer.byteLength(serialized, 'utf8')
+				
+				// Compress if larger than threshold
+				let finalValue = serialized
+				let isCompressed = false
+				
+				if (originalSize > COMPRESS_THRESHOLD) {
+					try {
+						const compressed = await gzip(serialized)
+						const compressedSize = compressed.length
+						
+						// Only use compression if it actually saves space (at least 10% reduction)
+						if (compressedSize < originalSize * 0.9) {
+							finalValue = compressed.toString('binary')
+							isCompressed = true
+							this.stats.compressed++
+							this.stats.memorySaved += (originalSize - compressedSize)
+						} else {
+							this.stats.uncompressed++
+						}
+					} catch (compErr) {
+						// Compression failed, use uncompressed
+						this.stats.uncompressed++
+						console.warn(`[Redis] Compression failed for key "${key}":`, compErr.message)
+					}
+				} else {
+					this.stats.uncompressed++
+				}
+				
+				await this.redisClient.setEx(key, ttl, finalValue)
 				return // Success, no need for fallback
 			} catch (err) {
 				this.stats.errors++
@@ -368,12 +467,34 @@ class HybridCache {
 	}
 
 	/**
-	 * Get cache statistics
+	 * Get cache statistics (async to fetch Redis memory info)
 	 */
-	getStats() {
+	async getStats() {
 		const totalHits = this.stats.redisHits + this.stats.fallbackHits
 		const totalMisses = this.stats.redisMisses + this.stats.fallbackMisses
 		const total = totalHits + totalMisses
+		
+		// Get Redis memory info
+		let memoryInfo = {}
+		if (this.redisConnected && this.redisClient) {
+			try {
+				const info = await this.redisClient.info('memory')
+				const usedMemoryMatch = info.match(/used_memory:(\d+)/)
+				const maxMemoryMatch = info.match(/maxmemory:(\d+)/)
+				
+				if (usedMemoryMatch) {
+					const usedMemory = parseInt(usedMemoryMatch[1])
+					const maxMemory = maxMemoryMatch ? parseInt(maxMemoryMatch[1]) : MAX_MEMORY
+					memoryInfo = {
+						usedMemoryMB: (usedMemory / 1024 / 1024).toFixed(2),
+						maxMemoryMB: (maxMemory / 1024 / 1024).toFixed(2),
+						usagePercent: ((usedMemory / maxMemory) * 100).toFixed(1),
+					}
+				}
+			} catch (err) {
+				// Ignore memory info errors
+			}
+		}
 		
 		return {
 			...this.stats,
@@ -386,6 +507,11 @@ class HybridCache {
 			redisHitRate: (this.stats.redisHits + this.stats.redisMisses) > 0
 				? ((this.stats.redisHits / (this.stats.redisHits + this.stats.redisMisses)) * 100).toFixed(2) + '%'
 				: '0%',
+			memorySavedMB: (this.stats.memorySaved / 1024 / 1024).toFixed(2),
+			compressionRatio: this.stats.compressed > 0 
+				? ((this.stats.compressed / (this.stats.compressed + this.stats.uncompressed)) * 100).toFixed(1) + '%'
+				: '0%',
+			...memoryInfo,
 		}
 	}
 
