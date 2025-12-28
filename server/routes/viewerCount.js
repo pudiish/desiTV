@@ -10,8 +10,10 @@ const router = express.Router()
 const ViewerCount = require('../models/ViewerCount')
 const cache = require('../utils/cache')
 
-// Cache TTL for viewer counts (15 seconds - optimized for 25MB Redis)
-const VIEWER_COUNT_CACHE_TTL = 15
+// Cache TTL for viewer counts (30 seconds - optimized for free tier)
+// Viewer counts don't need real-time accuracy, 30s is fine
+// Reduces database queries significantly
+const VIEWER_COUNT_CACHE_TTL = 30
 
 /**
  * POST /api/viewer-count/:channelId/join
@@ -31,8 +33,9 @@ router.post('/:channelId/join', async (req, res) => {
 			channelName || 'Unknown Channel'
 		)
 		
-		// Clear cache
-		await cache.delete(`viewer-count:${channelId}`)
+		// Clear cache (use short key)
+		const channelHash = channelId.toString().substring(18, 24)
+		await cache.delete(`vc:${channelHash}`)
 		
 		res.json({
 			success: true,
@@ -60,8 +63,9 @@ router.post('/:channelId/leave', async (req, res) => {
 		
 		const viewerCount = await ViewerCount.decrementViewer(channelId)
 		
-		// Clear cache
-		await cache.delete(`viewer-count:${channelId}`)
+		// Clear cache (use short key)
+		const channelHash = channelId.toString().substring(18, 24)
+		await cache.delete(`vc:${channelHash}`)
 		
 		res.json({
 			success: true,
@@ -82,8 +86,9 @@ router.get('/:channelId', async (req, res) => {
 	try {
 		const { channelId } = req.params
 		
-		// Check cache first
-		const cacheKey = `viewer-count:${channelId}`
+		// OPTIMIZED: Ultra-short cache key for free tier
+		const channelHash = channelId.toString().substring(18, 24) // Last 6 chars
+		const cacheKey = `vc:${channelHash}` // Shortened from 'viewer-count:xxx'
 		const cached = await cache.get(cacheKey)
 		if (cached) {
 			return res.json({
@@ -96,8 +101,12 @@ router.get('/:channelId', async (req, res) => {
 		
 		const viewerCount = await ViewerCount.findOne({ channelId })
 		
-		// Minimize cached data - only numbers, no metadata
+		// OPTIMIZED: Ultra-minimal cached data for free tier
+		// Use single-letter keys to save memory
 		const response = {
+			a: viewerCount ? viewerCount.activeViewers : 0, // 'a' = activeViewers
+			t: viewerCount ? viewerCount.totalViews : 0, // 't' = totalViews
+			// Backward compatibility
 			activeViewers: viewerCount ? viewerCount.activeViewers : 0,
 			totalViews: viewerCount ? viewerCount.totalViews : 0,
 		}

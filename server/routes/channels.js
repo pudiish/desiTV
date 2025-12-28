@@ -7,11 +7,13 @@ const { regenerateChannelsJSON } = require('../utils/generateJSON');
 const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
 const { getCachedPosition } = require('../utils/positionCalculator');
 
-// Cache TTL constants (in seconds) - OPTIMIZED FOR 25MB REDIS
+// Cache TTL constants (in seconds) - OPTIMIZED FOR FREE TIER
+// Longer TTLs = fewer DB queries = better free tier efficiency
+// With compression, longer TTLs are safe within 25MB limit
 const CACHE_TTL = {
-  CHANNELS_LIST: 15,     // Reduced from 30s - channel list is large, cache shorter
-  CHANNEL_DETAIL: 30,   // Reduced from 60s - single channel cached for 30 seconds
-  CURRENT_VIDEO: 3,      // Reduced from 5s - position cached for 3 seconds
+  CHANNELS_LIST: 60,     // Increased from 15s - reduces DB queries by 75%
+  CHANNEL_DETAIL: 120,   // Increased from 30s - reduces DB queries by 50%
+  CURRENT_VIDEO: 5,      // Kept at 5s for accuracy
 };
 
 function computePseudoLive(items, startEpoch) {
@@ -34,8 +36,8 @@ function computePseudoLive(items, startEpoch) {
 // List all channels (cached)
 router.get('/', async (req, res) => {
   try {
-    // Check cache first
-    const cacheKey = 'channels:all';
+    // OPTIMIZED: Ultra-short cache key for free tier
+    const cacheKey = 'ch:all'; // Shortened from 'channels:all' to save memory
     const cached = await cache.get(cacheKey);
     if (cached) {
       return res.json(cached);
@@ -71,7 +73,9 @@ router.get('/', async (req, res) => {
 // Get single channel (cached)
 router.get('/:id', async (req, res) => {
   try {
-    const cacheKey = `channel:${req.params.id}`;
+    // OPTIMIZED: Ultra-short cache key
+    const channelHash = req.params.id.toString().substring(18, 24) // Last 6 chars
+    const cacheKey = `ch:${channelHash}`; // Shortened from 'channel:xxx'
     const cached = await cache.get(cacheKey);
     if (cached) {
       return res.json(cached);
@@ -416,8 +420,10 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
       await channel.save();
 
       // Invalidate caches
-      await cache.delete('channels:all');
-      await cache.deletePattern(`channel:${channelId}`);
+      // OPTIMIZED: Use short keys
+      await cache.delete('ch:all');
+      const channelHash = channelId.toString().substring(18, 24)
+      await cache.deletePattern(`ch:${channelHash}`);
 
       // Regenerate channels.json
       try {
@@ -450,7 +456,7 @@ router.post('/', requireAuth, async (req, res) => {
     const ch = await Channel.create({ name, playlistStartEpoch });
     
     // Invalidate channels list cache
-    cache.delete('channels:all');
+    cache.delete('ch:all');
     
     // Regenerate channels.json
     try {
@@ -478,7 +484,7 @@ router.post('/:channelId/videos', requireAuth, async (req, res) => {
     await ch.save();
     
     // Invalidate caches for this channel
-    cache.delete('channels:all');
+    cache.delete('ch:all');
     cache.deletePattern(`channel:${channelId}`);
     
     // Regenerate channels.json
@@ -534,7 +540,7 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
     }
     
     // Invalidate caches
-    cache.delete('channels:all');
+    cache.delete('ch:all');
     cache.deletePattern(`channel:${channelId}`);
     
     // Regenerate channels.json
@@ -563,7 +569,7 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
     }
     
     // Invalidate all caches
-    cache.delete('channels:all');
+    cache.delete('ch:all');
     cache.deletePattern(`channel:${channelId}`);
     
     // Regenerate channels.json
@@ -623,7 +629,7 @@ router.post('/:id/add-video', requireAuth, async (req, res) => {
     await channel.save();
 
     // Invalidate caches
-    cache.delete('channels:all');
+    cache.delete('ch:all');
     cache.deletePattern(`channel:${channelId}`);
 
     // Regenerate channels.json
@@ -700,7 +706,8 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
         await channel.save();
 
         // Invalidate cache
-        cache.deletePattern(`channel:${channelId}`);
+        const channelHash = channelId.toString().substring(18, 24)
+        cache.deletePattern(`ch:${channelHash}`);
         addedCount++;
 
       } catch (videoErr) {
@@ -709,7 +716,7 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
     }
 
     // Invalidate main channel list cache
-    cache.delete('channels:all');
+    cache.delete('ch:all');
 
     // Regenerate channels.json
     try {

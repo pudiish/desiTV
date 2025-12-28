@@ -10,9 +10,10 @@ const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName, getSecondsUn
 const GlobalEpoch = require('../models/GlobalEpoch')
 const cache = require('./cache')
 
-// Cache TTL for position calculations (3 seconds - optimized for 25MB Redis)
-// Reduced from 5s to save memory while maintaining good performance
-const POSITION_CACHE_TTL = 3
+// Cache TTL for position calculations (5 seconds - optimized for free tier)
+// Increased from 3s to reduce database queries while staying within memory limits
+// With compression, 5s TTL is safe and reduces DB load significantly
+const POSITION_CACHE_TTL = 5
 
 // Default video duration if not specified
 const DEFAULT_VIDEO_DURATION = 300 // 5 minutes
@@ -149,14 +150,24 @@ async function getCachedPosition(channel, timezone = null, req = null) {
 	// Get user timezone
 	const userTimezone = timezone || (req ? getUserTimezone(req) : 'Asia/Kolkata')
 	
-	// Check cache first (shortened key for memory efficiency)
-	// Use channel ID hash instead of full ID to save space
-	const channelHash = channel._id.toString().substring(0, 8)
-	const tzHash = userTimezone.substring(0, 3) // First 3 chars of timezone
-	const cacheKey = `pos:${channelHash}:${tzHash}`
+	// OPTIMIZED: Ultra-short cache key for free tier
+	const channelHash = channel._id.toString().substring(18, 24) // Last 6 chars (more unique)
+	const tzHash = userTimezone === 'Asia/Kolkata' ? 'IST' : userTimezone.substring(0, 3)
+	const cacheKey = `p:${channelHash}:${tzHash}` // Ultra-short: "p:" instead of "pos:"
 	const cached = await cache.get(cacheKey)
 	if (cached) {
-		return cached
+		// Reconstruct full position from minimal cache
+		return {
+			videoIndex: cached.v || cached.videoIndex || 0,
+			offset: cached.o || cached.offset || 0,
+			currentTimeSlot: cached.ts || cached.timeSlot,
+			nextTimeSlot: cached.ns || cached.nextSlot,
+			secondsUntilNextSlot: cached.su || cached.secUntilNext || 0,
+			// Calculate other fields on-demand
+			timezone: userTimezone,
+			timeSlotName: getTimeSlotName(userTimezone),
+			isTransitioning: (cached.su || cached.secUntilNext || 0) < 60,
+		}
 	}
 
 	// Get global epoch
@@ -177,17 +188,18 @@ async function getCachedPosition(channel, timezone = null, req = null) {
 	position.nextTimeSlot = nextTimeSlot
 	position.isTransitioning = secondsUntilNextSlot < 60 // Less than 1 minute = transitioning
 	
-	// Minimize cached position data - only essential fields
+	// OPTIMIZED: Ultra-minimal cached position data for free tier
+	// Only cache numbers (smallest possible size)
 	const minimizedPosition = {
-		videoIndex: position.videoIndex,
-		offset: position.offset,
-		timeSlot: position.currentTimeSlot,
-		nextSlot: position.nextTimeSlot,
-		secUntilNext: position.secondsUntilNextSlot,
-		// Don't cache full item object - too large
+		v: position.videoIndex, // 'v' instead of 'videoIndex' (saves 8 bytes)
+		o: position.offset, // 'o' instead of 'offset' (saves 4 bytes)
+		ts: position.currentTimeSlot, // 'ts' instead of 'timeSlot' (saves 6 bytes)
+		ns: position.nextTimeSlot, // 'ns' instead of 'nextSlot' (saves 5 bytes)
+		su: position.secondsUntilNextSlot, // 'su' instead of 'secUntilNext' (saves 8 bytes)
+		// Total savings: ~31 bytes per cached position
 	}
 	
-	// Cache for 3 seconds (reduced from 5s)
+	// Cache for 5 seconds (optimized TTL)
 	await cache.set(cacheKey, minimizedPosition, POSITION_CACHE_TTL)
 	
 	// Return full position with item
@@ -215,8 +227,10 @@ async function batchCalculatePositions(channels, timezone = 'Asia/Kolkata') {
 	for (const channel of channels) {
 		if (!channel || !channel._id) continue
 		
-		// Check cache first (include timezone in key)
-		const cacheKey = `position:${channel._id}:${timezone}`
+		// OPTIMIZED: Ultra-short cache key
+		const channelHash = channel._id.toString().substring(18, 24)
+		const tzHash = timezone === 'Asia/Kolkata' ? 'IST' : timezone.substring(0, 3)
+		const cacheKey = `p:${channelHash}:${tzHash}`
 		const cached = await cache.get(cacheKey)
 		if (cached) {
 			positions[channel._id] = cached

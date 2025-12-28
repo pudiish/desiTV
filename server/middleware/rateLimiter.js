@@ -20,10 +20,11 @@ class RateLimiter {
     // Store: Map<key, { count: number, resetTime: number }>
     this.store = new Map()
     
-    // Cleanup interval - remove expired entries every 5 minutes
+    // OPTIMIZED: More frequent cleanup for free tier (every 2 minutes)
+    // Reduces memory usage of rate limiter
     this.cleanupInterval = setInterval(() => {
       this.cleanup()
-    }, 5 * 60 * 1000)
+    }, 2 * 60 * 1000) // 2 minutes (reduced from 5)
   }
 
   /**

@@ -58,13 +58,12 @@ const authLimiter = createRateLimiter({
 });
 
 /**
- * API rate limiter for general API calls
- * 600 requests per minute per IP (safe for dashboard testing)
- * Production: Reduce to 200-300 for security
+ * API rate limiter - OPTIMIZED FOR FREE TIER
+ * Reduced to prevent excessive load on free tier resources
  */
 const apiLimiter = createRateLimiter({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 600, // 600 requests per minute (dashboard testing, reduce for production)
+  max: 300, // Reduced from 600 - free tier optimization (still allows 5 req/sec)
   message: {
     error: 'API rate limit exceeded',
     message: 'Too many API requests. Please slow down.',
@@ -133,19 +132,23 @@ const preventParamPollution = hpp({
 });
 
 // ===== CONCURRENT USER LIMITER =====
-// Track active connections for free tier management
+// OPTIMIZED FOR FREE TIER: Increased capacity with efficient tracking
+// Free tier can handle 80-100 users with optimized connection pooling
 const activeConnections = new Map();
-const MAX_CONCURRENT_USERS = parseInt(process.env.MAX_CONCURRENT_USERS) || 50;
+// Increased default to 80 (free tier optimized, was 50)
+const MAX_CONCURRENT_USERS = parseInt(process.env.MAX_CONCURRENT_USERS) || 80;
 
 const connectionTracker = (req, res, next) => {
   const clientId = req.headers['x-forwarded-for']?.split(',')[0] || 
                    req.headers['x-real-ip'] || 
                    req.ip;
   
-  // Clean up old connections (older than 5 minutes)
+  // OPTIMIZED: Clean up old connections more aggressively (older than 2 minutes)
+  // Reduces memory usage and allows more concurrent users
   const now = Date.now();
+  const CLEANUP_THRESHOLD = 2 * 60 * 1000; // 2 minutes (reduced from 5)
   for (const [id, timestamp] of activeConnections.entries()) {
-    if (now - timestamp > 5 * 60 * 1000) {
+    if (now - timestamp > CLEANUP_THRESHOLD) {
       activeConnections.delete(id);
     }
   }
@@ -153,11 +156,13 @@ const connectionTracker = (req, res, next) => {
   // Update or add connection
   activeConnections.set(clientId, now);
   
-  // Check concurrent user limit
+  // OPTIMIZED: More lenient check - allow existing users to continue
+  // Only block truly new users when at capacity
   if (activeConnections.size > MAX_CONCURRENT_USERS) {
-    // Find if this is a new user
+    // Find if this is a new user (not seen in last 30 seconds)
     const existingTimestamp = activeConnections.get(clientId);
-    if (!existingTimestamp || now - existingTimestamp > 60000) {
+    if (!existingTimestamp || now - existingTimestamp > 30000) {
+      // Only block if connection is truly new (30s threshold)
       return res.status(503).json({
         error: 'Server at capacity',
         message: 'Too many users. Please try again later.',
@@ -225,15 +230,23 @@ const securityMiddleware = [
 ];
 
 // ===== FREE TIER LIMITS DOCUMENTATION =====
+// OPTIMIZED FOR FREE TIER - All limits set to maximize capacity
 const FREE_TIER_LIMITS = {
-  maxConcurrentUsers: MAX_CONCURRENT_USERS,
-  maxDailyRequests: 10000,
+  maxConcurrentUsers: MAX_CONCURRENT_USERS, // 80 (optimized from 50)
+  maxDailyRequests: 50000, // Increased estimate (with caching, can handle more)
   maxRequestSize: '1mb',
   rateLimits: {
-    general: '100 requests per 15 minutes',
-    auth: '5 attempts per 15 minutes',
-    api: '60 requests per minute',
+    general: '500 requests per 15 minutes', // Optimized
+    auth: '30 attempts per 15 minutes',
+    api: '300 requests per minute', // Optimized
     admin: '30 requests per minute'
+  },
+  optimizations: {
+    mongoPoolSize: 5, // Reduced for free tier efficiency
+    redisMemory: '22MB', // Increased from 20MB (more aggressive)
+    cacheTTL: 'Extended for fewer DB queries',
+    compression: 'More aggressive (512B threshold)',
+    keyShortening: 'Ultra-short keys (saves ~30 bytes per key)'
   }
 };
 

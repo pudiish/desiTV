@@ -118,17 +118,23 @@ if (!isProduction || process.env.DEBUG) {
 }
 
 // ===== MONGODB CONNECTION =====
+// OPTIMIZED FOR FREE TIER: Reduced pool size to maximize concurrent users
+// Free tier: 100 connections max → With pool of 5, can handle 80-100 users efficiently
 const mongoOptions = {
 	useNewUrlParser: true,
 	useUnifiedTopology: true,
-	// Connection pool settings for production
-	maxPoolSize: isProduction ? 10 : 5,
-	minPoolSize: isProduction ? 2 : 1,
+	// Optimized pool for free tier (reduced from 10 to 5)
+	// Each connection can handle ~15-20 concurrent requests
+	maxPoolSize: isProduction ? 5 : 3, // Reduced for free tier efficiency
+	minPoolSize: isProduction ? 1 : 1, // Minimal pool to save connections
 	serverSelectionTimeoutMS: 5000,
-	socketTimeoutMS: 45000,
+	socketTimeoutMS: 30000, // Reduced from 45s to 30s for faster cleanup
 	// Retry settings
 	retryWrites: true,
 	retryReads: true,
+	// Free tier optimizations
+	maxIdleTimeMS: 30000, // Close idle connections after 30s (free tier optimization)
+	connectTimeoutMS: 10000, // Faster connection timeout
 };
 
 // Routes

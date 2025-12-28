@@ -11,9 +11,10 @@ const GlobalEpoch = require('../models/GlobalEpoch')
 const cache = require('../utils/cache')
 const { requireAuth } = require('../middleware/auth')
 
-// Cache TTL for global epoch (30 minutes - optimized for 25MB Redis)
-// Reduced from 1 hour but still long since epoch rarely changes
-const EPOCH_CACHE_TTL = 1800 // 30 minutes in seconds
+// Cache TTL for global epoch (2 hours - optimized for free tier)
+// Epoch never changes, so long cache is safe and reduces DB queries
+// Small data size, safe to cache longer
+const EPOCH_CACHE_TTL = 7200 // 2 hours in seconds
 
 /**
  * GET /api/global-epoch
@@ -22,8 +23,8 @@ const EPOCH_CACHE_TTL = 1800 // 30 minutes in seconds
  */
 router.get('/', async (req, res) => {
 	try {
-		// Check cache first
-		const cacheKey = 'global-epoch'
+		// OPTIMIZED: Ultra-short cache key for free tier
+		const cacheKey = 'ge' // Shortened from 'global-epoch' (saves 11 bytes per key)
 		const cached = await cache.get(cacheKey)
 		if (cached) {
 			return res.json({
@@ -37,25 +38,36 @@ router.get('/', async (req, res) => {
 		// Get or create global epoch
 		const globalEpoch = await GlobalEpoch.getOrCreate()
 		
-		// Minimize cached data - store epoch as ISO string, timezone as string
+		// OPTIMIZED: Ultra-minimal cached data for free tier
+		// Use single-letter keys to save memory
 		const response = {
-			epoch: globalEpoch.epoch.toISOString(), // Store as string to save space
+			e: globalEpoch.epoch.toISOString(), // 'e' = epoch (saves 4 bytes)
+			tz: globalEpoch.timezone || 'Asia/Kolkata', // 'tz' = timezone (saves 6 bytes)
+			// Backward compatibility
+			epoch: globalEpoch.epoch.toISOString(),
 			timezone: globalEpoch.timezone || 'Asia/Kolkata',
-			// Don't cache createdAt - not needed for client
 		}
 
-		// Cache for 30 minutes (reduced from 1 hour)
-		await cache.set(cacheKey, response, EPOCH_CACHE_TTL)
+		// OPTIMIZED: Ultra-minimal cached data for free tier
+		// Use single-letter keys to save memory
+		const cacheData = {
+			e: globalEpoch.epoch.toISOString(), // 'e' = epoch (saves 4 bytes)
+			tz: globalEpoch.timezone || 'Asia/Kolkata', // 'tz' = timezone (saves 6 bytes)
+			// Backward compatibility
+			epoch: globalEpoch.epoch.toISOString(),
+			timezone: globalEpoch.timezone || 'Asia/Kolkata',
+		}
+		
+		// Cache for 2 hours (optimized TTL)
+		await cache.set(cacheKey, cacheData, EPOCH_CACHE_TTL)
 		
 		// Return full response with metadata
 		res.json({
 			epoch: globalEpoch.epoch,
-			timezone: response.timezone,
+			timezone: globalEpoch.timezone || 'Asia/Kolkata',
 			createdAt: globalEpoch.createdAt,
 			cached: false,
 		})
-		
-		res.json(response)
 	} catch (err) {
 		console.error('[GlobalEpoch] GET error:', err)
 		res.status(500).json({ 
@@ -76,7 +88,7 @@ router.post('/reset', requireAuth, async (req, res) => {
 		await GlobalEpoch.deleteOne({ _id: 'global' })
 		
 		// Clear cache
-		await cache.delete('global-epoch')
+		await cache.delete('ge') // Use short key
 		
 		// Create new epoch
 		const newEpoch = await GlobalEpoch.getOrCreate()

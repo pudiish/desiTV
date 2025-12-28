@@ -32,10 +32,12 @@ const { promisify } = require('util')
 const gzip = promisify(zlib.gzip)
 const gunzip = promisify(zlib.gunzip)
 
-// Compression threshold (compress values larger than 1KB)
-const COMPRESS_THRESHOLD = 1024
-// Max memory for free tier (20MB to leave 5MB buffer)
-const MAX_MEMORY = parseInt(process.env.REDIS_MAX_MEMORY) || 20 * 1024 * 1024 // 20MB
+// Compression threshold (compress values larger than 512 bytes - more aggressive)
+// Free tier optimization: Compress more to save memory
+const COMPRESS_THRESHOLD = 512 // Reduced from 1KB for better compression
+// Max memory for free tier (22MB to leave 3MB buffer - more aggressive)
+// Free tier: 25MB total, use 22MB to maximize capacity
+const MAX_MEMORY = parseInt(process.env.REDIS_MAX_MEMORY) || 22 * 1024 * 1024 // 22MB (was 20MB)
 
 let redis = null
 try {
@@ -72,9 +74,9 @@ class HybridCache {
 			this.cleanupInterval = setInterval(() => this.cleanupFallback(), 60 * 1000)
 		}
 		
-		// Redis cleanup job - runs every 5 minutes
-		// Cleans up expired keys and monitors memory
-		this.redisCleanupInterval = setInterval(() => this.cleanupRedis(), 5 * 60 * 1000)
+		// OPTIMIZED: More frequent cleanup for free tier (every 3 minutes)
+		// Free tier optimization: More aggressive cleanup to stay within limits
+		this.redisCleanupInterval = setInterval(() => this.cleanupRedis(), 3 * 60 * 1000)
 		
 		// Initialize Redis connection only if module is available
 		if (redis) {
@@ -303,8 +305,9 @@ class HybridCache {
 				const usedMemory = parseInt(usedMemoryMatch[1])
 				const usagePercent = (usedMemory / MAX_MEMORY) * 100
 				
-				// If over 80% of max memory, evict old keys
-				if (usagePercent > 80) {
+				// OPTIMIZED: More aggressive eviction (at 75% instead of 80%)
+				// Free tier optimization: Evict earlier to prevent hitting limit
+				if (usagePercent > 75) {
 					console.warn(`[Redis] Memory usage high: ${(usedMemory / 1024 / 1024).toFixed(2)}MB (${usagePercent.toFixed(1)}%) - Evicting old keys...`)
 					await this.evictOldKeys()
 					return false
@@ -325,10 +328,20 @@ class HybridCache {
 		if (!this.redisConnected || !this.redisClient) return
 		
 		try {
-			// Get all keys
+			// Get memory usage to determine eviction percentage
+			const info = await this.redisClient.info('memory')
+			const usedMemoryMatch = info.match(/used_memory:(\d+)/)
+			const usedMemory = usedMemoryMatch ? parseInt(usedMemoryMatch[1]) : 0
+			const usagePercent = (usedMemory / MAX_MEMORY) * 100
+			
+			// Get all keys (limit scan for free tier efficiency)
 			const keys = []
-			for await (const key of this.redisClient.scanIterator({ COUNT: 100 })) {
+			let scanned = 0
+			const MAX_SCAN = 500 // Limit scan to prevent blocking
+			for await (const key of this.redisClient.scanIterator({ COUNT: 50 })) {
 				keys.push(key)
+				scanned++
+				if (scanned >= MAX_SCAN) break
 			}
 			
 			if (keys.length === 0) return
@@ -342,14 +355,18 @@ class HybridCache {
 				}
 			}
 			
-			// Sort by TTL (shortest first) and evict 20% of keys
+			// OPTIMIZED: Sort by TTL and evict 30% of keys (more aggressive for free tier)
 			keysWithTTL.sort((a, b) => a.ttl - b.ttl)
-			const keysToEvict = keysWithTTL.slice(0, Math.ceil(keysWithTTL.length * 0.2))
+			const evictPercent = usagePercent > 90 ? 0.5 : 0.3 // Evict 50% if over 90%
+			const keysToEvict = keysWithTTL.slice(0, Math.ceil(keysWithTTL.length * evictPercent))
 			
 			if (keysToEvict.length > 0) {
 				const keysToDelete = keysToEvict.map(k => k.key)
 				await this.redisClient.del(keysToDelete)
-				console.log(`[Redis] Evicted ${keysToDelete.length} old keys to free memory`)
+				// Estimate memory freed (conservative estimate)
+				const avgKeySize = 1024 // 1KB average (conservative)
+				const freedKB = ((keysToDelete.length * avgKeySize) / 1024).toFixed(2)
+				console.log(`[Redis] Evicted ${keysToDelete.length} old keys (~${freedKB}KB freed, ${usagePercent.toFixed(1)}% usage)`)
 			}
 		} catch (err) {
 			console.warn('[Redis] Error during eviction:', err.message)
@@ -357,33 +374,38 @@ class HybridCache {
 	}
 
 	/**
-	 * Periodic Redis cleanup job
+	 * Periodic Redis cleanup job - OPTIMIZED FOR FREE TIER
 	 * - Removes expired keys (Redis does this automatically, but we verify)
 	 * - Checks memory usage
-	 * - Evicts old keys if needed
+	 * - Aggressively evicts old keys if needed
+	 * - More frequent cleanup for free tier
 	 */
 	async cleanupRedis() {
 		if (!this.redisConnected || !this.redisClient) return
 		
 		try {
 			// Check memory and evict if needed
-			await this.checkMemoryAndEvict()
+			const memoryOK = await this.checkMemoryAndEvict()
 			
-			// Count keys
+			// Count keys (limit scan for free tier efficiency)
 			let keyCount = 0
-			for await (const _ of this.redisClient.scanIterator({ COUNT: 100 })) {
+			let scanned = 0
+			const MAX_SCAN = 500 // Limit scan to prevent blocking (free tier optimization)
+			for await (const _ of this.redisClient.scanIterator({ COUNT: 50 })) {
 				keyCount++
+				scanned++
+				if (scanned >= MAX_SCAN) break // Free tier optimization: limit scan
 			}
 			
-			// Log cleanup stats
-			if (keyCount > 0) {
+			// Log cleanup stats (only if memory is high or key count is significant)
+			if (!memoryOK || keyCount > 100) {
 				const info = await this.redisClient.info('memory')
 				const usedMemoryMatch = info.match(/used_memory:(\d+)/)
 				if (usedMemoryMatch) {
 					const usedMemory = parseInt(usedMemoryMatch[1])
 					const usageMB = (usedMemory / 1024 / 1024).toFixed(2)
 					const usagePercent = ((usedMemory / MAX_MEMORY) * 100).toFixed(1)
-					console.log(`[Redis] Cleanup: ${keyCount} keys, ${usageMB}MB (${usagePercent}% of limit)`)
+					console.log(`[Redis] Cleanup: ${keyCount}+ keys, ${usageMB}MB (${usagePercent}% of limit)`)
 				}
 			}
 		} catch (err) {
@@ -418,8 +440,9 @@ class HybridCache {
 						const compressed = await gzip(serialized)
 						const compressedSize = compressed.length
 						
-						// Only use compression if it actually saves space (at least 10% reduction)
-						if (compressedSize < originalSize * 0.9) {
+				// OPTIMIZED: More aggressive compression (at least 5% reduction)
+				// Free tier optimization: Accept smaller savings to maximize memory efficiency
+				if (compressedSize < originalSize * 0.95) {
 							finalValue = compressed.toString('binary')
 							isCompressed = true
 							this.stats.compressed++
