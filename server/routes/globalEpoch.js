@@ -45,16 +45,6 @@ router.get('/', async (req, res) => {
 		
 		// OPTIMIZED: Ultra-minimal cached data for free tier
 		// Use single-letter keys to save memory
-		const response = {
-			e: globalEpoch.epoch.toISOString(), // 'e' = epoch (saves 4 bytes)
-			tz: globalEpoch.timezone || 'Asia/Kolkata', // 'tz' = timezone (saves 6 bytes)
-			// Backward compatibility
-			epoch: globalEpoch.epoch.toISOString(),
-			timezone: globalEpoch.timezone || 'Asia/Kolkata',
-		}
-
-		// OPTIMIZED: Ultra-minimal cached data for free tier
-		// Use single-letter keys to save memory
 		const cacheData = {
 			e: globalEpoch.epoch.toISOString(), // 'e' = epoch (saves 4 bytes)
 			tz: globalEpoch.timezone || 'Asia/Kolkata', // 'tz' = timezone (saves 6 bytes)
@@ -67,7 +57,7 @@ router.get('/', async (req, res) => {
 		await cache.set(cacheKey, cacheData, EPOCH_CACHE_TTL)
 		
 		// VALIDATION: Add checksum for silent background sync
-		const response = addChecksum(globalEpoch.epoch.toISOString(), 'epoch')
+		const checksumData = addChecksum(globalEpoch.epoch.toISOString(), 'epoch')
 		
 		// Return full response with metadata and checksum
 		res.json({
@@ -75,7 +65,7 @@ router.get('/', async (req, res) => {
 			timezone: globalEpoch.timezone || 'Asia/Kolkata',
 			createdAt: globalEpoch.createdAt,
 			cached: false,
-			...response, // Include checksum
+			...checksumData, // Include checksum
 		})
 	} catch (err) {
 		console.error('[GlobalEpoch] GET error:', err)
