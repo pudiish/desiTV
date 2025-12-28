@@ -5,6 +5,8 @@
  * Creates the "shared experience" feeling
  */
 
+import { apiClient } from './apiClient'
+
 let viewerCountCache = new Map() // channelId -> { count, timestamp }
 const CACHE_TTL = 30 * 1000 // 30 seconds
 
@@ -17,16 +19,11 @@ export async function joinChannel(channelId, channelName) {
 	if (!channelId) return
 	
 	try {
-		const response = await fetch(`/api/viewer-count/${channelId}/join`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({ channelName }),
+		const data = await apiClient.post(`/api/viewer-count/${channelId}/join`, {
+			channelName,
 		})
 		
-		if (response.ok) {
-			const data = await response.json()
+		if (data && data.activeViewers !== undefined) {
 			// Update cache
 			viewerCountCache.set(channelId, {
 				count: data.activeViewers,
@@ -35,7 +32,8 @@ export async function joinChannel(channelId, channelName) {
 			return data.activeViewers
 		}
 	} catch (err) {
-		console.warn('[ViewerCount] Failed to join channel:', err)
+		// Silently fail - viewer count is not critical
+		console.warn('[ViewerCount] Failed to join channel:', err.message)
 	}
 	
 	return null
@@ -49,15 +47,9 @@ export async function leaveChannel(channelId) {
 	if (!channelId) return
 	
 	try {
-		const response = await fetch(`/api/viewer-count/${channelId}/leave`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-		})
+		const data = await apiClient.post(`/api/viewer-count/${channelId}/leave`, {})
 		
-		if (response.ok) {
-			const data = await response.json()
+		if (data && data.activeViewers !== undefined) {
 			// Update cache
 			viewerCountCache.set(channelId, {
 				count: data.activeViewers,
@@ -66,7 +58,8 @@ export async function leaveChannel(channelId) {
 			return data.activeViewers
 		}
 	} catch (err) {
-		console.warn('[ViewerCount] Failed to leave channel:', err)
+		// Silently fail - viewer count is not critical
+		console.warn('[ViewerCount] Failed to leave channel:', err.message)
 	}
 	
 	return null

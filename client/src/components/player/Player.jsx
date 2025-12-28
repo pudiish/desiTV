@@ -747,11 +747,26 @@ onBufferingChange = null,
 		if (window.YT && window.YT.Player) {
 			// API already loaded
 			if (!ytPlayerRef.current) {
-				// Need to create player
-				if (!initYouTubePlayer()) {
+				// Need to create player - wait for DOM to be ready
+				const tryInit = () => {
+					const container = document.getElementById('desitv-player-iframe')
+					if (!container) {
+						return false
+					}
+					return initYouTubePlayer()
+				}
+				
+				if (!tryInit()) {
+					// Retry with interval until container exists
+					let attempts = 0
+					const maxAttempts = 50 // 5 seconds max wait
 					const timer = setInterval(() => {
-						if (initYouTubePlayer()) {
+						attempts++
+						if (tryInit() || attempts >= maxAttempts) {
 							clearInterval(timer)
+							if (attempts >= maxAttempts) {
+								console.error('[Player] Failed to find player container after 5 seconds')
+							}
 						}
 					}, 100)
 					return () => clearInterval(timer)
@@ -762,7 +777,16 @@ onBufferingChange = null,
 			const originalCallback = window.onYouTubeIframeAPIReady
 			window.onYouTubeIframeAPIReady = () => {
 				if (originalCallback) originalCallback()
-				initYouTubePlayer()
+				// Wait for DOM element to exist before initializing
+				const waitForContainer = setInterval(() => {
+					const container = document.getElementById('desitv-player-iframe')
+					if (container) {
+						clearInterval(waitForContainer)
+						initYouTubePlayer()
+					}
+				}, 100)
+				// Timeout after 5 seconds
+				setTimeout(() => clearInterval(waitForContainer), 5000)
 			}
 		}
 
