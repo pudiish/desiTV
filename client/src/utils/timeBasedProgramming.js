@@ -53,30 +53,63 @@ function getTimeSlotKey(hour) {
 
 /**
  * Get suggested channel name based on current time
+ * @param {string} timezone - Optional timezone (defaults to local)
  * @returns {string} Suggested channel name
  */
-export function getSuggestedChannel() {
-  const hour = new Date().getHours()
+export function getSuggestedChannel(timezone = null) {
+  let hour
+  if (timezone) {
+    // Use timezone-aware hour calculation
+    const time = new Date().toLocaleString('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+    hour = parseInt(time.split(':')[0])
+  } else {
+    hour = new Date().getHours()
+  }
   const slotKey = getTimeSlotKey(hour)
   return TIME_SLOTS[slotKey] || 'Retro Gold'
 }
 
 /**
  * Get current time slot display name
+ * @param {string} timezone - Optional timezone (defaults to local)
  * @returns {string} Friendly time slot name
  */
-export function getCurrentTimeSlotName() {
-  const hour = new Date().getHours()
+export function getCurrentTimeSlotName(timezone = null) {
+  let hour
+  if (timezone) {
+    // Use timezone-aware hour calculation
+    const time = new Date().toLocaleString('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+    hour = parseInt(time.split(':')[0])
+  } else {
+    hour = new Date().getHours()
+  }
   const slotKey = getTimeSlotKey(hour)
   return TIME_SLOT_NAMES[slotKey] || 'Prime Time'
 }
 
 /**
+ * Alias for getCurrentTimeSlotName (for compatibility)
+ * @param {string} timezone - Optional timezone (defaults to local)
+ * @returns {string} Friendly time slot name
+ */
+export function getTimeSlotName(timezone = null) {
+  return getCurrentTimeSlotName(timezone)
+}
+
+/**
  * Get time-based greeting
+ * @param {string} timezone - Optional timezone (defaults to local)
  * @returns {string} Greeting based on time of day
  */
-export function getTimeBasedGreeting() {
-  const hour = new Date().getHours()
+export function getTimeBasedGreeting(timezone = null) {
+  let hour
+  if (timezone) {
+    // Use timezone-aware hour calculation
+    const time = new Date().toLocaleString('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+    hour = parseInt(time.split(':')[0])
+  } else {
+    hour = new Date().getHours()
+  }
   
   if (hour >= 5 && hour < 12) {
     return 'SUPRABHAT! ☀️'
@@ -126,6 +159,7 @@ export function getIndianTime() {
 export default {
   getSuggestedChannel,
   getCurrentTimeSlotName,
+  getTimeSlotName,
   getTimeBasedGreeting,
   getTimeSuggestion,
   getIndianTime

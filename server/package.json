@@ -5,7 +5,7 @@
   "author": "Swarnapudi Ishwar <swarnapudiishwar@gmail.com>",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js --watch ./",
+    "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node seed.js",
     "reorganize": "node reorganize-channels.js",
@@ -22,7 +22,8 @@
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.0",
-    "mongoose": "^7.3.4"
+    "mongoose": "^7.3.4",
+    "redis": "^4.7.1"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",

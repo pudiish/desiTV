@@ -2,6 +2,15 @@
 # https://render.com/docs/yaml-spec
 
 services:
+  # Redis Service (Optional but recommended)
+  - type: redis
+    name: desitv-redis
+    plan: free  # Free tier: 25MB, 10 connections
+    # For production, use 'starter' plan ($10/mo): 100MB, 30 connections
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Only allow connections from Render services
+
+  # API Server
   - type: web
     name: desitv-api
     env: node
@@ -20,8 +29,23 @@ services:
           name: desitv-api
           property: port  # Render automatically assigns PORT
       - key: MONGO_URI
-        sync: false  # Set manually in Render dashboard
+        sync: false  # Set manually in Render dashboard (MongoDB Atlas recommended)
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: desitv-redis
+          property: connectionString  # Auto-connects to Render Redis
+      # Alternative: Use external Redis (Redis Cloud, Upstash, etc.)
+      # - key: REDIS_URL
+      #   sync: false  # Set manually: redis://username:password@host:port
+      # - key: REDIS_PASSWORD
+      #   sync: false  # Set manually if using external Redis
+      - key: REDIS_FALLBACK_ENABLED
+        value: "false"  # Use Redis only in production
       - key: JWT_SECRET
-        generateValue: true  # Auto-generate secure value - IMPORTANT: If this doesn't work, set manually in Render dashboard
-        # Recommended: Manually set in Render dashboard Environment tab instead
+        generateValue: true  # Auto-generate secure value
+      - key: SESSION_SECRET
+        generateValue: true  # Auto-generate secure value
+      - key: CORS_ORIGIN
+        sync: false  # Set to your Vercel/client URL (e.g., https://your-app.vercel.app)
     autoDeploy: true  # Deploy on push to main branch

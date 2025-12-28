@@ -142,8 +142,11 @@ class DBConnectionManager {
     });
 
     mongoose.connection.on('disconnected', () => {
-      this.connectionState = 'disconnected';
-      console.warn('[DBConnection] ⚠️  MongoDB disconnected');
+      // Don't log disconnection during graceful shutdown (it's expected)
+      if (this.connectionState !== 'disconnected') {
+        this.connectionState = 'disconnected';
+        console.warn('[DBConnection] ⚠️  MongoDB disconnected');
+      }
       
       // Call disconnection callbacks
       this.onDisconnectionCallbacks.forEach(cb => {
@@ -154,8 +157,8 @@ class DBConnectionManager {
         }
       });
 
-      // Attempt reconnection if we were previously connected
-      if (this.mongoUri) {
+      // Attempt reconnection if we were previously connected and not shutting down
+      if (this.mongoUri && this.connectionState !== 'shutting_down') {
         console.log('[DBConnection] 🔄 Attempting to reconnect...');
         this.retryCount = 0; // Reset retry count for reconnection
         this.attemptConnection().catch(err => {
@@ -214,6 +217,7 @@ class DBConnectionManager {
    * Disconnect from MongoDB
    */
   async disconnect() {
+    this.connectionState = 'shutting_down';
     this.stopHealthMonitoring();
     
     if (this.retryTimeout) {
@@ -222,8 +226,12 @@ class DBConnectionManager {
     }
 
     if (mongoose.connection.readyState !== 0) {
-      await mongoose.connection.close();
-      console.log('[DBConnection] Disconnected from MongoDB');
+      try {
+        await mongoose.connection.close();
+        console.log('[DBConnection] Disconnected from MongoDB');
+      } catch (err) {
+        console.warn('[DBConnection] Error during disconnect:', err.message);
+      }
     }
     
     this.connectionState = 'disconnected';

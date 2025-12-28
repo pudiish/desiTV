@@ -1,15 +1,52 @@
 /**
- * Simple In-Memory Cache for DesiTV™ API
- * Reduces database calls for frequently accessed data
+ * Cache Interface for DesiTV™ API
+ * 
+ * This module exports the appropriate cache implementation:
+ * - Redis with in-memory fallback (if Redis available)
+ * - Pure in-memory cache (if Redis unavailable)
  * 
  * Usage:
- *   cache.set('key', data, ttlSeconds)
- *   cache.get('key') // returns null if expired
- *   cache.delete('key')
- *   cache.clear()
+ *   await cache.set('key', data, ttlSeconds)
+ *   const value = await cache.get('key') // returns null if expired
+ *   await cache.delete('key')
+ *   await cache.clear()
  */
 
-class SimpleCache {
+// Try to use Redis cache, fallback to simple cache
+const FALLBACK_ENABLED = process.env.REDIS_FALLBACK_ENABLED === 'true'
+
+let cache
+try {
+	const redisCache = require('./redisCache')
+	// Use Redis cache (with optional fallback built-in)
+	cache = redisCache
+	// Redis connection is async, so we'll check status after a short delay
+	// This prevents false "not connected" messages during startup
+	setTimeout(() => {
+		if (redisCache.isRedisConnected && redisCache.isRedisConnected()) {
+			if (FALLBACK_ENABLED) {
+				console.log('[Cache] ✅ Using Redis cache with in-memory fallback')
+			} else {
+				console.log('[Cache] ✅ Using Redis cache only (fallback disabled)')
+			}
+		} else {
+			if (FALLBACK_ENABLED) {
+				console.log('[Cache] Using in-memory cache (Redis not available, fallback active)')
+			} else {
+				console.error('[Cache] ❌ Redis not available and fallback is disabled!')
+			}
+		}
+	}, 1000) // Check after 1 second to allow Redis to connect
+} catch (err) {
+	// This catch handles require() errors (module not found, etc.)
+	if (FALLBACK_ENABLED) {
+		console.warn('[Cache] Redis cache module error, using in-memory cache only:', err.message)
+	} else {
+		console.error('[Cache] ❌ Redis cache module error and fallback is disabled:', err.message)
+		throw err // Re-throw if fallback is disabled
+	}
+	// Fallback to simple cache
+	class SimpleCache {
   constructor() {
     this.cache = new Map()
     this.stats = {
@@ -124,7 +161,26 @@ class SimpleCache {
   }
 }
 
-// Export singleton instance
-const cache = new SimpleCache()
+	// Export singleton instance
+	cache = new SimpleCache()
+}
+
+// Make cache methods async-compatible (for both Redis and in-memory)
+// If cache methods are already async, they'll work as-is
+// If they're sync, wrap them in async functions
+if (cache && typeof cache.get === 'function' && cache.get.constructor.name !== 'AsyncFunction') {
+	// Wrap sync methods to be async-compatible
+	const originalGet = cache.get.bind(cache)
+	const originalSet = cache.set.bind(cache)
+	const originalDelete = cache.delete.bind(cache)
+	const originalDeletePattern = cache.deletePattern.bind(cache)
+	const originalClear = cache.clear.bind(cache)
+	
+	cache.get = async (key) => originalGet(key)
+	cache.set = async (key, value, ttl) => originalSet(key, value, ttl)
+	cache.delete = async (key) => originalDelete(key)
+	cache.deletePattern = async (pattern) => originalDeletePattern(pattern)
+	cache.clear = async () => originalClear()
+}
 
 module.exports = cache

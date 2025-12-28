@@ -140,6 +140,8 @@ const broadcastStateRoutes = require('./routes/broadcastState');
 const sessionRoutes = require('./routes/session');
 const monitoringRoutes = require('./routes/monitoring');
 const analyticsRoutes = require('./routes/analytics');
+const globalEpochRoutes = require('./routes/globalEpoch');
+const viewerCountRoutes = require('./routes/viewerCount');
 
 // ===== CSRF PROTECTION =====
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
@@ -158,6 +160,8 @@ app.use('/api', csrfProtection);
 app.use('/api', csrfRefresh);
 
 // Mount routes
+app.use('/api/global-epoch', globalEpochRoutes);
+app.use('/api/viewer-count', viewerCountRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoriesRoutes);
@@ -246,14 +250,41 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 		});
 
 		// Graceful shutdown helpers for nodemon and signals
-		const shutdown = async (signal) => {
+		const shutdown = async (signal, exitCode = 0) => {
 			console.log('Received', signal, 'shutting down server...');
 			try {
-				await dbConnectionManager.disconnect();
+				// Close server first (stop accepting new connections)
 				server.close(() => {
 					console.log('Server closed');
-					process.exit(0);
+					
+					// For SIGUSR2 (nodemon restart), don't disconnect MongoDB
+					// Let nodemon handle the restart and MongoDB will reconnect
+					if (signal === 'SIGUSR2') {
+						// Nodemon expects the process to exit, but we've closed the server
+						// The connection manager will handle reconnection on restart
+						setTimeout(() => process.exit(0), 100);
+					} else {
+						// For other signals, fully disconnect
+						dbConnectionManager.disconnect().then(() => {
+							process.exit(exitCode);
+						}).catch((e) => {
+							console.error('Error disconnecting DB:', e);
+							process.exit(1);
+						});
+					}
 				});
+				
+				// Force close after 10 seconds if graceful shutdown fails
+				setTimeout(() => {
+					console.error('Forced shutdown after timeout');
+					if (signal !== 'SIGUSR2') {
+						dbConnectionManager.disconnect().finally(() => {
+							process.exit(1);
+						});
+					} else {
+						process.exit(0);
+					}
+				}, 10000);
 			} catch (e) {
 				console.error('Error during shutdown', e);
 				process.exit(1);
@@ -262,7 +293,10 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 
 		process.on('SIGINT', () => shutdown('SIGINT'));
 		process.on('SIGTERM', () => shutdown('SIGTERM'));
-		process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+		// SIGUSR2 is used by nodemon for restart - handle gracefully
+		process.once('SIGUSR2', () => {
+			shutdown('SIGUSR2');
+		});
 	})
 	.catch(err => {
 		console.error('[DesiTV™] ❌ Failed to start server:', err.message);
@@ -270,3 +304,18 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 		// Don't exit - let the connection manager handle retries
 		// Server can still start and serve static JSON fallback
 	});
+
+// Graceful shutdown - cleanup Redis cache
+process.on('SIGINT', async () => {
+	const cache = require('./utils/cache');
+	if (cache && typeof cache.destroy === 'function') {
+		await cache.destroy();
+	}
+});
+
+process.on('SIGTERM', async () => {
+	const cache = require('./utils/cache');
+	if (cache && typeof cache.destroy === 'function') {
+		await cache.destroy();
+	}
+});

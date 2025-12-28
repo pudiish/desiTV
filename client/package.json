@@ -4,6 +4,7 @@
   "description": "DesiTV™ - React frontend for nostalgic retro TV experience",
   "author": "Swarnapudi Ishwar <swarnapudiishwar@gmail.com>",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

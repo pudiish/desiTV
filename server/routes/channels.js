@@ -4,6 +4,8 @@ const Channel = require('../models/Channel');
 const cache = require('../utils/cache');
 const { requireAuth } = require('../middleware/auth');
 const { regenerateChannelsJSON } = require('../utils/generateJSON');
+const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
+const { getCachedPosition } = require('../utils/positionCalculator');
 
 // Cache TTL constants (in seconds)
 const CACHE_TTL = {
@@ -34,7 +36,7 @@ router.get('/', async (req, res) => {
   try {
     // Check cache first
     const cacheKey = 'channels:all';
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
@@ -42,7 +44,7 @@ router.get('/', async (req, res) => {
     const channels = await Channel.find().select('name playlistStartEpoch items').lean();
     
     // Cache the result
-    cache.set(cacheKey, channels, CACHE_TTL.CHANNELS_LIST);
+    await cache.set(cacheKey, channels, CACHE_TTL.CHANNELS_LIST);
     
     res.json(channels);
   } catch (err) {
@@ -55,7 +57,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const cacheKey = `channel:${req.params.id}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
@@ -63,7 +65,7 @@ router.get('/:id', async (req, res) => {
     const ch = await Channel.findById(req.params.id).lean();
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
-    cache.set(cacheKey, ch, CACHE_TTL.CHANNEL_DETAIL);
+    await cache.set(cacheKey, ch, CACHE_TTL.CHANNEL_DETAIL);
     res.json(ch);
   } catch (err) {
     console.error('GET /api/channels/:id error', err);
@@ -71,25 +73,42 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get current pseudo-live item + offset for a channel
+// Get current pseudo-live item + offset for a channel (enhanced with time-based playlists)
 router.get('/:id/current', async (req, res) => {
   try {
-    // Short cache for current position
-    const cacheKey = `channel:${req.params.id}:current`;
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      return res.json(cached);
-    }
-
     const ch = await Channel.findById(req.params.id).lean();
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
-    const pl = computePseudoLive(ch.items || [], ch.playlistStartEpoch);
     
-    cache.set(cacheKey, pl, CACHE_TTL.CURRENT_VIDEO);
-    res.json(pl);
+    // Use new position calculator (supports time-based playlists, global epoch, and timezone)
+    const position = await getCachedPosition(ch, null, req);
+    
+    res.json({
+      ...position,
+      channelId: ch._id,
+      channelName: ch.name,
+    });
   } catch (err) {
     console.error('GET /api/channels/:id/current error', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get current position for a channel (alias for /current, backward compatible)
+router.get('/:id/position', async (req, res) => {
+  try {
+    const ch = await Channel.findById(req.params.id).lean();
+    if (!ch) return res.status(404).json({ message: 'Channel not found' });
+    
+    const position = await getCachedPosition(ch, null, req);
+    
+    res.json({
+      ...position,
+      channelId: ch._id,
+      channelName: ch.name,
+    });
+  } catch (err) {
+    console.error('GET /api/channels/:id/position error', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -355,8 +374,8 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
       await channel.save();
 
       // Invalidate caches
-      cache.delete('channels:all');
-      cache.deletePattern(`channel:${channelId}`);
+      await cache.delete('channels:all');
+      await cache.deletePattern(`channel:${channelId}`);
 
       // Regenerate channels.json
       try {
@@ -521,7 +540,7 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
 
 // Get cache stats (admin - protected)
 router.get('/admin/cache-stats', requireAuth, async (req, res) => {
-  res.json(cache.getStats());
+  res.json(await cache.getStats());
 });
 
 /**

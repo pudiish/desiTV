@@ -13,7 +13,77 @@ const VideoSchema = new mongoose.Schema({
 const ChannelSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   playlistStartEpoch: { type: Date, default: () => new Date('2020-01-01T00:00:00Z') },
-  items: [VideoSchema]
+  // Default playlist (backward compatible)
+  items: [VideoSchema],
+  // Time-based playlists for authentic 9XM experience (optional - falls back to items if not set)
+  timeBasedPlaylists: {
+    morning: [VideoSchema],      // 6-9 AM: Subah Savera (Devotional/Classics)
+    lateMorning: [VideoSchema],  // 9-12 PM: Dopahar Ki Dhun
+    afternoon: [VideoSchema],     // 12-3 PM: Afternoon Beats (After school)
+    evening: [VideoSchema],       // 3-6 PM: Bacchon Ka Time
+    primeTime: [VideoSchema],     // 6-9 PM: Prime Time (Bollywood)
+    night: [VideoSchema],         // 9-12 AM: Club Hours (Party)
+    lateNight: [VideoSchema],     // 12-6 AM: Late Night Love (Romantic)
+  },
+  // Day-based playlists (optional - for weekend specials, etc.)
+  dayBasedPlaylists: {
+    weekday: {
+      morning: [VideoSchema],
+      lateMorning: [VideoSchema],
+      afternoon: [VideoSchema],
+      evening: [VideoSchema],
+      primeTime: [VideoSchema],
+      night: [VideoSchema],
+      lateNight: [VideoSchema],
+    },
+    saturday: {
+      morning: [VideoSchema],
+      lateMorning: [VideoSchema],
+      afternoon: [VideoSchema],
+      evening: [VideoSchema],
+      primeTime: [VideoSchema],
+      night: [VideoSchema],
+      lateNight: [VideoSchema],
+    },
+    sunday: {
+      morning: [VideoSchema],
+      lateMorning: [VideoSchema],
+      afternoon: [VideoSchema],
+      evening: [VideoSchema],
+      primeTime: [VideoSchema],
+      night: [VideoSchema],
+      lateNight: [VideoSchema],
+    },
+  },
+  // Special event playlists (optional - for holidays, festivals, etc.)
+  specialEvents: [{
+    name: String,           // Event name (e.g., "Diwali", "New Year")
+    startDate: Date,        // When event starts
+    endDate: Date,          // When event ends
+    playlists: {
+      morning: [VideoSchema],
+      lateMorning: [VideoSchema],
+      afternoon: [VideoSchema],
+      evening: [VideoSchema],
+      primeTime: [VideoSchema],
+      night: [VideoSchema],
+      lateNight: [VideoSchema],
+    },
+  }],
+  // Custom time slot boundaries (optional - overrides defaults)
+  customTimeSlots: {
+    morning: { start: Number, end: Number },      // Hours (0-23)
+    lateMorning: { start: Number, end: Number },
+    afternoon: { start: Number, end: Number },
+    evening: { start: Number, end: Number },
+    primeTime: { start: Number, end: Number },
+    night: { start: Number, end: Number },
+    lateNight: { start: Number, end: Number },
+  },
+  // Metadata
+  description: { type: String },
+  thumbnail: { type: String },
+  isActive: { type: Boolean, default: true },
 });
 
 module.exports = mongoose.model('Channel', ChannelSchema);

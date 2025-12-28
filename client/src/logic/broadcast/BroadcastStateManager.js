@@ -6,6 +6,7 @@
  */
 
 import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
+import { fetchGlobalEpoch, getCachedEpoch } from '../../services/api/globalEpochService.js'
 
 class BroadcastStateManager {
 	constructor() {
@@ -106,21 +107,37 @@ class BroadcastStateManager {
 
 	/**
 	 * Initialize global epoch (IMMUTABLE - set once, never changes)
-	 * This represents the "login time" and all channels calculate from this point
+	 * Now fetches from server for true synchronization across all users
+	 * Falls back to local epoch if server unavailable (backward compatible)
 	 */
-	initializeGlobalEpoch() {
+	async initializeGlobalEpoch() {
 		// If already locked, return existing epoch
 		if (this.globalEpochLocked && this.globalEpoch) {
 			return this.globalEpoch
 		}
 
+		// Try to fetch from server first (for synchronization)
+		try {
+			const serverEpoch = await fetchGlobalEpoch()
+			if (serverEpoch) {
+				this.globalEpoch = serverEpoch
+				this.globalEpochLocked = true
+				console.log(`[BroadcastState] Global epoch from server: ${this.globalEpoch.toISOString()}`)
+				this.saveToStorage()
+				return this.globalEpoch
+			}
+		} catch (err) {
+			console.warn('[BroadcastState] Failed to fetch server epoch, using local:', err)
+		}
+
+		// Fallback to local epoch (backward compatible)
 		if (this.globalEpoch === null) {
 			this.loadFromStorage()
 		}
 
 		if (!this.globalEpoch) {
 			this.globalEpoch = new Date()
-			console.log(`[BroadcastState] Global epoch initialized: ${this.globalEpoch.toISOString()}`)
+			console.log(`[BroadcastState] Local global epoch initialized: ${this.globalEpoch.toISOString()}`)
 			this.saveToStorage()
 		}
 
@@ -138,7 +155,11 @@ class BroadcastStateManager {
 		if (!channel || !channel._id) return null
 
 		if (!this.globalEpoch) {
-			this.initializeGlobalEpoch()
+			// Initialize synchronously for backward compatibility
+			// Will be properly initialized async when needed
+			this.initializeGlobalEpoch().catch(err => {
+				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+			})
 		}
 
 		if (Object.keys(this.state).length === 0) {
@@ -215,7 +236,11 @@ class BroadcastStateManager {
 		}
 
 		if (!this.globalEpoch) {
-			this.initializeGlobalEpoch()
+			// Initialize synchronously for backward compatibility
+			// Will be properly initialized async when needed
+			this.initializeGlobalEpoch().catch(err => {
+				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+			})
 		}
 
 		const channelId = channel._id
@@ -392,7 +417,11 @@ class BroadcastStateManager {
 	 */
 	getGlobalEpoch() {
 		if (!this.globalEpoch) {
-			this.initializeGlobalEpoch()
+			// Initialize synchronously for backward compatibility
+			// Will be properly initialized async when needed
+			this.initializeGlobalEpoch().catch(err => {
+				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+			})
 		}
 		return this.globalEpoch
 	}
@@ -429,7 +458,11 @@ class BroadcastStateManager {
 
 		// Ensure global epoch is initialized
 		if (!this.globalEpoch) {
-			this.initializeGlobalEpoch()
+			// Initialize synchronously for backward compatibility
+			// Will be properly initialized async when needed
+			this.initializeGlobalEpoch().catch(err => {
+				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+			})
 		}
 
 		// Calculate cumulative time up to target video

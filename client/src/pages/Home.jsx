@@ -316,6 +316,9 @@ export default function Home() {
 				// CRITICAL: Load broadcast state FIRST (loads global epoch from localStorage)
 				// This must happen before initializing channels so the epoch is preserved
 				broadcastStateManager.loadFromStorage()
+				
+				// Initialize global epoch from server (for synchronization)
+				await broadcastStateManager.initializeGlobalEpoch()
 				console.log('[Home] Broadcast state loaded, global epoch:', broadcastStateManager.getGlobalEpoch()?.toISOString())
 				
 				// Initialize session manager (loads from localStorage)

@@ -6,6 +6,7 @@ import { broadcastStateManager } from '../../logic/broadcast'
 import { PLAYBACK_THRESHOLDS } from '../../config/thresholds'
 import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../../config/constants/youtube'
 import { PLAYBACK } from '../../config/constants/playback'
+import { joinChannel, leaveChannel } from '../../services/api/viewerCountService'
 
 /**
  * Enhanced Player Component with:
@@ -588,8 +589,24 @@ onBufferingChange = null,
 	useEffect(() => {
 		if (channel?._id !== channelIdRef.current) {
 			const wasChannelChange = channelIdRef.current !== null
+			const previousChannelId = channelIdRef.current
+			
+			// Leave previous channel (viewer count)
+			if (previousChannelId) {
+				leaveChannel(previousChannelId).catch(err => {
+					console.warn('[Player] Failed to leave channel:', err)
+				})
+			}
+			
 			channelIdRef.current = channel?._id
 			channelChangeCounterRef.current += 1 // This forces iframe reload via playerKey
+			
+			// Join new channel (viewer count)
+			if (channel?._id && channel?.name) {
+				joinChannel(channel._id, channel.name).catch(err => {
+					console.warn('[Player] Failed to join channel:', err)
+				})
+			}
 			
 			// Reset initialization flags for new channel
 			hasInitializedRef.current = false

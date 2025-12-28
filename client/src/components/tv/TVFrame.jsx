@@ -1,12 +1,15 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Player } from '../player'
-import { StaticEffect, BufferingOverlay, WhatsNextPreview, CRTInfoOverlay } from '../overlays'
+import { StaticEffect, BufferingOverlay, WhatsNextPreview, EnhancedWhatsNextPreview, CRTInfoOverlay, PlaylistTransitionOverlay } from '../overlays'
+import { getUserTimezone } from '../../services/api/timezoneService'
 
 export default function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
+	const [timezone] = useState(() => getUserTimezone()) // Initialize timezone once
+	const [transitionInfo, setTransitionInfo] = useState(null)
 	const tapHandlerRef = useRef(null)
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
@@ -288,10 +291,19 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 							/>
 							{/* What's Next Preview on hover - hide in fullscreen */}
 							{!isFullscreen && (
-								<WhatsNextPreview 
+								<EnhancedWhatsNextPreview 
 									channel={activeChannel}
 									isVisible={showPreview && !isBuffering && !staticActive}
 									playbackInfo={playbackInfo}
+								/>
+							)}
+							{/* Playlist Transition Overlay */}
+							{transitionInfo && (
+								<PlaylistTransitionOverlay
+									currentTimeSlot={transitionInfo.currentTimeSlot}
+									nextTimeSlot={transitionInfo.nextTimeSlot}
+									secondsUntilNextSlot={transitionInfo.secondsUntilNextSlot}
+									isVisible={transitionInfo.isTransitioning}
 								/>
 							)}
 							{/* CRT Volume Overlay - hide in fullscreen */}
@@ -299,6 +311,15 @@ export default function TVFrame({ power, activeChannel, onStaticTrigger, statusM
 								<CRTInfoOverlay 
 									volume={crtVolume !== null ? crtVolume : volume}
 									isMuted={crtIsMuted}
+								/>
+							)}
+							{/* Playlist Transition Overlay */}
+							{transitionInfo && transitionInfo.isTransitioning && (
+								<PlaylistTransitionOverlay
+									currentTimeSlot={transitionInfo.currentTimeSlot}
+									nextTimeSlot={transitionInfo.nextTimeSlot}
+									secondsUntilNextSlot={transitionInfo.secondsUntilNextSlot}
+									isVisible={true}
 								/>
 							)}
 						</div>
