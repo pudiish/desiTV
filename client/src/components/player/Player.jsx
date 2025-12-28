@@ -596,20 +596,20 @@ onBufferingChange = null,
 			const wasChannelChange = channelIdRef.current !== null
 			const previousChannelId = channelIdRef.current
 			
-			// Leave previous channel (viewer count)
+			// Leave previous channel (viewer count) - completely silent, non-blocking
 			if (previousChannelId) {
-				leaveChannel(previousChannelId).catch(err => {
-					console.warn('[Player] Failed to leave channel:', err)
+				leaveChannel(previousChannelId).catch(() => {
+					// Silently fail - viewer count is non-critical
 				})
 			}
 			
 			channelIdRef.current = channel?._id
 			channelChangeCounterRef.current += 1 // This forces iframe reload via playerKey
 			
-			// Join new channel (viewer count)
+			// Join new channel (viewer count) - completely silent, non-blocking
 			if (channel?._id && channel?.name) {
-				joinChannel(channel._id, channel.name).catch(err => {
-					console.warn('[Player] Failed to join channel:', err)
+				joinChannel(channel._id, channel.name).catch(() => {
+					// Silently fail - viewer count is non-critical
 				})
 			}
 			

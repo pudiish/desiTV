@@ -7,6 +7,7 @@
 
 const express = require('express')
 const router = express.Router()
+const mongoose = require('mongoose')
 const ViewerCount = require('../models/ViewerCount')
 const cache = require('../utils/cache')
 
@@ -28,10 +29,26 @@ router.post('/:channelId/join', async (req, res) => {
 			return res.status(400).json({ error: 'Channel ID required' })
 		}
 		
+		// Check MongoDB connection before attempting database operation
+		if (mongoose.connection.readyState !== 1) {
+			console.warn('[ViewerCount] MongoDB not connected, skipping viewer count update')
+			// Return success anyway - viewer count is non-critical
+			return res.json({
+				success: true,
+				channelId,
+				activeViewers: 0,
+				totalViews: 0,
+				skipped: true,
+			})
+		}
+		
 		const viewerCount = await ViewerCount.incrementViewer(
 			channelId,
 			channelName || 'Unknown Channel'
-		)
+		).catch(err => {
+			console.warn('[ViewerCount] Increment failed (non-critical):', err.message)
+			return null
+		})
 		
 		// Clear cache (use short key) - handle short channelIds gracefully
 		try {
@@ -43,15 +60,23 @@ router.post('/:channelId/join', async (req, res) => {
 			console.warn('[ViewerCount] Cache delete failed (non-critical):', cacheErr.message)
 		}
 		
+		// Return success even if viewerCount is null (database issue)
 		res.json({
 			success: true,
 			channelId,
-			activeViewers: viewerCount.activeViewers,
-			totalViews: viewerCount.totalViews,
+			activeViewers: viewerCount ? viewerCount.activeViewers : 0,
+			totalViews: viewerCount ? viewerCount.totalViews : 0,
 		})
 	} catch (err) {
-		console.error('[ViewerCount] Join error:', err)
-		res.status(500).json({ error: 'Failed to join channel', details: err.message })
+		// Never return 500 - viewer count is non-critical
+		console.warn('[ViewerCount] Join error (non-critical):', err.message)
+		res.json({
+			success: true,
+			channelId: req.params.channelId,
+			activeViewers: 0,
+			totalViews: 0,
+			error: 'Viewer count unavailable',
+		})
 	}
 })
 
@@ -67,7 +92,22 @@ router.post('/:channelId/leave', async (req, res) => {
 			return res.status(400).json({ error: 'Channel ID required' })
 		}
 		
-		const viewerCount = await ViewerCount.decrementViewer(channelId)
+		// Check MongoDB connection before attempting database operation
+		if (mongoose.connection.readyState !== 1) {
+			console.warn('[ViewerCount] MongoDB not connected, skipping viewer count update')
+			// Return success anyway - viewer count is non-critical
+			return res.json({
+				success: true,
+				channelId,
+				activeViewers: 0,
+				skipped: true,
+			})
+		}
+		
+		const viewerCount = await ViewerCount.decrementViewer(channelId).catch(err => {
+			console.warn('[ViewerCount] Decrement failed (non-critical):', err.message)
+			return null
+		})
 		
 		// Clear cache (use short key) - handle short channelIds gracefully
 		try {
@@ -79,14 +119,21 @@ router.post('/:channelId/leave', async (req, res) => {
 			console.warn('[ViewerCount] Cache delete failed (non-critical):', cacheErr.message)
 		}
 		
+		// Return success even if viewerCount is null (database issue)
 		res.json({
 			success: true,
 			channelId,
 			activeViewers: viewerCount ? viewerCount.activeViewers : 0,
 		})
 	} catch (err) {
-		console.error('[ViewerCount] Leave error:', err)
-		res.status(500).json({ error: 'Failed to leave channel', details: err.message })
+		// Never return 500 - viewer count is non-critical
+		console.warn('[ViewerCount] Leave error (non-critical):', err.message)
+		res.json({
+			success: true,
+			channelId: req.params.channelId,
+			activeViewers: 0,
+			error: 'Viewer count unavailable',
+		})
 	}
 })
 

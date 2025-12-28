@@ -16,7 +16,7 @@ const CACHE_TTL = 30 * 1000 // 30 seconds
  * @param {string} channelName - Channel name
  */
 export async function joinChannel(channelId, channelName) {
-	if (!channelId) return
+	if (!channelId) return null
 	
 	try {
 		const data = await apiClient.post(`/api/viewer-count/${channelId}/join`, {
@@ -32,8 +32,8 @@ export async function joinChannel(channelId, channelName) {
 			return data.activeViewers
 		}
 	} catch (err) {
-		// Silently fail - viewer count is not critical
-		console.warn('[ViewerCount] Failed to join channel:', err.message)
+		// Completely silent fail - viewer count is not critical
+		// Don't log anything to avoid console noise
 	}
 	
 	return null
@@ -44,7 +44,7 @@ export async function joinChannel(channelId, channelName) {
  * @param {string} channelId - Channel ID
  */
 export async function leaveChannel(channelId) {
-	if (!channelId) return
+	if (!channelId) return null
 	
 	try {
 		const data = await apiClient.post(`/api/viewer-count/${channelId}/leave`, {})
@@ -58,8 +58,8 @@ export async function leaveChannel(channelId) {
 			return data.activeViewers
 		}
 	} catch (err) {
-		// Silently fail - viewer count is not critical
-		console.warn('[ViewerCount] Failed to leave channel:', err.message)
+		// Completely silent fail - viewer count is not critical
+		// Don't log anything to avoid console noise
 	}
 	
 	return null
