@@ -44,7 +44,8 @@ router.get('/', async (req, res) => {
     }
 
     // Only select essential fields to minimize cache size
-    const channels = await Channel.find().select('name playlistStartEpoch items._id items.videoId items.title items.duration items.thumbnail').lean();
+    // CRITICAL: Use youtubeId (not videoId) - matches schema and client expectations
+    const channels = await Channel.find().select('name playlistStartEpoch items._id items.youtubeId items.title items.duration items.thumbnail').lean();
     
     // Minimize data: remove unnecessary fields from items
     const minimizedChannels = channels.map(ch => ({
@@ -53,7 +54,7 @@ router.get('/', async (req, res) => {
       playlistStartEpoch: ch.playlistStartEpoch,
       items: (ch.items || []).map(item => ({
         _id: item._id,
-        videoId: item.videoId,
+        youtubeId: item.youtubeId || item.videoId, // Support both for backward compatibility
         title: item.title,
         duration: item.duration,
         thumbnail: item.thumbnail,
@@ -63,7 +64,8 @@ router.get('/', async (req, res) => {
     // Cache the minimized result
     await cache.set(cacheKey, minimizedChannels, CACHE_TTL.CHANNELS_LIST);
     
-    res.json(channels);
+    // Return minimized channels (with youtubeId) for API compatibility
+    res.json(minimizedChannels);
   } catch (err) {
     console.error('GET /api/channels error', err);
     res.status(500).json({ message: 'Server error' });
@@ -85,6 +87,7 @@ router.get('/:id', async (req, res) => {
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
     // Minimize cached data - only essential fields
+    // CRITICAL: Use youtubeId (not videoId) - matches schema and client expectations
     const minimizedChannel = {
       _id: ch._id,
       name: ch.name,
@@ -92,7 +95,7 @@ router.get('/:id', async (req, res) => {
       timezone: ch.timezone,
       items: (ch.items || []).map(item => ({
         _id: item._id,
-        videoId: item.videoId,
+        youtubeId: item.youtubeId || item.videoId, // Support both for backward compatibility
         title: item.title,
         duration: item.duration,
         thumbnail: item.thumbnail,
@@ -102,7 +105,7 @@ router.get('/:id', async (req, res) => {
         if (ch.timeBasedPlaylists[slot] && ch.timeBasedPlaylists[slot].length > 0) {
           acc[slot] = ch.timeBasedPlaylists[slot].map(item => ({
             _id: item._id,
-            videoId: item.videoId,
+            youtubeId: item.youtubeId || item.videoId, // Support both for backward compatibility
             title: item.title,
             duration: item.duration,
           }))
@@ -112,7 +115,8 @@ router.get('/:id', async (req, res) => {
     };
     
     await cache.set(cacheKey, minimizedChannel, CACHE_TTL.CHANNEL_DETAIL);
-    res.json(ch);
+    // Return minimized channel (with youtubeId) for API compatibility
+    res.json(minimizedChannel);
   } catch (err) {
     console.error('GET /api/channels/:id error', err);
     res.status(500).json({ message: 'Server error' });
