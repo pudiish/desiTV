@@ -111,7 +111,7 @@ router.get('/:channelId', async (req, res) => {
 			totalViews: viewerCount ? viewerCount.totalViews : 0,
 		}
 		
-		// Cache for 15 seconds (reduced from 30s)
+		// Cache for 30 seconds (optimized for free tier)
 		await cache.set(cacheKey, response, VIEWER_COUNT_CACHE_TTL)
 		
 		// Return full response with metadata
@@ -120,8 +120,6 @@ router.get('/:channelId', async (req, res) => {
 			...response,
 			cached: false,
 		})
-		
-		res.json(response)
 	} catch (err) {
 		console.error('[ViewerCount] GET error:', err)
 		res.status(500).json({ error: 'Failed to get viewer count', details: err.message })

@@ -8,18 +8,20 @@
 import { getUserTimezone } from './timezoneService'
 
 const EPOCH_CACHE_KEY = 'desitv-global-epoch-cached'
-const EPOCH_CACHE_TTL = 60 * 60 * 1000 // 1 hour (epoch rarely changes)
+const EPOCH_CACHE_TTL = 5 * 60 * 1000 // 5 minutes (reduced for better sync)
 
 let cachedEpoch = null
 let cacheTimestamp = null
 
 /**
  * Fetch global epoch from server
+ * CRITICAL: Always fetches fresh from server to ensure sync across devices
+ * @param {boolean} forceRefresh - Force refresh even if cache is valid
  * @returns {Promise<Date>} Global epoch date
  */
-export async function fetchGlobalEpoch() {
-	// Check cache first
-	if (cachedEpoch && cacheTimestamp) {
+export async function fetchGlobalEpoch(forceRefresh = false) {
+	// Only use cache if not forcing refresh and cache is still valid
+	if (!forceRefresh && cachedEpoch && cacheTimestamp) {
 		const age = Date.now() - cacheTimestamp
 		if (age < EPOCH_CACHE_TTL) {
 			return cachedEpoch
@@ -27,7 +29,15 @@ export async function fetchGlobalEpoch() {
 	}
 	
 	try {
-		const response = await fetch('/api/global-epoch')
+		// Always fetch from server (no-cache to prevent browser caching)
+		const response = await fetch('/api/global-epoch', {
+			cache: 'no-store', // Prevent browser caching
+			headers: {
+				'Cache-Control': 'no-cache',
+				'Pragma': 'no-cache',
+			}
+		})
+		
 		if (!response.ok) {
 			throw new Error(`Failed to fetch global epoch: ${response.statusText}`)
 		}
@@ -35,11 +45,21 @@ export async function fetchGlobalEpoch() {
 		const data = await response.json()
 		const epoch = new Date(data.epoch)
 		
-		// Cache it
+		// Validate epoch is valid
+		if (isNaN(epoch.getTime())) {
+			throw new Error('Invalid epoch date received from server')
+		}
+		
+		// Check if epoch changed (shouldn't happen, but log if it does)
+		if (cachedEpoch && cachedEpoch.getTime() !== epoch.getTime()) {
+			console.warn(`[GlobalEpoch] ⚠️ Epoch changed! Old: ${cachedEpoch.toISOString()}, New: ${epoch.toISOString()}`)
+		}
+		
+		// Update cache
 		cachedEpoch = epoch
 		cacheTimestamp = Date.now()
 		
-		// Also cache in localStorage as backup
+		// Also cache in localStorage as backup (but server is source of truth)
 		try {
 			localStorage.setItem(EPOCH_CACHE_KEY, JSON.stringify({
 				epoch: epoch.toISOString(),
@@ -49,12 +69,13 @@ export async function fetchGlobalEpoch() {
 			console.warn('[GlobalEpoch] Failed to cache in localStorage:', err)
 		}
 		
-		console.log('[GlobalEpoch] Fetched from server:', epoch.toISOString())
+		console.log('[GlobalEpoch] ✅ Fetched from server:', epoch.toISOString())
 		return epoch
 	} catch (err) {
-		console.error('[GlobalEpoch] Error fetching from server:', err)
+		console.error('[GlobalEpoch] ❌ Error fetching from server:', err)
 		
-		// Fallback to localStorage cache
+		// Only use localStorage cache if server is completely unavailable
+		// This prevents desync - we'd rather wait for server than use stale data
 		try {
 			const cached = localStorage.getItem(EPOCH_CACHE_KEY)
 			if (cached) {
@@ -62,22 +83,23 @@ export async function fetchGlobalEpoch() {
 				const epoch = new Date(parsed.epoch)
 				const age = Date.now() - parsed.timestamp
 				
-				// Use cached if less than 2 hours old
-				if (age < 2 * 60 * 60 * 1000) {
-					console.log('[GlobalEpoch] Using cached epoch from localStorage:', epoch.toISOString())
+				// Only use cached if less than 10 minutes old (very short window)
+				if (age < 10 * 60 * 1000 && !isNaN(epoch.getTime())) {
+					console.warn('[GlobalEpoch] ⚠️ Using cached epoch (server unavailable):', epoch.toISOString())
 					cachedEpoch = epoch
 					cacheTimestamp = parsed.timestamp
 					return epoch
+				} else {
+					console.warn('[GlobalEpoch] ⚠️ Cached epoch too old, waiting for server')
 				}
 			}
 		} catch (localErr) {
 			console.warn('[GlobalEpoch] Failed to read from localStorage:', localErr)
 		}
 		
-		// Last resort: return a fixed epoch (ensures app still works)
-		const fallbackEpoch = new Date('2020-01-01T00:00:00.000Z')
-		console.warn('[GlobalEpoch] Using fallback epoch:', fallbackEpoch.toISOString())
-		return fallbackEpoch
+		// Don't use fallback - throw error instead
+		// This forces retry and prevents desync
+		throw new Error('Failed to fetch global epoch from server and no valid cache available')
 	}
 }
 

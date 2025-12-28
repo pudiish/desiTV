@@ -256,9 +256,9 @@ export default function Home() {
 		// Initialize broadcast state for this category (synchronized)
 		try {
 			broadcastStateManager.initializeChannel(category)
-			// Force refresh of global epoch to ensure sync
-			broadcastStateManager.initializeGlobalEpoch().catch(err => {
-				console.warn('[Home] Global epoch refresh failed, using cached:', err)
+			// Force refresh of global epoch to ensure sync (especially important for mobile/desktop sync)
+			broadcastStateManager.initializeGlobalEpoch(true).catch(err => {
+				console.warn('[Home] ⚠️ Global epoch refresh failed:', err)
 			})
 		} catch (err) {
 			console.error('[Home] Error initializing category state:', err)
@@ -317,13 +317,17 @@ export default function Home() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				// CRITICAL: Load broadcast state FIRST (loads global epoch from localStorage)
-				// This must happen before initializing channels so the epoch is preserved
-				broadcastStateManager.loadFromStorage()
+				// CRITICAL: Always fetch global epoch from server FIRST (for true sync)
+				// Don't load from localStorage - server is the source of truth
+				// This ensures mobile and desktop are perfectly synchronized
+				await broadcastStateManager.initializeGlobalEpoch(true) // Force refresh
+				console.log('[Home] ✅ Global epoch from server:', broadcastStateManager.getGlobalEpoch()?.toISOString())
 				
-				// Initialize global epoch from server (for synchronization)
-				await broadcastStateManager.initializeGlobalEpoch()
-				console.log('[Home] Broadcast state loaded, global epoch:', broadcastStateManager.getGlobalEpoch()?.toISOString())
+				// Start periodic epoch refresh to maintain sync
+				broadcastStateManager.startEpochRefresh()
+				
+				// Load channel states (but NOT epoch - epoch comes from server only)
+				broadcastStateManager.loadFromStorage()
 				
 				// Initialize session manager (loads from localStorage)
 				const sessionResult = await SessionManager.initialize()

@@ -15,6 +15,7 @@ class BroadcastStateManager {
 		this.globalEpochLocked = false // Lock flag to prevent modification after initialization
 		this.listeners = []
 		this.saveInterval = null
+		this.epochRefreshInterval = null // Periodic epoch refresh for sync
 		this.storageKey = 'desitv-broadcast-state'
 		this.globalEpochKey = 'desitv-global-epoch'
 		this.gradualResetIntervals = {} // Track gradual reset intervals per channel
@@ -33,15 +34,17 @@ class BroadcastStateManager {
 
 	/**
 	 * Load state from localStorage
+	 * NOTE: Global epoch is NOT loaded from localStorage - always fetched from server
 	 */
 	loadFromStorage() {
 		try {
-			// Load global epoch
-			const epochStored = localStorage.getItem(this.globalEpochKey)
-			if (epochStored) {
-				this.globalEpoch = new Date(epochStored)
-				console.log(`[BroadcastState] Loaded global epoch: ${this.globalEpoch.toISOString()}`)
-			}
+			// DON'T load global epoch from localStorage - always fetch from server
+			// This ensures all devices use the same epoch
+			// const epochStored = localStorage.getItem(this.globalEpochKey)
+			// if (epochStored) {
+			// 	this.globalEpoch = new Date(epochStored)
+			// 	console.log(`[BroadcastState] Loaded global epoch: ${this.globalEpoch.toISOString()}`)
+			// }
 
 			// Load channel states
 			const stored = localStorage.getItem(this.storageKey)
@@ -107,43 +110,72 @@ class BroadcastStateManager {
 
 	/**
 	 * Initialize global epoch (IMMUTABLE - set once, never changes)
-	 * Now fetches from server for true synchronization across all users
-	 * Falls back to local epoch if server unavailable (backward compatible)
+	 * CRITICAL: Always fetches from server first to ensure sync across all devices
+	 * Replaces any localStorage epoch with server epoch for true synchronization
 	 */
-	async initializeGlobalEpoch() {
-		// If already locked, return existing epoch
-		if (this.globalEpochLocked && this.globalEpoch) {
+	async initializeGlobalEpoch(forceRefresh = false) {
+		// If already locked and not forcing refresh, return existing epoch
+		if (this.globalEpochLocked && this.globalEpoch && !forceRefresh) {
 			return this.globalEpoch
 		}
 
-		// Try to fetch from server first (for synchronization)
+		// CRITICAL: Always fetch from server first (for true synchronization)
+		// This ensures mobile and desktop use the same epoch
 		try {
 			const serverEpoch = await fetchGlobalEpoch()
 			if (serverEpoch) {
+				// Check if we had a different epoch in localStorage
+				const oldEpoch = this.globalEpoch
+				if (oldEpoch && oldEpoch.getTime() !== serverEpoch.getTime()) {
+					console.warn(`[BroadcastState] ⚠️ Epoch mismatch! Local: ${oldEpoch.toISOString()}, Server: ${serverEpoch.toISOString()}`)
+					console.warn(`[BroadcastState] Replacing local epoch with server epoch for synchronization`)
+				}
+				
 				this.globalEpoch = serverEpoch
 				this.globalEpochLocked = true
-				console.log(`[BroadcastState] Global epoch from server: ${this.globalEpoch.toISOString()}`)
+				console.log(`[BroadcastState] ✅ Global epoch from server: ${this.globalEpoch.toISOString()}`)
 				this.saveToStorage()
 				return this.globalEpoch
 			}
 		} catch (err) {
-			console.warn('[BroadcastState] Failed to fetch server epoch, using local:', err)
-		}
-
-		// Fallback to local epoch (backward compatible)
-		if (this.globalEpoch === null) {
-			this.loadFromStorage()
-		}
-
-		if (!this.globalEpoch) {
-			this.globalEpoch = new Date()
-			console.log(`[BroadcastState] Local global epoch initialized: ${this.globalEpoch.toISOString()}`)
-			this.saveToStorage()
+			console.error('[BroadcastState] ❌ Failed to fetch server epoch:', err)
+			// CRITICAL: Don't use localStorage epoch - it causes desync between devices
+			// Instead, retry server fetch with exponential backoff
+			if (!this.globalEpoch) {
+				console.warn('[BroadcastState] ⚠️ No epoch available - retrying server fetch...')
+				// Retry with exponential backoff (max 3 retries)
+				let retryCount = 0
+				const maxRetries = 3
+				const retryInterval = setInterval(async () => {
+					retryCount++
+					try {
+						const serverEpoch = await fetchGlobalEpoch(true) // Force refresh
+						if (serverEpoch) {
+							this.globalEpoch = serverEpoch
+							this.globalEpochLocked = true
+							console.log(`[BroadcastState] ✅ Global epoch fetched on retry ${retryCount}: ${this.globalEpoch.toISOString()}`)
+							this.saveToStorage()
+							clearInterval(retryInterval)
+							return
+						}
+					} catch (retryErr) {
+						console.warn(`[BroadcastState] Retry ${retryCount} failed:`, retryErr.message)
+						if (retryCount >= maxRetries) {
+							clearInterval(retryInterval)
+							// Last resort: use fixed epoch (ensures app works, but may cause desync)
+							console.error('[BroadcastState] ❌ All retries failed - using fixed epoch (may cause desync)')
+							this.globalEpoch = new Date('2020-01-01T00:00:00.000Z')
+							this.globalEpochLocked = true
+							this.saveToStorage()
+						}
+					}
+				}, Math.min(1000 * Math.pow(2, retryCount), 5000)) // 1s, 2s, 4s, 5s max
+			}
 		}
 
 		// Lock the epoch - it should never change after initialization
 		this.globalEpochLocked = true
-		console.log(`[BroadcastState] Global epoch locked - will not change for this session`)
+		console.log(`[BroadcastState] Global epoch locked: ${this.globalEpoch.toISOString()}`)
 
 		return this.globalEpoch
 	}
@@ -403,6 +435,35 @@ class BroadcastStateManager {
 			this.saveInterval = null
 		}
 		this.saveToStorage()
+	}
+
+	/**
+	 * Start periodic epoch refresh (ensures sync across devices)
+	 * Refreshes every 5 minutes to catch any epoch changes
+	 */
+	startEpochRefresh() {
+		if (this.epochRefreshInterval) {
+			clearInterval(this.epochRefreshInterval)
+		}
+
+		// Refresh epoch every 5 minutes to ensure sync
+		this.epochRefreshInterval = setInterval(() => {
+			this.initializeGlobalEpoch(true).catch(err => {
+				console.warn('[BroadcastState] Periodic epoch refresh failed:', err)
+			})
+		}, 5 * 60 * 1000) // 5 minutes
+
+		console.log('[BroadcastState] Started periodic epoch refresh (every 5 minutes)')
+	}
+
+	/**
+	 * Stop periodic epoch refresh
+	 */
+	stopEpochRefresh() {
+		if (this.epochRefreshInterval) {
+			clearInterval(this.epochRefreshInterval)
+			this.epochRefreshInterval = null
+		}
 	}
 
 	/**
