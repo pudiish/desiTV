@@ -105,48 +105,14 @@ function generateEpochChecksum(epoch) {
 }
 
 /**
- * Generate checksum (client-side)
+ * Generate checksum (client-side, synchronous)
  * @param {any} data - Data
  * @returns {string} Checksum
  */
-function generateChecksum(data) {
+export function generateChecksum(data) {
 	const str = typeof data === 'string' ? data : JSON.stringify(data)
 	
-	// Use Web Crypto API for hashing (browser-compatible)
-	if (typeof crypto !== 'undefined' && crypto.subtle) {
-		// Async version for production
-		return hashString(str)
-	} else {
-		// Fallback: simple hash for development
-		let hash = 0
-		for (let i = 0; i < str.length; i++) {
-			const char = str.charCodeAt(i)
-			hash = ((hash << 5) - hash) + char
-			hash = hash & hash // Convert to 32-bit integer
-		}
-		return Math.abs(hash).toString(16).substring(0, 16)
-	}
-}
-
-/**
- * Hash string using Web Crypto API
- * @param {string} str - String to hash
- * @returns {Promise<string>} Hash
- */
-async function hashString(str) {
-	const encoder = new TextEncoder()
-	const data = encoder.encode(str)
-	const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-	const hashArray = Array.from(new Uint8Array(hashBuffer))
-	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16)
-}
-
-// Make hashString synchronous for checksum generation
-// Use a simple synchronous hash for now
-function generateChecksumSync(data) {
-	const str = typeof data === 'string' ? data : JSON.stringify(data)
-	
-	// Simple but effective hash function
+	// Simple but effective synchronous hash function
 	let hash = 0
 	if (str.length === 0) return hash.toString(16).substring(0, 16)
 	
@@ -158,7 +124,4 @@ function generateChecksumSync(data) {
 	
 	return Math.abs(hash).toString(16).substring(0, 16).padStart(16, '0')
 }
-
-// Export sync version for use in validation
-export const generateChecksum = generateChecksumSync
 
