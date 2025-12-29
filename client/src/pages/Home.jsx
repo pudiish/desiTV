@@ -586,13 +586,20 @@ export default function Home() {
 	}
 
 	function handleChannelUp() {
-		if (!power || videosInCategory.length === 0 || !selectedCategory) return
+		if (!power || videosInCategory.length === 0 || !selectedCategory) {
+			console.warn('[Home] Channel up blocked:', { power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
+			return
+		}
 		
 		const startTime = performance.now()
 		const fromChannel = activeVideoIndex
 		
 		// Switch to next video within the selected category
 		const nextIndex = (activeVideoIndex + 1) % videosInCategory.length
+		console.log(`[Home] Channel UP: ${activeVideoIndex} -> ${nextIndex}`)
+		
+		// Update state first
+		setActiveVideoIndex(nextIndex)
 		
 		// Jump to this video in broadcast state (so Player plays it)
 		try {
@@ -606,13 +613,17 @@ export default function Home() {
 			broadcastStateManager.setManualMode(selectedCategory._id, true)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
+			console.log(`[Home] ✅ Jumped to video ${nextIndex}, manual mode enabled`)
 		} catch (err) {
-			console.error('[Home] Error jumping to video:', err)
+			console.error('[Home] ❌ Error jumping to video:', err)
 		}
 		
-		setActiveVideoIndex(nextIndex)
 		setStatusMessage(`⏭️ ${selectedCategory.name} - Video ${nextIndex + 1}`)
-		switchVideo(nextIndex)
+		
+		// Execute switch pipeline (async, but don't block)
+		switchVideo(nextIndex).catch(err => {
+			console.error('[Home] ❌ Error in switchVideo pipeline:', err)
+		})
 		
 		// Track analytics
 		const switchTime = performanceMonitor.trackChannelSwitch(startTime)
@@ -621,12 +632,19 @@ export default function Home() {
 	}
 
 	function handleChannelDown() {
-		if (!power || videosInCategory.length === 0 || !selectedCategory) return
+		if (!power || videosInCategory.length === 0 || !selectedCategory) {
+			console.warn('[Home] Channel down blocked:', { power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
+			return
+		}
 		
 		// Switch to previous video within the selected category
 		const newIndex = activeVideoIndex === 0 
 			? videosInCategory.length - 1 
 			: activeVideoIndex - 1
+		console.log(`[Home] Channel DOWN: ${activeVideoIndex} -> ${newIndex}`)
+		
+		// Update state first
+		setActiveVideoIndex(newIndex)
 		
 		// Jump to this video in broadcast state (so Player plays it)
 		try {
@@ -640,13 +658,17 @@ export default function Home() {
 			broadcastStateManager.setManualMode(selectedCategory._id, true)
 			// Force Player to recalculate by updating timestamp
 			setVideoSwitchTimestamp(Date.now())
+			console.log(`[Home] ✅ Jumped to video ${newIndex}, manual mode enabled`)
 		} catch (err) {
-			console.error('[Home] Error jumping to video:', err)
+			console.error('[Home] ❌ Error jumping to video:', err)
 		}
 		
-		setActiveVideoIndex(newIndex)
 		setStatusMessage(`⏮️ ${selectedCategory.name} - Video ${newIndex + 1}`)
-		switchVideo(newIndex)
+		
+		// Execute switch pipeline (async, but don't block)
+		switchVideo(newIndex).catch(err => {
+			console.error('[Home] ❌ Error in switchVideo pipeline:', err)
+		})
 	}
 
 	function handleVolumeUp() {
