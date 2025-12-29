@@ -34,14 +34,40 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
 		// Always fetch from server (no-cache to prevent browser caching)
 		// PERFORMANCE: Use dedupeFetch to prevent duplicate requests
 		// OPTIMIZED: Enhanced cache-busting headers for faster sync
-		const response = await dedupeFetch('/api/global-epoch', {
-			cache: 'no-store', // Prevent browser caching
-			headers: {
-				'Cache-Control': 'no-cache, no-store, must-revalidate',
-				'Pragma': 'no-cache',
-				'Expires': '0',
+		let response
+		try {
+			// Try using dedupeFetch if available
+			if (typeof dedupeFetch === 'function') {
+				response = await dedupeFetch('/api/global-epoch', {
+					cache: 'no-store',
+					headers: {
+						'Cache-Control': 'no-cache, no-store, must-revalidate',
+						'Pragma': 'no-cache',
+						'Expires': '0',
+					}
+				})
+			} else {
+				// Fallback to regular fetch
+				response = await fetch('/api/global-epoch', {
+					cache: 'no-store',
+					headers: {
+						'Cache-Control': 'no-cache, no-store, must-revalidate',
+						'Pragma': 'no-cache',
+						'Expires': '0',
+					}
+				})
 			}
-		})
+		} catch (fetchErr) {
+			// If dedupeFetch fails, try regular fetch
+			response = await fetch('/api/global-epoch', {
+				cache: 'no-store',
+				headers: {
+					'Cache-Control': 'no-cache, no-store, must-revalidate',
+					'Pragma': 'no-cache',
+					'Expires': '0',
+				}
+			})
+		}
 		
 		if (!response.ok) {
 			throw new Error(`Failed to fetch global epoch: ${response.statusText}`)
