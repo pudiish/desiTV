@@ -1,68 +1,193 @@
 /**
- * Live State Service - Server-authoritative LIVE position calculation
+ * Live State Service - Server-Authoritative LIVE Position
+ * 
+ * THE BRAIN: Server calculates EVERYTHING, client just renders
+ * Optimized for minimal client computation
  */
 
 const GlobalEpoch = require('../models/GlobalEpoch');
 const Channel = require('../models/Channel');
+const cache = require('../utils/cache');
+
+// Pre-computed data cache
+let channelCache = new Map();
+let durationCache = new Map();
+let epochMs = null;
+let lastEpochCheck = 0;
+
+// Constants
+const EPOCH_REFRESH_MS = 60000; // Refresh epoch every minute
+const CHANNEL_CACHE_TTL = 120000; // 2 minutes for channel data
 
 class LiveStateService {
+  
   /**
-   * Calculate the authoritative LIVE state for a category
-   * NO CACHING - every request gets fresh calculation for tight sync
+   * Initialize/refresh epoch (called once, cached)
    */
-  async getLiveState(categoryId, includeNext = false) {
-    if (!categoryId) {
-      throw new Error('categoryId is required');
+  async _getEpochMs() {
+    const now = Date.now();
+    if (!epochMs || now - lastEpochCheck > EPOCH_REFRESH_MS) {
+      const globalEpoch = await GlobalEpoch.getOrCreate();
+      epochMs = new Date(globalEpoch.epoch).getTime();
+      lastEpochCheck = now;
+    }
+    return epochMs;
+  }
+
+  /**
+   * Get channel with pre-computed durations (cached)
+   */
+  async _getChannelData(categoryId) {
+    const cacheKey = `cd:${categoryId}`;
+    const now = Date.now();
+    
+    // Check in-memory cache first
+    const cached = channelCache.get(cacheKey);
+    if (cached && now - cached.ts < CHANNEL_CACHE_TTL) {
+      return cached.data;
     }
 
-    // Get the epoch
-    const globalEpoch = await GlobalEpoch.getOrCreate();
-    const epoch = new Date(globalEpoch.epoch);
-    
-    // Get the category/playlist
-    const category = await this.getCategoryWithVideos(categoryId);
-    
-    if (!category) {
-      throw new Error(`Category ${categoryId} not found`);
+    // Try Redis cache
+    const redisCached = await cache.get(cacheKey);
+    if (redisCached) {
+      channelCache.set(cacheKey, { data: redisCached, ts: now });
+      return redisCached;
     }
 
-    // Calculate position with HIGH PRECISION timing
-    const serverTime = Date.now(); // Use milliseconds for precision
-    const liveState = this.calculatePosition(epoch.getTime(), serverTime, category);
+    // Fetch from DB and pre-compute
+    let channel = null;
+    try {
+      channel = await Channel.findById(categoryId).lean();
+    } catch (e) {
+      channel = await Channel.findOne({ name: categoryId }).lean();
+    }
 
-    // Build response with precise timestamps
-    const response = {
-      live: {
-        categoryId: category._id.toString(),
-        categoryName: category.name,
-        videoIndex: liveState.videoIndex,
-        videoId: liveState.video?.youtubeId || liveState.video?.videoId || null,
-        videoTitle: liveState.video?.title || 'Unknown Video',
-        position: liveState.position, // Full precision
-        duration: liveState.duration,
-        remaining: liveState.remaining,
-      },
-      slot: {
-        cyclePosition: liveState.cyclePosition,
-        cycleCount: liveState.cycleCount,
-        totalDuration: liveState.totalDuration,
-      },
-      sync: {
-        epoch: epoch.toISOString(),
-        serverTime: new Date(serverTime).toISOString(),
-        serverTimeMs: serverTime, // Milliseconds for precise client sync
-      }
+    if (!channel) return null;
+
+    // Pre-compute durations and total (HEAVY WORK DONE ONCE)
+    const videos = channel.items || [];
+    const durations = videos.map(v => (typeof v.duration === 'number' && v.duration > 0) ? v.duration : 300);
+    const totalDuration = durations.reduce((a, b) => a + b, 0);
+    
+    // Pre-compute cumulative positions (so client lookup is O(1))
+    const cumulativeStart = [];
+    let cumulative = 0;
+    for (let i = 0; i < durations.length; i++) {
+      cumulativeStart.push(cumulative);
+      cumulative += durations[i];
+    }
+
+    const data = {
+      _id: channel._id.toString(),
+      name: channel.name,
+      videos: videos.map((v, i) => ({
+        id: v.youtubeId || v.videoId,
+        title: v.title,
+        duration: durations[i],
+        start: cumulativeStart[i], // Pre-computed start position in cycle
+      })),
+      totalDuration,
+      videoCount: videos.length,
     };
 
-    // Include next video if requested
-    if (includeNext && category.items.length > 1) {
-      const nextIndex = (liveState.videoIndex + 1) % category.items.length;
-      const nextVideo = category.items[nextIndex];
+    // Cache in both layers
+    await cache.set(cacheKey, data, 120);
+    channelCache.set(cacheKey, { data, ts: now });
+
+    return data;
+  }
+
+  /**
+   * Binary search for video at position (O(log n) instead of O(n))
+   */
+  _findVideoAtPosition(channelData, cyclePosition) {
+    const videos = channelData.videos;
+    if (!videos.length) return { index: 0, position: 0 };
+
+    // Binary search
+    let left = 0, right = videos.length - 1;
+    while (left < right) {
+      const mid = Math.floor((left + right + 1) / 2);
+      if (videos[mid].start <= cyclePosition) {
+        left = mid;
+      } else {
+        right = mid - 1;
+      }
+    }
+
+    return {
+      index: left,
+      position: cyclePosition - videos[left].start,
+    };
+  }
+
+  /**
+   * MAIN API: Get LIVE state with ALL computation done server-side
+   * Client receives ready-to-play data
+   */
+  async getLiveState(categoryId, includeNext = false) {
+    if (!categoryId) throw new Error('categoryId required');
+
+    // Get cached data (minimal DB calls)
+    const [epoch, channelData] = await Promise.all([
+      this._getEpochMs(),
+      this._getChannelData(categoryId),
+    ]);
+
+    if (!channelData) throw new Error(`Category ${categoryId} not found`);
+
+    // HIGH PRECISION timing
+    const serverTimeMs = Date.now();
+    const elapsedMs = serverTimeMs - epoch;
+    const elapsedSec = elapsedMs / 1000;
+
+    // Calculate position
+    const cycleCount = Math.floor(elapsedSec / channelData.totalDuration);
+    const cyclePosition = elapsedSec % channelData.totalDuration;
+    
+    // Fast binary search for current video
+    const { index, position } = this._findVideoAtPosition(channelData, cyclePosition);
+    const currentVideo = channelData.videos[index];
+
+    // Build response with ALL data client needs
+    const response = {
+      // Current video - ready to play
+      live: {
+        categoryId: channelData._id,
+        categoryName: channelData.name,
+        videoIndex: index,
+        videoId: currentVideo.id,
+        videoTitle: currentVideo.title,
+        position: Math.round(position * 1000) / 1000, // 3 decimal places
+        duration: currentVideo.duration,
+        remaining: Math.round((currentVideo.duration - position) * 1000) / 1000,
+      },
+      // Sync data - for client clock correction
+      sync: {
+        serverTimeMs,
+        epochMs: epoch,
+        // Client can calculate: localDrift = Date.now() - serverTimeMs
+      },
+      // Playlist metadata
+      playlist: {
+        totalDuration: channelData.totalDuration,
+        videoCount: channelData.videoCount,
+        cycleCount,
+        cyclePosition: Math.round(cyclePosition * 1000) / 1000,
+      },
+    };
+
+    // Next video (optional)
+    if (includeNext && channelData.videos.length > 1) {
+      const nextIndex = (index + 1) % channelData.videos.length;
+      const nextVideo = channelData.videos[nextIndex];
       response.next = {
         videoIndex: nextIndex,
-        videoId: nextVideo?.youtubeId || nextVideo?.videoId || null,
-        videoTitle: nextVideo?.title || 'Unknown Video',
-        duration: nextVideo?.duration || 300,
+        videoId: nextVideo.id,
+        videoTitle: nextVideo.title,
+        duration: nextVideo.duration,
+        // Time until this video starts
+        startsIn: Math.round((currentVideo.duration - position) * 1000) / 1000,
       };
     }
 
@@ -70,152 +195,57 @@ class LiveStateService {
   }
 
   /**
-   * Calculate exact position in playlist with millisecond precision
-   */
-  calculatePosition(epochMs, serverTimeMs, category) {
-    const videos = category.items || [];
-    
-    if (videos.length === 0) {
-      return {
-        videoIndex: 0,
-        video: null,
-        position: 0,
-        duration: 0,
-        remaining: 0,
-        cyclePosition: 0,
-        cycleCount: 0,
-        totalDuration: 0,
-      };
-    }
-
-    // Get durations - default to 300s if unknown
-    const durations = videos.map(v => {
-      const d = v.duration;
-      return (typeof d === 'number' && d > 0) ? d : 300;
-    });
-
-    const totalDuration = durations.reduce((a, b) => a + b, 0);
-
-    if (totalDuration === 0) {
-      return {
-        videoIndex: 0,
-        video: videos[0],
-        position: 0,
-        duration: 300,
-        remaining: 300,
-        cyclePosition: 0,
-        cycleCount: 0,
-        totalDuration: 0,
-      };
-    }
-
-    // PRECISE CALCULATION using milliseconds
-    const elapsedMs = serverTimeMs - epochMs;
-    const elapsedSec = elapsedMs / 1000;
-
-    // How many times have we looped through the entire playlist?
-    const cycleCount = Math.floor(elapsedSec / totalDuration);
-    
-    // Where are we in the current loop? (with sub-second precision)
-    const cyclePosition = elapsedSec % totalDuration;
-
-    // Walk through videos to find current one
-    let accumulated = 0;
-    let videoIndex = 0;
-    let position = 0;
-
-    for (let i = 0; i < videos.length; i++) {
-      const videoDuration = durations[i];
-      
-      if (accumulated + videoDuration > cyclePosition) {
-        videoIndex = i;
-        position = cyclePosition - accumulated;
-        break;
-      }
-      
-      accumulated += videoDuration;
-    }
-
-    // Edge case: if we somehow went past all videos
-    // (shouldn't happen with modulo but defensive coding never hurt anyone)
-    if (videoIndex >= videos.length) {
-      videoIndex = videos.length - 1;
-      position = 0;
-    }
-
-    const currentVideo = videos[videoIndex];
-    const videoDuration = durations[videoIndex];
-    const remaining = Math.max(0, videoDuration - position);
-
-    return {
-      videoIndex,
-      video: currentVideo,
-      position,
-      duration: videoDuration,
-      remaining,
-      cyclePosition,
-      cycleCount,
-      totalDuration,
-    };
-  }
-
-  /**
-   * Get category with its videos
-   * First tries cache, then DB, then cries
-   */
-  async getCategoryWithVideos(categoryId) {
-    // Try to get from channels collection
-    try {
-      const channel = await Channel.findById(categoryId);
-      if (channel) {
-        return channel;
-      }
-    } catch (err) {
-      // Maybe it's not a valid ObjectId, try other methods
-    }
-
-    // Try to find by name (fallback for legacy support)
-    try {
-      const channel = await Channel.findOne({ name: categoryId });
-      if (channel) {
-        return channel;
-      }
-    } catch (err) {
-      console.warn('[LiveState] Error finding category:', err.message);
-    }
-
-    return null;
-  }
-
-  /**
-   * Bulk get live state for multiple categories
-   * For when the admin dashboard wants to flex
+   * BATCH API: Get state for ALL categories at once
+   * Useful for admin or multi-channel view
    */
   async getAllLiveStates() {
-    const channels = await Channel.find({}).lean();
-    const globalEpoch = await GlobalEpoch.getOrCreate();
-    const epoch = new Date(globalEpoch.epoch);
-    const serverTime = new Date();
+    const channels = await Channel.find({}).select('_id name').lean();
+    const serverTimeMs = Date.now();
 
-    const states = channels.map(category => {
-      const state = this.calculatePosition(epoch, serverTime, category);
-      return {
-        categoryId: category._id.toString(),
-        categoryName: category.name,
-        videoIndex: state.videoIndex,
-        videoTitle: state.video?.title || 'Unknown',
-        position: Math.round(state.position),
-        remaining: Math.round(state.remaining),
-        cycleCount: state.cycleCount,
-      };
-    });
+    const states = await Promise.all(
+      channels.map(async ch => {
+        try {
+          const state = await this.getLiveState(ch._id.toString(), false);
+          return {
+            categoryId: ch._id.toString(),
+            categoryName: ch.name,
+            videoIndex: state.live.videoIndex,
+            videoTitle: state.live.videoTitle,
+            position: Math.round(state.live.position),
+            remaining: Math.round(state.live.remaining),
+          };
+        } catch (e) {
+          return { categoryId: ch._id.toString(), error: e.message };
+        }
+      })
+    );
 
     return {
       states,
-      serverTime: serverTime.toISOString(),
-      epoch: epoch.toISOString(),
+      serverTimeMs,
       count: states.length,
     };
+  }
+
+  /**
+   * Pre-warm cache for all channels (call on server start)
+   */
+  async warmCache() {
+    console.log('[LiveState] 🔥 Warming cache...');
+    const channels = await Channel.find({}).select('_id').lean();
+    
+    await Promise.all(channels.map(ch => this._getChannelData(ch._id.toString())));
+    
+    console.log(`[LiveState] ✅ Warmed ${channels.length} channels`);
+  }
+
+  /**
+   * Clear all caches (call when data changes)
+   */
+  clearCache() {
+    channelCache.clear();
+    durationCache.clear();
+    console.log('[LiveState] 🗑️ Cache cleared');
   }
 }
 

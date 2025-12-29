@@ -1,18 +1,14 @@
 /**
- * Cache Warmer - Pre-loads frequently accessed data into cache
- * 
- * Strategy: Pre-warm cache on startup to eliminate cold start misses
- * - Loads all channels into cache
- * - Runs in background periodically
- * - Handles errors gracefully
+ * Cache Warmer - Pre-loads data into cache on startup
+ * Optimized for free tier with shorter TTLs
  */
 
 const Channel = require('../models/Channel')
 const cache = require('./cache')
 
 const CACHE_TTL = {
-	CHANNELS_LIST: 300, // 5 minutes (extended since write-through ensures consistency)
-	CHANNEL_DETAIL: 600, // 10 minutes (extended since write-through ensures consistency)
+	CHANNELS_LIST: 180, // 3 minutes (shorter for fresh data)
+	CHANNEL_DETAIL: 300, // 5 minutes
 }
 
 /**
@@ -23,26 +19,12 @@ function minimizeChannel(ch) {
 		_id: ch._id,
 		name: ch.name,
 		playlistStartEpoch: ch.playlistStartEpoch,
-		timezone: ch.timezone,
 		items: (ch.items || []).map(item => ({
 			_id: item._id,
-			youtubeId: item.youtubeId || item.videoId, // Support both
+			youtubeId: item.youtubeId || item.videoId,
 			title: item.title,
 			duration: item.duration,
-			thumbnail: item.thumbnail,
 		})),
-		// Only include time-based playlists if they exist
-		timeBasedPlaylists: ch.timeBasedPlaylists ? Object.keys(ch.timeBasedPlaylists).reduce((acc, slot) => {
-			if (ch.timeBasedPlaylists[slot] && ch.timeBasedPlaylists[slot].length > 0) {
-				acc[slot] = ch.timeBasedPlaylists[slot].map(item => ({
-					_id: item._id,
-					youtubeId: item.youtubeId || item.videoId,
-					title: item.title,
-					duration: item.duration,
-				}))
-			}
-			return acc
-		}, {}) : undefined,
 	}
 }
 
@@ -50,18 +32,7 @@ function minimizeChannel(ch) {
  * Minimize channels list for caching
  */
 function minimizeChannels(channels) {
-	return channels.map(ch => ({
-		_id: ch._id,
-		name: ch.name,
-		playlistStartEpoch: ch.playlistStartEpoch,
-		items: (ch.items || []).map(item => ({
-			_id: item._id,
-			youtubeId: item.youtubeId || item.videoId,
-			title: item.title,
-			duration: item.duration,
-			thumbnail: item.thumbnail,
-		})),
-	}))
+	return channels.map(minimizeChannel)
 }
 
 /**

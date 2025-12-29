@@ -251,6 +251,14 @@ dbConnectionManager.onConnection(async () => {
 	} catch (cacheErr) {
 		console.warn('[DesiTV] Cache pre-warming failed (non-critical):', cacheErr.message);
 	}
+	
+	// Warm LiveState cache (pre-compute channel data)
+	try {
+		const liveStateService = require('./services/liveStateService');
+		await liveStateService.warmCache();
+	} catch (lsErr) {
+		console.warn('[DesiTV] LiveState cache warming failed:', lsErr.message);
+	}
 });
 
 dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
