@@ -76,11 +76,7 @@ export async function fetchLiveState(categoryId, includeNext = false) {
 }
 
 /**
- * Calculate drift between server and local position
- * @param {Object} serverState - State from server
- * @param {number} localPosition - Current local playback position
- * @param {number} localVideoIndex - Current local video index
- * @returns {Object} Drift analysis
+ * Calculate drift between server and local position with millisecond precision
  */
 export function calculateDrift(serverState, localPosition, localVideoIndex) {
   if (!serverState?.live) {
@@ -89,36 +85,34 @@ export function calculateDrift(serverState, localPosition, localVideoIndex) {
 
   const serverPosition = serverState.live.position;
   const serverVideoIndex = serverState.live.videoIndex;
-  const serverTime = new Date(serverState.sync.serverTime).getTime();
   
-  // Estimate latency compensation
-  const latency = playerStateMachine.getEstimatedLatency();
+  // Use millisecond timestamp if available, fallback to ISO string
+  const serverTimeMs = serverState.sync.serverTimeMs || new Date(serverState.sync.serverTime).getTime();
+  const clientNow = Date.now();
   
   // Calculate time elapsed since server generated this response
-  const timeSinceServerResponse = Date.now() - serverTime;
+  const networkDelay = clientNow - serverTimeMs;
   
-  // Expected server position NOW (compensate for network delay)
-  const expectedServerPosition = serverPosition + (timeSinceServerResponse / 1000);
+  // Expected server position NOW (compensate for network delay + half RTT)
+  const latency = playerStateMachine.getEstimatedLatency();
+  const compensation = (networkDelay + latency) / 1000;
+  const expectedServerPosition = serverPosition + compensation;
   
   // Are we even on the same video?
   if (localVideoIndex !== serverVideoIndex) {
-    // Different video = CRITICAL drift
-    const videoDiff = localVideoIndex - serverVideoIndex;
     return {
-      driftMs: videoDiff * 1000000, // Massive fake drift to trigger correction
-      driftSec: videoDiff * 1000,
+      driftMs: (localVideoIndex - serverVideoIndex) * 1000000,
+      driftSec: (localVideoIndex - serverVideoIndex) * 1000,
       driftType: 'video_mismatch',
       needsCorrection: true,
       correctionType: 'seek',
-      details: {
-        localVideo: localVideoIndex,
-        serverVideo: serverVideoIndex,
-        videoDiff,
-      }
+      targetPosition: serverPosition,
+      targetVideoIndex: serverVideoIndex,
+      details: { localVideo: localVideoIndex, serverVideo: serverVideoIndex }
     };
   }
 
-  // Same video - calculate position drift
+  // Same video - calculate position drift with precision
   const driftSec = localPosition - expectedServerPosition;
   const driftMs = driftSec * 1000;
   
@@ -127,7 +121,7 @@ export function calculateDrift(serverState, localPosition, localVideoIndex) {
   const needsCorrection = correctionType !== 'ignore';
   
   // Record for trend analysis
-  playerStateMachine.recordDrift(driftMs, serverTime);
+  playerStateMachine.recordDrift(driftMs, serverTimeMs);
   
   return {
     driftMs,
@@ -136,6 +130,7 @@ export function calculateDrift(serverState, localPosition, localVideoIndex) {
     needsCorrection,
     correctionType,
     direction: driftSec > 0 ? 'ahead' : driftSec < 0 ? 'behind' : 'synced',
+    targetPosition: expectedServerPosition,
     expectedServerPosition,
     details: {
       serverPosition,
