@@ -195,6 +195,47 @@ class LiveStateService {
   }
 
   /**
+   * Get FULL manifest for predictive engine
+   * Client downloads once, computes locally forever
+   */
+  async getManifest(categoryId) {
+    if (!categoryId) throw new Error('categoryId required');
+
+    const [epoch, channelData] = await Promise.all([
+      this._getEpochMs(),
+      this._getChannelData(categoryId),
+    ]);
+
+    if (!channelData) throw new Error(`Category ${categoryId} not found`);
+
+    return {
+      // Category info
+      categoryId: channelData._id,
+      categoryName: channelData.name,
+      
+      // Full playlist with pre-computed positions
+      playlist: {
+        videos: channelData.videos, // Includes startTime for each video
+        totalDuration: channelData.totalDuration,
+        videoCount: channelData.videoCount,
+      },
+      
+      // Sync anchor
+      sync: {
+        epochMs: epoch,
+        serverTimeMs: Date.now(),
+      },
+      
+      // Manifest metadata
+      meta: {
+        version: 1,
+        generatedAt: Date.now(),
+        ttlSeconds: 300, // Suggest client refresh after 5 min
+      },
+    };
+  }
+
+  /**
    * BATCH API: Get state for ALL categories at once
    * Useful for admin or multi-channel view
    */

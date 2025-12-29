@@ -91,6 +91,34 @@ exports.getHealth = async (req, res) => {
 };
 
 /**
+ * GET /api/live-state/manifest?categoryId=xxx
+ * Returns FULL playlist manifest for predictive engine
+ * Client downloads once, computes locally forever
+ */
+exports.getManifest = async (req, res) => {
+  try {
+    const { categoryId } = req.query;
+    
+    if (!categoryId) {
+      return res.status(400).json({ error: 'categoryId required' });
+    }
+
+    const manifest = await liveStateService.getManifest(categoryId);
+    
+    // Cache aggressively - manifest rarely changes
+    res.set({
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+      'X-Server-Time': Date.now().toString(),
+    });
+    
+    res.json(manifest);
+  } catch (error) {
+    console.error('[LiveState] Manifest error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
  * POST /api/live-state/warm
  * Pre-warm cache (call on deploy or admin action)
  */
