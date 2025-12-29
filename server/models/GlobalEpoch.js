@@ -46,18 +46,17 @@ GlobalEpochSchema.statics.getOrCreate = async function() {
 	let globalEpoch = await this.findById('global')
 	
 	if (!globalEpoch) {
-		// First time - create the global epoch
-		// Use a fixed date in the past to ensure consistency
-		// This allows channels to have started at different times but sync to global timeline
-		const fixedEpoch = new Date('2020-01-01T00:00:00.000Z')
+		// First time - create the global epoch with current server time
+		// This sets the epoch when server starts, so stream is "on" from that moment
+		const serverStartEpoch = new Date()
 		
 		globalEpoch = await this.create({
 			_id: 'global',
-			epoch: fixedEpoch,
+			epoch: serverStartEpoch,
 			timezone: 'Asia/Kolkata',
 		})
 		
-		console.log('[GlobalEpoch] Created global epoch:', globalEpoch.epoch.toISOString())
+		console.log('[GlobalEpoch] Created global epoch at server start:', globalEpoch.epoch.toISOString())
 	}
 	
 	return globalEpoch

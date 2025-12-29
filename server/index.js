@@ -207,6 +207,32 @@ const dbConnectionManager = require('./utils/dbConnection');
 dbConnectionManager.onConnection(async () => {
 	console.log(`[DesiTV] MongoDB connected (${isProduction ? 'production' : 'development'})`);
 	
+	// Initialize global epoch immediately on server start
+	// This sets the epoch to current time if it doesn't exist, so stream is "on" from server startup
+	try {
+		const GlobalEpoch = require('./models/GlobalEpoch');
+		const cache = require('./utils/cache');
+		
+		// Get or create epoch (will use current server time if creating for first time)
+		const globalEpoch = await GlobalEpoch.getOrCreate();
+		
+		// Pre-cache the epoch for instant access
+		const cacheKey = 'ge';
+		const cacheData = {
+			e: globalEpoch.epoch.toISOString(),
+			tz: globalEpoch.timezone || 'Asia/Kolkata',
+			epoch: globalEpoch.epoch.toISOString(),
+			timezone: globalEpoch.timezone || 'Asia/Kolkata',
+			createdAt: globalEpoch.createdAt || globalEpoch.epoch,
+		};
+		await cache.set(cacheKey, cacheData, 7200); // Cache for 2 hours
+		
+		console.log(`[DesiTV] ✅ Global epoch initialized: ${globalEpoch.epoch.toISOString()}`);
+		console.log(`[DesiTV] 📺 Stream is now ON - all channels calculating from this epoch`);
+	} catch (epochErr) {
+		console.warn('[DesiTV] Failed to initialize global epoch:', epochErr.message);
+	}
+	
 	try {
 		const { ensureChannelsJSON } = require('./utils/generateJSON');
 		const jsonData = await ensureChannelsJSON();
