@@ -8,7 +8,7 @@
 import { getUserTimezone } from './timezoneService'
 
 const EPOCH_CACHE_KEY = 'desitv-global-epoch-cached'
-const EPOCH_CACHE_TTL = 1.5 * 60 * 1000 // 1.5 minutes (optimized for faster sync - 3.3x faster than before)
+const EPOCH_CACHE_TTL = 2 * 1000 // 2 seconds - minimal cache for perfect sync
 
 let cachedEpoch = null
 let cacheTimestamp = null

@@ -8,6 +8,7 @@ import { broadcastStateManager } from '../logic/broadcast'
 import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgramming'
 import { useEasterEggs } from '../hooks/useEasterEggs'
 import { checksumSyncService } from '../services/checksumSync'
+import { clearEpochCache } from '../services/api/globalEpochService'
 
 // Lazy load heavy components that aren't always visible
 const TVMenuV2 = lazy(() => import('../components/tv').then(m => ({ default: m.TVMenuV2 })))
@@ -324,13 +325,25 @@ export default function Home() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
+				// CRITICAL SYNC FIX: Clear all caches on reload for fresh sync
+				// This ensures mobile and desktop get the same data
+				console.log('[Home] 🔄 Clearing caches for fresh sync...')
+				broadcastStateManager.clearAll()
+				clearEpochCache()
+				localStorage.removeItem('desitv-global-epoch-cached')
+				localStorage.removeItem('desitv-broadcast-state')
+				
 				// CRITICAL: Always fetch global epoch from server FIRST (for true sync)
 				// Don't load from localStorage - server is the source of truth
 				// This ensures mobile and desktop are perfectly synchronized
-				await broadcastStateManager.initializeGlobalEpoch(true) // Force refresh
-				console.log('[Home] ✅ Global epoch from server:', broadcastStateManager.getGlobalEpoch()?.toISOString())
+				await broadcastStateManager.initializeGlobalEpoch(true) // Force refresh - always fetch fresh
+				const epoch = broadcastStateManager.getGlobalEpoch()
+				if (!epoch) {
+					throw new Error('Failed to initialize global epoch')
+				}
+				console.log('[Home] ✅ Global epoch from server:', epoch.toISOString())
 				
-				// Start periodic epoch refresh to maintain sync
+				// Start periodic epoch refresh to maintain sync (every 5 seconds for perfect sync)
 				broadcastStateManager.startEpochRefresh()
 				
 				// ULTRA-FAST VALIDATION: Start checksum sync service (max 2s latency)

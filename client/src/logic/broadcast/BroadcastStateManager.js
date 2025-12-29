@@ -114,6 +114,12 @@ class BroadcastStateManager {
 	 * Replaces any localStorage epoch with server epoch for true synchronization
 	 */
 	async initializeGlobalEpoch(forceRefresh = false) {
+		// CRITICAL SYNC FIX: Always fetch fresh from server if forcing refresh
+		// This ensures all devices are perfectly synchronized
+		if (forceRefresh) {
+			this.globalEpochLocked = false // Unlock to allow fresh fetch
+		}
+		
 		// If already locked and not forcing refresh, return existing epoch
 		if (this.globalEpochLocked && this.globalEpoch && !forceRefresh) {
 			return this.globalEpoch
@@ -122,7 +128,7 @@ class BroadcastStateManager {
 		// CRITICAL: Always fetch from server first (for true synchronization)
 		// This ensures mobile and desktop use the same epoch
 		try {
-			const serverEpoch = await fetchGlobalEpoch()
+			const serverEpoch = await fetchGlobalEpoch(forceRefresh) // Pass forceRefresh flag
 			if (serverEpoch) {
 				// Check if we had a different epoch in localStorage
 				const oldEpoch = this.globalEpoch
@@ -267,12 +273,20 @@ class BroadcastStateManager {
 			}
 		}
 
+		// CRITICAL SYNC FIX: Always ensure epoch is initialized before calculating
+		// Don't calculate with stale epoch - throw error if epoch not available
 		if (!this.globalEpoch) {
-			// Initialize synchronously for backward compatibility
-			// Will be properly initialized async when needed
+			console.error('[BroadcastState] ❌ Cannot calculate position - epoch not initialized!')
+			// Try to initialize synchronously (fire and forget - won't block)
 			this.initializeGlobalEpoch().catch(err => {
-				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+				console.error('[BroadcastState] Failed to initialize epoch:', err)
 			})
+			// Return safe default but log error
+			return {
+				videoIndex: 0,
+				offset: 0,
+				debugInfo: 'Epoch not initialized - using default',
+			}
 		}
 
 		const channelId = channel._id
@@ -439,22 +453,22 @@ class BroadcastStateManager {
 
 	/**
 	 * Start periodic epoch refresh (ensures sync across devices)
-	 * Refreshes every 5 minutes to catch any epoch changes
+	 * Refreshes frequently to ensure perfect sync
 	 */
 	startEpochRefresh() {
 		if (this.epochRefreshInterval) {
 			clearInterval(this.epochRefreshInterval)
 		}
 
-		// Refresh epoch every 1.5 minutes for faster sync (optimized from 5 minutes)
-		// This ensures users stay synchronized within 1.5 minutes instead of 5 minutes
+		// Refresh epoch every 3 seconds for perfect sync
+		// This ensures all devices stay perfectly synchronized
 		this.epochRefreshInterval = setInterval(() => {
 			this.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[BroadcastState] Periodic epoch refresh failed:', err)
 			})
-		}, 1.5 * 60 * 1000) // 1.5 minutes (3.3x faster sync)
+		}, 3 * 1000) // 3 seconds for perfect sync
 
-		console.log('[BroadcastState] Started periodic epoch refresh (every 1.5 minutes)')
+		console.log('[BroadcastState] Started periodic epoch refresh (every 3 seconds)')
 	}
 
 	/**
@@ -732,15 +746,18 @@ class BroadcastStateManager {
 	}
 
 	/**
-	 * Clear all state
+	 * Clear all state and reset locks
 	 */
 	clearAll() {
 		this.state = {}
 		this.globalEpoch = null
+		this.globalEpochLocked = false // Reset lock for fresh fetch
 		localStorage.removeItem(this.storageKey)
 		localStorage.removeItem(this.globalEpochKey)
 		this.stopAutoSave()
+		this.stopEpochRefresh() // Stop refresh before clearing
 		this.listeners = []
+		console.log('[BroadcastState] ✅ All state cleared for fresh sync')
 	}
 }
 

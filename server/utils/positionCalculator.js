@@ -10,10 +10,9 @@ const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName, getSecondsUn
 const GlobalEpoch = require('../models/GlobalEpoch')
 const cache = require('./cache')
 
-// Cache TTL for position calculations (2 seconds - optimized for faster sync)
-// Reduced from 5s to 2s for faster synchronization while staying within free tier limits
-// With compression and write-through caching, 2s TTL is safe and provides 2.5x faster sync
-const POSITION_CACHE_TTL = 2
+// Cache TTL for position calculations (1 second - minimal caching for perfect sync)
+// Very short TTL ensures all devices stay synchronized
+const POSITION_CACHE_TTL = 1
 
 // Default video duration if not specified
 const DEFAULT_VIDEO_DURATION = 300 // 5 minutes
@@ -199,12 +198,10 @@ async function getCachedPosition(channel, timezone = null, req = null) {
 		// Total savings: ~31 bytes per cached position
 	}
 	
-	// Cache for 5 seconds (optimized TTL)
+	// Cache for 1 second (minimal TTL for perfect sync)
 	await cache.set(cacheKey, minimizedPosition, POSITION_CACHE_TTL)
 	
 	// Return full position with item
-	return position
-	
 	return position
 }
 
