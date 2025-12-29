@@ -360,7 +360,7 @@
 .tv-frame-container:-moz-full-screen .player-glass-overlay,
 .tv-frame-container:-ms-fullscreen .player-glass-overlay {
 	display: block !important;
-	pointer-events: auto !important;
+	pointer-events: none !important; /* Changed to none - let sensor receive events */
 	z-index: 6 !important;
 	background: transparent !important;
 	position: absolute !important;
@@ -636,7 +636,7 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 	/* Remote overlay when fullscreen - class-based approach for reliability */
 	body.tv-fullscreen-active .remote-overlay,
 	body.ios-fullscreen-active .remote-overlay {
-		z-index: 10000 !important;
+		z-index: 2147483647 !important; /* Maximum z-index */
 		position: fixed !important;
 		right: 0 !important;
 		bottom: 20px !important;
@@ -652,12 +652,13 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 		pointer-events: auto !important;
 	}
 
-	/* Remote trigger sensor */
+	/* Remote trigger sensor - highest z-index to catch events */
 	body.tv-fullscreen-active .remote-trigger-sensor,
 	body.ios-fullscreen-active .remote-trigger-sensor {
-		z-index: 9999 !important;
+		z-index: 2147483647 !important; /* Maximum z-index - above everything */
 		position: fixed !important;
 		pointer-events: auto !important;
+		background: transparent !important;
 	}
 }
 

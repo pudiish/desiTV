@@ -483,8 +483,9 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			{/* Right-edge sensor to reveal remote in fullscreen - Desktop only */}
 			{(() => {
 				const fullscreen = isActuallyFullscreen()
-				const isDesktop = window.innerWidth > 768
-				if (fullscreen && isDesktop) {
+				const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768
+				
+				if (fullscreen && isDesktop && onRemoteEdgeHover) {
 					return createPortal(
 						<div
 							className="remote-trigger-sensor"
@@ -492,20 +493,36 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 								position: 'fixed',
 								top: 0,
 								right: 0,
-								width: '120px',
+								width: '200px',
 								height: '100vh',
-								zIndex: 99999,
+								zIndex: 2147483647,
 								pointerEvents: 'auto',
 								background: 'transparent',
-								touchAction: 'manipulation',
+								touchAction: 'none',
+								cursor: 'default',
 							}}
-							onMouseEnter={() => {
-								console.log('[Remote] Sensor mouse enter - fullscreen:', fullscreen, 'isDesktop:', isDesktop)
-								if (onRemoteEdgeHover) onRemoteEdgeHover()
+							onMouseEnter={(e) => {
+								e.preventDefault()
+								e.stopPropagation()
+								console.log('[Remote] ✅✅✅ SENSOR MOUSE ENTER - Triggering hover handler')
+								if (onRemoteEdgeHover) {
+									onRemoteEdgeHover()
+								} else {
+									console.error('[Remote] ❌ onRemoteEdgeHover is null!')
+								}
 							}}
-							onMouseMove={() => {
-								// Only trigger on move
-								if (onRemoteEdgeHover) onRemoteEdgeHover()
+							onMouseMove={(e) => {
+								e.preventDefault()
+								e.stopPropagation()
+								// Keep triggering on move to maintain visibility
+								if (onRemoteEdgeHover) {
+									onRemoteEdgeHover()
+								}
+							}}
+							onMouseLeave={(e) => {
+								e.preventDefault()
+								e.stopPropagation()
+								console.log('[Remote] Sensor mouse leave')
 							}}
 						/>,
 						document.body
@@ -520,7 +537,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				const fullscreen = isActuallyFullscreen()
 				const isDesktop = window.innerWidth > 768
 				if (fullscreen && isDesktop && remoteOverlayComponent) {
-					console.log('[Remote] Rendering overlay portal - visible:', remoteOverlayVisible)
+					console.log('[Remote] Rendering overlay portal - visible:', remoteOverlayVisible, 'fullscreen:', fullscreen)
 					return createPortal(
 						<div 
 							className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
@@ -528,11 +545,13 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 								position: 'fixed',
 								right: 0,
 								bottom: '20px',
-								zIndex: 100000,
-								display: 'block',
-								visibility: remoteOverlayVisible ? 'visible' : 'hidden',
+								zIndex: 2147483647, // Maximum z-index value
+								display: remoteOverlayVisible ? 'block' : 'block', // Always render, just hide with transform
+								visibility: 'visible', // Always visible, use transform to hide
 								opacity: remoteOverlayVisible ? 1 : 0,
 								transform: remoteOverlayVisible ? 'translateX(0)' : 'translateX(110%)',
+								transition: 'transform 0.3s ease-out, opacity 0.3s ease-out',
+								pointerEvents: remoteOverlayVisible ? 'auto' : 'none',
 							}}
 							data-visible={remoteOverlayVisible}
 						>
