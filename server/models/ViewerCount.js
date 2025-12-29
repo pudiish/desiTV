@@ -52,6 +52,8 @@ ViewerCountSchema.index({ activeViewers: -1 }) // For "most watched" queries
 ViewerCountSchema.statics.incrementViewer = async function(channelId, channelName) {
 	const now = new Date()
 	
+	// Use $inc only - it handles both existing docs and upserts correctly
+	// For new docs, $inc starts from default value (0) so 0+1=1
 	const result = await this.findOneAndUpdate(
 		{ channelId },
 		{
@@ -60,10 +62,6 @@ ViewerCountSchema.statics.incrementViewer = async function(channelId, channelNam
 				lastUpdated: now,
 			},
 			$inc: {
-				activeViewers: 1,
-				totalViews: 1,
-			},
-			$setOnInsert: {
 				activeViewers: 1,
 				totalViews: 1,
 			},
