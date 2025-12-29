@@ -8,13 +8,14 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  * TVFrame Component - PERFORMANCE OPTIMIZED
  * Memoized to prevent unnecessary re-renders
  */
-const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false }) {
 	const tvFrameRef = useRef(null)
-	const [isFullscreen, setIsFullscreen] = useState(false)
+	const [isFullscreen, setIsFullscreen] = useState(isFullscreenProp)
 	const [showPreview, setShowPreview] = useState(false)
 	const [timezone] = useState(() => getUserTimezone()) // Initialize timezone once
 	const [transitionInfo, setTransitionInfo] = useState(null)
 	const tapHandlerRef = useRef(null)
+	const [sensorKey, setSensorKey] = useState(0) // Force re-render of sensor
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
@@ -30,6 +31,20 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		)
 		return fullscreen
 	}
+	
+	// Force sensor re-render when fullscreen state changes to ensure it's always available
+	useEffect(() => {
+		const fullscreen = isActuallyFullscreen()
+		console.log('[Remote] 🔄 Fullscreen state check:', fullscreen, 'isFullscreen:', isFullscreen)
+		
+		if (fullscreen) {
+			setSensorKey(prev => {
+				const newKey = prev + 1
+				console.log('[Remote] 🔄 Updating sensor key:', newKey)
+				return newKey
+			})
+		}
+	}, [isFullscreen])
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -485,10 +500,15 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				const fullscreen = isActuallyFullscreen()
 				const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768
 				
+				console.log('[Remote] 🔍 Sensor check:', { fullscreen, isDesktop, hasHandler: !!onRemoteEdgeHover, sensorKey })
+				
 				if (fullscreen && isDesktop && onRemoteEdgeHover) {
+					console.log('[Remote] ✅ Rendering sensor element (key:', sensorKey, ')')
 					return createPortal(
 						<div
+							key={`sensor-${sensorKey}`}
 							className="remote-trigger-sensor"
+							id="remote-trigger-sensor"
 							style={{
 								position: 'fixed',
 								top: 0,
@@ -504,7 +524,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 							onMouseEnter={(e) => {
 								e.preventDefault()
 								e.stopPropagation()
-								console.log('[Remote] ✅✅✅ SENSOR MOUSE ENTER - Triggering hover handler')
+								console.log('[Remote] ✅✅✅✅✅ SENSOR MOUSE ENTER - Triggering hover handler!')
 								if (onRemoteEdgeHover) {
 									onRemoteEdgeHover()
 								} else {
@@ -528,6 +548,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						document.body
 					)
 				}
+				console.log('[Remote] ❌ NOT rendering sensor:', { fullscreen, isDesktop, hasHandler: !!onRemoteEdgeHover })
 				return null
 			})()}
 
@@ -593,16 +614,21 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		</div>
 	)
 }, (prevProps, nextProps) => {
-	// Custom comparison for React.memo - only re-render if critical props change
-	// IMPORTANT: Include remoteOverlayVisible and remoteOverlayComponent to ensure remote updates
+	// Always re-render for remote-related props to ensure sensor updates
+	if (
+		prevProps.remoteOverlayVisible !== nextProps.remoteOverlayVisible ||
+		prevProps.onRemoteEdgeHover !== nextProps.onRemoteEdgeHover ||
+		prevProps.remoteOverlayComponent !== nextProps.remoteOverlayComponent
+	) {
+		return false // Re-render needed
+	}
+	// Use default shallow comparison for other props
 	return (
 		prevProps.power === nextProps.power &&
 		prevProps.activeChannel?._id === nextProps.activeChannel?._id &&
 		prevProps.volume === nextProps.volume &&
 		prevProps.staticActive === nextProps.staticActive &&
-		prevProps.isBuffering === nextProps.isBuffering &&
-		prevProps.remoteOverlayVisible === nextProps.remoteOverlayVisible &&
-		prevProps.remoteOverlayComponent === nextProps.remoteOverlayComponent
+		prevProps.isBuffering === nextProps.isBuffering
 	)
 })
 
