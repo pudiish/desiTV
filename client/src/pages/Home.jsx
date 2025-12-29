@@ -68,7 +68,7 @@ export default function Home() {
 		tapTriggerRef.current = handler
 	}
 
-	// Callback to show remote overlay when hovering right edge sensor or remote itself
+	// Callback to show/hide remote overlay (triggered from TVFrame sensor or mobile toggle)
 	const handleRemoteEdgeHover = useCallback(() => {
 		// Check if fullscreen (including iOS CSS fullscreen)
 		const isCurrentlyFullscreen = !!(
@@ -82,60 +82,23 @@ export default function Home() {
 		
 		if (!isCurrentlyFullscreen) return
 		
-		// Don't auto-hide on mobile (user controls it manually)
-		const isMobile = window.innerWidth <= 768
-		if (isMobile) return
-		
-		// Clear any existing hide timeout (user is hovering, so cancel auto-hide)
-		if (remoteHideTimeoutRef.current) {
-			clearTimeout(remoteHideTimeoutRef.current)
-			remoteHideTimeoutRef.current = null
-		}
-		
-		// Show remote if not already visible
-		setRemoteOverlayVisible(true)
-	}, [isFullscreen])
-
-	// Callback to start hide timer when mouse leaves both sensor and remote (with 3 second delay)
-	const handleRemoteMouseLeave = useCallback(() => {
-		// Check if fullscreen
-		const isCurrentlyFullscreen = !!(
-			document.fullscreenElement ||
-			document.webkitFullscreenElement ||
-			document.mozFullScreenElement ||
-			document.msFullscreenElement ||
-			document.body.classList.contains('ios-fullscreen-active') ||
-			isFullscreen
-		)
-		
-		if (!isCurrentlyFullscreen) return
-		
-		// Don't auto-hide on mobile
-		const isMobile = window.innerWidth <= 768
-		if (isMobile) return
-		
-		// Clear any existing timeout before setting new one
-		if (remoteHideTimeoutRef.current) {
-			clearTimeout(remoteHideTimeoutRef.current)
-		}
-		
-		// Set timeout to hide after 3 seconds of no hover
-		remoteHideTimeoutRef.current = setTimeout(() => {
-			setRemoteOverlayVisible(false)
-			remoteHideTimeoutRef.current = null
-		}, 3000) // 3 seconds
-	}, [isFullscreen])
-
-	// Clear timeout when exiting fullscreen
-	useEffect(() => {
-		if (!isFullscreen) {
+		// Toggle remote visibility
+		setRemoteOverlayVisible(prev => {
+			const newState = !prev
 			if (remoteHideTimeoutRef.current) {
 				clearTimeout(remoteHideTimeoutRef.current)
-				remoteHideTimeoutRef.current = null
 			}
-			setRemoteOverlayVisible(false)
-		}
+			// Don't auto-hide on mobile (user controls it manually)
+			const isMobile = window.innerWidth <= 768
+			if (newState && !isMobile) {
+				remoteHideTimeoutRef.current = setTimeout(() => {
+					setRemoteOverlayVisible(false)
+				}, 5000)
+			}
+			return newState
+		})
 	}, [isFullscreen])
+
 	
 	// Handle swipe down to dismiss (mobile only)
 	const handleRemoteSwipeDismiss = useCallback(() => {
@@ -950,7 +913,6 @@ export default function Home() {
 			onTapHandlerReady={handleTapHandlerReady}
 			onFullscreenChange={setIsFullscreen}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
-			onRemoteMouseLeave={handleRemoteMouseLeave}
 			remoteOverlayVisible={remoteOverlayVisible}
 			onPowerToggle={handlePowerToggle}
 			onChannelUp={handleChannelUp}

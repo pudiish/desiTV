@@ -8,7 +8,7 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  * TVFrame Component - PERFORMANCE OPTIMIZED
  * Memoized to prevent unnecessary re-renders
  */
-const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
@@ -485,18 +485,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						background: 'transparent',
 						touchAction: 'manipulation',
 					}}
-					onMouseEnter={() => {
-						// Show remote and cancel hide timer when entering sensor area
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					onMouseMove={() => {
-						// Keep remote visible and cancel hide timer while moving in sensor area
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					onMouseLeave={() => {
-						// Start 3-second hide timer when leaving sensor area
-						if (onRemoteMouseLeave) onRemoteMouseLeave()
-					}}
+					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
 				/>
 			)}
 
@@ -505,24 +495,6 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			{isActuallyFullscreen() && window.innerWidth > 768 && tvFrameRef.current && remoteOverlayComponent && createPortal(
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
-					onMouseEnter={() => {
-						// Keep remote visible and cancel hide timer when mouse enters remote overlay
-						if (onRemoteEdgeHover) {
-							onRemoteEdgeHover()
-						}
-					}}
-					onMouseMove={() => {
-						// Keep remote visible while moving within remote overlay
-						if (onRemoteEdgeHover) {
-							onRemoteEdgeHover()
-						}
-					}}
-					onMouseLeave={() => {
-						// Start 3-second hide timer when mouse leaves remote overlay
-						if (onRemoteMouseLeave) {
-							onRemoteMouseLeave()
-						}
-					}}
 				>
 					{/* Backdrop - tap to dismiss */}
 					{remoteOverlayVisible && (
@@ -530,11 +502,11 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 							className="remote-overlay-backdrop" 
 							onClick={(e) => {
 								e.stopPropagation()
-								onRemoteMouseLeave && onRemoteMouseLeave()
+								onRemoteEdgeHover && onRemoteEdgeHover()
 							}}
 							onTouchEnd={(e) => {
 								e.stopPropagation()
-								onRemoteMouseLeave && onRemoteMouseLeave()
+								onRemoteEdgeHover && onRemoteEdgeHover()
 							}}
 						/>
 					)}
