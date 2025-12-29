@@ -935,29 +935,33 @@ button[type="submit"] {
 
 .alert-success,
 .info-box {
-	background: rgba(63, 185, 80, 0.1);
+	background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 255, 136, 0.02) 100%);
 	border: 1px solid var(--admin-success);
 	color: var(--admin-success);
+	box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
 }
 
 .alert-error,
 .error-box {
-	background: rgba(248, 81, 73, 0.1);
+	background: linear-gradient(135deg, rgba(255, 68, 88, 0.1) 0%, rgba(255, 68, 88, 0.02) 100%);
 	border: 1px solid var(--admin-error);
 	color: var(--admin-error);
+	box-shadow: 0 0 15px rgba(255, 68, 88, 0.15);
 }
 
 .alert-warning,
 .alert-warn {
-	background: rgba(210, 153, 34, 0.1);
+	background: linear-gradient(135deg, rgba(255, 165, 0, 0.1) 0%, rgba(255, 165, 0, 0.02) 100%);
 	border: 1px solid var(--admin-warning);
 	color: var(--admin-warning);
+	box-shadow: 0 0 15px rgba(255, 165, 0, 0.15);
 }
 
 .alert-info {
-	background: rgba(88, 166, 255, 0.1);
+	background: linear-gradient(135deg, rgba(0, 204, 255, 0.1) 0%, rgba(0, 204, 255, 0.02) 100%);
 	border: 1px solid var(--admin-info);
 	color: var(--admin-info);
+	box-shadow: 0 0 15px rgba(0, 204, 255, 0.15);
 }
 
 /* ============================================
@@ -1039,10 +1043,11 @@ tr:hover td {
 	display: flex;
 	gap: 16px;
 	padding: 16px;
-	background: var(--admin-bg);
-	border: 1px solid var(--admin-border);
+	background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(15, 22, 31, 1) 100%);
+	border: 1px solid rgba(0, 255, 136, 0.2);
 	border-radius: 8px;
 	margin-bottom: 16px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .yt-preview img {
@@ -1183,13 +1188,13 @@ tr:hover td {
 }
 
 .modal-content {
-	background: var(--admin-bg-card);
+	background: linear-gradient(135deg, var(--admin-bg-card) 0%, #1f2d4a 100%);
 	border: 2px solid var(--admin-accent);
 	border-radius: 12px;
 	padding: 24px;
 	max-width: 500px;
 	width: 100%;
-	box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+	box-shadow: 0 0 30px rgba(0, 255, 136, 0.25), 0 0 20px rgba(0, 0, 0, 0.5);
 	max-height: 90vh;
 	overflow-y: auto;
 }
@@ -1596,10 +1601,17 @@ tr:hover td {
 }
 
 .monitor-card {
-	background: var(--admin-bg);
+	background: linear-gradient(135deg, var(--admin-bg-card) 0%, #1f2d4a 100%);
 	border: 1px solid var(--admin-border);
 	border-radius: 10px;
 	padding: 20px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+	transition: all var(--transition-speed);
+}
+
+.monitor-card:hover {
+	border-color: var(--admin-accent);
+	box-shadow: 0 8px 25px rgba(0, 255, 136, 0.15);
 }
 
 .monitor-card h4 {
@@ -1639,11 +1651,17 @@ tr:hover td {
    ============================================ */
 
 .broadcast-card {
-	background: var(--admin-bg);
+	background: linear-gradient(135deg, var(--admin-bg-card) 0%, #1f2d4a 100%);
 	border: 1px solid var(--admin-border);
 	border-radius: 10px;
 	padding: 16px;
 	margin-bottom: 12px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+	transition: all var(--transition-speed);
+}
+
+.broadcast-card:hover {
+	border-color: rgba(0, 255, 136, 0.3);
 }
 
 .broadcast-header {
@@ -1666,8 +1684,9 @@ tr:hover td {
 }
 
 .broadcast-status.active {
-	background: rgba(63, 185, 80, 0.2);
+	background: rgba(0, 255, 136, 0.2);
 	color: var(--admin-success);
+	box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
 }
 
 .broadcast-status.inactive {
@@ -1697,7 +1716,7 @@ tr:hover td {
 
 .log-container,
 .code-block {
-	background: var(--admin-bg);
+	background: linear-gradient(135deg, rgba(10, 14, 31, 0.5) 0%, rgba(21, 28, 53, 0.3) 100%);
 	border: 1px solid var(--admin-border);
 	border-radius: 8px;
 	padding: 16px;
@@ -1706,6 +1725,7 @@ tr:hover td {
 	overflow-x: auto;
 	max-height: 300px;
 	overflow-y: auto;
+	color: var(--admin-text-dim);
 }
 
 .log-entry {
@@ -1744,22 +1764,22 @@ tr:hover td {
 }
 
 .badge-success {
-	background: rgba(63, 185, 80, 0.2);
+	background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 255, 136, 0.05) 100%);
 	color: var(--admin-success);
 }
 
 .badge-error {
-	background: rgba(248, 81, 73, 0.2);
+	background: linear-gradient(135deg, rgba(255, 68, 88, 0.2) 0%, rgba(255, 68, 88, 0.05) 100%);
 	color: var(--admin-error);
 }
 
 .badge-warning {
-	background: rgba(210, 153, 34, 0.2);
+	background: linear-gradient(135deg, rgba(255, 165, 0, 0.2) 0%, rgba(255, 165, 0, 0.05) 100%);
 	color: var(--admin-warning);
 }
 
 .badge-info {
-	background: rgba(88, 166, 255, 0.2);
+	background: linear-gradient(135deg, rgba(0, 204, 255, 0.2) 0%, rgba(0, 204, 255, 0.05) 100%);
 	color: var(--admin-info);
 }
 
@@ -1864,17 +1884,20 @@ tr:hover td {
 }
 
 .confirm-dialog {
-	background: var(--admin-bg-card);
+	background: linear-gradient(135deg, var(--admin-bg-card) 0%, #1f2d4a 100%);
 	border: 1px solid var(--admin-border);
 	border-radius: 12px;
 	padding: 24px;
 	max-width: 400px;
 	width: 90%;
+	box-shadow: 0 0 30px rgba(0, 255, 136, 0.2), 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 .confirm-dialog h4 {
 	margin: 0 0 16px 0;
-	color: var(--admin-text);
+	color: var(--admin-accent);
+	font-weight: 700;
+	text-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
 }
 
 .confirm-dialog p {
