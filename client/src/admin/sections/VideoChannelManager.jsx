@@ -28,7 +28,7 @@ export default function VideoChannelManager() {
       const response = await fetch('/api/channels')
       if (response.ok) {
         const data = await response.json()
-        setChannels(data)
+        setChannels(Array.isArray(data) ? data : [])
       }
     } catch (err) {
       setMessage({ type: 'error', text: '❌ Failed to load channels' })
@@ -135,7 +135,7 @@ export default function VideoChannelManager() {
             className="video-add-input video-add-select"
           >
             <option value="">-- CHOOSE A CHANNEL --</option>
-            {channels.map(ch => (
+            {Array.isArray(channels) && channels.map(ch => (
               <option key={ch._id} value={ch._id}>
                 {ch.name}
               </option>

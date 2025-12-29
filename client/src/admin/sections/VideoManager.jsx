@@ -83,11 +83,13 @@ function VideoManagerContent() {
 			const response = await fetch('/api/channels')
 			if (response.ok) {
 				const data = await response.json()
-				setChannels(data)
+				// Ensure data is always an array
+				setChannels(Array.isArray(data) ? data : [])
 			}
 		} catch (err) {
 			console.error('[VideoManager] Fetch channels error:', err)
 			setMessage({ type: 'error', text: '❌ Failed to load channels' })
+			setChannels([]) // Set to empty array on error
 		}
 	}
 
@@ -118,7 +120,8 @@ function VideoManagerContent() {
 
 			const data = await response.json()
 			if (response.ok) {
-				setChannels([...channels, data])
+				const newChannels = Array.isArray(channels) ? [...channels, data] : [data]
+				setChannels(newChannels)
 				setSelectedChannel(data._id)
 				setNewChannelName('')
 				setShowAddChannel(false)
@@ -357,7 +360,7 @@ function VideoManagerContent() {
 						disabled={loading}
 					>
 						<option value="">-- Choose a category --</option>
-						{channels.map(ch => (
+						{Array.isArray(channels) && channels.map(ch => (
 							<option key={ch._id} value={ch._id}>
 								{ch.name}
 							</option>

@@ -62,7 +62,7 @@ function ChannelManagerContent() {
 				if (!response.ok) throw new Error('Failed to fetch channels')
 				return response.json()
 			})
-			setChannels(data)
+		setChannels(Array.isArray(data) ? data : [])
 			setError(null)
 		} catch (err) {
 			console.error('[ChannelManager] Fetch channels error:', err)
@@ -231,10 +231,10 @@ function ChannelManagerContent() {
 							color: '#00d4ff',
 							fontSize: '13px'
 						}}>
-							CATEGORIES ({channels.length})
+							CATEGORIES ({Array.isArray(channels) ? channels.length : 0})
 						</div>
 						<div style={{ overflow: 'auto', flex: 1 }}>
-							{channels.map((channel) => (
+							{Array.isArray(channels) && channels.map((channel) => (
 								<div
 									key={channel._id}
 									onClick={() => setSelectedChannel(channel)}
@@ -318,7 +318,7 @@ function ChannelManagerContent() {
 									</div>
 								) : (
 									<div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-										{selectedChannel.items.map((video, idx) => (
+										{Array.isArray(selectedChannel.items) && selectedChannel.items.map((video, idx) => (
 											<div
 												key={video._id || video.youtubeId}
 												style={{
