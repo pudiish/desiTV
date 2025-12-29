@@ -57,9 +57,11 @@ export default function VideoManager() {
 			// ROAST: "Fetching all channels just to populate a dropdown? Pagination? Infinite scroll? No?"
 			const response = await fetch('/api/channels')
 			if (response.ok) {
-				const data = await response.json()
-				// Fix: Ensure array safety because the API is untrustworthy
-				setChannels(Array.isArray(data) ? data : [])
+				const json = await response.json()
+				// Handle both array and {data: array, checksum: ...} response formats
+				// Because the API can't decide what it wants to return, apparently
+				const data = Array.isArray(json) ? json : (json.data || [])
+				setChannels(data)
 			}
 		} catch (err) {
 			console.error('[VideoManager] Fetch channels error:', err)

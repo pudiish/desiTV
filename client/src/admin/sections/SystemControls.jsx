@@ -35,8 +35,10 @@ export default function SystemControls() {
 		try {
 			const response = await fetch('/api/channels')
 			if (response.ok) {
-				const data = await response.json()
-				setChannels(data || [])
+				const json = await response.json()
+				// Handle both array and {data: array, checksum: ...} response formats
+				const data = Array.isArray(json) ? json : (json.data || [])
+				setChannels(data)
 			}
 		} catch (err) {
 			console.error('Failed to fetch channels:', err)

@@ -60,7 +60,9 @@ function ChannelManagerContent() {
 			const data = await HybridStateManager.get('channels', async () => {
 				const response = await fetch('/api/channels')
 				if (!response.ok) throw new Error('Failed to fetch channels')
-				return response.json()
+				const json = await response.json()
+				// Handle both array and {data: array, checksum: ...} response formats
+				return Array.isArray(json) ? json : (json.data || [])
 			})
 		setChannels(Array.isArray(data) ? data : [])
 			setError(null)
