@@ -1,54 +1,77 @@
+# Dependencies
 node_modules/
-dist/
-server/dist/
+client/node_modules/
+server/node_modules/
 
-# Environment files (keep .env.example)
+# Build outputs
+dist/
+build/
+client/dist/
+server/dist/
+*.tgz
+
+# Environment files
 .env
-.env.local
-.env.development
-.env.production.local
+.env.*
 !.env.example
 
 # OS files
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Client
-client/node_modules/
-client/dist/
+# IDE / Editor
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+*.sublime-*
+*.code-workspace
 
 # Logs
 *.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Data files
+# Testing
+coverage/
+.jest-cache/
+.nyc_output/
+*.lcov
+
+# Temp files
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
+
+# Data files (generated)
 retro-tv.channels.json
 music_playlist.json
 retrotv-org
 
-# Audio/Video files (large media)
+# Large media files
 client/public/sounds/tv-static-noise-291374.mp3
 client/public/sounds/alb_tvn0411_1080p.mp4
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Vercel
+# Deployment
 .vercel
-
-# Render
 .render
+.netlify
 
-# Coverage
-coverage/
+# Debug
+*.pid
+*.seed
+*.pid.lock
 
-# Build artifacts
-*.tgz
-
-.jest-cache
-coverage
+# Misc
+*.bak
+*.orig

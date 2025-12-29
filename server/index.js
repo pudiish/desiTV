@@ -142,6 +142,7 @@ const monitoringRoutes = require('./routes/monitoring');
 const analyticsRoutes = require('./routes/analytics');
 const globalEpochRoutes = require('./routes/globalEpoch');
 const viewerCountRoutes = require('./routes/viewerCount');
+const liveStateRoutes = require('./routes/liveState'); // 🌟 NEW: Server-authoritative LIVE state
 
 // CSRF protection
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
@@ -153,6 +154,7 @@ app.use('/api', csrfRefresh);
 
 // Mount routes
 app.use('/api/global-epoch', globalEpochRoutes);
+app.use('/api/live-state', liveStateRoutes); // 🌟 NEW: The source of LIVE truth
 app.use('/api/viewer-count', viewerCountRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/auth', authRoutes);

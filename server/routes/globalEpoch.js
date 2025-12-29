@@ -35,6 +35,7 @@ router.get('/', async (req, res) => {
 				epoch: epochDate,
 				timezone: cached.timezone || cached.tz,
 				createdAt: cached.createdAt || epochDate,
+				serverTime: new Date().toISOString(), // 🌟 ALWAYS fresh serverTime even for cached!
 				cached: true,
 				...response, // Include checksum
 			})
@@ -60,10 +61,12 @@ router.get('/', async (req, res) => {
 		const checksumData = addChecksum(globalEpoch.epoch.toISOString(), 'epoch')
 		
 		// Return full response with metadata and checksum
+		// 🌟 NEW: Include serverTime for drift calculation!
 		res.json({
 			epoch: globalEpoch.epoch,
 			timezone: globalEpoch.timezone || 'Asia/Kolkata',
 			createdAt: globalEpoch.createdAt,
+			serverTime: new Date().toISOString(), // 🌟 NEW: Client needs this for sync!
 			cached: false,
 			...checksumData, // Include checksum
 		})

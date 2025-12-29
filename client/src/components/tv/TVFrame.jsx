@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Player } from '../player'
-import { StaticEffect, BufferingOverlay, WhatsNextPreview, EnhancedWhatsNextPreview, CRTInfoOverlay, PlaylistTransitionOverlay } from '../overlays'
+import { StaticEffect, BufferingOverlay, EnhancedWhatsNextPreview, CRTInfoOverlay, PlaylistTransitionOverlay } from '../overlays'
 import { getUserTimezone } from '../../services/api/timezoneService'
 
 /**

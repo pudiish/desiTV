@@ -5,5 +5,13 @@
  */
 
 import unifiedPlaybackManager from './UnifiedPlaybackManager.js'
-export { unifiedPlaybackManager }
+import PlayerStateMachine, { playerStateMachine, PlayerState, PlayerEvent } from './PlayerStateMachine.js'
+
+export { 
+  unifiedPlaybackManager,
+  PlayerStateMachine,
+  playerStateMachine,
+  PlayerState,
+  PlayerEvent,
+}
 

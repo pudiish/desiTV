@@ -2383,8 +2383,10 @@ return (
 }, (prevProps, nextProps) => {
 	// Custom comparison for React.memo - only re-render if critical props change
 	// This prevents unnecessary re-renders on every position update
+	// IMPORTANT: Must check _videoSwitchTimestamp to detect channel switches within same category!
 	return (
 		prevProps.channel?._id === nextProps.channel?._id &&
+		prevProps.channel?._videoSwitchTimestamp === nextProps.channel?._videoSwitchTimestamp &&
 		prevProps.power === nextProps.power &&
 		prevProps.volume === nextProps.volume
 	)
