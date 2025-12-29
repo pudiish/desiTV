@@ -12,14 +12,32 @@ import { broadcastStateManager } from '../logic/broadcast'
  */
 export function useBroadcastPosition(channel) {
 	// Get state timestamp to trigger recalculation on epoch changes
+	// Use numeric timestamp (getTime()) so React detects changes properly
 	const stateTimestamp = channel?._id 
-		? broadcastStateManager.getChannelState(channel._id)?.lastAccessTime
+		? (broadcastStateManager.getChannelState(channel._id)?.lastAccessTime?.getTime() || null)
 		: null
 	
 	// Also use video switch timestamp if provided (for manual video switching)
 	const videoSwitchTimestamp = channel?._videoSwitchTimestamp || null
+	
+	// Also check manual mode state - if it changes, we need to recalculate
+	const manualModeState = channel?._id
+		? broadcastStateManager.getChannelState(channel._id)?.manualMode || false
+		: false
+	const manualVideoIndex = channel?._id
+		? (broadcastStateManager.getChannelState(channel._id)?.manualVideoIndex ?? null)
+		: null
 
 	return useMemo(() => {
+		console.log(`[useBroadcastPosition] Recalculating position:`, {
+			channelId: channel?._id,
+			itemsCount: channel?.items?.length,
+			stateTimestamp,
+			videoSwitchTimestamp,
+			manualModeState,
+			manualVideoIndex
+		})
+		
 		if (!channel?.items || channel.items.length === 0) {
 			return {
 				videoIndex: -1,
@@ -67,7 +85,7 @@ export function useBroadcastPosition(channel) {
 			const nextVideo = channel.items[nextIdx]
 			const nextDuration = nextVideo?.duration || 300
 
-			return {
+			const result = {
 				videoIndex: position.videoIndex,
 				video: currentVideo,
 				offset: position.offset,
@@ -79,6 +97,15 @@ export function useBroadcastPosition(channel) {
 				nextTimeRemaining: nextDuration,
 				isValid: true
 			}
+			
+			console.log(`[useBroadcastPosition] Calculated position:`, {
+				videoIndex: result.videoIndex,
+				offset: result.offset,
+				videoTitle: currentVideo?.title || 'no title',
+				resultObjectId: result.videoIndex // Using videoIndex as a simple identifier
+			})
+
+			return result
 		} catch (err) {
 			console.error('[useBroadcastPosition] Error calculating position:', err)
 			return {
@@ -94,5 +121,5 @@ export function useBroadcastPosition(channel) {
 				isValid: false
 			}
 		}
-	}, [channel?._id, channel?.items, stateTimestamp, videoSwitchTimestamp])
+	}, [channel?._id, channel?.items, stateTimestamp, videoSwitchTimestamp, manualModeState, manualVideoIndex])
 }

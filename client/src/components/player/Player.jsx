@@ -154,9 +154,32 @@ onBufferingChange = null,
 	const MAX_SKIP_ATTEMPTS = Math.max(items.length || 10, 10)
 
 	// Derive current video from broadcast position (single source of truth)
-	const currIndex = broadcastPosition.videoIndex
+	// IMPORTANT: Extract values to ensure re-render when broadcastPosition changes
+	const currIndex = broadcastPosition?.videoIndex ?? -1
 	const current = items[currIndex] || null
-	const offset = broadcastPosition.offset
+	const offset = broadcastPosition?.offset ?? 0
+	
+	// Debug: Log when position changes - track both the values and the object reference
+	const prevPositionRef = useRef({ videoIndex: -1, offset: 0 })
+	useEffect(() => {
+		const prev = prevPositionRef.current
+		const newIndex = broadcastPosition?.videoIndex ?? -1
+		const newOffset = broadcastPosition?.offset ?? 0
+		
+		const indexChanged = prev.videoIndex !== newIndex
+		const offsetChanged = Math.abs(prev.offset - newOffset) > 0.1
+		
+		if (indexChanged || offsetChanged) {
+			console.log(`[Player] 📺 Broadcast position changed:`, {
+				from: { index: prev.videoIndex, offset: prev.offset.toFixed(1) },
+				to: { index: newIndex, offset: newOffset.toFixed(1) },
+				videoTitle: current?.title || 'no title',
+				videoId: current?.youtubeId || current?.videoId || 'no id',
+				triggeredBy: indexChanged ? 'index' : 'offset'
+			})
+			prevPositionRef.current = { videoIndex: newIndex, offset: newOffset }
+		}
+	}, [broadcastPosition, currIndex, offset, current])
 
 	// Only change key on channel change, NOT on video change
 	// Changing on video change causes YouTube component to remount instead of using loadVideoById
@@ -478,6 +501,16 @@ onBufferingChange = null,
 
 	// Effect: Smart video loading with caching (only load when video actually changes)
 	useEffect(() => {
+		console.log(`[Player] 🎬 Video loading effect triggered:`, {
+			videoId,
+			currIndex,
+			channelId: channel?._id,
+			hasPlayer: !!ytPlayerRef.current,
+			loadedVideo: loadedVideoRef.current,
+			broadcastPositionIndex: broadcastPosition?.videoIndex,
+			currentVideoTitle: current?.title?.substring(0, 50) || 'no title'
+		})
+		
 		// Wait for videoId to be available - it might not be ready immediately
 		if (!videoId || !channel?._id || !ytPlayerRef.current) {
 			if (!videoId && current && items.length > 0) {
@@ -516,6 +549,16 @@ onBufferingChange = null,
 			loaded.channelId !== channel._id ||
 			Math.abs(loaded.offset - startSeconds) > VIDEO_BUFFER_WINDOW
 
+		console.log(`[Player] 🔄 Video reload check:`, {
+			needsReload,
+			loaded: loaded ? `${loaded.videoId} (index: ${loaded.currIndex ?? '?'}) at ${loaded.offset}s` : 'none',
+			current: `${videoId} (index: ${currIndex}) at ${startSeconds}s`,
+			videoIdChanged: loaded?.videoId !== videoId,
+			channelIdChanged: loaded?.channelId !== channel._id,
+			offsetDiff: loaded ? Math.abs(loaded.offset - startSeconds) : 'N/A',
+			indexChanged: loaded?.currIndex !== currIndex
+		})
+
 		if (!needsReload) {
 			// Same video within buffer window - just seek if needed
 			const offsetDiff = Math.abs(loaded.offset - startSeconds)
@@ -523,7 +566,7 @@ onBufferingChange = null,
 				try {
 					if (typeof ytPlayerRef.current.seekTo === 'function') {
 						ytPlayerRef.current.seekTo(startSeconds, true)
-						loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id }
+						loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
 						console.log(`[Player] Seeking to ${startSeconds}s (within buffer window)`)
 					}
 				} catch (err) {
@@ -569,7 +612,7 @@ onBufferingChange = null,
 							})
 							e7Ref.current = true
 							clipSeekTimeRef.current = startSeconds
-							loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id }
+							loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
 							console.log(`[Player] Loading video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
 						} catch (err) {
 							console.error('[Player] Error loading video:', err)
@@ -594,8 +637,8 @@ onBufferingChange = null,
 					startSeconds: 0
 				})
 				
-				// Update cache
-				loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id }
+			// Update cache (include currIndex to track which video is loaded)
+			loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
 			} catch (err) {
 				console.error('[Player] Error loading video:', err)
 			}
@@ -612,7 +655,7 @@ onBufferingChange = null,
 				loadVideoTimeoutRef.current = null
 			}
 		}
-	}, [videoId, channel?._id, startSeconds, validateVideoBeforeLoad])
+	}, [videoId, channel?._id, startSeconds, validateVideoBeforeLoad, currIndex])
 
 	// Effect: Play static video on initial mount (before YouTube loads)
 	useEffect(() => {
@@ -1526,23 +1569,28 @@ onBufferingChange = null,
 		if (onVideoEnd) onVideoEnd()
 
 		// Determine next video based on current mode
-		// Manual mode persists until category/channel is changed (no timer expiration)
+		// Manual mode: user intentionally switched, so continue sequential progression
+		// Timeline mode: calculate from global timeline (pseudo-live)
 		let nextVid = null
 		let targetOffset = 0
 		let nextIdx = (currIndex + 1) % items.length
 		
-		if (channel?._id && broadcastStateManager.getMode(channel._id) === 'manual') {
-			// Manual mode - continue sequential progression (user manually changed channel)
+		const currentMode = channel?._id ? broadcastStateManager.getMode(channel._id) : 'timeline'
+		
+		if (currentMode === 'manual') {
+			// Manual mode - continue sequential progression (user manually switched)
+			// Stay in manual mode and play videos sequentially
 			nextVid = items[nextIdx]
 			targetOffset = 0
-			console.log(`[Player] Manual mode - continuing sequential to video ${nextIdx}`)
+			console.log(`[Player] 🎮 Manual mode - continuing sequential to video ${nextIdx}`)
 		} else {
-			// Timeline mode - calculate from timeline (pseudo-live)
+			// Timeline/LIVE mode - calculate from timeline (pseudo-live)
+			// This ensures synchronization across all devices
 			const timelinePosition = broadcastStateManager.calculateCurrentPosition(channel)
 			nextIdx = timelinePosition.videoIndex
 			nextVid = items[nextIdx]
 			targetOffset = timelinePosition.offset
-			console.log(`[Player] Timeline mode - video ${nextIdx} at ${targetOffset.toFixed(1)}s`)
+			console.log(`[Player] 📺 Timeline/LIVE mode - video ${nextIdx} at ${targetOffset.toFixed(1)}s`)
 		}
 
 		if (nextVid?.youtubeId) {

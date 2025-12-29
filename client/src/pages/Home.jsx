@@ -316,70 +316,49 @@ export default function Home() {
 		currentCategoryIndexRef.current = categoryIndex
 		console.log(`[Home] Setting category: ${categoryName} at index ${categoryIndex} (total: ${categories.length})`)
 		
-		setSelectedCategory(category)
-		
-		// Initialize broadcast state for this category (synchronized)
+		// Initialize channel state FIRST, then disable manual mode
 		try {
 			broadcastStateManager.initializeChannel(category)
-			// AGGRESSIVE SYNC: Force immediate refresh of global epoch on category switch
-			// This ensures users are perfectly synced when switching channels (optimized for faster sync)
+			broadcastStateManager.setManualMode(category._id, false)
+			
+			// Clear manual mode for old category if different
+			if (selectedCategory && selectedCategory._id !== category._id) {
+				broadcastStateManager.setManualMode(selectedCategory._id, false)
+			}
+			
+			// Only sync epoch if not in manual mode (manual mode should stay independent)
+			// Category change already disabled manual mode above, so safe to sync
 			broadcastStateManager.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[Home] ⚠️ Global epoch refresh failed:', err)
 			})
-			
-			// PROACTIVE: Trigger fast checksum sync on category switch
+			// Trigger sync only after manual mode is disabled (now in LIVE mode)
 			checksumSyncService.triggerFastSync()
 		} catch (err) {
 			console.error('[Home] Error initializing category state:', err)
 		}
 		
-		// Reset manual mode FIRST when switching categories (come back to live)
-		// This ensures we're in timeline mode before calculating position
-		broadcastStateManager.setManualMode(category._id, false)
-		console.log(`[Home] Category changed - reset to LIVE mode for ${categoryName}`)
+		setSelectedCategory(category)
 		
-		// Calculate timeline position for new category (pseudo-live)
-		let targetIndex = 0
-		let shouldUseTimeline = true
-		
+		// Calculate and jump to live timeline position
 		try {
-			const timelinePosition = broadcastStateManager.calculateCurrentPosition(category)
-			targetIndex = timelinePosition.videoIndex
-			shouldUseTimeline = true
-		} catch (err) {
-			console.error('[Home] Error calculating timeline position, starting from beginning:', err)
-			targetIndex = 0
-			shouldUseTimeline = false
-		}
-		
-		setActiveVideoIndex(targetIndex)
-		
-		// Jump to timeline position (or first video if calculation failed)
-		if (category.items && category.items.length > 0) {
-			try {
-				if (shouldUseTimeline) {
-					const timelinePosition = broadcastStateManager.calculateCurrentPosition(category)
-					broadcastStateManager.jumpToVideo(
-						category._id,
-						timelinePosition.videoIndex,
-						timelinePosition.offset,
-						category.items
-					)
-					setStatusMessage(`● LIVE - ${categoryName} - Video ${timelinePosition.videoIndex + 1}`)
-				} else {
+			const position = broadcastStateManager.calculateCurrentPosition(category)
+			if (position && position.videoIndex >= 0) {
+				setActiveVideoIndex(position.videoIndex)
 				broadcastStateManager.jumpToVideo(
 					category._id,
-					0,
-					0,
+					position.videoIndex,
+					position.offset,
 					category.items
 				)
-					setStatusMessage(`${categoryName} - Video 1`)
-				}
-				// Force Player to recalculate by updating timestamp
+				setStatusMessage(`● LIVE - ${categoryName} - Video ${position.videoIndex + 1}`)
 				setVideoSwitchTimestamp(Date.now())
-			} catch (err) {
-				console.error('[Home] Error jumping to video:', err)
+			} else {
+				setActiveVideoIndex(0)
+				setStatusMessage(`${categoryName} - Video 1`)
 			}
+		} catch (err) {
+			console.error('[Home] Error calculating position:', err)
+			setActiveVideoIndex(0)
 		}
 		
 		console.log(`[Home] Selected category: ${categoryName} with ${category.items?.length || 0} videos`)
@@ -475,9 +454,14 @@ export default function Home() {
 							const restoredIndex = allCategories.findIndex(cat => cat._id === restoredCategory._id)
 							if (restoredIndex !== -1) {
 								currentCategoryIndexRef.current = restoredIndex
+								
+								// Initialize channel state FIRST, then disable manual mode
+								broadcastStateManager.initializeChannel(restoredCategory)
+								broadcastStateManager.setManualMode(restoredCategory._id, false)
+								
 								setSelectedCategory(restoredCategory)
 								categoryRestored = true
-								console.log(`[Home] Restored category: ${restoredCategory.name} at index ${restoredIndex}`)
+								console.log(`[Home] Restored category: ${restoredCategory.name} at index ${restoredIndex} (LIVE mode)`)
 							}
 						}
 					}
@@ -485,15 +469,18 @@ export default function Home() {
 				
 				// If no category was restored, use time-based suggestion
 				if (!categoryRestored && allCategories.length > 0) {
-					// Get time-based channel suggestion
 					const timeSuggestion = getTimeSuggestion(allCategories)
 					const defaultCategory = timeSuggestion.channel || allCategories[0]
 					const categoryIndex = allCategories.findIndex(cat => cat._id === defaultCategory._id)
 					
-					currentCategoryIndexRef.current = categoryIndex !== -1 ? categoryIndex : 0
-					setSelectedCategory(defaultCategory)
-					console.log(`[Home] ${sessionResult.restored ? 'No restored category' : 'New session'}, using time-based: ${defaultCategory.name} (${timeSuggestion.slotName})`)
-				}
+				// Initialize channel state and ensure manual mode is disabled
+				broadcastStateManager.initializeChannel(defaultCategory)
+				broadcastStateManager.setManualMode(defaultCategory._id, false)
+				
+				currentCategoryIndexRef.current = categoryIndex !== -1 ? categoryIndex : 0
+				setSelectedCategory(defaultCategory)
+				console.log(`[Home] ${sessionResult.restored ? 'No restored category' : 'New session'}, using time-based: ${defaultCategory.name} (${timeSuggestion.slotName}) - LIVE mode`)
+			}
 				
 				setSessionRestored(true)
 			} catch (err) {
@@ -611,9 +598,10 @@ export default function Home() {
 			)
 			// Enable manual mode (user manually switched)
 			broadcastStateManager.setManualMode(selectedCategory._id, true)
-			// Force Player to recalculate by updating timestamp
-			setVideoSwitchTimestamp(Date.now())
-			console.log(`[Home] ✅ Jumped to video ${nextIndex}, manual mode enabled`)
+			// Force Player to recalculate by updating timestamp (must happen after state updates)
+			const newTimestamp = Date.now()
+			setVideoSwitchTimestamp(newTimestamp)
+			console.log(`[Home] ✅ Jumped to video ${nextIndex}, manual mode enabled, timestamp: ${newTimestamp}`)
 		} catch (err) {
 			console.error('[Home] ❌ Error jumping to video:', err)
 		}

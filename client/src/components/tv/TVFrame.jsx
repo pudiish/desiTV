@@ -7,6 +7,7 @@ import { getUserTimezone } from '../../services/api/timezoneService'
 /**
  * TVFrame Component - PERFORMANCE OPTIMIZED
  * Memoized to prevent unnecessary re-renders
+ * Updated: Removed sensorKey state - using simple direct rendering
  */
 const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false }) {
 	const tvFrameRef = useRef(null)

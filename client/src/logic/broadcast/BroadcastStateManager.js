@@ -113,6 +113,19 @@ class BroadcastStateManager {
 	 * CRITICAL: Always fetches from server first to ensure sync across all devices
 	 * Replaces any localStorage epoch with server epoch for true synchronization
 	 */
+	/**
+	 * Check if any channel is in manual mode
+	 * Used by sync services to skip auto-sync when manual mode is active
+	 */
+	hasAnyManualMode() {
+		for (const [channelId, state] of Object.entries(this.state)) {
+			if (state && state.manualMode) {
+				return true
+			}
+		}
+		return false
+	}
+
 	async initializeGlobalEpoch(forceRefresh = false) {
 		// CRITICAL SYNC FIX: Always fetch fresh from server if forcing refresh
 		// This ensures all devices are perfectly synchronized
@@ -235,6 +248,8 @@ class BroadcastStateManager {
 				channelOffset: 0, // Per-channel offset for manual seeking (doesn't affect global epoch)
 				manualMode: false, // Whether user has manually switched (temporarily overrides timeline)
 				manualModeUntil: null, // Timestamp when manual mode should expire
+				manualVideoIndex: undefined, // Stored video index for manual mode
+				manualOffset: undefined, // Stored offset for manual mode
 			}
 			this.saveToStorage()
 		}
@@ -295,6 +310,55 @@ class BroadcastStateManager {
 		if (!savedState) {
 			this.initializeChannel(channel)
 			return this.calculateCurrentPosition(channel)
+		}
+
+		// CHECK MANUAL MODE FIRST - if in manual mode, return the stored manual position
+		// Manual mode "locks" the video index until category changes
+		if (savedState.manualMode && savedState.manualVideoIndex !== undefined && savedState.manualVideoIndex !== null) {
+			const manualIndex = savedState.manualVideoIndex
+			const manualOffset = savedState.manualOffset || 0
+			
+			// Validate manual index is within bounds
+			if (manualIndex >= 0 && manualIndex < channel.items.length) {
+				const videoDurations = channel.items.map((v) => {
+					const duration = v.duration
+					if (typeof duration === 'number' && duration > 0) {
+						return duration
+					}
+					return this.config.defaultVideoDuration
+				})
+				
+				const videoDuration = videoDurations[manualIndex] || this.config.defaultVideoDuration
+				const clampedOffset = Math.max(0, Math.min(manualOffset, videoDuration - 1))
+				
+				// Calculate cycle position for consistency
+				let cumulativeTime = 0
+				for (let i = 0; i < manualIndex; i++) {
+					cumulativeTime += videoDurations[i] || this.config.defaultVideoDuration
+				}
+				cumulativeTime += clampedOffset
+				const totalDuration = videoDurations.reduce((sum, d) => sum + d, 0)
+				const cyclePosition = totalDuration > 0 ? cumulativeTime % totalDuration : 0
+				
+				console.log(`[BroadcastState] Manual mode active - returning video ${manualIndex} at ${clampedOffset.toFixed(1)}s`)
+				
+				return {
+					videoIndex: manualIndex,
+					offset: clampedOffset,
+					cyclePosition,
+					totalDuration,
+					totalElapsedSec: 0,
+					adjustedElapsedSec: 0,
+					channelOffset: savedState.channelOffset || 0,
+					cycleCount: 0,
+					videoDurations,
+					isSingleVideo: channel.items.length === 1,
+				}
+			} else {
+				console.warn(`[BroadcastState] Invalid manual video index ${manualIndex}, resetting manual mode`)
+				// Reset manual mode if index is invalid
+				this.setManualMode(channelId, false)
+			}
 		}
 
 		const now = new Date()
@@ -453,7 +517,7 @@ class BroadcastStateManager {
 
 	/**
 	 * Start periodic epoch refresh (ensures sync across devices)
-	 * Refreshes frequently to ensure perfect sync
+	 * SKIPS refresh when manual mode is active (to preserve user's manual selection)
 	 */
 	startEpochRefresh() {
 		if (this.epochRefreshInterval) {
@@ -461,15 +525,18 @@ class BroadcastStateManager {
 		}
 
 		// Refresh epoch every 15 seconds (reduced frequency to prevent rate limiting)
-		// Epoch never changes, so less frequent checks are sufficient
-		// Checksum sync handles rapid validation if needed
+		// CRITICAL: Skip refresh if any channel is in manual mode (don't override manual position)
 		this.epochRefreshInterval = setInterval(() => {
+			if (this.hasAnyManualMode()) {
+				// Manual mode active - skip epoch refresh to preserve manual position
+				return
+			}
 			this.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[BroadcastState] Periodic epoch refresh failed:', err)
 			})
 		}, 15 * 1000) // 15 seconds - sufficient since epoch never changes
 
-		console.log('[BroadcastState] Started periodic epoch refresh (every 3 seconds)')
+		console.log('[BroadcastState] Started periodic epoch refresh (every 15 seconds, skips in manual mode)')
 	}
 
 	/**
@@ -487,6 +554,13 @@ class BroadcastStateManager {
 	 */
 	getChannelState(channelId) {
 		return this.state[channelId] || null
+	}
+
+	/**
+	 * Get all channel states (for checking manual mode across all channels)
+	 */
+	getAllChannelStates() {
+		return this.state
 	}
 
 	/**
@@ -573,14 +647,20 @@ class BroadcastStateManager {
 				? channelOffset + totalDuration 
 				: channelOffset
 
+		// Store manual position for manual mode
+		const manualVideoIndex = targetVideoIndex
+		const manualOffset = targetOffset
+
 		this.state[channelId] = {
 			...state,
 			channelOffset: normalizedOffset,
-			lastAccessTime: now,
+			manualVideoIndex, // Store for manual mode
+			manualOffset, // Store for manual mode
+			lastAccessTime: new Date(), // Always create new Date object to trigger React updates
 		}
 
 		this.saveToStorage()
-		console.log(`[BroadcastState] Jumped to video ${targetVideoIndex} at ${targetOffset}s (channel offset: ${normalizedOffset.toFixed(1)}s)`)
+		console.log(`[BroadcastState] Jumped to video ${targetVideoIndex} at ${targetOffset}s (channel offset: ${normalizedOffset.toFixed(1)}s, manual position stored, lastAccessTime updated)`)
 		return true
 	}
 
@@ -604,6 +684,8 @@ class BroadcastStateManager {
 			channelOffset: 0,
 			manualMode: false,
 			manualModeUntil: null,
+			manualVideoIndex: undefined, // Clear manual position
+			manualOffset: undefined, // Clear manual position
 			lastAccessTime: new Date(),
 		}
 
@@ -615,13 +697,15 @@ class BroadcastStateManager {
 	/**
 	 * Set manual mode (user has manually switched videos)
 	 * Manual mode persists until channel/category is changed
+	 * Manual position should be stored via jumpToVideo before calling this
 	 * @param {string} channelId - Channel ID
 	 * @param {boolean} isManual - Whether to enable manual mode
 	 */
 	setManualMode(channelId, isManual) {
+		// Initialize channel state if it doesn't exist (defensive programming)
 		const state = this.state[channelId]
 		if (!state) {
-			console.warn(`[BroadcastState] Cannot set manual mode - no state for channel ${channelId}`)
+			console.warn(`[BroadcastState] Cannot set manual mode - no state for channel ${channelId}, this should be initialized first`)
 			return false
 		}
 
@@ -631,12 +715,31 @@ class BroadcastStateManager {
 			delete this.gradualResetIntervals[channelId]
 		}
 
-		this.state[channelId] = {
+		// If enabling manual mode, preserve the manual position stored by jumpToVideo
+		// If disabling, clear manual position
+		const updates = {
 			...state,
 			manualMode: isManual,
 			manualModeUntil: null, // No timer - manual mode persists until category/channel change
-			lastAccessTime: new Date(),
+			lastAccessTime: new Date(), // Update timestamp to trigger React recalculation
 		}
+		
+		if (!isManual) {
+			// When disabling manual mode, clear stored position
+			updates.manualVideoIndex = undefined
+			updates.manualOffset = undefined
+			console.log(`[BroadcastState] Manual mode disabled for ${channelId} - clearing manual position`)
+		} else {
+			// When enabling, keep the stored manual position from jumpToVideo
+			// jumpToVideo should have already stored manualVideoIndex and manualOffset
+			if (state.manualVideoIndex !== undefined && state.manualVideoIndex !== null) {
+				console.log(`[BroadcastState] Manual mode enabled for ${channelId} - using stored position: video ${state.manualVideoIndex} at ${(state.manualOffset || 0).toFixed(1)}s`)
+			} else {
+				console.warn(`[BroadcastState] ⚠️ Enabling manual mode but no stored manual position found for ${channelId}. Call jumpToVideo first!`)
+			}
+		}
+		
+		this.state[channelId] = updates
 
 		this.saveToStorage()
 		console.log(`[BroadcastState] Manual mode ${isManual ? 'enabled' : 'disabled'} for ${channelId} (persists until category change)`)

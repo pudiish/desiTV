@@ -110,6 +110,7 @@ class ChecksumSyncService {
 
 	/**
 	 * Validate checksums and silently sync if needed
+	 * SKIPS epoch sync when manual mode is active (to preserve user's manual selection)
 	 */
 	async validateAndSync() {
 		if (this.isSyncing) return
@@ -117,10 +118,10 @@ class ChecksumSyncService {
 		this.isSyncing = true
 
 		try {
-			// Validate channels
+			// Always validate channels (channel list changes are independent of manual mode)
 			await this.validateChannels()
 			
-			// Validate epoch
+			// Only validate epoch if NOT in manual mode (epoch changes would override manual position)
 			await this.validateEpoch()
 		} catch (err) {
 			console.warn('[ChecksumSync] Validation error:', err)
@@ -179,10 +180,18 @@ class ChecksumSyncService {
 		}
 	}
 
+
 	/**
 	 * Validate epoch checksum (ULTRA-FAST - optimized for 2s latency)
+	 * SKIPS sync if any channel is in manual mode (to avoid overriding manual position)
 	 */
 	async validateEpoch() {
+		// CRITICAL: Skip epoch sync if any channel is in manual mode
+		// Manual mode means user intentionally switched - don't override with auto-sync
+		if (broadcastStateManager.hasAnyManualMode()) {
+			return // Skip sync when in manual mode - preserve user's manual selection
+		}
+		
 		const startTime = Date.now()
 		try {
 			// ULTRA-FAST: Use AbortController for timeout (max 1.5s to meet 2s total latency)

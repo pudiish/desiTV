@@ -6,7 +6,8 @@ const VideoSchema = new mongoose.Schema({
   duration: { type: Number, default: 30 },
   year: Number,
   tags: [String],
-  category: { type: String }
+  category: { type: String },
+  thumbnail: { type: String } // Optional thumbnail URL (can be generated from youtubeId if not provided)
 }, { _id: true }); // Ensure each video has an _id
 
 // Channel represents a single broadcast channel (category) containing a playlist
