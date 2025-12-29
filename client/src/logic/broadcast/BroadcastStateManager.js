@@ -460,13 +460,14 @@ class BroadcastStateManager {
 			clearInterval(this.epochRefreshInterval)
 		}
 
-		// Refresh epoch every 3 seconds for perfect sync
-		// This ensures all devices stay perfectly synchronized
+		// Refresh epoch every 15 seconds (reduced frequency to prevent rate limiting)
+		// Epoch never changes, so less frequent checks are sufficient
+		// Checksum sync handles rapid validation if needed
 		this.epochRefreshInterval = setInterval(() => {
 			this.initializeGlobalEpoch(true).catch(err => {
 				console.warn('[BroadcastState] Periodic epoch refresh failed:', err)
 			})
-		}, 3 * 1000) // 3 seconds for perfect sync
+		}, 15 * 1000) // 15 seconds - sufficient since epoch never changes
 
 		console.log('[BroadcastState] Started periodic epoch refresh (every 3 seconds)')
 	}

@@ -23,7 +23,7 @@ class ChecksumSyncService {
 		this.isSyncing = false
 		this.lastChannelChecksum = null
 		this.lastEpochChecksum = null
-		this.SYNC_INTERVAL = 2 * 1000 // ULTRA-FAST: Check every 2 seconds (max latency requirement)
+		this.SYNC_INTERVAL = 5 * 1000 // Check every 5 seconds (reduced frequency to prevent rate limiting)
 		this.FAST_SYNC_INTERVAL = 1 * 1000 // Fast sync for critical moments (1 second)
 		this.fastSyncTimeout = null
 		this.pendingSync = false

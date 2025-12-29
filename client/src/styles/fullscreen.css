@@ -639,42 +639,28 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
    =========================================== */
 
 @media (min-width: 769px) {
-	/* Remote overlay when fullscreen - class-based approach for reliability */
-	body.tv-fullscreen-active .remote-overlay,
-	body.ios-fullscreen-active .remote-overlay {
-		z-index: 2147483647 !important; /* Maximum z-index */
+	.tv-frame-container:fullscreen .remote-overlay,
+	.tv-frame-container:-webkit-full-screen .remote-overlay,
+	.tv-frame-container.ios-fullscreen-active .remote-overlay {
+		z-index: 1000 !important;
 		position: fixed !important;
-		right: 0 !important;
-		bottom: 20px !important;
-		display: block !important;
-		visibility: visible !important;
-		pointer-events: none !important;
-	}
-
-	body.tv-fullscreen-active .remote-overlay.visible,
-	body.ios-fullscreen-active .remote-overlay.visible {
-		transform: translateX(0) !important;
-		opacity: 1 !important;
 		pointer-events: auto !important;
 	}
 
-	/* Remote trigger sensor - highest z-index to catch events */
-	body.tv-fullscreen-active .remote-trigger-sensor,
-	body.ios-fullscreen-active .remote-trigger-sensor {
-		z-index: 2147483647 !important; /* Maximum z-index - above everything */
+	.tv-frame-container:fullscreen .remote-trigger-sensor,
+	.tv-frame-container:-webkit-full-screen .remote-trigger-sensor,
+	.tv-frame-container.ios-fullscreen-active .remote-trigger-sensor {
+		z-index: 999 !important;
 		position: fixed !important;
 		pointer-events: auto !important;
-		background: transparent !important;
-		/* Ensure it's above the TV container */
-		isolation: isolate !important;
 	}
-	
-	/* Prevent TV container from blocking sensor area on right edge */
-	body.tv-fullscreen-active .tv-frame-container,
-	body.ios-fullscreen-active .tv-frame-container {
-		/* Create a "hole" for the sensor by not blocking pointer events in that area */
-		/* The sensor itself will handle events in the right 200px */
-	}
+}
+
+/* Prevent TV container from blocking sensor area on right edge */
+body.tv-fullscreen-active .tv-frame-container,
+body.ios-fullscreen-active .tv-frame-container {
+	/* Create a "hole" for the sensor by not blocking pointer events in that area */
+	/* The sensor itself will handle events in the right 200px */
 }
 
 /* ===========================================

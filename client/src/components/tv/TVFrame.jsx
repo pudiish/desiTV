@@ -15,7 +15,6 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	const [timezone] = useState(() => getUserTimezone()) // Initialize timezone once
 	const [transitionInfo, setTransitionInfo] = useState(null)
 	const tapHandlerRef = useRef(null)
-	const [sensorKey, setSensorKey] = useState(0) // Force re-render of sensor
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
@@ -31,56 +30,6 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		)
 		return fullscreen
 	}
-	
-	// Force sensor re-render when fullscreen state changes to ensure it's always available
-	useEffect(() => {
-		const fullscreen = isActuallyFullscreen()
-		console.log('[Remote] 🔄 Fullscreen state check:', fullscreen, 'isFullscreen:', isFullscreen)
-		
-		if (fullscreen) {
-			setSensorKey(prev => {
-				const newKey = prev + 1
-				console.log('[Remote] 🔄 Updating sensor key:', newKey)
-				return newKey
-			})
-		}
-	}, [isFullscreen])
-	
-	// Fallback: Document-level mouse tracking for right edge detection
-	// This catches mouse events even if the sensor div is blocked
-	useEffect(() => {
-		if (typeof window === 'undefined' || !onRemoteEdgeHover) return
-		
-		let lastTriggerTime = 0
-		const throttleMs = 100 // Reduce throttle for better responsiveness
-		
-		const handleMouseMove = (e) => {
-			// Only work in fullscreen and on desktop
-			if (!isActuallyFullscreen() || window.innerWidth <= 768) return
-			
-			const now = Date.now()
-			if (now - lastTriggerTime < throttleMs) return
-			
-			const rightEdge = window.innerWidth
-			const threshold = 200 // Same as sensor width
-			const isAtRightEdge = e.clientX >= (rightEdge - threshold)
-			
-			if (isAtRightEdge) {
-				console.log('[Remote] 🎯 Mouse at right edge detected via document listener!', e.clientX, 'threshold:', rightEdge - threshold)
-				lastTriggerTime = now
-				onRemoteEdgeHover()
-			}
-		}
-		
-		// Use capture phase to catch events before they're blocked
-		document.addEventListener('mousemove', handleMouseMove, { capture: true, passive: true })
-		console.log('[Remote] ✅ Document-level listener attached')
-		
-		return () => {
-			console.log('[Remote] 🗑️ Document-level listener removed')
-			document.removeEventListener('mousemove', handleMouseMove, { capture: true })
-		}
-	}, [isFullscreen, onRemoteEdgeHover])
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -532,110 +481,53 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen - Desktop only */}
-			{(() => {
-				const fullscreen = isActuallyFullscreen()
-				const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768
-				
-				console.log('[Remote] 🔍 Sensor check:', { fullscreen, isDesktop, hasHandler: !!onRemoteEdgeHover, sensorKey })
-				
-				if (fullscreen && isDesktop && onRemoteEdgeHover) {
-					console.log('[Remote] ✅ Rendering sensor element (key:', sensorKey, ')')
-					return createPortal(
-						<div
-							key={`sensor-${sensorKey}`}
-							className="remote-trigger-sensor"
-							id="remote-trigger-sensor"
-							style={{
-								position: 'fixed',
-								top: 0,
-								right: 0,
-								width: '200px',
-								height: '100vh',
-								zIndex: 2147483647,
-								pointerEvents: 'auto',
-								background: 'transparent',
-								touchAction: 'none',
-								cursor: 'default',
-							}}
-							onMouseEnter={(e) => {
-								e.preventDefault()
-								e.stopPropagation()
-								console.log('[Remote] ✅✅✅✅✅ SENSOR MOUSE ENTER - Triggering hover handler!')
-								if (onRemoteEdgeHover) {
-									onRemoteEdgeHover()
-								} else {
-									console.error('[Remote] ❌ onRemoteEdgeHover is null!')
-								}
-							}}
-							onMouseMove={(e) => {
-								e.preventDefault()
-								e.stopPropagation()
-								// Keep triggering on move to maintain visibility
-								if (onRemoteEdgeHover) {
-									onRemoteEdgeHover()
-								}
-							}}
-							onMouseLeave={(e) => {
-								e.preventDefault()
-								e.stopPropagation()
-								console.log('[Remote] Sensor mouse leave')
-							}}
-						/>,
-						document.body
-					)
-				}
-				console.log('[Remote] ❌ NOT rendering sensor:', { fullscreen, isDesktop, hasHandler: !!onRemoteEdgeHover })
-				return null
-			})()}
+			{isActuallyFullscreen() && window.innerWidth > 768 && (
+				<div
+					className="remote-trigger-sensor"
+					style={{
+						position: 'fixed',
+						top: 0,
+						right: 0,
+						width: '120px',
+						height: '100vh',
+						zIndex: 9999,
+						pointerEvents: 'auto',
+						background: 'transparent',
+						touchAction: 'manipulation',
+					}}
+					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onMouseLeave={() => onRemoteMouseLeave && onRemoteMouseLeave()}
+				/>
+			)}
 
 			
-			{/* Remote overlay portal - renders at document body level for fullscreen (Desktop only) */}
-			{(() => {
-				const fullscreen = isActuallyFullscreen()
-				const isDesktop = window.innerWidth > 768
-				if (fullscreen && isDesktop && remoteOverlayComponent) {
-					console.log('[Remote] Rendering overlay portal - visible:', remoteOverlayVisible, 'fullscreen:', fullscreen)
-					return createPortal(
-						<div 
-							className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
-							style={{
-								position: 'fixed',
-								right: 0,
-								bottom: '20px',
-								zIndex: 2147483647, // Maximum z-index value
-								display: remoteOverlayVisible ? 'block' : 'block', // Always render, just hide with transform
-								visibility: 'visible', // Always visible, use transform to hide
-								opacity: remoteOverlayVisible ? 1 : 0,
-								transform: remoteOverlayVisible ? 'translateX(0)' : 'translateX(110%)',
-								transition: 'transform 0.3s ease-out, opacity 0.3s ease-out',
-								pointerEvents: remoteOverlayVisible ? 'auto' : 'none',
-							}}
-							data-visible={remoteOverlayVisible}
-							onMouseLeave={(e) => {
-								// Only trigger if mouse actually leaves the overlay (not just moving within it)
-								if (!e.currentTarget.contains(e.relatedTarget)) {
-									console.log('[Remote] Mouse left overlay area')
-									if (onRemoteMouseLeave) {
-										onRemoteMouseLeave()
-									}
-								}
-							}}
-						>
+			{/* Remote overlay portal - renders inside fullscreen container (Desktop only) */}
+			{isActuallyFullscreen() && window.innerWidth > 768 && tvFrameRef.current && remoteOverlayComponent && createPortal(
+				<div 
+					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
+					onMouseEnter={() => {
+						// Keep remote visible while hovering over it - reset timer
+						onRemoteEdgeHover && onRemoteEdgeHover()
+					}}
+					onMouseLeave={(e) => {
+						// Only trigger if mouse actually leaves the overlay (not just moving within it)
+						if (!e.currentTarget.contains(e.relatedTarget)) {
+							onRemoteMouseLeave && onRemoteMouseLeave()
+						}
+					}}
+				>
 					{/* Backdrop - tap to dismiss */}
 					{remoteOverlayVisible && (
 						<div 
 							className="remote-overlay-backdrop" 
 							onClick={(e) => {
 								e.stopPropagation()
-								if (onRemoteMouseLeave) {
-									onRemoteMouseLeave()
-								}
+								onRemoteEdgeHover && onRemoteEdgeHover()
 							}}
 							onTouchEnd={(e) => {
 								e.stopPropagation()
-								if (onRemoteMouseLeave) {
-									onRemoteMouseLeave()
-								}
+								onRemoteEdgeHover && onRemoteEdgeHover()
 							}}
 						/>
 					)}
@@ -649,11 +541,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						{remoteOverlayComponent}
 					</div>
 				</div>,
-				document.body
-					)
-				}
-				return null
-			})()}
+				tvFrameRef.current
+			)}
 			
 			{/* Menu portal - renders inside fullscreen container */}
 			{tvFrameRef.current && menuComponent && createPortal(

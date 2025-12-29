@@ -69,8 +69,13 @@ const apiLimiter = createRateLimiter({
     message: 'Too many API requests. Please slow down.',
     retryAfter: 60
   },
-  // Skip internal monitoring endpoints from rate limiting
-  skip: (req) => req.path.includes('/monitoring/') || req.path.includes('/broadcast-state/'),
+  // Skip internal monitoring endpoints and global-epoch from rate limiting
+  // global-epoch never changes and is heavily cached, safe to exclude
+  skip: (req) => 
+    req.path.includes('/monitoring/') || 
+    req.path.includes('/broadcast-state/') ||
+    req.path === '/global-epoch' || 
+    req.path.startsWith('/global-epoch'),
   keyGenerator: (req) => req.ip || req.connection.remoteAddress || 'unknown'
 });
 

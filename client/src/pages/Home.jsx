@@ -97,11 +97,24 @@ export default function Home() {
 			return
 		}
 		
-		// Show remote and reset auto-hide timer (original behavior: show on hover, auto-hide after 5 sec)
+		// Show remote and reset auto-hide timer (original behavior: show on hover, auto-hide after 2.5 sec)
 		setRemoteOverlayVisible(prev => {
-			if (!prev) {
-				console.log('[Remote] Showing remote overlay')
+			// If already visible, just reset the timer (don't re-render)
+			if (prev) {
+				// Clear existing timeout and set new one
+				if (remoteHideTimeoutRef.current) {
+					clearTimeout(remoteHideTimeoutRef.current)
+				}
+				remoteHideTimeoutRef.current = setTimeout(() => {
+					console.log('[Remote] Auto-hiding after 2.5 seconds')
+					setRemoteOverlayVisible(false)
+					remoteHideTimeoutRef.current = null
+				}, 2500)
+				return prev // Return same value to prevent re-render
 			}
+			
+			// First time showing - log it
+			console.log('[Remote] Showing remote overlay')
 			
 			// Clear any existing timeout
 			if (remoteHideTimeoutRef.current) {
@@ -109,27 +122,27 @@ export default function Home() {
 				remoteHideTimeoutRef.current = null
 			}
 			
-			// Set new auto-hide timer (5 seconds)
+			// Set new auto-hide timer (2.5 seconds)
 			remoteHideTimeoutRef.current = setTimeout(() => {
 				console.log('[Remote] Auto-hiding after 5 seconds')
 				setRemoteOverlayVisible(false)
 				remoteHideTimeoutRef.current = null
 			}, 5000)
 			
-			// Always show when hovered (don't toggle)
+			// Show the remote
 			return true
 		})
 	}, [isFullscreen])
 	
 	// Handle mouse leave from remote overlay area
 	const handleRemoteMouseLeave = useCallback(() => {
-		console.log('[Remote] Mouse left remote area, starting 5 second timer')
+		console.log('[Remote] Mouse left remote area, starting 2.5 second timer')
 		// Clear existing timeout
 		if (remoteHideTimeoutRef.current) {
 			clearTimeout(remoteHideTimeoutRef.current)
 			remoteHideTimeoutRef.current = null
 		}
-		// Set new timeout to hide after 5 seconds
+		// Set new timeout to hide after 2.5 seconds
 		remoteHideTimeoutRef.current = setTimeout(() => {
 			console.log('[Remote] Auto-hiding after 5 seconds (mouse left)')
 			setRemoteOverlayVisible(false)

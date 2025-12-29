@@ -81,6 +81,25 @@
 	visibility: visible !important;
 }
 
+/* ID selector has higher specificity - ensure it wins */
+#fullscreen-remote-overlay {
+	z-index: 2147483647 !important;
+}
+
+#fullscreen-remote-overlay[data-visible="true"] {
+	transform: translateX(0) !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	pointer-events: auto !important;
+}
+
+#fullscreen-remote-overlay[data-visible="false"] {
+	transform: translateX(110%) !important;
+	opacity: 0 !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
 /* Mobile Remote Toggle Button - Modern Floating Action Button */
 .mobile-remote-toggle {
 	position: fixed;
