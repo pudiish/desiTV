@@ -6,6 +6,8 @@
  */
 
 import { getUserTimezone } from './timezoneService'
+import { dedupeFetch } from '../../utils/requestDeduplication'
+import { validateAndRefreshEpoch } from '../../utils/checksumValidator'
 
 const EPOCH_CACHE_KEY = 'desitv-global-epoch-cached'
 const EPOCH_CACHE_TTL = 2 * 1000 // 2 seconds - minimal cache for perfect sync
