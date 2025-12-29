@@ -333,6 +333,11 @@ export default function Home() {
 			console.error('[Home] Error initializing category state:', err)
 		}
 		
+		// Reset manual mode FIRST when switching categories (come back to live)
+		// This ensures we're in timeline mode before calculating position
+		broadcastStateManager.setManualMode(category._id, false)
+		console.log(`[Home] Category changed - reset to LIVE mode for ${categoryName}`)
+		
 		// Calculate timeline position for new category (pseudo-live)
 		let targetIndex = 0
 		let shouldUseTimeline = true
@@ -370,8 +375,6 @@ export default function Home() {
 				)
 					setStatusMessage(`${categoryName} - Video 1`)
 				}
-				// Reset manual mode when switching categories (start fresh)
-				broadcastStateManager.setManualMode(category._id, false)
 				// Force Player to recalculate by updating timestamp
 				setVideoSwitchTimestamp(Date.now())
 			} catch (err) {
