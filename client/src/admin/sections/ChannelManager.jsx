@@ -111,6 +111,35 @@ function ChannelManagerContent() {
 		}
 	}
 
+	const syncBroadcastState = async (channelId) => {
+		try {
+			console.log(`[Sync] Manually syncing broadcast state for channel ${channelId}...`)
+			const channelRes = await fetch(`/api/channels/${channelId}`)
+			if (!channelRes.ok) return
+			const channel = await channelRes.json()
+			const videoDurations = channel.items.map(v => v.duration || 30)
+			const playlistTotalDuration = videoDurations.reduce((a, b) => a + b, 0)
+
+			await fetch(`/api/broadcast-state/${channelId}`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					channelId,
+					channelName: channel.name,
+					playlistStartEpoch: channel.playlistStartEpoch,
+					playlistTotalDuration,
+					videoDurations
+				})
+			})
+			console.log('[Sync] Broadcast state synced.')
+		} catch (err) {
+			console.error('[Sync] Failed to sync broadcast state:', err)
+		}
+	}
+
 	const deleteVideo = async (channelId, videoId) => {
 		if (!window.confirm('Delete this video?')) return
 		
@@ -123,13 +152,19 @@ function ChannelManagerContent() {
 		try {
 			// Use apiClient which handles CSRF tokens automatically
 			await apiClient.delete(`/api/channels/${channelId}/videos/${videoId}`)
+			
 			// Update selected channel
 			setSelectedChannel(prev => ({
 				...prev,
 				items: prev.items.filter(v => v._id !== videoId && v.youtubeId !== videoId)
 			}))
+			
 			// Refresh channels list
 			fetchChannels()
+			
+			// ROAST: "Syncing manually because the backend is asleep at the wheel."
+			await syncBroadcastState(channelId)
+			
 			// Clear error on success
 			setError(null)
 		} catch (err) {
