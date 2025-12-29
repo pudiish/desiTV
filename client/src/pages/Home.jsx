@@ -68,7 +68,7 @@ export default function Home() {
 		tapTriggerRef.current = handler
 	}
 
-	// Callback to show remote overlay (triggered from TVFrame sensor or mobile toggle)
+	// Callback to show remote overlay when hovering right edge sensor or remote itself
 	const handleRemoteEdgeHover = useCallback(() => {
 		// Check if fullscreen (including iOS CSS fullscreen)
 		const isCurrentlyFullscreen = !!(
@@ -82,20 +82,21 @@ export default function Home() {
 		
 		if (!isCurrentlyFullscreen) return
 		
-		// Show remote and clear any existing timeout
+		// Don't auto-hide on mobile (user controls it manually)
+		const isMobile = window.innerWidth <= 768
+		if (isMobile) return
+		
+		// Clear any existing hide timeout (user is hovering, so cancel auto-hide)
 		if (remoteHideTimeoutRef.current) {
 			clearTimeout(remoteHideTimeoutRef.current)
 			remoteHideTimeoutRef.current = null
 		}
 		
-		// Don't auto-hide on mobile (user controls it manually)
-		const isMobile = window.innerWidth <= 768
-		if (!isMobile) {
-			setRemoteOverlayVisible(true)
-		}
+		// Show remote if not already visible
+		setRemoteOverlayVisible(true)
 	}, [isFullscreen])
 
-	// Callback to hide remote overlay after mouse leaves (with 3 second delay)
+	// Callback to start hide timer when mouse leaves both sensor and remote (with 3 second delay)
 	const handleRemoteMouseLeave = useCallback(() => {
 		// Check if fullscreen
 		const isCurrentlyFullscreen = !!(
@@ -113,12 +114,12 @@ export default function Home() {
 		const isMobile = window.innerWidth <= 768
 		if (isMobile) return
 		
-		// Clear any existing timeout
+		// Clear any existing timeout before setting new one
 		if (remoteHideTimeoutRef.current) {
 			clearTimeout(remoteHideTimeoutRef.current)
 		}
 		
-		// Set timeout to hide after 3 seconds
+		// Set timeout to hide after 3 seconds of no hover
 		remoteHideTimeoutRef.current = setTimeout(() => {
 			setRemoteOverlayVisible(false)
 			remoteHideTimeoutRef.current = null

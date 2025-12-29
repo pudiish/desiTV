@@ -485,9 +485,18 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						background: 'transparent',
 						touchAction: 'manipulation',
 					}}
-					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-					onMouseLeave={() => onRemoteMouseLeave && onRemoteMouseLeave()}
+					onMouseEnter={() => {
+						// Show remote and cancel hide timer when entering sensor area
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					onMouseMove={() => {
+						// Keep remote visible and cancel hide timer while moving in sensor area
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					onMouseLeave={() => {
+						// Start 3-second hide timer when leaving sensor area
+						if (onRemoteMouseLeave) onRemoteMouseLeave()
+					}}
 				/>
 			)}
 
@@ -497,13 +506,19 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
 					onMouseEnter={() => {
-						// Clear timeout when mouse enters remote overlay
+						// Keep remote visible and cancel hide timer when mouse enters remote overlay
+						if (onRemoteEdgeHover) {
+							onRemoteEdgeHover()
+						}
+					}}
+					onMouseMove={() => {
+						// Keep remote visible while moving within remote overlay
 						if (onRemoteEdgeHover) {
 							onRemoteEdgeHover()
 						}
 					}}
 					onMouseLeave={() => {
-						// Start hide timeout when mouse leaves remote overlay
+						// Start 3-second hide timer when mouse leaves remote overlay
 						if (onRemoteMouseLeave) {
 							onRemoteMouseLeave()
 						}
