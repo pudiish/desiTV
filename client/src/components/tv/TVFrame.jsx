@@ -134,6 +134,14 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				document.msFullscreenElement ||
 				document.body.classList.contains('ios-fullscreen-active') // iOS CSS fullscreen
 			)
+			
+			// Add/remove class on body for CSS targeting of remote overlay
+			if (isCurrentlyFullscreen) {
+				document.body.classList.add('tv-fullscreen-active')
+			} else {
+				document.body.classList.remove('tv-fullscreen-active')
+			}
+			
 			setIsFullscreen(isCurrentlyFullscreen)
 			if (onFullscreenChange) {
 				onFullscreenChange(isCurrentlyFullscreen)
@@ -471,7 +479,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen - Desktop only */}
-			{isActuallyFullscreen() && window.innerWidth > 768 && (
+			{isActuallyFullscreen() && window.innerWidth > 768 && createPortal(
 				<div
 					className="remote-trigger-sensor"
 					style={{
@@ -485,16 +493,27 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						background: 'transparent',
 						touchAction: 'manipulation',
 					}}
-					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
-				/>
+					onMouseEnter={() => {
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+					onMouseMove={() => {
+						if (onRemoteEdgeHover) onRemoteEdgeHover()
+					}}
+				/>,
+				document.body
 			)}
 
 			
-			{/* Remote overlay portal - renders inside fullscreen container (Desktop only) */}
-			{isActuallyFullscreen() && window.innerWidth > 768 && tvFrameRef.current && remoteOverlayComponent && createPortal(
+			{/* Remote overlay portal - renders at document body level for fullscreen (Desktop only) */}
+			{isActuallyFullscreen() && window.innerWidth > 768 && remoteOverlayComponent && createPortal(
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
+					style={{
+						position: 'fixed',
+						right: 0,
+						bottom: '20px',
+						zIndex: 1000,
+					}}
 				>
 					{/* Backdrop - tap to dismiss */}
 					{remoteOverlayVisible && (
@@ -520,7 +539,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						{remoteOverlayComponent}
 					</div>
 				</div>,
-				tvFrameRef.current
+				document.body
 			)}
 			
 			{/* Menu portal - renders inside fullscreen container */}

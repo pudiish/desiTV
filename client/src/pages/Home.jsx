@@ -77,22 +77,32 @@ export default function Home() {
 			document.mozFullScreenElement ||
 			document.msFullscreenElement ||
 			document.body.classList.contains('ios-fullscreen-active') ||
+			document.documentElement.classList.contains('ios-fullscreen-active') ||
 			isFullscreen
 		)
 		
-		if (!isCurrentlyFullscreen) return
+		if (!isCurrentlyFullscreen) {
+			// If not fullscreen, hide remote
+			setRemoteOverlayVisible(false)
+			return
+		}
+		
+		// Only work on desktop
+		const isMobile = window.innerWidth <= 768
+		if (isMobile) return
 		
 		// Toggle remote visibility
 		setRemoteOverlayVisible(prev => {
 			const newState = !prev
 			if (remoteHideTimeoutRef.current) {
 				clearTimeout(remoteHideTimeoutRef.current)
+				remoteHideTimeoutRef.current = null
 			}
-			// Don't auto-hide on mobile (user controls it manually)
-			const isMobile = window.innerWidth <= 768
-			if (newState && !isMobile) {
+			// Auto-hide after 5 seconds
+			if (newState) {
 				remoteHideTimeoutRef.current = setTimeout(() => {
 					setRemoteOverlayVisible(false)
+					remoteHideTimeoutRef.current = null
 				}, 5000)
 			}
 			return newState
