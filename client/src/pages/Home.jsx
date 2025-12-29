@@ -78,8 +78,11 @@ export default function Home() {
 			document.msFullscreenElement ||
 			document.body.classList.contains('ios-fullscreen-active') ||
 			document.documentElement.classList.contains('ios-fullscreen-active') ||
+			document.body.classList.contains('tv-fullscreen-active') ||
 			isFullscreen
 		)
+		
+		console.log('[Remote] handleRemoteEdgeHover called, fullscreen:', isCurrentlyFullscreen, 'isFullscreen:', isFullscreen)
 		
 		if (!isCurrentlyFullscreen) {
 			// If not fullscreen, hide remote
@@ -89,11 +92,15 @@ export default function Home() {
 		
 		// Only work on desktop
 		const isMobile = window.innerWidth <= 768
-		if (isMobile) return
+		if (isMobile) {
+			console.log('[Remote] Mobile device, skipping')
+			return
+		}
 		
 		// Toggle remote visibility
 		setRemoteOverlayVisible(prev => {
 			const newState = !prev
+			console.log('[Remote] Toggling remote visibility:', prev, '->', newState)
 			if (remoteHideTimeoutRef.current) {
 				clearTimeout(remoteHideTimeoutRef.current)
 				remoteHideTimeoutRef.current = null
@@ -101,6 +108,7 @@ export default function Home() {
 			// Auto-hide after 5 seconds
 			if (newState) {
 				remoteHideTimeoutRef.current = setTimeout(() => {
+					console.log('[Remote] Auto-hiding after 5 seconds')
 					setRemoteOverlayVisible(false)
 					remoteHideTimeoutRef.current = null
 				}, 5000)
@@ -109,6 +117,10 @@ export default function Home() {
 		})
 	}, [isFullscreen])
 
+	// Debug: Log remote visibility changes
+	useEffect(() => {
+		console.log('[Remote] Visibility changed:', remoteOverlayVisible, 'Fullscreen:', isFullscreen)
+	}, [remoteOverlayVisible, isFullscreen])
 	
 	// Handle swipe down to dismiss (mobile only)
 	const handleRemoteSwipeDismiss = useCallback(() => {
@@ -932,7 +944,7 @@ export default function Home() {
 			onVolumeUp={handleVolumeUp}
 			onVolumeDown={handleVolumeDown}
 			onMute={handleMute}
-			remoteOverlayComponent={window.innerWidth > 768 ? (
+			remoteOverlayComponent={
 				<TVRemote
 					power={power}
 					onPowerToggle={handlePowerToggle}
@@ -951,7 +963,7 @@ export default function Home() {
 					menuOpen={menuOpen}
 					onTapTrigger={handleTapTrigger}
 				/>
-			) : null}
+			}
 			menuComponent={menuOpen ? (
 				<Suspense fallback={<div className="menu-loading">Loading menu...</div>}>
 					<TVMenuV2

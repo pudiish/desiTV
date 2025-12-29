@@ -18,15 +18,17 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
-		return !!(
+		const fullscreen = !!(
 			isFullscreen ||
 			document.fullscreenElement ||
 			document.webkitFullscreenElement ||
 			document.mozFullScreenElement ||
 			document.msFullscreenElement ||
 			document.body.classList.contains('ios-fullscreen-active') ||
+			document.body.classList.contains('tv-fullscreen-active') ||
 			(tvFrameRef.current && tvFrameRef.current.classList.contains('ios-fullscreen-active'))
 		)
+		return fullscreen
 	}
 
 	// Store tap handler from Player
@@ -479,42 +481,61 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				</div>
 			</div>
 			{/* Right-edge sensor to reveal remote in fullscreen - Desktop only */}
-			{isActuallyFullscreen() && window.innerWidth > 768 && createPortal(
-				<div
-					className="remote-trigger-sensor"
-					style={{
-						position: 'fixed',
-						top: 0,
-						right: 0,
-						width: '120px',
-						height: '100vh',
-						zIndex: 9999,
-						pointerEvents: 'auto',
-						background: 'transparent',
-						touchAction: 'manipulation',
-					}}
-					onMouseEnter={() => {
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-					onMouseMove={() => {
-						if (onRemoteEdgeHover) onRemoteEdgeHover()
-					}}
-				/>,
-				document.body
-			)}
+			{(() => {
+				const fullscreen = isActuallyFullscreen()
+				const isDesktop = window.innerWidth > 768
+				if (fullscreen && isDesktop) {
+					return createPortal(
+						<div
+							className="remote-trigger-sensor"
+							style={{
+								position: 'fixed',
+								top: 0,
+								right: 0,
+								width: '120px',
+								height: '100vh',
+								zIndex: 99999,
+								pointerEvents: 'auto',
+								background: 'transparent',
+								touchAction: 'manipulation',
+							}}
+							onMouseEnter={() => {
+								console.log('[Remote] Sensor mouse enter - fullscreen:', fullscreen, 'isDesktop:', isDesktop)
+								if (onRemoteEdgeHover) onRemoteEdgeHover()
+							}}
+							onMouseMove={() => {
+								// Only trigger on move
+								if (onRemoteEdgeHover) onRemoteEdgeHover()
+							}}
+						/>,
+						document.body
+					)
+				}
+				return null
+			})()}
 
 			
 			{/* Remote overlay portal - renders at document body level for fullscreen (Desktop only) */}
-			{isActuallyFullscreen() && window.innerWidth > 768 && remoteOverlayComponent && createPortal(
-				<div 
-					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
-					style={{
-						position: 'fixed',
-						right: 0,
-						bottom: '20px',
-						zIndex: 1000,
-					}}
-				>
+			{(() => {
+				const fullscreen = isActuallyFullscreen()
+				const isDesktop = window.innerWidth > 768
+				if (fullscreen && isDesktop && remoteOverlayComponent) {
+					console.log('[Remote] Rendering overlay portal - visible:', remoteOverlayVisible)
+					return createPortal(
+						<div 
+							className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
+							style={{
+								position: 'fixed',
+								right: 0,
+								bottom: '20px',
+								zIndex: 100000,
+								display: 'block',
+								visibility: remoteOverlayVisible ? 'visible' : 'hidden',
+								opacity: remoteOverlayVisible ? 1 : 0,
+								transform: remoteOverlayVisible ? 'translateX(0)' : 'translateX(110%)',
+							}}
+							data-visible={remoteOverlayVisible}
+						>
 					{/* Backdrop - tap to dismiss */}
 					{remoteOverlayVisible && (
 						<div 
@@ -540,7 +561,10 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 					</div>
 				</div>,
 				document.body
-			)}
+					)
+				}
+				return null
+			})()}
 			
 			{/* Menu portal - renders inside fullscreen container */}
 			{tvFrameRef.current && menuComponent && createPortal(
@@ -551,12 +575,15 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	)
 }, (prevProps, nextProps) => {
 	// Custom comparison for React.memo - only re-render if critical props change
+	// IMPORTANT: Include remoteOverlayVisible and remoteOverlayComponent to ensure remote updates
 	return (
 		prevProps.power === nextProps.power &&
 		prevProps.activeChannel?._id === nextProps.activeChannel?._id &&
 		prevProps.volume === nextProps.volume &&
 		prevProps.staticActive === nextProps.staticActive &&
-		prevProps.isBuffering === nextProps.isBuffering
+		prevProps.isBuffering === nextProps.isBuffering &&
+		prevProps.remoteOverlayVisible === nextProps.remoteOverlayVisible &&
+		prevProps.remoteOverlayComponent === nextProps.remoteOverlayComponent
 	)
 })
 
