@@ -29,23 +29,45 @@ function generateChannelChecksum(channels) {
 	const channelArray = Array.isArray(channels) ? channels : [channels]
 	
 	// Create minimal representation for checksum (only critical fields)
-	const minimal = channelArray.map(ch => ({
-		_id: ch._id?.toString(),
-		name: ch.name,
-		itemsCount: ch.items?.length || 0,
-		itemsHash: ch.items?.map(item => ({
-			_id: item._id?.toString(),
-			youtubeId: item.youtubeId,
-			duration: item.duration,
-		})).reduce((acc, item) => {
-			return acc + (item.youtubeId || '') + (item.duration || 0)
-		}, '') || '',
-		playlistStartEpoch: ch.playlistStartEpoch?.toISOString(),
-		timeBasedPlaylists: ch.timeBasedPlaylists ? Object.keys(ch.timeBasedPlaylists).reduce((acc, key) => {
-			acc[key] = ch.timeBasedPlaylists[key]?.length || 0
-			return acc
-		}, {}) : null,
-	}))
+	const minimal = channelArray.map(ch => {
+		// Handle playlistStartEpoch - could be Date, string, or null/undefined
+		let epochStr = null
+		if (ch.playlistStartEpoch) {
+			if (ch.playlistStartEpoch instanceof Date) {
+				epochStr = ch.playlistStartEpoch.toISOString()
+			} else if (typeof ch.playlistStartEpoch === 'string') {
+				// Already a string, validate it's a valid ISO date
+				try {
+					const date = new Date(ch.playlistStartEpoch)
+					if (!isNaN(date.getTime())) {
+						epochStr = date.toISOString()
+					} else {
+						epochStr = ch.playlistStartEpoch
+					}
+				} catch {
+					epochStr = ch.playlistStartEpoch
+				}
+			}
+		}
+		
+		return {
+			_id: ch._id?.toString(),
+			name: ch.name,
+			itemsCount: ch.items?.length || 0,
+			itemsHash: ch.items?.map(item => ({
+				_id: item._id?.toString(),
+				youtubeId: item.youtubeId,
+				duration: item.duration,
+			})).reduce((acc, item) => {
+				return acc + (item.youtubeId || '') + (item.duration || 0)
+			}, '') || '',
+			playlistStartEpoch: epochStr,
+			timeBasedPlaylists: ch.timeBasedPlaylists ? Object.keys(ch.timeBasedPlaylists).reduce((acc, key) => {
+				acc[key] = ch.timeBasedPlaylists[key]?.length || 0
+				return acc
+			}, {}) : null,
+		}
+	})
 	
 	return generateChecksum(minimal)
 }
