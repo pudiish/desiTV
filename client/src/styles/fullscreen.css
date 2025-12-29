@@ -23,6 +23,8 @@
 	margin: 0 !important;
 	overflow: hidden !important;
 	z-index: 99999 !important;
+	/* Allow pointer events to pass through to sensor on right edge */
+	pointer-events: none !important;
 }
 
 /* ===========================================
@@ -33,6 +35,8 @@
 .tv-frame-container:-webkit-full-screen .tv-frame,
 .tv-frame-container:-moz-full-screen .tv-frame,
 .tv-frame-container:-ms-fullscreen .tv-frame {
+	/* Re-enable pointer events on the TV frame itself */
+	pointer-events: auto !important;
 	/* Maximum size while keeping 4:3 */
 	width: min(calc(98vh * 1.333), 98vw) !important;
 	min-width: min(calc(98vh * 1.333), 98vw) !important;
@@ -492,6 +496,8 @@ body.ios-fullscreen-active {
 .tv-frame-container.ios-fullscreen-active .tv-frame,
 body.ios-fullscreen-active .tv-frame-container .tv-frame,
 html.ios-fullscreen-active .tv-frame-container .tv-frame {
+	/* Re-enable pointer events on the TV frame itself */
+	pointer-events: auto !important;
 	/* Maximum size keeping 4:3 */
 	width: min(calc(98vh * 1.333), 98vw) !important;
 	min-width: min(calc(98vh * 1.333), 98vw) !important;
@@ -659,6 +665,15 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 		position: fixed !important;
 		pointer-events: auto !important;
 		background: transparent !important;
+		/* Ensure it's above the TV container */
+		isolation: isolate !important;
+	}
+	
+	/* Prevent TV container from blocking sensor area on right edge */
+	body.tv-fullscreen-active .tv-frame-container,
+	body.ios-fullscreen-active .tv-frame-container {
+		/* Create a "hole" for the sensor by not blocking pointer events in that area */
+		/* The sensor itself will handle events in the right 200px */
 	}
 }
 

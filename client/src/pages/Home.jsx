@@ -97,25 +97,45 @@ export default function Home() {
 			return
 		}
 		
-		// Toggle remote visibility
+		// Show remote and reset auto-hide timer (original behavior: show on hover, auto-hide after 5 sec)
 		setRemoteOverlayVisible(prev => {
-			const newState = !prev
-			console.log('[Remote] Toggling remote visibility:', prev, '->', newState)
+			if (!prev) {
+				console.log('[Remote] Showing remote overlay')
+			}
+			
+			// Clear any existing timeout
 			if (remoteHideTimeoutRef.current) {
 				clearTimeout(remoteHideTimeoutRef.current)
 				remoteHideTimeoutRef.current = null
 			}
-			// Auto-hide after 5 seconds
-			if (newState) {
-				remoteHideTimeoutRef.current = setTimeout(() => {
-					console.log('[Remote] Auto-hiding after 5 seconds')
-					setRemoteOverlayVisible(false)
-					remoteHideTimeoutRef.current = null
-				}, 5000)
-			}
-			return newState
+			
+			// Set new auto-hide timer (5 seconds)
+			remoteHideTimeoutRef.current = setTimeout(() => {
+				console.log('[Remote] Auto-hiding after 5 seconds')
+				setRemoteOverlayVisible(false)
+				remoteHideTimeoutRef.current = null
+			}, 5000)
+			
+			// Always show when hovered (don't toggle)
+			return true
 		})
 	}, [isFullscreen])
+	
+	// Handle mouse leave from remote overlay area
+	const handleRemoteMouseLeave = useCallback(() => {
+		console.log('[Remote] Mouse left remote area, starting 5 second timer')
+		// Clear existing timeout
+		if (remoteHideTimeoutRef.current) {
+			clearTimeout(remoteHideTimeoutRef.current)
+			remoteHideTimeoutRef.current = null
+		}
+		// Set new timeout to hide after 5 seconds
+		remoteHideTimeoutRef.current = setTimeout(() => {
+			console.log('[Remote] Auto-hiding after 5 seconds (mouse left)')
+			setRemoteOverlayVisible(false)
+			remoteHideTimeoutRef.current = null
+		}, 5000)
+	}, [])
 
 	// Debug: Log remote visibility changes
 	useEffect(() => {
@@ -935,6 +955,7 @@ export default function Home() {
 			onTapHandlerReady={handleTapHandlerReady}
 			onFullscreenChange={setIsFullscreen}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
+			onRemoteMouseLeave={handleRemoteMouseLeave}
 			remoteOverlayVisible={remoteOverlayVisible}
 			onPowerToggle={handlePowerToggle}
 			onChannelUp={handleChannelUp}

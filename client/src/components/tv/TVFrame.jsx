@@ -8,7 +8,7 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  * TVFrame Component - PERFORMANCE OPTIMIZED
  * Memoized to prevent unnecessary re-renders
  */
-const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false }) {
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(isFullscreenProp)
 	const [showPreview, setShowPreview] = useState(false)
@@ -45,6 +45,42 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			})
 		}
 	}, [isFullscreen])
+	
+	// Fallback: Document-level mouse tracking for right edge detection
+	// This catches mouse events even if the sensor div is blocked
+	useEffect(() => {
+		if (typeof window === 'undefined' || !onRemoteEdgeHover) return
+		
+		let lastTriggerTime = 0
+		const throttleMs = 100 // Reduce throttle for better responsiveness
+		
+		const handleMouseMove = (e) => {
+			// Only work in fullscreen and on desktop
+			if (!isActuallyFullscreen() || window.innerWidth <= 768) return
+			
+			const now = Date.now()
+			if (now - lastTriggerTime < throttleMs) return
+			
+			const rightEdge = window.innerWidth
+			const threshold = 200 // Same as sensor width
+			const isAtRightEdge = e.clientX >= (rightEdge - threshold)
+			
+			if (isAtRightEdge) {
+				console.log('[Remote] 🎯 Mouse at right edge detected via document listener!', e.clientX, 'threshold:', rightEdge - threshold)
+				lastTriggerTime = now
+				onRemoteEdgeHover()
+			}
+		}
+		
+		// Use capture phase to catch events before they're blocked
+		document.addEventListener('mousemove', handleMouseMove, { capture: true, passive: true })
+		console.log('[Remote] ✅ Document-level listener attached')
+		
+		return () => {
+			console.log('[Remote] 🗑️ Document-level listener removed')
+			document.removeEventListener('mousemove', handleMouseMove, { capture: true })
+		}
+	}, [isFullscreen, onRemoteEdgeHover])
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -575,6 +611,15 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 								pointerEvents: remoteOverlayVisible ? 'auto' : 'none',
 							}}
 							data-visible={remoteOverlayVisible}
+							onMouseLeave={(e) => {
+								// Only trigger if mouse actually leaves the overlay (not just moving within it)
+								if (!e.currentTarget.contains(e.relatedTarget)) {
+									console.log('[Remote] Mouse left overlay area')
+									if (onRemoteMouseLeave) {
+										onRemoteMouseLeave()
+									}
+								}
+							}}
 						>
 					{/* Backdrop - tap to dismiss */}
 					{remoteOverlayVisible && (
@@ -582,11 +627,15 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 							className="remote-overlay-backdrop" 
 							onClick={(e) => {
 								e.stopPropagation()
-								onRemoteEdgeHover && onRemoteEdgeHover()
+								if (onRemoteMouseLeave) {
+									onRemoteMouseLeave()
+								}
 							}}
 							onTouchEnd={(e) => {
 								e.stopPropagation()
-								onRemoteEdgeHover && onRemoteEdgeHover()
+								if (onRemoteMouseLeave) {
+									onRemoteMouseLeave()
+								}
 							}}
 						/>
 					)}
@@ -618,6 +667,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	if (
 		prevProps.remoteOverlayVisible !== nextProps.remoteOverlayVisible ||
 		prevProps.onRemoteEdgeHover !== nextProps.onRemoteEdgeHover ||
+		prevProps.onRemoteMouseLeave !== nextProps.onRemoteMouseLeave ||
 		prevProps.remoteOverlayComponent !== nextProps.remoteOverlayComponent
 	) {
 		return false // Re-render needed
