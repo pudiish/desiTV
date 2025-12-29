@@ -8,7 +8,7 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  * TVFrame Component - PERFORMANCE OPTIMIZED
  * Memoized to prevent unnecessary re-renders
  */
-const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(false)
 	const [showPreview, setShowPreview] = useState(false)
@@ -487,6 +487,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 					}}
 					onMouseEnter={() => onRemoteEdgeHover && onRemoteEdgeHover()}
 					onMouseMove={() => onRemoteEdgeHover && onRemoteEdgeHover()}
+					onMouseLeave={() => onRemoteMouseLeave && onRemoteMouseLeave()}
 				/>
 			)}
 
@@ -495,6 +496,18 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			{isActuallyFullscreen() && window.innerWidth > 768 && tvFrameRef.current && remoteOverlayComponent && createPortal(
 				<div 
 					className={`remote-overlay ${remoteOverlayVisible ? 'visible' : ''}`}
+					onMouseEnter={() => {
+						// Clear timeout when mouse enters remote overlay
+						if (onRemoteEdgeHover) {
+							onRemoteEdgeHover()
+						}
+					}}
+					onMouseLeave={() => {
+						// Start hide timeout when mouse leaves remote overlay
+						if (onRemoteMouseLeave) {
+							onRemoteMouseLeave()
+						}
+					}}
 				>
 					{/* Backdrop - tap to dismiss */}
 					{remoteOverlayVisible && (
@@ -502,11 +515,11 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 							className="remote-overlay-backdrop" 
 							onClick={(e) => {
 								e.stopPropagation()
-								onRemoteEdgeHover && onRemoteEdgeHover()
+								onRemoteMouseLeave && onRemoteMouseLeave()
 							}}
 							onTouchEnd={(e) => {
 								e.stopPropagation()
-								onRemoteEdgeHover && onRemoteEdgeHover()
+								onRemoteMouseLeave && onRemoteMouseLeave()
 							}}
 						/>
 					)}

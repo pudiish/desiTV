@@ -68,7 +68,7 @@ export default function Home() {
 		tapTriggerRef.current = handler
 	}
 
-	// Callback to show/hide remote overlay (triggered from TVFrame sensor or mobile toggle)
+	// Callback to show remote overlay (triggered from TVFrame sensor or mobile toggle)
 	const handleRemoteEdgeHover = useCallback(() => {
 		// Check if fullscreen (including iOS CSS fullscreen)
 		const isCurrentlyFullscreen = !!(
@@ -82,21 +82,58 @@ export default function Home() {
 		
 		if (!isCurrentlyFullscreen) return
 		
-		// Toggle remote visibility
-		setRemoteOverlayVisible(prev => {
-			const newState = !prev
+		// Show remote and clear any existing timeout
+		if (remoteHideTimeoutRef.current) {
+			clearTimeout(remoteHideTimeoutRef.current)
+			remoteHideTimeoutRef.current = null
+		}
+		
+		// Don't auto-hide on mobile (user controls it manually)
+		const isMobile = window.innerWidth <= 768
+		if (!isMobile) {
+			setRemoteOverlayVisible(true)
+		}
+	}, [isFullscreen])
+
+	// Callback to hide remote overlay after mouse leaves (with 3 second delay)
+	const handleRemoteMouseLeave = useCallback(() => {
+		// Check if fullscreen
+		const isCurrentlyFullscreen = !!(
+			document.fullscreenElement ||
+			document.webkitFullscreenElement ||
+			document.mozFullScreenElement ||
+			document.msFullscreenElement ||
+			document.body.classList.contains('ios-fullscreen-active') ||
+			isFullscreen
+		)
+		
+		if (!isCurrentlyFullscreen) return
+		
+		// Don't auto-hide on mobile
+		const isMobile = window.innerWidth <= 768
+		if (isMobile) return
+		
+		// Clear any existing timeout
+		if (remoteHideTimeoutRef.current) {
+			clearTimeout(remoteHideTimeoutRef.current)
+		}
+		
+		// Set timeout to hide after 3 seconds
+		remoteHideTimeoutRef.current = setTimeout(() => {
+			setRemoteOverlayVisible(false)
+			remoteHideTimeoutRef.current = null
+		}, 3000) // 3 seconds
+	}, [isFullscreen])
+
+	// Clear timeout when exiting fullscreen
+	useEffect(() => {
+		if (!isFullscreen) {
 			if (remoteHideTimeoutRef.current) {
 				clearTimeout(remoteHideTimeoutRef.current)
+				remoteHideTimeoutRef.current = null
 			}
-			// Don't auto-hide on mobile (user controls it manually)
-			const isMobile = window.innerWidth <= 768
-			if (newState && !isMobile) {
-				remoteHideTimeoutRef.current = setTimeout(() => {
-					setRemoteOverlayVisible(false)
-				}, 5000)
-			}
-			return newState
-		})
+			setRemoteOverlayVisible(false)
+		}
 	}, [isFullscreen])
 	
 	// Handle swipe down to dismiss (mobile only)
@@ -172,6 +209,11 @@ export default function Home() {
 			window.removeEventListener('beforeunload', handleBeforeUnload)
 			if (sessionSaveTimeoutRef.current) {
 				clearTimeout(sessionSaveTimeoutRef.current)
+			}
+			// Clear remote hide timeout on unmount
+			if (remoteHideTimeoutRef.current) {
+				clearTimeout(remoteHideTimeoutRef.current)
+				remoteHideTimeoutRef.current = null
 			}
 			// Stop checksum sync on unmount
 			checksumSyncService.stop()
@@ -907,6 +949,7 @@ export default function Home() {
 			onTapHandlerReady={handleTapHandlerReady}
 			onFullscreenChange={setIsFullscreen}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
+			onRemoteMouseLeave={handleRemoteMouseLeave}
 			remoteOverlayVisible={remoteOverlayVisible}
 			onPowerToggle={handlePowerToggle}
 			onChannelUp={handleChannelUp}
