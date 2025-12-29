@@ -15,6 +15,7 @@
  * - Drift anomaly detection
  * - Delta compression
  * - Manifest caching for offline computation
+ * - Visibility-based clock re-sync (Spotify approach)
  */
 
 import { predictiveEngine } from './PredictiveEngine';
@@ -32,6 +33,7 @@ const CONFIG = {
   // Clock sync
   CLOCK_SYNC_SAMPLES: 5,
   CLOCK_SYNC_INTERVAL_MS: 300000, // Re-sync clock every 5 min
+  CLOCK_SYNC_ON_WAKE_DELAY_MS: 500, // Delay after tab becomes visible
   
   // Drift thresholds
   DRIFT_TOLERANCE_MS: 200,
@@ -61,6 +63,8 @@ let isRunning = false;
 let lastServerCheck = 0;
 let serverCheckIntervalId = null;
 let clockSyncIntervalId = null;
+let visibilityListenerAttached = false;
+let lastHiddenTime = 0;
 
 // Listeners
 const stateListeners = new Set();
@@ -71,6 +75,7 @@ const stats = {
   strategySwitches: 0,
   serverChecks: 0,
   clockSyncs: 0,
+  visibilitySyncs: 0, // NEW: Track wake-up syncs
   anomaliesDetected: 0,
   seeks: 0,
   rateAdjustments: 0,
@@ -122,6 +127,9 @@ export async function startSync(catId, options = {}) {
   // Step 5: Start periodic clock re-sync
   startClockSyncLoop();
 
+  // Step 6: Setup visibility change handler (Spotify approach)
+  setupVisibilityHandler();
+
   // Emit initial state
   emitState();
 }
@@ -145,6 +153,9 @@ export function stopSync() {
     clearInterval(clockSyncIntervalId);
     clockSyncIntervalId = null;
   }
+
+  // Remove visibility listener
+  removeVisibilityHandler();
 
   // Disconnect all strategies
   socketService.disconnect();
@@ -494,6 +505,86 @@ function emitState() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// VISIBILITY-BASED CLOCK SYNC (Spotify Approach)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Handle visibility change (tab focus/blur, device sleep/wake)
+ * 
+ * Why this matters:
+ * - Tab in background: JS timers throttled, clock can drift 500ms+
+ * - Device sleep: Time passes but no sync
+ * - Timezone change: Clock offset becomes invalid
+ * 
+ * Solution: Re-sync clock when tab becomes visible again
+ */
+function handleVisibilityChange() {
+  if (document.hidden) {
+    // Tab became hidden - record when
+    lastHiddenTime = Date.now();
+    console.log('[SyncOrchestrator] Tab hidden');
+  } else {
+    // Tab became visible - check if we need to re-sync
+    const hiddenDuration = Date.now() - lastHiddenTime;
+    
+    console.log(`[SyncOrchestrator] Tab visible (was hidden for ${Math.round(hiddenDuration / 1000)}s)`);
+    
+    // Re-sync if hidden for more than 10 seconds
+    if (hiddenDuration > 10000 && isRunning) {
+      stats.visibilitySyncs++;
+      
+      // Delay slightly to let network stabilize
+      setTimeout(async () => {
+        console.log('[SyncOrchestrator] Re-syncing clock after visibility change');
+        
+        try {
+          // Re-sync clock
+          await performClockSync();
+          
+          // Force server check to validate position
+          await triggerServerCheck('visibility_change');
+          
+          // Reconnect WebSocket if it was disconnected during background
+          if (currentStrategy === 'websocket' && !socketService.isConnected()) {
+            console.log('[SyncOrchestrator] Reconnecting WebSocket after wake');
+            socketService.connect();
+            if (categoryId) {
+              socketService.subscribeToCategory(categoryId);
+            }
+          }
+          
+          emitState();
+        } catch (e) {
+          console.warn('[SyncOrchestrator] Visibility sync failed:', e.message);
+        }
+      }, CONFIG.CLOCK_SYNC_ON_WAKE_DELAY_MS);
+    }
+  }
+}
+
+/**
+ * Setup visibility change listener
+ */
+function setupVisibilityHandler() {
+  if (visibilityListenerAttached) return;
+  
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  visibilityListenerAttached = true;
+  
+  console.log('[SyncOrchestrator] Visibility handler attached');
+}
+
+/**
+ * Remove visibility change listener
+ */
+function removeVisibilityHandler() {
+  if (!visibilityListenerAttached) return;
+  
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  visibilityListenerAttached = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // STATS & DEBUG
 // ═══════════════════════════════════════════════════════════════════
 
@@ -509,6 +600,7 @@ export function getStats() {
     predictiveEngineStats: predictiveEngine.getStats(),
     lastServerCheck,
     timeSinceServerCheck: Date.now() - lastServerCheck,
+    visibilityListenerActive: visibilityListenerAttached,
   };
 }
 
