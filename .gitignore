@@ -1,77 +1,205 @@
-# Dependencies
-node_modules/
-client/node_modules/
-server/node_modules/
+# ═══════════════════════════════════════════════════════════════════
+# DesiTV .gitignore - Comprehensive ignore rules
+# ═══════════════════════════════════════════════════════════════════
 
-# Build outputs
+# ───────────────────────────────────────────────────────────────────
+# Dependencies
+# ───────────────────────────────────────────────────────────────────
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# ───────────────────────────────────────────────────────────────────
+# Build & Output
+# ───────────────────────────────────────────────────────────────────
 dist/
 build/
-client/dist/
-server/dist/
+out/
+*/dist/
+*/build/
 *.tgz
+*.tar.gz
+*.zip
 
-# Environment files
+# ───────────────────────────────────────────────────────────────────
+# Environment Variables
+# ───────────────────────────────────────────────────────────────────
 .env
-.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.*.local
 !.env.example
 
-# OS files
+# ───────────────────────────────────────────────────────────────────
+# OS Generated Files
+# ───────────────────────────────────────────────────────────────────
 .DS_Store
 .DS_Store?
 ._*
-Thumbs.db
+.Spotlight-V100
+.Trashes
 ehthumbs.db
+Thumbs.db
 Desktop.ini
+$RECYCLE.BIN/
 
-# IDE / Editor
+# ───────────────────────────────────────────────────────────────────
+# IDE / Editors
+# ───────────────────────────────────────────────────────────────────
 .idea/
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .cursor/
 *.swp
 *.swo
-*.sublime-*
+*.swn
+*~
+*.sublime-project
+*.sublime-workspace
 *.code-workspace
+.project
+.classpath
+.settings/
 
+# ───────────────────────────────────────────────────────────────────
 # Logs
-*.log
+# ───────────────────────────────────────────────────────────────────
 logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
-# Testing
+# ───────────────────────────────────────────────────────────────────
+# Testing & Coverage
+# ───────────────────────────────────────────────────────────────────
 coverage/
-.jest-cache/
-.nyc_output/
 *.lcov
+.nyc_output/
+.jest/
+jest-cache/
+.jest-cache/
+junit.xml
+test-results/
 
-# Temp files
+# ───────────────────────────────────────────────────────────────────
+# Cache & Temp
+# ───────────────────────────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
 *.tmp
 *.temp
-.cache/
 tmp/
 temp/
+.temp/
+.tmp/
 
-# Data files (generated)
+# ───────────────────────────────────────────────────────────────────
+# Generated Data Files
+# ───────────────────────────────────────────────────────────────────
 retro-tv.channels.json
 music_playlist.json
-retrotv-org
+retrotv-org/
+*.sqlite
+*.sqlite3
+*.db
 
-# Large media files
-client/public/sounds/tv-static-noise-291374.mp3
-client/public/sounds/alb_tvn0411_1080p.mp4
+# ───────────────────────────────────────────────────────────────────
+# Large Media Files (add to Git LFS or exclude)
+# ───────────────────────────────────────────────────────────────────
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.flac
+*.ogg
+# Exception: keep small essential sounds
+!client/public/sounds/*.mp3
 
+# ───────────────────────────────────────────────────────────────────
 # Deployment
-.vercel
-.render
-.netlify
+# ───────────────────────────────────────────────────────────────────
+.vercel/
+.render/
+.netlify/
+.serverless/
+.firebase/
+.amplify/
 
-# Debug
+# ───────────────────────────────────────────────────────────────────
+# Runtime
+# ───────────────────────────────────────────────────────────────────
 *.pid
 *.seed
 *.pid.lock
+pids/
 
+# ───────────────────────────────────────────────────────────────────
+# Package Manager Locks (uncomment if you want to ignore)
+# ───────────────────────────────────────────────────────────────────
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ───────────────────────────────────────────────────────────────────
 # Misc
+# ───────────────────────────────────────────────────────────────────
 *.bak
 *.orig
+*.backup
+*.old
+.history/
+*.patch
+
+# ───────────────────────────────────────────────────────────────────
+# Python (scripts folder)
+# ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+*.egg-info/
+.eggs/
+
+# ───────────────────────────────────────────────────────────────────
+# Secrets & Credentials (NEVER commit these)
+# ───────────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials.json
+serviceAccount.json
+*-credentials.json
+*.secret
+
+# ───────────────────────────────────────────────────────────────────
+# Docker (if used later)
+# ───────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+.docker/
