@@ -21,8 +21,29 @@ export async function dedupeFetch(url, options = {}) {
 	// Check if request is already in flight
 	if (requestCache.has(cacheKey)) {
 		const cachedPromise = requestCache.get(cacheKey)
-		// Return existing promise (deduplication)
-		return cachedPromise.then(response => response.clone())
+		// Return a new promise that clones the response immediately
+		// This ensures each caller gets their own cloned response before body consumption
+		return cachedPromise.then(response => {
+			// Clone immediately in the promise chain before body can be consumed
+			// If clone fails, the body was already consumed, so make a new request
+			try {
+				if (response.bodyUsed) {
+					// Body already consumed - remove stale cache and make new request
+					requestCache.delete(cacheKey)
+					return fetch(url, options)
+				}
+				return response.clone()
+			} catch (cloneErr) {
+				// Clone failed - body likely already consumed
+				// Remove stale cache entry and make a new request
+				requestCache.delete(cacheKey)
+				return fetch(url, options)
+			}
+		}).catch(error => {
+			// If cached promise rejected, remove from cache
+			requestCache.delete(cacheKey)
+			throw error
+		})
 	}
 
 	// Create new request
