@@ -24,7 +24,8 @@
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.3.4",
-    "redis": "^4.7.1"
+    "redis": "^4.7.1",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",

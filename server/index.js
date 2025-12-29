@@ -264,8 +264,23 @@ dbConnectionManager.onConnection(async () => {
 dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 	.then(async () => {
 		const HOST = process.env.HOST || '0.0.0.0';
-		const server = app.listen(PORT, HOST, () => {
+		
+		// Create HTTP server
+		const http = require('http');
+		const server = http.createServer(app);
+		
+		// Initialize Socket.io
+		const { initializeSocket, getSocketStats } = require('./socket');
+		initializeSocket(server, corsOptions);
+		
+		// Socket stats endpoint
+		app.get('/api/socket-stats', (req, res) => {
+			res.json(getSocketStats());
+		});
+		
+		server.listen(PORT, HOST, () => {
 			console.log(`[DesiTV] Server listening on ${HOST}:${PORT}`);
+			console.log(`[DesiTV] WebSocket enabled`);
 			if (!isProduction) {
 				const localIP = getLocalIP();
 				console.log(`[DesiTV] Local:   http://localhost:${PORT}`);
