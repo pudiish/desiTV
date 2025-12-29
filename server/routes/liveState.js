@@ -29,11 +29,21 @@ router.get('/manifest/full', async (req, res) => {
   try {
     const manifest = await manifestGenerator.generateFullManifest();
     
-    // CDN-friendly headers (cache for 5 minutes, stale for 1 hour)
+    // ADAPTIVE TTL: Based on shortest video duration
+    // If shortest video is 2 min, TTL should be < 2 min to avoid stale data
+    const shortestVideo = Object.values(manifest.categories)
+      .flatMap(c => c.playlist || [])
+      .reduce((min, v) => Math.min(min, v.duration || 300), Infinity);
+    
+    // TTL = 80% of shortest video duration, capped at 5 min, minimum 30s
+    const adaptiveTTL = Math.max(30, Math.min(300, Math.floor(shortestVideo * 0.8)));
+    
     res.set({
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+      'Cache-Control': `public, max-age=${adaptiveTTL}, stale-while-revalidate=${adaptiveTTL * 2}`,
       'Content-Type': 'application/json',
       'X-Manifest-Version': manifest.version,
+      'X-Adaptive-TTL': adaptiveTTL,
+      'X-Shortest-Video': shortestVideo,
     });
     
     res.json(manifest);
@@ -47,9 +57,17 @@ router.get('/manifest/light', async (req, res) => {
   try {
     const manifest = await manifestGenerator.generateLightManifest();
     
+    // ADAPTIVE TTL for light manifest too
+    const shortestVideo = Object.values(manifest.c)
+      .flatMap(c => c.d || [])
+      .reduce((min, d) => Math.min(min, d || 300), Infinity);
+    
+    const adaptiveTTL = Math.max(30, Math.min(300, Math.floor(shortestVideo * 0.8)));
+    
     res.set({
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+      'Cache-Control': `public, max-age=${adaptiveTTL}, stale-while-revalidate=${adaptiveTTL * 2}`,
       'Content-Type': 'application/json',
+      'X-Adaptive-TTL': adaptiveTTL,
     });
     
     res.json(manifest);
