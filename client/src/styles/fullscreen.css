@@ -638,6 +638,18 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 	.tv-frame-container.ios-fullscreen-active .remote-overlay {
 		z-index: 1000 !important;
 		position: fixed !important;
+		right: 0 !important;
+		bottom: 20px !important;
+		display: block !important;
+		visibility: visible !important;
+		pointer-events: none !important;
+	}
+
+	.tv-frame-container:fullscreen .remote-overlay.visible,
+	.tv-frame-container:-webkit-full-screen .remote-overlay.visible,
+	.tv-frame-container.ios-fullscreen-active .remote-overlay.visible {
+		transform: translateX(0) !important;
+		opacity: 1 !important;
 		pointer-events: auto !important;
 	}
 
