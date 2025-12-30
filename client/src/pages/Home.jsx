@@ -33,6 +33,7 @@ export default function Home() {
 	const [volume, setVolume] = useState(0.5)
 	const [prevVolume, setPrevVolume] = useState(0.5) // For mute toggle
 	const [staticActive, setStaticActive] = useState(false)
+	const [galaxyEnabled, setGalaxyEnabled] = useState(false) // Galaxy background toggle
 	const [statusMessage, setStatusMessage] = useState(`${getTimeBasedGreeting()} POWER BUTTON DABAO AUR SHURU KARO!`)
 	const [isBuffering, setIsBuffering] = useState(false)
 	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
@@ -958,15 +959,27 @@ export default function Home() {
 
 		return (
 		<>
-		{/* Galaxy Background - Shows when TV is powered on, reacts to video playback */}
-		<Galaxy 
-			isActive={power} 
-			baseSpeed={0.3} 
-			density={400} 
-			volume={volume} 
-			isPlaying={power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering}
-			isBuffering={isBuffering || playbackInfo?.isBuffering}
-		/>
+		{/* Galaxy Background - Shows when enabled and TV is powered on */}
+		{galaxyEnabled && (
+			<Galaxy 
+				isActive={power} 
+				baseSpeed={0.3} 
+				density={400} 
+				volume={volume} 
+				isPlaying={power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering}
+				isBuffering={isBuffering || playbackInfo?.isBuffering}
+			/>
+		)}
+		
+		{/* Galaxy Toggle Button - Bottom Left Corner */}
+		<button
+			className={`galaxy-toggle-btn ${galaxyEnabled ? 'active' : ''}`}
+			onClick={() => setGalaxyEnabled(!galaxyEnabled)}
+			title={galaxyEnabled ? 'Disable Galaxy Effect' : 'Enable Galaxy Effect'}
+			aria-label="Toggle Galaxy Background"
+		>
+			<span className="galaxy-icon">✨</span>
+		</button>
 		
 		<div className="main-container">
 			{/* Global glass overlay covering window while keeping remote above */}
@@ -1002,14 +1015,14 @@ export default function Home() {
 			onVolumeUp={handleVolumeUp}
 			onVolumeDown={handleVolumeDown}
 			onMute={handleMute}
-			galaxyProps={{
+			galaxyProps={galaxyEnabled ? {
 				isActive: power,
 				baseSpeed: 0.3,
 				density: 400,
 				volume: volume,
 				isPlaying: power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering,
 				isBuffering: isBuffering || playbackInfo?.isBuffering,
-			}}
+			} : null}
 			remoteOverlayComponent={
 				<TVRemote
 					power={power}

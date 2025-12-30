@@ -203,3 +203,5 @@ serviceAccount.json
 # ───────────────────────────────────────────────────────────────────
 docker-compose.override.yml
 .docker/
+.vercel
+.env*.local
