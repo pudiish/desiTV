@@ -1465,6 +1465,7 @@ onBufferingChange = null,
 		const actualVideoId = videoData?.video_id
 		const currentPromise = player.getCurrentTime ? Promise.resolve(player.getCurrentTime()) : Promise.resolve(0)
 		const durationPromise = player.getDuration ? Promise.resolve(player.getDuration()) : Promise.resolve(current?.duration || 0)
+		const playerState = player.getPlayerState ? player.getPlayerState() : -1
 
 		Promise.all([currentPromise, durationPromise])
 			.then(([currentTime, duration]) => {
@@ -1498,6 +1499,8 @@ onBufferingChange = null,
 					videoTitle: actualTitle,
 					currentTime: currentTime || 0,
 					duration: duration || current?.duration || 0,
+					isPlaying: playerState === 1, // YouTube PLAYING state
+					isBuffering: playerState === 3, // YouTube BUFFERING state
 				})
 			})
 			.catch(() => {})

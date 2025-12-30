@@ -67,14 +67,19 @@ export default function AdminDashboard() {
 	]
 
 	const addNotification = (message, type = 'info') => {
+		// ROAST: "Global notifications via window.adminNotify. Very enterprise. Much scalable. So clean."
+		// This is basically a signal from 2005. No event emitters, no context, just window pollution.
 		const id = Date.now()
 		setNotifications((prev) => [...prev, { id, message, type }])
+		// Auto-dismiss after 5 seconds because apparently we don't trust users to close notifications
 		setTimeout(() => {
 			setNotifications((prev) => prev.filter((n) => n.id !== id))
 		}, 5000)
 	}
 
 	useEffect(() => {
+		// ROAST: "We're adding a method to the window object in useEffect. If this triggers multiple times, 
+		// we'll have multiple references. But hey, it's admin only, so what could go wrong?"
 		window.adminNotify = addNotification
 	}, [])
 

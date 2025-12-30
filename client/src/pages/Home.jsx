@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
+import { Galaxy } from '../components/backgrounds'
 import { SessionManager } from '../services/storage'
 import { analytics, performanceMonitor } from '../services/analytics'
 import { channelManager } from '../logic/channel'
@@ -957,6 +958,16 @@ export default function Home() {
 
 		return (
 		<>
+		{/* Galaxy Background - Shows when TV is powered on, reacts to video playback */}
+		<Galaxy 
+			isActive={power} 
+			baseSpeed={0.3} 
+			density={400} 
+			volume={volume} 
+			isPlaying={power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering}
+			isBuffering={isBuffering || playbackInfo?.isBuffering}
+		/>
+		
 		<div className="main-container">
 			{/* Global glass overlay covering window while keeping remote above */}
 			<div className="glass-full-overlay" aria-hidden="true" />
@@ -991,6 +1002,14 @@ export default function Home() {
 			onVolumeUp={handleVolumeUp}
 			onVolumeDown={handleVolumeDown}
 			onMute={handleMute}
+			galaxyProps={{
+				isActive: power,
+				baseSpeed: 0.3,
+				density: 400,
+				volume: volume,
+				isPlaying: power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering,
+				isBuffering: isBuffering || playbackInfo?.isBuffering,
+			}}
 			remoteOverlayComponent={
 				<TVRemote
 					power={power}

@@ -270,3 +270,30 @@
 		font-size: 14px;
 	}
 }
+
+/* Trippy Mode Button Animation */
+@keyframes trippy-gradient {
+	0% {
+		background-position: 0% 50%;
+		filter: hue-rotate(0deg);
+	}
+	50% {
+		background-position: 100% 50%;
+		filter: hue-rotate(180deg);
+	}
+	100% {
+		background-position: 0% 50%;
+		filter: hue-rotate(360deg);
+	}
+}
+
+.trippy-mode-button {
+	font-family: 'Press Start 2P', monospace, system-ui;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+
+.trippy-mode-button:hover {
+	transform: scale(1.05);
+	filter: brightness(1.2);
+}

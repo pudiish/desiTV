@@ -46,25 +46,123 @@ check_and_install_python() {
   fi
 }
 
+# Function to check and install Redis
+check_and_install_redis() {
+  if command -v redis-server &> /dev/null; then
+    echo "✅ Redis is already installed"
+    return 0
+  fi
+  
+  echo "📦 Redis not found. Installing Redis..."
+  
+  # Check if we're on macOS
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Check if Homebrew is installed
+    if command -v brew &> /dev/null; then
+      echo "🍎 Installing Redis via Homebrew..."
+      brew install redis
+      echo "✅ Redis installed successfully"
+      return 0
+    else
+      echo "⚠️  Homebrew not found. Please install Redis manually:"
+      echo "   1. Install Homebrew: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+      echo "   2. Install Redis: brew install redis"
+      return 1
+    fi
+  # Check if we're on Linux
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "🐧 Installing Redis via package manager..."
+    if command -v apt-get &> /dev/null; then
+      sudo apt-get update
+      sudo apt-get install -y redis-server
+      echo "✅ Redis installed successfully"
+      return 0
+    elif command -v yum &> /dev/null; then
+      sudo yum install -y redis
+      echo "✅ Redis installed successfully"
+      return 0
+    else
+      echo "⚠️  Could not detect package manager. Please install Redis manually."
+      return 1
+    fi
+  else
+    echo "⚠️  Unsupported OS. Please install Redis manually."
+    return 1
+  fi
+}
+
+# Function to start Redis
+start_redis() {
+  # Check if Redis is already running
+  if redis-cli ping &> /dev/null; then
+    echo "✅ Redis is already running"
+    return 0
+  fi
+  
+  echo "🚀 Starting Redis server..."
+  
+  # Check if we're on macOS
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    if command -v brew &> /dev/null; then
+      brew services start redis
+      sleep 1
+      if redis-cli ping &> /dev/null; then
+        echo "✅ Redis started successfully"
+        return 0
+      else
+        echo "⚠️  Failed to start Redis via Homebrew. Trying direct command..."
+        redis-server --daemonize yes
+        sleep 1
+        if redis-cli ping &> /dev/null; then
+          echo "✅ Redis started successfully"
+          return 0
+        fi
+      fi
+    else
+      redis-server --daemonize yes
+      sleep 1
+      if redis-cli ping &> /dev/null; then
+        echo "✅ Redis started successfully"
+        return 0
+      fi
+    fi
+  # Check if we're on Linux
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo systemctl start redis-server
+    sleep 1
+    if redis-cli ping &> /dev/null; then
+      echo "✅ Redis started successfully"
+      return 0
+    fi
+  fi
+  
+  echo "⚠️  Could not start Redis. Please start it manually."
+  return 1
+}
+
 # Check and install all dependencies
 echo "🔍 Checking dependencies..."
 echo ""
 
 # Check root dependencies
-echo "[1/4] Checking root dependencies..."
+echo "[1/5] Checking root dependencies..."
 check_and_install_npm "." "root"
 
 # Check client dependencies
-echo "[2/4] Checking client dependencies..."
+echo "[2/5] Checking client dependencies..."
 check_and_install_npm "client" "client"
 
 # Check server dependencies
-echo "[3/4] Checking server dependencies..."
+echo "[3/5] Checking server dependencies..."
 check_and_install_npm "server" "server"
 
 # Check Python dependencies
-echo "[4/4] Checking Python dependencies..."
+echo "[4/5] Checking Python dependencies..."
 check_and_install_python
+
+# Check and install Redis
+echo "[5/5] Checking Redis..."
+check_and_install_redis
 
 echo ""
 echo "✅ All dependencies checked and installed"
@@ -78,6 +176,9 @@ if [ ! -f .env ]; then
 # Server Configuration
 PORT=5000
 VITE_CLIENT_PORT=5173
+
+# Redis Configuration
+REDIS_URL=redis://localhost:6379
 
 # Database (add your MongoDB URI)
 # MONGO_URI=mongodb://localhost:27017/desitv
@@ -97,6 +198,7 @@ fi
 # Set defaults if not provided
 PORT="${PORT:-5000}"
 VITE_CLIENT_PORT="${VITE_CLIENT_PORT:-5173}"
+REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
 
 # Update .env if values were missing
 if ! grep -q "^PORT=" .env 2>/dev/null; then
@@ -105,8 +207,11 @@ fi
 if ! grep -q "^VITE_CLIENT_PORT=" .env 2>/dev/null; then
   echo "VITE_CLIENT_PORT=$VITE_CLIENT_PORT" >> .env
 fi
+if ! grep -q "^REDIS_URL=" .env 2>/dev/null; then
+  echo "REDIS_URL=$REDIS_URL" >> .env
+fi
 
-echo "✅ Environment variables loaded (PORT=$PORT, VITE_CLIENT_PORT=$VITE_CLIENT_PORT)"
+echo "✅ Environment variables loaded (PORT=$PORT, VITE_CLIENT_PORT=$VITE_CLIENT_PORT, REDIS_URL=$REDIS_URL)"
 
 # Get local network IP
 get_local_ip() {
@@ -365,6 +470,11 @@ echo "║                                                               ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
 echo "🚀 Starting dev servers..."
+echo ""
+
+# Start Redis before starting the dev servers
+start_redis
+
 echo ""
 
 # Start the dev servers

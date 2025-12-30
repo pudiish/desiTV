@@ -4,7 +4,12 @@ import { HybridStateManager } from '../../logic/state'
 import { apiClient } from '../../services/apiClient'
 import '../AdminDashboard.css'
 
-// Error Boundary for ChannelManager
+/**
+ * ChannelManagerErrorBoundary - "Safety First" Edition
+ * 
+ * ROAST: An error boundary that catches errors and then... tells you to refresh the page.
+ * Why even bother? We're not recovering from anything. We're just admitting defeat with style.
+ */
 class ChannelManagerErrorBoundary extends React.Component {
 	constructor(props) {
 		super(props)
@@ -12,10 +17,12 @@ class ChannelManagerErrorBoundary extends React.Component {
 	}
 
 	static getDerivedStateFromError(error) {
+		// ROAST: "Caught an error. Did nothing. Moved on with my day."
 		return { hasError: true }
 	}
 
 	componentDidCatch(error, errorInfo) {
+		// ROAST: "Logging errors to console. Very enterprise. Much debugging."
 		console.error('[ChannelManager] Error boundary caught:', error, errorInfo)
 	}
 
@@ -55,13 +62,14 @@ function ChannelManagerContent() {
 	const fetchChannels = async () => {
 		setLoading(true)
 		try {
-			// Use hybrid state manager for local caching + backend sync
-			// Reduces API calls by serving from cache when available (5 min TTL)
+			// ROAST: "HybridStateManager. Because one state management solution isn't enough."
+			// Let's cache data locally for 5 minutes and hope nothing changes. How could this go wrong?
 			const data = await HybridStateManager.get('channels', async () => {
 				const response = await fetch('/api/channels')
 				if (!response.ok) throw new Error('Failed to fetch channels')
 				const json = await response.json()
-				// Handle both array and {data: array, checksum: ...} response formats
+				// ROAST: "Handling both array and {data: array, checksum: ...} formats.
+				// That's what happens when the backend can't decide on a single API contract."
 				return Array.isArray(json) ? json : (json.data || [])
 			})
 		setChannels(Array.isArray(data) ? data : [])
@@ -75,10 +83,11 @@ function ChannelManagerContent() {
 	}
 
 	useEffect(() => {
-		// Initial fetch - uses local cache if available (reduces API call)
+		// ROAST: "Fetching channels on mount and subscribing to cache updates. 
+		// We're managing state in two places now. What could be more maintainable than that?"
 		fetchChannels()
 		
-		// Subscribe to cache updates from other components
+		// Subscribe to cache updates from other components (yes, really)
 		const unsubscribe = HybridStateManager.subscribe('channels', setChannels)
 		
 		return () => unsubscribe()
