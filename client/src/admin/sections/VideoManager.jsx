@@ -159,29 +159,60 @@ export default function VideoManager() {
 		}
 	}
 
-	// Fetch YouTube metadata
+	// Fetch YouTube metadata (title + duration) from server API
 	const fetchYouTubeMetadata = useCallback(async (id) => {
 		setFetchingYT(true)
 		try {
-			// ROAST: "Using oEmbed? Basic. But it works without an API key, so I'll allow it."
-			const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`)
+			// Use server's YouTube API endpoint which fetches title, duration, and embeddable status
+			const response = await fetch('/api/youtube/metadata', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ youtubeId: id })
+			})
+			
 			if (response.ok) {
 				const data = await response.json()
 				setYtPreview({
 					title: data.title,
-					thumbnail: data.thumbnail_url,
-					author: data.author_name
+					thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+					duration: data.duration,
+					embeddable: data.embeddable
 				})
 				setVideoData(prev => ({
 					...prev,
-					title: data.title
+					title: data.title,
+					duration: data.duration || 30
 				}))
-				setMessage({ type: 'success', text: '✅ YouTube data fetched' })
+				
+				// Warn if video is not embeddable
+				if (data.embeddable === false) {
+					setMessage({ type: 'warn', text: '⚠️ Video may not be embeddable' })
+				} else {
+					const durationStr = data.duration ? `${Math.floor(data.duration / 60)}:${String(data.duration % 60).padStart(2, '0')}` : ''
+					setMessage({ type: 'success', text: `✅ Fetched: ${durationStr} duration` })
+				}
 			} else {
-				setMessage({ type: 'error', text: '❌ Could not fetch YouTube data' })
+				const error = await response.json().catch(() => ({}))
+				// Fallback to oEmbed (no duration but at least get title)
+				const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`)
+				if (oembedRes.ok) {
+					const oembedData = await oembedRes.json()
+					setYtPreview({
+						title: oembedData.title,
+						thumbnail: oembedData.thumbnail_url,
+						author: oembedData.author_name
+					})
+					setVideoData(prev => ({
+						...prev,
+						title: oembedData.title
+					}))
+					setMessage({ type: 'warn', text: '⚠️ Duration unavailable - enter manually' })
+				} else {
+					setMessage({ type: 'error', text: `❌ ${error.message || 'Could not fetch YouTube data'}` })
+				}
 			}
 		} catch (err) {
-			setMessage({ type: 'warn', text: '⚠️ Enter title manually' })
+			setMessage({ type: 'warn', text: '⚠️ Enter title & duration manually' })
 		} finally {
 			setFetchingYT(false)
 		}
@@ -442,8 +473,17 @@ export default function VideoManager() {
 					}}>
 						<strong style={{ color: '#00d4ff' }}>📺 YouTube Info:</strong><br />
 						Title: {ytPreview.title}<br />
-						Channel: {ytPreview.author}
-						{ytPreview.thumbnail && <br />}
+						{ytPreview.author && <>Channel: {ytPreview.author}<br /></>}
+						{ytPreview.duration && (
+							<>
+								Duration: <span style={{ color: '#00ff88', fontWeight: 'bold' }}>
+									{Math.floor(ytPreview.duration / 60)}:{String(ytPreview.duration % 60).padStart(2, '0')}
+								</span> ({ytPreview.duration}s)<br />
+							</>
+						)}
+						{ytPreview.embeddable === false && (
+							<span style={{ color: '#ff6b6b' }}>⚠️ Not embeddable</span>
+						)}
 						{ytPreview.thumbnail && <img src={ytPreview.thumbnail} alt="thumb" style={{ marginTop: '8px', maxWidth: '100%', borderRadius: '4px' }} />}
 					</div>
 				)}
