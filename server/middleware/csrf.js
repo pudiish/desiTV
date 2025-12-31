@@ -111,10 +111,11 @@ function csrfProtection(req, res, next) {
   }
 
   // Skip CSRF for read-only data endpoints (POST used for body params)
+  // Note: req.path here is relative to where middleware is mounted
   const readOnlyEndpoints = [
-    '/api/youtube/metadata',
-    '/api/analytics',
-    '/api/viewer-count'
+    '/youtube/metadata',
+    '/analytics',
+    '/viewer-count'
   ];
   if (readOnlyEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
     return next();
