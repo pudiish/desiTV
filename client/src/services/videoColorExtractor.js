@@ -99,12 +99,11 @@ class VideoColorExtractor {
     }
 
     try {
-      // Try different thumbnail qualities
+      // Try different thumbnail qualities (skip maxres as it often 404s)
       const thumbnailUrls = [
-        `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        `https://img.youtube.com/vi/${videoId}/sddefault.jpg`,
         `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
         `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        `https://img.youtube.com/vi/${videoId}/default.jpg`,
       ]
 
       let img = null
@@ -112,7 +111,7 @@ class VideoColorExtractor {
         try {
           img = await this._loadImage(url)
           if (img) break
-        } catch (e) {
+        } catch {
           continue
         }
       }

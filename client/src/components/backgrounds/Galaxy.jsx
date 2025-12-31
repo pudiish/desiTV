@@ -40,39 +40,37 @@ const Galaxy = ({
 
     const extractColors = async () => {
       try {
-        // Try maxresdefault first, fallback to hqdefault
-        const urls = [
-          `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-          `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-        ]
-
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
+        // Try thumbnails in order of quality - not all videos have maxres
+        const qualities = ['hqdefault', 'mqdefault', 'default']
         
+        let img = null
         let loaded = false
-        for (const url of urls) {
+        
+        for (const quality of qualities) {
+          const url = `https://img.youtube.com/vi/${videoId}/${quality}.jpg`
           try {
-            await new Promise((resolve, reject) => {
-              img.onload = () => {
+            img = await new Promise((resolve, reject) => {
+              const testImg = new Image()
+              testImg.crossOrigin = 'anonymous'
+              testImg.onload = () => {
                 // Check if it's a valid thumbnail (not the default gray placeholder)
-                if (img.width > 100) {
-                  loaded = true
-                  resolve()
+                if (testImg.width > 100 && testImg.height > 100) {
+                  resolve(testImg)
                 } else {
-                  reject()
+                  reject(new Error('Invalid thumbnail'))
                 }
               }
-              img.onerror = reject
-              img.src = url
+              testImg.onerror = () => reject(new Error('Failed to load'))
+              testImg.src = url
             })
-            if (loaded) break
+            loaded = true
+            break
           } catch {
             continue
           }
         }
 
-        if (!loaded) return
+        if (!loaded || !img) return
 
         // Create canvas to sample colors
         const sampleCanvas = document.createElement('canvas')
