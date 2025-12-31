@@ -47,12 +47,12 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // Proxy API calls to local server in development
         '/api': {
-          target: `http:// localhost:${serverPort}`,
+          target: `http://localhost:${serverPort}`,
           changeOrigin: true,
           secure: false,
         },
         '/health': {
-          target: `http:// localhost:${serverPort}`,
+          target: `http://localhost:${serverPort}`,
           changeOrigin: true,
           secure: false,
         }

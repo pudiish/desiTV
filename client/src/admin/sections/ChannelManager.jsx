@@ -398,7 +398,7 @@ function ChannelManagerContent() {
 														border: '1px solid rgba(0, 212, 255, 0.3)'
 													}}
 													onError={(e) => {
-														e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http:// www.w3.org/2000/svg" viewBox="0 0 80 60"%3E%3Crect fill="%23333" width="80" height="60"/%3E%3C/svg%3E'
+														e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 60"%3E%3Crect fill="%23333" width="80" height="60"/%3E%3C/svg%3E'
 													}}
 												/>
 

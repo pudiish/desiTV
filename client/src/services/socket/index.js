@@ -26,7 +26,7 @@ function getSocketUrl() {
   if (import.meta.env.PROD) {
     return window.location.origin;
   }
-  return import.meta.env.VITE_SERVER_URL || 'http:// localhost:5000';
+  return import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
 }
 
 /**
