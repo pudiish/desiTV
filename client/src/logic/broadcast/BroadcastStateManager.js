@@ -6,7 +6,7 @@
  */
 
 import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
-import { fetchGlobalEpoch, getCachedEpoch } from '../../services/api/globalEpochService.js'
+import { fetchGlobalEpoch, getCachedEpoch, getCorrectedTime, getClockOffset } from '../../services/api/globalEpochService.js'
 
 class BroadcastStateManager {
 	constructor() {
@@ -362,9 +362,19 @@ class BroadcastStateManager {
 		}
 
 		const now = new Date()
-		// Calculate elapsed time from immutable global epoch
-		const totalElapsedMs = now.getTime() - this.globalEpoch.getTime()
+		// CRITICAL: Use corrected time to account for client-server clock difference
+		// This ensures all devices show the same content at the same time
+		const correctedNowMs = getCorrectedTime()
+		const clockOffset = getClockOffset()
+		
+		// Calculate elapsed time from immutable global epoch using CORRECTED time
+		const totalElapsedMs = correctedNowMs - this.globalEpoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
+		
+		// Debug log if significant clock offset
+		if (Math.abs(clockOffset) > 1000) {
+			console.log(`[BroadcastState] Clock offset: ${Math.round(clockOffset)}ms, elapsed: ${totalElapsedSec.toFixed(1)}s`)
+		}
 
 		// Apply per-channel offset (for manual seeking - doesn't affect global epoch)
 		const channelOffset = savedState.channelOffset || 0

@@ -30,6 +30,7 @@ class GlobalEpochService {
         epoch: epochDate,
         timezone: cached.timezone || cached.tz || 'Asia/Kolkata',
         createdAt: cached.createdAt || epochDate,
+        serverTimeMs: Date.now(), // CRITICAL: Server time for clock sync
         cached: true,
         ...checksumData, // Include checksum
       };
@@ -58,6 +59,7 @@ class GlobalEpochService {
       epoch: globalEpoch.epoch,
       timezone: globalEpoch.timezone || 'Asia/Kolkata',
       createdAt: globalEpoch.createdAt,
+      serverTimeMs: Date.now(), // CRITICAL: Server time for clock sync
       cached: false,
       ...checksumData, // Include checksum
     };

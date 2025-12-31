@@ -3,6 +3,8 @@
  * 
  * Service for fetching and managing the global epoch from server
  * This ensures all users are synchronized to the same timeline
+ * 
+ * CRITICAL: Also tracks server-client clock offset for accurate sync
  */
 
 import { getUserTimezone } from './timezoneService'
@@ -14,6 +16,7 @@ const EPOCH_CACHE_TTL = 10 * 1000 // 10 seconds - increased to reduce request fr
 
 let cachedEpoch = null
 let cacheTimestamp = null
+let serverClockOffset = 0 // Client time - Server time (in ms)
 
 /**
  * Fetch global epoch from server
@@ -35,6 +38,7 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
 		// PERFORMANCE: Use dedupeFetch to prevent duplicate requests
 		// OPTIMIZED: Enhanced cache-busting headers for faster sync
 		let response
+		const requestTime = Date.now() // Track request time for clock offset calculation
 		try {
 			// Try using dedupeFetch if available
 			if (typeof dedupeFetch === 'function') {
@@ -73,8 +77,19 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
 			throw new Error(`Failed to fetch global epoch: ${response.statusText}`)
 		}
 		
+		const responseTime = Date.now()
 		const data = await response.json()
 		const epoch = new Date(data.epoch)
+		
+		// CRITICAL: Calculate clock offset between client and server
+		// Server sends its current time in serverTimeMs
+		if (data.serverTimeMs) {
+			// Account for network latency (assume half the round trip)
+			const estimatedLatency = (responseTime - requestTime) / 2
+			const serverNow = data.serverTimeMs + estimatedLatency
+			serverClockOffset = responseTime - serverNow
+			console.log(`[GlobalEpoch] Clock offset: ${Math.round(serverClockOffset)}ms (client ${serverClockOffset > 0 ? 'ahead' : 'behind'})`)
+		}
 		
 		// Validate epoch is valid
 		if (isNaN(epoch.getTime())) {
@@ -175,5 +190,24 @@ export function getCachedEpoch() {
 		}
 	}
 	return null
+}
+
+/**
+ * Get the current server-client clock offset
+ * Positive = client is ahead of server
+ * Negative = client is behind server
+ * @returns {number} Clock offset in milliseconds
+ */
+export function getClockOffset() {
+	return serverClockOffset
+}
+
+/**
+ * Get corrected current time (adjusted for server-client clock difference)
+ * Use this instead of Date.now() when calculating broadcast position
+ * @returns {number} Current time in milliseconds, adjusted to match server time
+ */
+export function getCorrectedTime() {
+	return Date.now() - serverClockOffset
 }
 
