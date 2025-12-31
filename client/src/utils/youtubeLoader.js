@@ -61,7 +61,7 @@ export function loadYouTubeAPI() {
 
 		// Create script element
 		const script = document.createElement('script')
-		script.src = 'https:// www.youtube.com/iframe_api'
+		script.src = 'https://www.youtube.com/iframe_api'
 		script.async = true
 		script.defer = true
 

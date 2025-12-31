@@ -183,7 +183,7 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
     // Helper function to fetch YouTube metadata using oEmbed (no API key required)
     async function fetchYouTubeMetadata(videoId) {
       try {
-        const oembedUrl = `https:// www.youtube.com/oembed?url=https:// www.youtube.com/watch?v=${videoId}&format=json`;
+        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
@@ -314,7 +314,7 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
           } else if (YOUTUBE_API_KEY) {
             // Fallback to YouTube Data API if oEmbed fails and API key is available
             try {
-              const metadataUrl = `https:// www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
+              const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 5000);
               
@@ -637,7 +637,7 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
           title,
           description: description || '',
           duration: 30, // Default duration
-          thumbnail: thumbnail || `https:// img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+          thumbnail: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
         };
 
         channel.items.push(newVideo);

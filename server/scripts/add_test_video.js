@@ -24,7 +24,7 @@ async function run(){
   console.log('Connected to Mongo');
 
   // Use provided URL or default
-  const url = process.argv[2] || 'https:// www.youtube.com/watch?v=D16DlpMCZTs&list=RDD16DlpMCZTs&start_radio=1';
+  const url = process.argv[2] || 'https://www.youtube.com/watch?v=D16DlpMCZTs&list=RDD16DlpMCZTs&start_radio=1';
   const youtubeId = extractYoutubeId(url);
 
   const channelName = process.argv[3] || 'Test Imports';

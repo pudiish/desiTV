@@ -22,7 +22,7 @@ export const YOUTUBE_ERROR_CODES = {
 }
 
 export const YOUTUBE_PLAYER = {
-	HOST: 'https:// www.youtube-nocookie.com',
+	HOST: 'https://www.youtube-nocookie.com',
 	PLAYER_VARS: {
 		autoplay: 1,
 		controls: 0,

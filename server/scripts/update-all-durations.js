@@ -62,7 +62,7 @@ function formatDuration(seconds) {
 function fetchYouTubeVideoDetails(videoIds) {
   return new Promise((resolve, reject) => {
     const idsParam = videoIds.join(',');
-    const url = `https:// www.googleapis.com/youtube/v3/videos?id=${idsParam}&key=${YOUTUBE_API_KEY}&part=contentDetails`;
+    const url = `https://www.googleapis.com/youtube/v3/videos?id=${idsParam}&key=${YOUTUBE_API_KEY}&part=contentDetails`;
     
     https.get(url, (res) => {
       let data = '';

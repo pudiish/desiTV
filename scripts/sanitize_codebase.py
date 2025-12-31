@@ -88,11 +88,8 @@ AI_TELLTALE_PATTERNS = [
 # Patterns to replace (find -> replace)
 AI_REPLACE_PATTERNS = [
     # Simplify overly formal comments  
-    (r'//\s*This\s+(function|method|variable|constant)\s+', r'// '),
-    (r'//\s*The\s+following\s+(code|section)\s+', r'// '),
-    
-    # Remove trailing periods in single-line comments
-    (r'(//[^/\n]+)\.\s*$', r'\1'),
+    (r'^(\s*)//\s*This\s+(function|method|variable|constant)\s+', r'\1// '),
+    (r'^(\s*)//\s*The\s+following\s+(code|section)\s+', r'\1// '),
     
     # Clean up emoji-heavy comments (keep max 1 emoji)
     (r'(//\s*[^\n]*)([\U0001F300-\U0001F9FF])\s*([\U0001F300-\U0001F9FF])+', r'\1\2'),

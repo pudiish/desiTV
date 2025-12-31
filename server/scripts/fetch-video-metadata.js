@@ -45,7 +45,7 @@ function fetchYouTubeVideoDetails(videoIds) {
     }
     
     const idsParam = videoIds.join(',');
-    const url = `https:// www.googleapis.com/youtube/v3/videos?id=${idsParam}&key=${YOUTUBE_API_KEY}&part=snippet,contentDetails`;
+    const url = `https://www.googleapis.com/youtube/v3/videos?id=${idsParam}&key=${YOUTUBE_API_KEY}&part=snippet,contentDetails`;
     
     https.get(url, (res) => {
       let data = '';
@@ -93,7 +93,7 @@ function parseDuration(isoDuration) {
 // Generate title from YouTube ID using page scrape (fallback)
 async function scrapeYouTubeTitle(videoId) {
   return new Promise((resolve) => {
-    const url = `https:// www.youtube.com/watch?v=${videoId}`;
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
     
     https.get(url, (res) => {
       let data = '';

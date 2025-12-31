@@ -69,7 +69,7 @@ class VideoService {
    */
   async fetchYouTubeMetadata(videoId) {
     try {
-      const oembedUrl = `https:// www.youtube.com/oembed?url=https:// www.youtube.com/watch?v=${videoId}&format=json`;
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
@@ -106,7 +106,7 @@ class VideoService {
     }
 
     try {
-      const metadataUrl = `https:// www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`;
+      const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       

@@ -187,7 +187,7 @@ function ChannelManagerContent() {
 	}
 
 	const getYoutubeThumbnail = (youtubeId) => {
-		return `https:// i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`
+		return `https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`
 	}
 
 	const handleAddChannel = async (e) => {

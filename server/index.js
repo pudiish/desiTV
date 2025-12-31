@@ -64,7 +64,7 @@ if (isProduction) {
 		
 		if (!isSecure) {
 			const host = req.header('host') || req.hostname;
-			return res.redirect(301, `https:// ${host}${req.url}`);
+			return res.redirect(301, `https://${host}${req.url}`);
 		}
 		
 		next();

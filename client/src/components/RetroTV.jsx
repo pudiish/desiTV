@@ -47,10 +47,10 @@ export default function RetroTV({ channel, onChannelUp, onChannelDown }) {
     if (window.YT && window.YT.Player) {
       return;
     }
-    const existing = document.querySelector('script[src="https:// www.youtube.com/iframe_api"]');
+    const existing = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
     if (existing) return;
     const tag = document.createElement("script");
-    tag.src = "https:// www.youtube.com/iframe_api";
+    tag.src = "https://www.youtube.com/iframe_api";
     tag.async = true;
     document.body.appendChild(tag);
   }, []);
