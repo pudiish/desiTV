@@ -110,6 +110,16 @@ function csrfProtection(req, res, next) {
     return next();
   }
 
+  // Skip CSRF for read-only data endpoints (POST used for body params)
+  const readOnlyEndpoints = [
+    '/api/youtube/metadata',
+    '/api/analytics',
+    '/api/viewer-count'
+  ];
+  if (readOnlyEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
+    return next();
+  }
+
   // Get token from header
   const token = req.headers['x-csrf-token'] || req.headers['csrf-token'];
 
