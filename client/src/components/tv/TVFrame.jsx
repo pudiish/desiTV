@@ -248,6 +248,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 					volume={galaxyProps.volume || 0.5}
 					isPlaying={galaxyProps.isPlaying}
 					isBuffering={galaxyProps.isBuffering}
+					videoId={galaxyProps.videoId}
 				/>
 			)}
 <div 

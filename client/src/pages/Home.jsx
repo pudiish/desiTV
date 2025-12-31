@@ -968,6 +968,7 @@ export default function Home() {
 				volume={volume} 
 				isPlaying={power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering}
 				isBuffering={isBuffering || playbackInfo?.isBuffering}
+				videoId={activeVideo?.youtubeId}
 			/>
 		)}
 		
@@ -1022,6 +1023,7 @@ export default function Home() {
 				volume: volume,
 				isPlaying: power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering,
 				isBuffering: isBuffering || playbackInfo?.isBuffering,
+				videoId: activeVideo?.youtubeId,
 			} : null}
 			remoteOverlayComponent={
 				<TVRemote
