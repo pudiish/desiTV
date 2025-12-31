@@ -18,7 +18,7 @@ export default {
     }]
   },
   testMatch: [
-    '**/__tests__/**/*.(js|jsx)',
+    '**/__tests__*.(js|jsx)',
     '**/*.(test|spec).(js|jsx)'
   ],
   // Performance optimizations
@@ -28,10 +28,10 @@ export default {
   collectCoverage: false,
   // Only collect coverage when explicitly requested
   collectCoverageFrom: [
-    'src/**/*.{js,jsx}',
-    '!src/**/*.stories.{js,jsx}',
+    'src*.{js,jsx}',
+    '!src*.stories.{js,jsx}',
     '!src/main.jsx',
-    '!src/**/index.js',
+    '!srcindex.js',
   ],
   coverageThreshold: {
     global: {

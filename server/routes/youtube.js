@@ -19,7 +19,7 @@ router.post('/metadata', async (req, res) => {
   if (!KEY) return res.status(500).json({ message: 'YOUTUBE_API_KEY not configured on server' });
   try {
     // request status to check embeddable flag as well
-    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=${encodeURIComponent(youtubeId)}&key=${KEY}`;
+    const url = `https:// www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=${encodeURIComponent(youtubeId)}&key=${KEY}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     

@@ -764,7 +764,7 @@ class BroadcastStateManager {
 	 */
 	shouldReturnToTimeline(channelId) {
 		// Manual mode persists until category/channel is changed
-		// This method is kept for compatibility but always returns false
+		// is kept for compatibility but always returns false
 		return false
 	}
 

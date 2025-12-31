@@ -5,8 +5,7 @@ const Channel = require('../models/Channel');
 
 // Simple categories collection maintained on-the-fly from channels/videos.
 // For convenience, we store categories in-memory derived from existing data,
-// and also support CRUD via a lightweight approach using Channel documents.
-
+// and also support CRUD via a lightweight approach using Channel documents
 // Get all categories (unique) with counts
 router.get('/', async (req, res) => {
   // collect distinct categories from all channel items with counts

@@ -74,7 +74,7 @@ const loadYouTubeAPI = () => {
 
 	return new Promise((resolve) => {
 		const tag = document.createElement('script')
-		tag.src = 'https://www.youtube.com/iframe_api'
+		tag.src = 'https:// www.youtube.com/iframe_api'
 		tag.async = true
 		tag.onload = () => {
 			console.log('[YouTube API] Successfully loaded')

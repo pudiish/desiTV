@@ -64,7 +64,7 @@ if (isProduction) {
 		
 		if (!isSecure) {
 			const host = req.header('host') || req.hostname;
-			return res.redirect(301, `https://${host}${req.url}`);
+			return res.redirect(301, `https:// ${host}${req.url}`);
 		}
 		
 		next();
@@ -93,9 +93,9 @@ const corsOptions = {
 			process.env.CLIENT_URL, // Custom client URL if set
 		].filter(Boolean)
 		: [
-			`http://localhost:${CLIENT_PORT}`, 
-			'http://localhost:3000', 
-			`http://127.0.0.1:${CLIENT_PORT}`,
+			`http:// localhost:${CLIENT_PORT}`, 
+			'http:// localhost:3000', 
+			`http:// 127.0.0.1:${CLIENT_PORT}`,
 			/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
 			/^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
 			/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
@@ -283,8 +283,8 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 			console.log(`[DesiTV] WebSocket enabled`);
 			if (!isProduction) {
 				const localIP = getLocalIP();
-				console.log(`[DesiTV] Local:   http://localhost:${PORT}`);
-				console.log(`[DesiTV] Network: http://${localIP}:${PORT}`);
+				console.log(`[DesiTV] Local:   http:// localhost:${PORT}`);
+				console.log(`[DesiTV] Network: http:// ${localIP}:${PORT}`);
 			}
 		});
 

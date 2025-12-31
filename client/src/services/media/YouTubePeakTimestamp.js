@@ -90,8 +90,8 @@ class YouTubePeakTimestamp {
 		try {
 			// Use CORS proxy to fetch YouTube page
 			// allorigins.win is a free CORS proxy service
-			const corsProxy = 'https://api.allorigins.win/raw?url='
-			const youtubeUrl = encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)
+			const corsProxy = 'https:// api.allorigins.win/raw?url='
+			const youtubeUrl = encodeURIComponent(`https:// www.youtube.com/watch?v=${videoId}`)
 			
 			const response = await fetch(`${corsProxy}${youtubeUrl}`, {
 				method: 'GET',

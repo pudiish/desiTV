@@ -54,7 +54,7 @@ class EnvironmentConfig {
       // This is checked FIRST so mobile/other devices work correctly
       if (isLocalNetwork) {
         const serverPort = getServerPort()
-        return `http://${hostname}:${serverPort}`
+        return `http:// ${hostname}:${serverPort}`
       }
       
       // LOCALHOST: Use empty string (Vite proxy handles /api routes)
@@ -78,7 +78,7 @@ class EnvironmentConfig {
 
     // SSR or non-browser fallback
     const serverPort = getServerPort()
-    return `http://localhost:${serverPort}`
+    return `http:// localhost:${serverPort}`
   }
 
   /**

@@ -68,7 +68,7 @@ export default function AdminDashboard() {
 
 	const addNotification = (message, type = 'info') => {
 		// ROAST: "Global notifications via window.adminNotify. Very enterprise. Much scalable. So clean."
-		// This is basically a signal from 2005. No event emitters, no context, just window pollution.
+		// This is basically a signal from 2005. No event emitters, no context, just window pollution
 		const id = Date.now()
 		setNotifications((prev) => [...prev, { id, message, type }])
 		// Auto-dismiss after 5 seconds because apparently we don't trust users to close notifications

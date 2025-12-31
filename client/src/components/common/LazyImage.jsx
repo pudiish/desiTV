@@ -10,8 +10,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 
-/**
- * @typedef {Object} LazyImageProps
+/** @typedef {Object} LazyImageProps
  * @property {string} src - Image source URL
  * @property {string} alt - Alt text
  * @property {string} [webpSrc] - WebP version (optional)
@@ -26,7 +25,7 @@ export default function LazyImage({
 	src,
 	alt,
 	webpSrc,
-	placeholder = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E',
+	placeholder = 'data:image/svg+xml,%3Csvg xmlns="http:// www.w3.org/2000/svg"%3E%3C/svg%3E',
 	className = '',
 	style = {},
 	onLoad,

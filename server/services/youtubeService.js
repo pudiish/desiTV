@@ -38,7 +38,7 @@ class YouTubeService {
 
     try {
       // Request status to check embeddable flag as well
-      const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=${encodeURIComponent(youtubeId)}&key=${apiKey}`;
+      const url = `https:// www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=${encodeURIComponent(youtubeId)}&key=${apiKey}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 

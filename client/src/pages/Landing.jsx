@@ -320,9 +320,9 @@ export default function Landing() {
 
 				{/* Footer */}
 				<div className="landing-footer">
-					<a href="https://github.com/pudiish/desiTV" target="_blank" rel="noopener noreferrer">GitHub</a>
+					<a href="https:// github.com/pudiish/desiTV" target="_blank" rel="noopener noreferrer">GitHub</a>
 					<span>•</span>
-					<a href="https://www.linkedin.com/in/ishwar-swarnapudi" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+					<a href="https:// www.linkedin.com/in/ishwar-swarnapudi" target="_blank" rel="noopener noreferrer">LinkedIn</a>
 					<span>•</span>
 					<span>© 2025</span>
 				</div>

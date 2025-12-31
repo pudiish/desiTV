@@ -25,7 +25,7 @@ export default function VideoManager() {
 	const [addingChannel, setAddingChannel] = useState(false)
 	
 	// ROAST: "Why are we managing form state like it's 2015? React Hook Form exists."
-	// But for a "quick fix", I'll stick to useState to avoid adding dependencies.
+	// But for a "quick fix", I'll stick to useState to avoid adding dependencies
 	const [videoData, setVideoData] = useState({
 		title: '',
 		duration: 30,
@@ -174,7 +174,7 @@ export default function VideoManager() {
 				const data = await response.json()
 				setYtPreview({
 					title: data.title,
-					thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+					thumbnail: `https:// img.youtube.com/vi/${id}/hqdefault.jpg`,
 					duration: data.duration,
 					embeddable: data.embeddable
 				})
@@ -194,7 +194,7 @@ export default function VideoManager() {
 			} else {
 				const error = await response.json().catch(() => ({}))
 				// Fallback to oEmbed (no duration but at least get title)
-				const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`)
+				const oembedRes = await fetch(`https:// www.youtube.com/oembed?url=https:// www.youtube.com/watch?v=${id}&format=json`)
 				if (oembedRes.ok) {
 					const oembedData = await oembedRes.json()
 					setYtPreview({
@@ -440,7 +440,7 @@ export default function VideoManager() {
 						disabled={loading}
 					/>
 					<small style={{ color: '#888', display: 'block', marginTop: '4px' }}>
-						Examples: https://youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ
+						Examples: https:// youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ
 					</small>
 				</div>
 

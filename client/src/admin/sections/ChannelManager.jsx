@@ -63,12 +63,11 @@ function ChannelManagerContent() {
 		setLoading(true)
 		try {
 			// ROAST: "HybridStateManager. Because one state management solution isn't enough."
-			// Let's cache data locally for 5 minutes and hope nothing changes. How could this go wrong?
 			const data = await HybridStateManager.get('channels', async () => {
 				const response = await fetch('/api/channels')
 				if (!response.ok) throw new Error('Failed to fetch channels')
 				const json = await response.json()
-				// ROAST: "Handling both array and {data: array, checksum: ...} formats.
+				// ROAST: "Handling both array and {data: array, checksum: ...} formats
 				// That's what happens when the backend can't decide on a single API contract."
 				return Array.isArray(json) ? json : (json.data || [])
 			})
@@ -83,7 +82,7 @@ function ChannelManagerContent() {
 	}
 
 	useEffect(() => {
-		// ROAST: "Fetching channels on mount and subscribing to cache updates. 
+		// ROAST: "Fetching channels on mount and subscribing to cache updates
 		// We're managing state in two places now. What could be more maintainable than that?"
 		fetchChannels()
 		
@@ -188,7 +187,7 @@ function ChannelManagerContent() {
 	}
 
 	const getYoutubeThumbnail = (youtubeId) => {
-		return `https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`
+		return `https:// i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`
 	}
 
 	const handleAddChannel = async (e) => {
@@ -399,7 +398,7 @@ function ChannelManagerContent() {
 														border: '1px solid rgba(0, 212, 255, 0.3)'
 													}}
 													onError={(e) => {
-														e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 60"%3E%3Crect fill="%23333" width="80" height="60"/%3E%3C/svg%3E'
+														e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http:// www.w3.org/2000/svg" viewBox="0 0 80 60"%3E%3Crect fill="%23333" width="80" height="60"/%3E%3C/svg%3E'
 													}}
 												/>
 

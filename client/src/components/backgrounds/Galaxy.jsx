@@ -42,9 +42,9 @@ const Galaxy = ({
       try {
         // Try maxresdefault first, fallback to hqdefault
         const urls = [
-          `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-          `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+          `https:// img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          `https:// img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          `https:// img.youtube.com/vi/${videoId}/mqdefault.jpg`,
         ]
 
         const img = new Image()

@@ -99,12 +99,12 @@ const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.youtube.com", "https://s.ytimg.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https:// www.youtube.com", "https:// s.ytimg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:// fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      frameSrc: ["https://www.youtube.com", "https://www.youtube-nocookie.com"],
-      connectSrc: ["'self'", "https://www.googleapis.com"],
+      fontSrc: ["'self'", "https:// fonts.gstatic.com"],
+      frameSrc: ["https:// www.youtube.com", "https:// www.youtube-nocookie.com"],
+      connectSrc: ["'self'", "https:// www.googleapis.com"],
       mediaSrc: ["'self'", "https:", "blob:"],
     },
   },

@@ -126,7 +126,7 @@ export function rgbToHsl(r, g, b) {
  * Get YouTube thumbnail URL for a video ID
  */
 export function getYouTubeThumbnail(videoId, quality = 'maxresdefault') {
-  return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`
+  return `https:// img.youtube.com/vi/${videoId}/${quality}.jpg`
 }
 
 /**

@@ -5,7 +5,7 @@
 module.exports = {
   testEnvironment: 'node',
   testMatch: [
-    '**/__tests__/**/*.js',
+    '**/__tests__*.js',
     '**/*.(test|spec).js'
   ],
   // Performance optimizations
