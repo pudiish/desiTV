@@ -60,6 +60,11 @@ const toolDefinitions = {
     description: 'Get what videos are in a channel playlist',
     execute: getWhatsPlaying
   },
+  get_channel_songs: {
+    name: 'get_channel_songs',
+    description: 'List all songs/videos in a specific channel',
+    execute: getChannelSongs
+  },
   get_recommendations: {
     name: 'get_recommendations',
     description: 'Get video recommendations based on mood',
@@ -147,7 +152,6 @@ function getUpNext(params = {}, context = {}) {
       position: `Will be video ${(currentVideoIndex || 0) + 2} of ${totalVideos || '?'}`
     },
     message: `🔮 Up Next on ${currentChannel}:\n\n"${nextVideo.title}"\nby ${artist}`
-  };
   };
 }
 
@@ -276,6 +280,57 @@ async function getWhatsPlaying(params = {}) {
   } catch (error) {
     console.error('[Tools] getWhatsPlaying error:', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get all songs in a specific channel
+ */
+async function getChannelSongs(params = {}) {
+  try {
+    const { channelName, limit = 10 } = params;
+    
+    if (!channelName) {
+      return { success: false, error: 'Channel name required', message: '🤔 Which channel?' };
+    }
+
+    const channel = await Channel.findOne({
+      isActive: true,
+      $or: [
+        { name: { $regex: channelName, $options: 'i' } },
+        { category: { $regex: channelName, $options: 'i' } }
+      ]
+    })
+      .select('name category items')
+      .lean();
+
+    if (!channel) {
+      return { 
+        success: false, 
+        error: `Channel "${channelName}" not found`,
+        message: `🤔 No channel called "${channelName}". Try "what channels do you have?"`
+      };
+    }
+
+    const songs = (channel.items || []).slice(0, limit).map((item, i) => ({
+      index: i,
+      title: item.title,
+      duration: item.duration
+    }));
+
+    const songList = songs.map((s, i) => `${i + 1}. ${s.title}`).join('\n');
+    const hasMore = (channel.items?.length || 0) > limit;
+    
+    return {
+      success: true,
+      channel: channel.name,
+      songs,
+      totalSongs: channel.items?.length || 0,
+      message: `🎵 Songs on ${channel.name}:\n\n${songList}${hasMore ? `\n\n...and ${channel.items.length - limit} more!` : ''}\n\nSay "play [song name]" to play!`
+    };
+  } catch (error) {
+    console.error('[Tools] getChannelSongs error:', error);
+    return { success: false, error: error.message, message: 'Failed to get songs 😅' };
   }
 }
 
@@ -522,7 +577,37 @@ function detectIntent(message) {
     }
   }
   
-  // ACTION: Change channel (highest priority)
+  // PRIORITY 1: Shayari patterns (BEFORE mood detection!)
+  if (/shayari|poetry|poem|dedicate|dedication/i.test(lower)) {
+    const mood = /sad|dard/i.test(lower) ? 'sad' : 
+                 /friend/i.test(lower) ? 'friendship' : 'romantic';
+    return { tool: 'get_shayari', params: { mood } };
+  }
+  
+  // PRIORITY 2: Trivia patterns
+  if (/trivia|quiz|question|test me/i.test(lower)) {
+    return { tool: 'get_trivia', params: {} };
+  }
+  
+  // PRIORITY 3: This day in history
+  if (/this day|today in|throwback|history|remember when/i.test(lower)) {
+    return { tool: 'this_day_in_history', params: {} };
+  }
+  
+  // ACTION: Play specific video ON a channel (e.g., "play hookah bar on club nights")
+  const playOnChannelPatterns = [
+    /(?:play|switch to|put on)\s+["']?(.+?)["']?\s+(?:on|in|from)\s+(?:channel\s+)?["']?(.+?)["']?$/i,
+    /(?:i meant|i want)\s+["']?(.+?)["']?\s+(?:on|in|from)\s+(?:channel\s+)?["']?(.+?)["']?$/i
+  ];
+  
+  for (const pattern of playOnChannelPatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      return { tool: 'play_video', params: { query: match[1].trim(), channelName: match[2].trim() } };
+    }
+  }
+  
+  // ACTION: Change channel (highest priority for "switch to X")
   const changePatterns = [
     /(?:switch|change|go|tune)\s*(?:to|into)?\s*(?:the\s+)?(?:channel\s+)?["']?([^"']+?)["']?\s*(?:channel)?$/i,
     /(?:put|play)\s+(?:on\s+)?(?:the\s+)?["']?([^"']+?)["']?\s*channel/i,
@@ -550,6 +635,20 @@ function detectIntent(message) {
     }
   }
   
+  // INFO: What songs does channel have
+  const channelSongsPatterns = [
+    /what\s+(?:songs?|videos?|tracks?)\s+(?:does|do|are in|has|have)\s+["']?(.+?)["']?\s*(?:have|got)?/i,
+    /(?:songs?|videos?|tracks?)\s+(?:in|on|of)\s+["']?(.+?)["']?/i,
+    /(?:list|show)\s+(?:songs?|videos?|tracks?)\s+(?:in|on|of|from)\s+["']?(.+?)["']?/i
+  ];
+  
+  for (const pattern of channelSongsPatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      return { tool: 'get_channel_songs', params: { channelName: match[1].trim() } };
+    }
+  }
+  
   // Search patterns (info only, no action)
   if (lower.includes('search') || lower.includes('find')) {
     const match = lower.match(/(?:search|find)\s+(?:for\s+)?(.+)/i);
@@ -563,29 +662,24 @@ function detectIntent(message) {
     return { tool: 'get_channels', params: {} };
   }
   
-  // Mood-based recommendations
-  const moods = ['party', 'chill', 'romantic', 'nostalgic', 'sad', 'happy', 'energetic'];
-  for (const mood of moods) {
-    if (lower.includes(mood)) {
-      return { tool: 'get_recommendations', params: { mood } };
+  // KNOWN CHANNEL NAMES - detect channel name alone
+  const knownChannels = ['cartoon adda', 'hassi ke phatke', 'desi beats', 'club nights', 'late night love', 'retro gold', 'late night vibes', 'party anthems'];
+  for (const channel of knownChannels) {
+    if (lower === channel || lower === channel.replace(/\s+/g, '')) {
+      return { tool: 'change_channel', params: { channelName: channel } };
     }
   }
   
-  // NEW: Trivia patterns
-  if (/trivia|quiz|question|test me/i.test(lower)) {
-    return { tool: 'get_trivia', params: {} };
+  // Mood-based recommendations (AFTER shayari detection)
+  const moods = ['party', 'chill', 'nostalgic', 'sad', 'happy', 'energetic'];
+  for (const mood of moods) {
+    if (lower.includes(mood) && !lower.includes('shayari')) {
+      return { tool: 'get_recommendations', params: { mood } };
+    }
   }
-  
-  // NEW: Shayari patterns
-  if (/shayari|poetry|poem|dedicate|dedication/i.test(lower)) {
-    const mood = /sad|dard/i.test(lower) ? 'sad' : 
-                 /friend/i.test(lower) ? 'friendship' : 'romantic';
-    return { tool: 'get_shayari', params: { mood } };
-  }
-  
-  // NEW: This day in history
-  if (/this day|today in|throwback|history|remember when/i.test(lower)) {
-    return { tool: 'this_day_in_history', params: {} };
+  // Special: "romantic" only if NOT asking for shayari
+  if (lower.includes('romantic') && !lower.includes('shayari')) {
+    return { tool: 'get_recommendations', params: { mood: 'romantic' } };
   }
   
   // Artist/song search
