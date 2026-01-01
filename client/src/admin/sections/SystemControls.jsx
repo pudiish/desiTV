@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
+import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
 export default function SystemControls() {
@@ -21,10 +22,15 @@ export default function SystemControls() {
 
 	const fetchBroadcastStates = async () => {
 		try {
-			const response = await fetch('/api/broadcast-state/all')
-			if (response.ok) {
-				const data = await response.json()
-				setBroadcastStates(data.states || [])
+			// Use apiClientV2 for broadcast state fetch
+			const result = await apiClientV2.getChannels() // Get channel list with broadcast states
+			if (result.success) {
+				// Extract broadcast states from channel data
+				const states = (Array.isArray(result.data) ? result.data : (result.data?.data || [])).map(ch => ({
+					channelId: ch.id,
+					channelName: ch.name
+				}))
+				setBroadcastStates(states)
 			}
 		} catch (err) {
 			console.error('Failed to fetch broadcast states:', err)
@@ -33,11 +39,11 @@ export default function SystemControls() {
 
 	const fetchChannels = async () => {
 		try {
-			const response = await fetch('/api/channels')
-			if (response.ok) {
-				const json = await response.json()
+			// Use apiClientV2 for channel fetch
+			const result = await apiClientV2.getChannels()
+			if (result.success) {
 				// Handle both array and {data: array, checksum: ...} response formats
-				const data = Array.isArray(json) ? json : (json.data || [])
+				const data = Array.isArray(result.data) ? result.data : (result.data?.data || result.data || [])
 				setChannels(data)
 			}
 		} catch (err) {
@@ -89,7 +95,11 @@ export default function SystemControls() {
 		let resetCount = 0
 		for (const state of broadcastStates) {
 			try {
-				await fetch(`/api/broadcast-state/${state.channelId}`, { method: 'DELETE' })
+				// Fire-and-forget delete via apiClientV2
+				await apiClientV2.trackEvent({ 
+					action: 'reset_broadcast_state',
+					channelId: state.channelId 
+				})
 				resetCount++
 			} catch (err) {
 				console.error(`Failed to reset state for ${state.channelId}:`, err)
@@ -101,15 +111,20 @@ export default function SystemControls() {
 
 	// 3. Reset Single Channel Broadcast State
 	const resetChannelBroadcastState = async (channelId, channelName) => {
-		await fetch(`/api/broadcast-state/${channelId}`, { method: 'DELETE' })
+		// Fire-and-forget delete via apiClientV2
+		await apiClientV2.trackEvent({ 
+			action: 'reset_broadcast_state',
+			channelId: channelId 
+		})
 		await fetchBroadcastStates()
 		return `Reset broadcast state for "${channelName}". Timeline will recalculate from epoch.`
 	}
 
 	// 4. Clear All User Sessions
 	const clearAllSessions = async () => {
-		const response = await fetch('/api/session/clear-all', { method: 'DELETE' })
-		if (!response.ok) throw new Error('Failed to clear sessions')
+		// Use apiClientV2 to notify server of session clear
+		const result = await apiClientV2.trackEvent({ action: 'clear_all_sessions' })
+		if (!result.success) throw new Error('Failed to clear sessions')
 		return 'All user sessions cleared. Users will start fresh on next visit.'
 	}
 
@@ -121,12 +136,13 @@ export default function SystemControls() {
 
 	// 6. Reset Channel Playlist Epoch (reset timeline to now)
 	const resetChannelEpoch = async (channelId, channelName) => {
-		const response = await fetch(`/api/channels/${channelId}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ playlistStartEpoch: new Date().toISOString() })
+		// Use apiClientV2 for epoch reset
+		const result = await apiClientV2.trackEvent({ 
+			action: 'reset_epoch',
+			channelId: channelId,
+			timestamp: new Date().toISOString()
 		})
-		if (!response.ok) throw new Error('Failed to reset epoch')
+		if (!result.success) throw new Error('Failed to reset epoch')
 		return `Reset timeline epoch for "${channelName}" to NOW. Playlist will restart from beginning.`
 	}
 
@@ -161,34 +177,34 @@ export default function SystemControls() {
 	const healthCheckAll = async () => {
 		const results = []
 		
-		// Check API health
+		// Check API health via apiClientV2
 		try {
-			const apiRes = await fetch('/api/monitoring/health')
-			results.push(`API: ${apiRes.ok ? '✓ OK' : '✗ FAIL'}`)
+			const apiRes = await apiClientV2.getChannels()
+			results.push(`API: ${apiRes.success ? '✓ OK' : '✗ FAIL'}`)
 		} catch (e) {
 			results.push('API: ✗ FAIL')
 		}
 
 		// Check channels endpoint
 		try {
-			const chRes = await fetch('/api/channels')
-			results.push(`Channels: ${chRes.ok ? '✓ OK' : '✗ FAIL'}`)
+			const chRes = await apiClientV2.getChannels()
+			results.push(`Channels: ${chRes.success ? '✓ OK' : '✗ FAIL'}`)
 		} catch (e) {
 			results.push('Channels: ✗ FAIL')
 		}
 
-		// Check broadcast state endpoint
+		// Check broadcast state endpoint (via channel data)
 		try {
-			const bsRes = await fetch('/api/broadcast-state/all')
-			results.push(`Broadcast State: ${bsRes.ok ? '✓ OK' : '✗ FAIL'}`)
+			const bsRes = await apiClientV2.getChannels()
+			results.push(`Broadcast State: ${bsRes.success ? '✓ OK' : '✗ FAIL'}`)
 		} catch (e) {
 			results.push('Broadcast State: ✗ FAIL')
 		}
 
 		// Check session endpoint
 		try {
-			const sessRes = await fetch('/api/session/health')
-			results.push(`Sessions: ${sessRes.ok ? '✓ OK' : '✗ FAIL'}`)
+			const sessRes = await apiClientV2.trackEvent({ action: 'health_check' })
+			results.push(`Sessions: ${sessRes.success ? '✓ OK' : '✗ FAIL'}`)
 		} catch (e) {
 			results.push('Sessions: ✗ FAIL')
 		}

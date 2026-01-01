@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { apiClient } from '../../services/apiClient'
+import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
 // ROAST: "Regex for YouTube IDs? In 2025? I hope this covers Shorts, Live, and whatever Google invents next week."
@@ -54,13 +55,11 @@ export default function VideoManager() {
 
 	const fetchChannels = async () => {
 		try {
-			// ROAST: "Fetching all channels just to populate a dropdown? Pagination? Infinite scroll? No?"
-			const response = await fetch('/api/channels')
-			if (response.ok) {
-				const json = await response.json()
+			// Use apiClientV2 for channel fetch
+			const result = await apiClientV2.getChannels()
+			if (result.success) {
 				// Handle both array and {data: array, checksum: ...} response formats
-				// Because the API can't decide what it wants to return, apparently
-				const data = Array.isArray(json) ? json : (json.data || [])
+				const data = Array.isArray(result.data) ? result.data : (result.data?.data || [])
 				setChannels(data)
 			}
 		} catch (err) {
@@ -71,39 +70,29 @@ export default function VideoManager() {
 	}
 
 	/**
-	 * Sync Broadcast State
-	 * ROAST: "This function shouldn't exist on the client. The backend should handle this via event sourcing or triggers.
-	 * But since the backend is just a glorified JSON store, I have to manually tell the broadcast engine
-	 * that the playlist has changed. You're welcome."
+	 * Sync Broadcast State using apiClientV2
 	 */
 	const syncBroadcastState = async (channelId) => {
 		try {
 			console.log(`[Sync] Manually syncing broadcast state for channel ${channelId}...`)
 			
-			// 1. Fetch fresh channel data
-			const channelRes = await fetch(`/api/channels/${channelId}`)
-			if (!channelRes.ok) throw new Error('Failed to fetch channel for sync')
-			const channel = await channelRes.json()
+			// 1. Fetch fresh channel data via apiClientV2
+			const channelResult = await apiClientV2.getChannel({ channelId })
+			if (!channelResult.success) throw new Error('Failed to fetch channel for sync')
+			const channel = channelResult.data
 
 			// 2. Calculate state (Client-side calculation? Gross.)
 			const videoDurations = channel.items.map(v => v.duration || 30)
 			const playlistTotalDuration = videoDurations.reduce((a, b) => a + b, 0)
 
-			// 3. Push to broadcast state service
-			// Note: Using fetch directly because apiClient might wrap things differently
-			await fetch(`/api/broadcast-state/${channelId}`, {
-				method: 'POST',
-				headers: {
-					...getAuthHeaders(),
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					channelId,
-					channelName: channel.name,
-					playlistStartEpoch: channel.playlistStartEpoch,
-					playlistTotalDuration,
-					videoDurations
-				})
+			// 3. Push to broadcast state service via apiClientV2
+			await apiClientV2.trackEvent({
+				action: 'sync_broadcast_state',
+				channelId,
+				channelName: channel.name,
+				playlistStartEpoch: channel.playlistStartEpoch,
+				playlistTotalDuration,
+				videoDurations
 			})
 			
 			console.log('[Sync] Broadcast state synced. The timeline is safe... for now.')
@@ -129,26 +118,17 @@ export default function VideoManager() {
 
 		setAddingChannel(true)
 		try {
-			const response = await fetch('/api/channels', {
-				method: 'POST',
-				headers: {
-					...getAuthHeaders(),
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ name: newChannelName.trim() })
-			})
-
-			const data = await response.json()
-			if (response.ok) {
-				const newChannels = Array.isArray(channels) ? [...channels, data] : [data]
-				setChannels(newChannels)
-				setSelectedChannel(data._id)
-				setNewChannelName('')
-				setShowAddChannel(false)
-				setMessage({ type: 'success', text: '✅ Category created!' })
-				
-				// Sync the new (empty) channel state
-				syncBroadcastState(data._id)
+			// Use apiClient which handles auth headers
+			const data = await apiClient.post('/api/channels', { name: newChannelName.trim() })
+			const newChannels = Array.isArray(channels) ? [...channels, data] : [data]
+			setChannels(newChannels)
+			setSelectedChannel(data._id)
+			setNewChannelName('')
+			setShowAddChannel(false)
+			setMessage({ type: 'success', text: '✅ Category created!' })
+			
+			// Sync the new (empty) channel state
+			syncBroadcastState(data._id)
 			} else {
 				setMessage({ type: 'error', text: `❌ ${data.message || 'Failed to create category'}` })
 			}
@@ -159,19 +139,15 @@ export default function VideoManager() {
 		}
 	}
 
-	// Fetch YouTube metadata (title + duration) from server API
+	// Fetch YouTube metadata (title + duration) from server API using apiClientV2
 	const fetchYouTubeMetadata = useCallback(async (id) => {
 		setFetchingYT(true)
 		try {
-			// Use server's YouTube API endpoint which fetches title, duration, and embeddable status
-			const response = await fetch('/api/youtube/metadata', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ youtubeId: id })
-			})
+			// Use apiClientV2 which handles YouTube metadata with caching
+			const result = await apiClientV2.getVideoMetadata({ youtubeId: id })
 			
-			if (response.ok) {
-				const data = await response.json()
+			if (result.success) {
+				const data = result.data
 				setYtPreview({
 					title: data.title,
 					thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
@@ -192,23 +168,26 @@ export default function VideoManager() {
 					setMessage({ type: 'success', text: `✅ Fetched: ${durationStr} duration` })
 				}
 			} else {
-				const error = await response.json().catch(() => ({}))
 				// Fallback to oEmbed (no duration but at least get title)
-				const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`)
-				if (oembedRes.ok) {
-					const oembedData = await oembedRes.json()
-					setYtPreview({
-						title: oembedData.title,
-						thumbnail: oembedData.thumbnail_url,
-						author: oembedData.author_name
-					})
-					setVideoData(prev => ({
-						...prev,
-						title: oembedData.title
-					}))
-					setMessage({ type: 'warn', text: '⚠️ Duration unavailable - enter manually' })
-				} else {
-					setMessage({ type: 'error', text: `❌ ${error.message || 'Could not fetch YouTube data'}` })
+				try {
+					const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`)
+					if (oembedRes.ok) {
+						const oembedData = await oembedRes.json()
+						setYtPreview({
+							title: oembedData.title,
+							thumbnail: oembedData.thumbnail_url,
+							author: oembedData.author_name
+						})
+						setVideoData(prev => ({
+							...prev,
+							title: oembedData.title
+						}))
+						setMessage({ type: 'warn', text: '⚠️ Duration unavailable - enter manually' })
+					} else {
+						setMessage({ type: 'error', text: '❌ Could not fetch YouTube data' })
+					}
+				} catch (oembedErr) {
+					setMessage({ type: 'error', text: `❌ ${result.error?.userMessage || 'Could not fetch YouTube data'}` })
 				}
 			}
 		} catch (err) {
