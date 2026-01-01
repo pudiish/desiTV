@@ -49,6 +49,9 @@ export default function Home() {
 	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
 	const [easterEggMessage, setEasterEggMessage] = useState(null) // Easter egg popup
 	
+	// External YouTube video playback
+	const [externalVideo, setExternalVideo] = useState(null) // { videoId, videoTitle, thumbnail, channel }
+	
 	// Easter eggs hook - shows special messages for secret codes
 	const { lastEasterEgg } = useEasterEggs((egg) => {
 		setEasterEggMessage(egg)
@@ -1035,6 +1038,17 @@ export default function Home() {
 					}, 300);
 				}
 			}}
+			onPlayExternal={({ videoId, videoTitle, thumbnail }) => {
+				// Handle YouTube external video play from VJ chat - play on TV screen
+				console.log('[VJChat] Playing external YouTube video on TV:', videoId, videoTitle);
+				setExternalVideo({
+					videoId,
+					videoTitle,
+					thumbnail,
+					channelId: 'external'
+				});
+				setStatusMessage(`🎬 Playing: ${videoTitle}`);
+			}}
 		/>
 		
 		<div className="main-container">
@@ -1058,6 +1072,8 @@ export default function Home() {
 			isBuffering={isBuffering}
 			bufferErrorMessage={bufferErrorMessage}
 			playbackInfo={playbackInfo}
+			externalVideo={externalVideo}
+			onExternalVideoEnd={() => setExternalVideo(null)}
 			onTapHandlerReady={handleTapHandlerReady}
 			onFullscreenChange={setIsFullscreen}
 			onRemoteEdgeHover={handleRemoteEdgeHover}

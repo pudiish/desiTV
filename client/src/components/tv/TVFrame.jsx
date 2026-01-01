@@ -10,7 +10,7 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  * Memoized to prevent unnecessary re-renders
  * Updated: Removed sensorKey state - using simple direct rendering
  */
-const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false, galaxyProps = null }) {
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false, galaxyProps = null, externalVideo = null, onExternalVideoEnd = null }) {
 	const tvFrameRef = useRef(null)
 	const [isFullscreen, setIsFullscreen] = useState(isFullscreenProp)
 	const [showPreview, setShowPreview] = useState(false)
@@ -286,7 +286,88 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 							alignItems: 'center', 
 							justifyContent: 'center' 
 						}}>
-							{activeChannel ? (
+							{externalVideo ? (
+								// Show external YouTube video on TV
+								<div style={{
+									position: 'absolute',
+									top: 0,
+									left: 0,
+									right: 0,
+									bottom: 0,
+									width: '100%',
+									height: '100%',
+									display: 'flex',
+									flexDirection: 'column',
+									backgroundColor: '#000',
+									zIndex: 100
+								}}>
+									{/* Title bar */}
+									<div style={{
+										background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+										color: '#d4a574',
+										padding: '12px 16px',
+										fontSize: '14px',
+										fontWeight: '600',
+										textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+										lineHeight: 1.3,
+										maxHeight: '60px',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis'
+									}}>
+										🎬 {externalVideo.videoTitle}
+									</div>
+									{/* YouTube iframe - fills remaining space */}
+									<iframe
+										style={{
+											flex: 1,
+											width: '100%',
+											height: '100%',
+											border: 'none',
+											backgroundColor: '#000'
+										}}
+										src={`https://www.youtube.com/embed/${externalVideo.videoId}?autoplay=1&controls=1&modestbranding=1`}
+										title={externalVideo.videoTitle}
+										allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+										allowFullScreen
+										onEnded={onExternalVideoEnd}
+									/>
+									{/* Close button (top right) */}
+									<button
+										onClick={() => onExternalVideoEnd?.()}
+										style={{
+											position: 'absolute',
+											top: '12px',
+											right: '12px',
+											width: '36px',
+											height: '36px',
+											background: 'rgba(0, 0, 0, 0.7)',
+											border: '2px solid #d4a574',
+											borderRadius: '50%',
+											color: '#d4a574',
+											fontSize: '20px',
+											cursor: 'pointer',
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											zIndex: 20,
+											fontWeight: 'bold',
+											transition: 'all 0.2s ease'
+										}}
+										onMouseEnter={e => {
+											e.target.style.background = 'rgba(0, 0, 0, 0.9)';
+											e.target.style.borderColor = '#e5b685';
+											e.target.style.color = '#e5b685';
+										}}
+										onMouseLeave={e => {
+											e.target.style.background = 'rgba(0, 0, 0, 0.7)';
+											e.target.style.borderColor = '#d4a574';
+											e.target.style.color = '#d4a574';
+										}}
+									>
+										✕
+									</button>
+								</div>
+							) : activeChannel ? (
 								<Player 
 									channel={activeChannel} 
 									onVideoEnd={onVideoEnd || onStaticTrigger}

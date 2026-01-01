@@ -1,10 +1,13 @@
 /**
- * Chat Controller
+ * Chat Controller - Minimal Clean Architecture
  * 
- * Handles chat requests for DesiTV VJ Assistant
+ * RULE: Use VJCore for all message processing
+ * VJCore handles factual queries with pre-built messages (NO AI)
+ * Only general conversation goes to AI
  */
 
-const { gemini, tools } = require('../mcp');
+const vjCore = require('../mcp/vjCore');
+const { gemini } = require('../mcp');
 const { 
   getUserProfile, 
   updateUserPreferences, 
@@ -12,12 +15,12 @@ const {
   extractPreferencesFromMessage 
 } = require('../mcp/userMemory');
 
-// In-memory conversation cache (simple implementation)
+// In-memory conversation cache
 const conversations = new Map();
 const CONVERSATION_TTL = 30 * 60 * 1000; // 30 minutes
 
 /**
- * Handle chat message
+ * Handle chat message - MINIMAL VERSION
  */
 async function handleMessage(req, res) {
   try {
@@ -31,106 +34,63 @@ async function handleMessage(req, res) {
       return res.status(400).json({ error: 'Message too long (max 500 chars)' });
     }
 
-    // Log incoming context for debugging
-    console.log('[Chat] Received context:', {
-      currentChannel: context.currentChannel,
-      currentVideo: context.currentVideo?.title,
-      currentVideoIndex: context.currentVideoIndex
-    });
-
-    // Check for quick response first
-    const quickResponse = gemini.getQuickResponse(message);
-    if (quickResponse) {
-      return res.json({
-        response: quickResponse,
-        sessionId: sessionId || generateSessionId()
-      });
-    }
-
-    // Get or create conversation history
+    // Get or create session
     const convId = sessionId || generateSessionId();
     let history = conversations.get(convId) || [];
 
-    // Build context with sessionId for trivia tracking
-    const fullContext = {
-      ...context,
-      sessionId: convId
-    };
+    // Log context for debugging
+    console.log('[Chat] Input:', { 
+      message, 
+      channel: context.currentChannel,
+      video: context.currentVideo?.title 
+    });
 
-    // Detect if we need to use tools
-    const intent = tools.detectIntent(message);
-    let toolResults = null;
-    let action = null;
+    // =========================================================================
+    // CORE LOGIC: Process through VJCore
+    // VJCore returns pre-built messages for factual queries (no hallucination)
+    // Only passes to AI for general conversation
+    // =========================================================================
+    const result = await vjCore.processMessage(message, context);
+    console.log('[Chat] VJCore result:', { 
+      success: result.success, 
+      hasMessage: !!result.message,
+      passToAI: result.passToAI,
+      action: result.action
+    });
 
-    // Check if this might be a trivia answer (short message, no detected intent)
-    if (!intent && message.length < 50) {
-      // Could be a trivia answer - check with the check_trivia_answer tool
-      try {
-        const answerCheck = await tools.executeTool('check_trivia_answer', 
-          { answer: message, sessionId: convId }, 
-          fullContext
-        );
-        if (answerCheck && answerCheck.success !== false) {
-          toolResults = answerCheck;
-        }
-      } catch (err) {
-        // Not a trivia answer, continue normally
+    let response;
+    let action = result.action || null;
+
+    if (result.passToAI) {
+      // Only for general conversation - AI can respond
+      const userProfile = getUserProfile(convId);
+      response = await gemini.chat(message, history, {
+        ...context,
+        userProfile
+      });
+    } else if (result.message) {
+      // Use pre-built message directly (NO AI HALLUCINATION)
+      response = result.message;
+    } else {
+      response = '🤔 Samajh nahi aaya. Phir se bolo?';
+    }
+
+    // Update preferences if action taken
+    if (action) {
+      if (action.type === 'CHANGE_CHANNEL') {
+        updateUserPreferences(convId, { channel: action.channelName });
+      } else if (action.type === 'PLAY_VIDEO') {
+        updateUserPreferences(convId, { 
+          song: action.videoTitle,
+          channel: action.channelName 
+        });
       }
     }
 
-    if (intent && !toolResults) {
-      try {
-        // Pass context to tools that need it (like get_now_playing)
-        if (intent.usesContext) {
-          toolResults = await tools.executeTool(intent.tool, intent.params, fullContext);
-        } else {
-          toolResults = await tools.executeTool(intent.tool, intent.params);
-        }
-        
-        // Extract action if present (for channel change, play video, etc.)
-        if (toolResults?.action) {
-          action = toolResults.action;
-          
-          // Update user preferences based on action
-          if (action.type === 'CHANGE_CHANNEL') {
-            updateUserPreferences(convId, { channel: action.channelName });
-          } else if (action.type === 'PLAY_VIDEO') {
-            updateUserPreferences(convId, { 
-              song: action.videoTitle,
-              channel: action.channelName 
-            });
-          }
-        }
-        
-        // Track trivia results
-        if (toolResults?.correct !== undefined) {
-          updateUserPreferences(convId, { triviaResult: toolResults.correct });
-        }
-      } catch (err) {
-        console.error('[Chat] Tool execution error:', err);
-      }
-    }
-    
     // Extract and update preferences from message
     const extractedPrefs = extractPreferencesFromMessage(message);
     if (Object.keys(extractedPrefs).length > 0) {
       updateUserPreferences(convId, extractedPrefs);
-    }
-
-    // Get AI response (or use tool's pre-built message)
-    let response;
-    if (toolResults?.message) {
-      // Use tool's pre-built message directly (for trivia, shayari, actions)
-      response = toolResults.message;
-      console.log('[Chat] Using pre-built message from tool');
-    } else {
-      // Add user profile to context for personalization
-      const userProfile = getUserProfile(convId);
-      response = await gemini.chat(message, history, {
-        ...context,
-        toolResults,
-        userProfile
-      });
     }
 
     // Update conversation history
@@ -149,11 +109,14 @@ async function handleMessage(req, res) {
       cleanupConversations();
     }
 
+    console.log('[Chat] Final response:', {
+      action
+    });
+
     res.json({
       response,
       sessionId: convId,
-      toolUsed: intent?.tool || null,
-      action: action // Include action for frontend to execute
+      action
     });
 
   } catch (error) {
@@ -186,18 +149,16 @@ async function getSuggestions(req, res) {
   try {
     const { sessionId } = req.query;
     
-    // Get personalized suggestions if we have a session
     let suggestions;
     if (sessionId) {
       suggestions = getPersonalizedSuggestions(sessionId);
     } else {
-      // Default suggestions for new users
       suggestions = [
+        "What's playing now? 🎵",
         "What channels do you have? 📺",
         "Play some party music 🎉",
         "Give me a trivia! 🎯",
-        "Share a romantic shayari 💕",
-        "Switch to Retro Gold"
+        "Share a shayari 💕"
       ];
     }
 
@@ -221,7 +182,6 @@ function generateSessionId() {
 function cleanupConversations() {
   const now = Date.now();
   for (const [id, _] of conversations) {
-    // Extract timestamp from session ID
     const match = id.match(/chat_(\d+)_/);
     if (match) {
       const created = parseInt(match[1], 10);
