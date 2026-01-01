@@ -68,11 +68,12 @@ async function handleMessage(req, res) {
       }
     }
 
-    // Get AI response (or use tool's pre-built message for actions)
+    // Get AI response (or use tool's pre-built message)
     let response;
-    if (action && toolResults?.message) {
-      // For actions, use the tool's message directly for speed
+    if (toolResults?.message) {
+      // Use tool's pre-built message directly (for trivia, shayari, actions)
       response = toolResults.message;
+      console.log('[Chat] Using pre-built message from tool');
     } else {
       response = await gemini.chat(message, history, {
         ...context,

@@ -104,19 +104,21 @@ function getNowPlaying(params = {}, context = {}) {
     return {
       success: false,
       error: 'No video currently playing',
-      suggestion: 'Try switching to a channel first!'
+      message: '🤔 Nothing playing right now! Try switching to a channel first.'
     };
   }
   
+  const artist = currentVideo.artist || currentVideo.channelTitle || 'Unknown Artist';
   return {
     success: true,
     nowPlaying: {
       title: currentVideo.title,
-      artist: currentVideo.artist || 'Unknown Artist',
+      artist,
       channel: currentChannel,
       position: `Video ${(currentVideoIndex || 0) + 1} of ${totalVideos || '?'}`,
       duration: currentVideo.duration
-    }
+    },
+    message: `🎵 Now Playing on ${currentChannel}:\n\n"${currentVideo.title}"\nby ${artist}\n\n(Track ${(currentVideoIndex || 0) + 1} of ${totalVideos || '?'})`
   };
 }
 
@@ -131,18 +133,21 @@ function getUpNext(params = {}, context = {}) {
     return {
       success: false,
       error: 'No information about upcoming video',
-      suggestion: 'The playlist might be at the end or still loading'
+      message: '🔮 Not sure what\'s next - playlist might be at the end!'
     };
   }
   
+  const artist = nextVideo.artist || nextVideo.channelTitle || 'Unknown Artist';
   return {
     success: true,
     upNext: {
       title: nextVideo.title,
-      artist: nextVideo.artist || 'Unknown Artist',
+      artist,
       channel: currentChannel,
       position: `Will be video ${(currentVideoIndex || 0) + 2} of ${totalVideos || '?'}`
-    }
+    },
+    message: `🔮 Up Next on ${currentChannel}:\n\n"${nextVideo.title}"\nby ${artist}`
+  };
   };
 }
 
@@ -158,6 +163,8 @@ async function getChannels(params = {}) {
       .limit(limit)
       .lean();
 
+    const channelList = channels.map(ch => `📺 ${ch.name} (${ch.items?.length || 0} videos)`).join('\n');
+    
     return {
       success: true,
       channels: channels.map(ch => ({
@@ -165,11 +172,12 @@ async function getChannels(params = {}) {
         category: ch.category,
         description: ch.description,
         videoCount: ch.items?.length || 0
-      }))
+      })),
+      message: `🎬 Available Channels:\n\n${channelList}\n\nSay "switch to [channel name]" to tune in!`
     };
   } catch (error) {
     console.error('[Tools] getChannels error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, message: 'Oops! Failed to load channels 😅' };
   }
 }
 
@@ -181,7 +189,7 @@ async function searchVideos(params = {}) {
     const { query, limit = 5 } = params;
     
     if (!query) {
-      return { success: false, error: 'Query required' };
+      return { success: false, error: 'Query required', message: '🤔 What should I search for?' };
     }
 
     // Search in channel items
@@ -209,15 +217,27 @@ async function searchVideos(params = {}) {
       if (results.length >= limit) break;
     }
 
+    if (results.length === 0) {
+      return {
+        success: false,
+        query,
+        results: [],
+        total: 0,
+        message: `🔍 No results for "${query}". Try:\n• Different artist name\n• Song title\n• Channel name`
+      };
+    }
+
+    const resultList = results.map(r => `• "${r.title}" on ${r.channel}`).join('\n');
     return {
       success: true,
       query,
       results,
-      total: results.length
+      total: results.length,
+      message: `🔍 Found ${results.length} result(s) for "${query}":\n\n${resultList}\n\nSay "play [song name]" to play!`
     };
   } catch (error) {
     console.error('[Tools] searchVideos error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, message: 'Search failed! Try again? 😅' };
   }
 }
 
@@ -271,7 +291,10 @@ async function getRecommendations(params = {}) {
       party: ['Party Anthems', 'Club Nights', 'Desi Beats'],
       chill: ['Retro Gold', 'Late Night'],
       romantic: ['Romantic Hits', 'Love Songs'],
-      nostalgic: ['Retro Gold', '2000s Hits', '9XM Classics']
+      nostalgic: ['Retro Gold', '2000s Hits', '9XM Classics'],
+      sad: ['Retro Gold', 'Late Night'],
+      happy: ['Party Anthems', 'Desi Beats'],
+      energetic: ['Club Nights', 'Party Anthems']
     };
 
     const categories = moodToCategory[mood.toLowerCase()] || moodToCategory.party;
@@ -286,6 +309,12 @@ async function getRecommendations(params = {}) {
       .select('name category items _id')
       .limit(3)
       .lean();
+
+    const buildMessage = (chans, moodText) => {
+      if (chans.length === 0) return `🤔 No channels found for "${moodText}" mood!`;
+      const list = chans.map(ch => `📺 ${ch.name}`).join('\n');
+      return `🎵 For "${moodText}" mood, try:\n\n${list}\n\nSay "switch to [channel]" to tune in!`;
+    };
 
     if (channels.length === 0) {
       // Fallback: get any active channels
@@ -302,7 +331,8 @@ async function getRecommendations(params = {}) {
           channelId: ch._id.toString(),
           category: ch.category,
           sampleVideos: (ch.items || []).slice(0, 2).map(v => v.title)
-        }))
+        })),
+        message: buildMessage(fallback, mood)
       };
     }
 
@@ -314,11 +344,12 @@ async function getRecommendations(params = {}) {
         channelId: ch._id.toString(),
         category: ch.category,
         sampleVideos: (ch.items || []).slice(0, 2).map(v => v.title)
-      }))
+      })),
+      message: buildMessage(channels, mood)
     };
   } catch (error) {
     console.error('[Tools] getRecommendations error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, message: 'Oops! Recommendations failed 😅' };
   }
 }
 
@@ -349,10 +380,11 @@ async function changeChannel(params = {}) {
       const available = await Channel.find({ isActive: true })
         .select('name')
         .lean();
+      const channelList = available.map(c => c.name).slice(0, 5).join(', ');
       return { 
         success: false, 
         error: `Channel "${channelName}" not found`,
-        availableChannels: available.map(c => c.name)
+        message: `🤔 No channel called "${channelName}". Available: ${channelList}...`
       };
     }
 
@@ -368,7 +400,7 @@ async function changeChannel(params = {}) {
     };
   } catch (error) {
     console.error('[Tools] changeChannel error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, message: 'Oops! Channel change failed 😅' };
   }
 }
 
@@ -424,11 +456,11 @@ async function playVideo(params = {}) {
     return { 
       success: false, 
       error: `Couldn't find a video matching "${query}"`,
-      suggestion: 'Try searching for an artist name like "Honey Singh" or a song title'
+      message: `🤔 Hmm, couldn't find "${query}" in our library. Try:\n• "play Honey Singh"\n• "play romantic songs"\n• "switch to Desi Beats"`
     };
   } catch (error) {
     console.error('[Tools] playVideo error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, message: 'Oops! Something went wrong searching. Try again? 😅' };
   }
 }
 
@@ -576,48 +608,62 @@ function detectIntent(message) {
  */
 
 /**
- * Get a random trivia question
+ * Get a random trivia question - returns pre-built message
  */
 function getTrivia() {
   const triviaList = vjContent.trivia || [];
   if (triviaList.length === 0) {
-    return { success: false, error: 'No trivia available' };
+    return { 
+      success: false, 
+      error: 'No trivia available',
+      message: 'Oops! Trivia database is empty. Try asking something else! 😅'
+    };
   }
   
   const trivia = triviaList[Math.floor(Math.random() * triviaList.length)];
+  
+  // Return pre-built message so AI doesn't hallucinate
   return {
     success: true,
     trivia: {
       question: trivia.question,
       hint: trivia.hint,
       year: trivia.year,
-      // Don't send answer - let VJ reveal it later!
-      _answer: trivia.answer
-    }
+      answer: trivia.answer
+    },
+    // Pre-built message - AI won't make up questions
+    message: `🎯 TRIVIA TIME!\n\n${trivia.question}\n\n💡 Hint: ${trivia.hint}\n\n(Reply with your answer!)`
   };
 }
 
 /**
- * Get a shayari based on mood
+ * Get a shayari based on mood - returns pre-built message
  */
 function getShayari(params = {}) {
   const { mood = 'romantic' } = params;
   const shayariList = vjContent.shayari?.[mood] || vjContent.shayari?.romantic || [];
   
   if (shayariList.length === 0) {
-    return { success: false, error: 'No shayari available' };
+    return { 
+      success: false, 
+      error: 'No shayari available',
+      message: 'Shayari folder khali hai yaar! 😅 Try something else?'
+    };
   }
   
   const shayari = shayariList[Math.floor(Math.random() * shayariList.length)];
+  
+  // Pre-built message
   return {
     success: true,
     shayari,
-    mood
+    mood,
+    message: `💕 ${mood === 'sad' ? 'Dard-e-dil' : mood === 'friendship' ? 'Dosti' : 'Mohabbat'} ki shayari:\n\n"${shayari}"`
   };
 }
 
 /**
- * Get "This Day in History" content
+ * Get "This Day in History" content - returns pre-built message
  */
 function getThisDayInHistory() {
   const today = new Date();
@@ -627,16 +673,14 @@ function getThisDayInHistory() {
   
   // If no specific data for today, return generic response
   if (!dayData) {
-    const year = 2000 + Math.floor(Math.random() * 10); // Random year 2000-2009
+    const year = 2000 + Math.floor(Math.random() * 10);
     return {
       success: true,
       thisDay: {
         date: dateKey,
-        year,
-        message: `Aaj ke din ${year} mein Bollywood mein kya chal raha tha? Let me think... 🤔`,
-        events: ['Music channels were ruling!', 'Remixes were the craze!'],
-        songs: ['2000s hits were everywhere!']
-      }
+        year
+      },
+      message: `📅 This Day in Bollywood History!\n\nBack in ${year}, Indian music was vibing! 🎶\nMusic channels like MTV & Channel V were ruling our TVs!\n\nWhat era music do you want to hear? 90s? 2000s?`
     };
   }
   
@@ -646,7 +690,8 @@ function getThisDayInHistory() {
       date: dateKey,
       events: dayData.events,
       songs: dayData.songs
-    }
+    },
+    message: `📅 This Day in Bollywood!\n\n${dayData.events.join('\n')}\n\n🎵 Hit songs: ${dayData.songs.join(', ')}`
   };
 }
 
