@@ -21,6 +21,8 @@ class APIClientV2 {
       suggestions: 2 * 60 * 1000, // 2 minutes
       metadata: 60 * 1000 // 1 minute
     };
+    this.csrfToken = null; // CSRF token cache
+    this.csrfTokenPromise = null; // Promise for token fetch in progress
   }
 
   /**
@@ -57,6 +59,48 @@ class APIClientV2 {
   }
 
   /**
+   * Get CSRF token from server
+   */
+  async getCsrfToken() {
+    // Return cached token if available
+    if (this.csrfToken) {
+      return this.csrfToken;
+    }
+
+    // If a fetch is already in progress, wait for it
+    if (this.csrfTokenPromise) {
+      return this.csrfTokenPromise;
+    }
+
+    // Fetch new token
+    this.csrfTokenPromise = fetch(`${this.baseURL}/csrf-token`)
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to get CSRF token: ${res.status}`);
+        }
+        const data = await res.json();
+        this.csrfToken = data.token;
+        this.csrfTokenPromise = null;
+        return data.token;
+      })
+      .catch((err) => {
+        this.csrfTokenPromise = null;
+        console.warn('[APIClientV2] CSRF token fetch failed:', err);
+        return null;
+      });
+
+    return this.csrfTokenPromise;
+  }
+
+  /**
+   * Clear CSRF token (force refresh on next request)
+   */
+  clearCsrfToken() {
+    this.csrfToken = null;
+    this.csrfTokenPromise = null;
+  }
+
+  /**
    * Generic fetch with timeout and error handling
    */
   async request(method, endpoint, options = {}) {
@@ -74,17 +118,49 @@ class APIClientV2 {
         }
       }
 
+      // Get CSRF token for state-changing requests
+      const stateChangingMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
+      const needsCsrfToken = stateChangingMethods.includes(method.toUpperCase());
+      
+      let csrfToken = null;
+      if (needsCsrfToken) {
+        csrfToken = await this.getCsrfToken();
+        // If token fetch failed, retry once
+        if (!csrfToken) {
+          this.clearCsrfToken();
+          csrfToken = await this.getCsrfToken();
+        }
+        // If still no token, log warning but proceed (server will reject with 403)
+        if (!csrfToken) {
+          console.warn('[APIClientV2] CSRF token unavailable, request may fail');
+        }
+      }
+
+      // Build headers
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
+
+      // Add CSRF token to headers if available
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers
-        },
+        headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
+
+      // Update CSRF token from response header if present (token refresh)
+      const newCsrfToken = response.headers.get('X-CSRF-Token');
+      if (newCsrfToken) {
+        this.csrfToken = newCsrfToken;
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
