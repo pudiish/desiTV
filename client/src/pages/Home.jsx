@@ -11,16 +11,27 @@ import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgr
 import { useEasterEggs } from '../hooks/useEasterEggs'
 import { checksumSyncService } from '../services/checksumSync'
 import { clearEpochCache } from '../services/api/globalEpochService'
+import { useTVState } from '../hooks/useTVState'
+import CONSTANTS from '../config/appConstants'
 
 // Lazy load heavy components that aren't always visible
 const TVMenuV2 = lazy(() => import('../components/tv').then(m => ({ default: m.TVMenuV2 })))
 const TVSurvey = lazy(() => import('../components/tv').then(m => ({ default: m.TVSurvey })))
 
 export default function Home() {
-	// RESTRUCTURED: Categories are playlists, videos are channels
+	// ===== STATE CONSOLIDATION =====
+	// Centralized TV state (replaces 23 useState calls)
+	const [tvState, actions] = useTVState()
+	
+	// Local category/video management (not in reducer - TV-specific data management)
 	const [categories, setCategories] = useState([]) // All categories (playlists)
 	const [selectedCategory, setSelectedCategory] = useState(null) // Currently selected category/playlist
 	const [activeVideoIndex, setActiveVideoIndex] = useState(0) // Index of current video within category
+	const [galaxyEnabled, setGalaxyEnabled] = useState(false) // Galaxy background toggle
+	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
+	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
+	const [crtVolume, setCrtVolume] = useState(null) // CRT overlay volume trigger (CRT-specific)
+	const [playbackInfo, setPlaybackInfo] = useState(null) // Live playback snapshot from Player
 	
 	// Ref to track current category index synchronously (fixes race condition on rapid clicks)
 	const currentCategoryIndexRef = useRef(-1)
@@ -30,34 +41,14 @@ export default function Home() {
 		selectedCategory?.items || [], 
 		[selectedCategory]
 	)
-	const [power, setPower] = useState(false)
-	const [volume, setVolume] = useState(0.5)
-	const [prevVolume, setPrevVolume] = useState(0.5) // For mute toggle
-	const [staticActive, setStaticActive] = useState(false)
-	const [galaxyEnabled, setGalaxyEnabled] = useState(false) // Galaxy background toggle
-	const [statusMessage, setStatusMessage] = useState(`${getTimeBasedGreeting()} POWER BUTTON DABAO AUR SHURU KARO!`)
-	const [isBuffering, setIsBuffering] = useState(false)
-	const [bufferErrorMessage, setBufferErrorMessage] = useState('')
-	const [menuOpen, setMenuOpen] = useState(false) // TV Menu state
-	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
-	const [playbackInfo, setPlaybackInfo] = useState(null) // Live playback snapshot from Player
-	const [crtVolume, setCrtVolume] = useState(null) // CRT overlay volume trigger
-	const [crtIsMuted, setCrtIsMuted] = useState(false) // CRT overlay muted state
-	const [isFullscreen, setIsFullscreen] = useState(false) // Track fullscreen for overlay remote
-	const [remoteOverlayVisible, setRemoteOverlayVisible] = useState(false) // Slide-up remote visibility
-	const [surveyOpen, setSurveyOpen] = useState(false) // Survey visibility
-	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
-	const [easterEggMessage, setEasterEggMessage] = useState(null) // Easter egg popup
-	
-	// External YouTube video playback
-	const [externalVideo, setExternalVideo] = useState(null) // { videoId, videoTitle, thumbnail, channel }
 	
 	// Easter eggs hook - shows special messages for secret codes
 	const { lastEasterEgg } = useEasterEggs((egg) => {
-		setEasterEggMessage(egg)
-		setStatusMessage(egg.message)
+		actions.setStatusMessage(egg.message)
 		// Auto-clear after duration
-		setTimeout(() => setEasterEggMessage(null), egg.duration || 3000)
+		setTimeout(() => {
+			// Status message shown, no need to clear - next update will override
+		}, egg.duration || 3000)
 	})
 	const lastPlaybackInfoRef = useRef(null) // Throttle updates to UI
 	const surveyTimerRef = useRef(null) // Timer to show survey after watching
@@ -85,14 +76,14 @@ export default function Home() {
 			document.body.classList.contains('ios-fullscreen-active') ||
 			document.documentElement.classList.contains('ios-fullscreen-active') ||
 			document.body.classList.contains('tv-fullscreen-active') ||
-			isFullscreen
+			tvState.isFullscreen
 		)
 		
-		console.log('[Remote] handleRemoteEdgeHover called, fullscreen:', isCurrentlyFullscreen, 'isFullscreen:', isFullscreen)
+		console.log('[Remote] handleRemoteEdgeHover called, fullscreen:', isCurrentlyFullscreen, 'isFullscreen:', tvState.isFullscreen)
 		
 		if (!isCurrentlyFullscreen) {
 			// If not fullscreen, hide remote
-			setRemoteOverlayVisible(false)
+			actions.setRemoteOverlayVisible(false)
 			return
 		}
 		
@@ -104,41 +95,18 @@ export default function Home() {
 		}
 		
 		// Show remote and reset auto-hide timer (original behavior: show on hover, auto-hide after 2.5 sec)
-		setRemoteOverlayVisible(prev => {
-			// If already visible, just reset the timer (don't re-render)
-			if (prev) {
-				// Clear existing timeout and set new one
-				if (remoteHideTimeoutRef.current) {
-					clearTimeout(remoteHideTimeoutRef.current)
-				}
-				remoteHideTimeoutRef.current = setTimeout(() => {
-					console.log('[Remote] Auto-hiding after 2.5 seconds')
-					setRemoteOverlayVisible(false)
-					remoteHideTimeoutRef.current = null
-				}, 2500)
-				return prev // Return same value to prevent re-render
-			}
-			
-			// First time showing - log it
-			console.log('[Remote] Showing remote overlay')
-			
-			// Clear any existing timeout
-			if (remoteHideTimeoutRef.current) {
-				clearTimeout(remoteHideTimeoutRef.current)
-				remoteHideTimeoutRef.current = null
-			}
-			
-			// Set new auto-hide timer (2.5 seconds)
-			remoteHideTimeoutRef.current = setTimeout(() => {
-				console.log('[Remote] Auto-hiding after 5 seconds')
-				setRemoteOverlayVisible(false)
-				remoteHideTimeoutRef.current = null
-			}, 5000)
-			
-			// Show the remote
-			return true
-		})
-	}, [isFullscreen])
+		actions.setRemoteOverlayVisible(tvState.remoteOverlayVisible ? tvState.remoteOverlayVisible : true)
+		
+		// Clear and reset auto-hide timer
+		if (remoteHideTimeoutRef.current) {
+			clearTimeout(remoteHideTimeoutRef.current)
+		}
+		remoteHideTimeoutRef.current = setTimeout(() => {
+			console.log('[Remote] Auto-hiding after 5 seconds')
+			actions.setRemoteOverlayVisible(false)
+			remoteHideTimeoutRef.current = null
+		}, 5000)
+	}, [tvState.isFullscreen, actions])
 	
 	// Handle mouse leave from remote overlay area
 	const handleRemoteMouseLeave = useCallback(() => {
@@ -151,20 +119,20 @@ export default function Home() {
 		// Set new timeout to hide after 2.5 seconds
 		remoteHideTimeoutRef.current = setTimeout(() => {
 			console.log('[Remote] Auto-hiding after 5 seconds (mouse left)')
-			setRemoteOverlayVisible(false)
+			actions.setRemoteOverlayVisible(false)
 			remoteHideTimeoutRef.current = null
 		}, 5000)
-	}, [])
+	}, [actions])
 
 	// Debug: Log remote visibility changes
 	useEffect(() => {
-		console.log('[Remote] Visibility changed:', remoteOverlayVisible, 'Fullscreen:', isFullscreen)
-	}, [remoteOverlayVisible, isFullscreen])
+		console.log('[Remote] Visibility changed:', tvState.remoteOverlayVisible, 'Fullscreen:', tvState.isFullscreen)
+	}, [tvState.remoteOverlayVisible, tvState.isFullscreen])
 	
 	// Handle swipe down to dismiss (mobile only)
 	const handleRemoteSwipeDismiss = useCallback(() => {
-		setRemoteOverlayVisible(false)
-	}, [])
+		actions.setRemoteOverlayVisible(false)
+	}, [actions])
 
 	// Trigger tap for remote buttons and screen clicks
 	const handleTapTrigger = () => {
@@ -200,8 +168,8 @@ export default function Home() {
 				activeCategoryId: selectedCategory?._id,
 				activeCategoryName: selectedCategory?.name,
 				activeVideoIndex: currentVideoIndex, // Save calculated position
-				volume,
-				isPowerOn: power,
+				volume: tvState.volume,
+				isPowerOn: tvState.power,
 			})
 			
 			// Also ensure broadcast state is saved
@@ -211,7 +179,7 @@ export default function Home() {
 				console.error('[Home] Error saving broadcast state:', err)
 			}
 		}, 500) // 500ms debounce
-	}, [videosInCategory, activeVideoIndex, selectedCategory, volume, power])
+	}, [videosInCategory, activeVideoIndex, selectedCategory, tvState.volume, tvState.power])
 
 	// Save session on page unload
 	useEffect(() => {
@@ -251,18 +219,18 @@ export default function Home() {
 		if (sessionRestored) {
 			saveSessionState()
 		}
-	}, [power, volume, activeVideoIndex, selectedCategory, sessionRestored, saveSessionState])
+	}, [tvState.power, tvState.volume, activeVideoIndex, selectedCategory, sessionRestored, saveSessionState])
 
 	// Periodic status message update (manual mode no longer expires automatically)
 	useEffect(() => {
-		if (!power || !selectedCategory) return
+		if (!tvState.power || !selectedCategory) return
 
 		const updateStatus = setInterval(() => {
 			if (!selectedCategory?._id) return
 
 			// Update status message based on mode (only if not already set by other handlers)
 			const mode = broadcastStateManager.getMode(selectedCategory._id)
-			const currentStatus = statusMessage || ''
+			const currentStatus = tvState.statusMessage || ''
 			
 			// Only update if status doesn't contain manual/timeline indicators
 			if (!currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING') && !currentStatus.includes('LIVE')) {
@@ -270,18 +238,18 @@ export default function Home() {
 					// Manual mode - show current video info
 					const currentVideo = videosInCategory[activeVideoIndex] || null
 					const videoTitle = currentVideo?.title?.substring(0, 30) || 'VIDEO'
-					setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - ${videoTitle}...`)
+					actions.setStatusMessage(`MANUAL MODE - ${selectedCategory.name} - ${videoTitle}...`)
 				} else if (mode === 'timeline') {
 					// Timeline mode - show LIVE indicator
 					const currentVideo = videosInCategory[activeVideoIndex] || null
 					const videoTitle = currentVideo?.title?.substring(0, 30) || 'VIDEO'
-					setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
+					actions.setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
 				}
 			}
 		}, 2000) // Update every 2 seconds (less frequent since we don't need timer checks)
 
 		return () => clearInterval(updateStatus)
-	}, [power, selectedCategory, videosInCategory, activeVideoIndex, statusMessage])
+	}, [tvState.power, tvState.statusMessage, selectedCategory, videosInCategory, activeVideoIndex, actions])
 
 	// Keep ref in sync with selectedCategory (safety net)
 	useEffect(() => {
@@ -356,11 +324,11 @@ export default function Home() {
 					position.offset,
 					category.items
 				)
-				setStatusMessage(`● LIVE - ${categoryName} - Video ${position.videoIndex + 1}`)
+				actions.setStatusMessage(`● LIVE - ${categoryName} - Video ${position.videoIndex + 1}`)
 				setVideoSwitchTimestamp(Date.now())
 			} else {
 				setActiveVideoIndex(0)
-				setStatusMessage(`${categoryName} - Video 1`)
+				actions.setStatusMessage(`${categoryName} - Video 1`)
 			}
 		} catch (err) {
 			console.error('[Home] Error calculating position:', err)
@@ -421,20 +389,20 @@ export default function Home() {
 			
 			if (!allCategories || allCategories.length === 0) {
 				console.error('[Home] No categories loaded!')
-				setStatusMessage('CHANNELS NAHI MILE. CHECK KARO...')
+				actions.setStatusMessage('CHANNELS NAHI MILE. CHECK KARO...')
 				// Try to reload once more
 				try {
 					await channelManager.reload()
 					const retryCategories = channelManager.getAllCategories()
 					if (retryCategories && retryCategories.length > 0) {
 						setCategories(retryCategories)
-						setStatusMessage(`LOADED ${retryCategories.length} CATEGORIES.`)
+						actions.setStatusMessage(`LOADED ${retryCategories.length} CATEGORIES.`)
 					} else {
-						setStatusMessage('CHANNELS NAHI MILE. FILE CHECK KARO.')
+						actions.setStatusMessage('CHANNELS NAHI MILE. FILE CHECK KARO.')
 					}
 				} catch (reloadErr) {
 					console.error('[Home] Reload failed:', reloadErr)
-					setStatusMessage('ERROR LOADING CHANNELS. CHECK CONSOLE FOR DETAILS.')
+					actions.setStatusMessage('ERROR LOADING CHANNELS. CHECK CONSOLE FOR DETAILS.')
 				}
 				setSessionRestored(true)
 				return
@@ -491,7 +459,7 @@ export default function Home() {
 				setSessionRestored(true)
 			} catch (err) {
 				console.error('Error initializing app:', err)
-				setStatusMessage('ERROR! PAGE REFRESH KARO.')
+				actions.setStatusMessage('ERROR! PAGE REFRESH KARO.')
 				
 				// Try to load categories anyway
 				try {
@@ -502,15 +470,15 @@ export default function Home() {
 						const firstCategory = allCategories[0]
 						setSelectedCategory(firstCategory)
 						currentCategoryIndexRef.current = 0
-						setStatusMessage(`LOADED ${allCategories.length} CATEGORIES.`)
+						actions.setStatusMessage(`LOADED ${allCategories.length} CATEGORIES.`)
 					} else {
-						setStatusMessage('CHANNELS NAHI MILE.')
+						actions.setStatusMessage('CHANNELS NAHI MILE.')
 					}
 					
 					setSessionRestored(true)
 				} catch (loadErr) {
 					console.error('Failed to load categories:', loadErr)
-					setStatusMessage('CHANNELS LOAD NAHI HUE.')
+					actions.setStatusMessage('CHANNELS LOAD NAHI HUE.')
 				}
 			}
 		}
@@ -538,7 +506,7 @@ export default function Home() {
 	} : null
 
 	function handlePowerToggle() {
-		const newPower = !power
+		const newPower = !tvState.power
 		
 		// Play shutdown sound when turning off
 		if (!newPower && shutdownSoundRef.current) {
@@ -546,7 +514,7 @@ export default function Home() {
 			shutdownSoundRef.current.play().catch(() => {})
 		}
 		
-		setPower(newPower)
+		actions.setPower(newPower)
 		if (newPower) {
 			// If no category is selected but categories exist, select the first
 			if (!selectedCategory && categories.length > 0) {
@@ -554,15 +522,13 @@ export default function Home() {
 				currentCategoryIndexRef.current = 0
 			}
 			// Show buffering overlay for 2 seconds when powering on
-			setIsBuffering(true)
-			setBufferErrorMessage('CHALU HO RAHA HAI...')
+			actions.setLoading(true)
 			setTimeout(() => {
-				setIsBuffering(false)
-				setBufferErrorMessage('')
+				actions.setLoading(false)
 			}, 2000)
 			const categoryName = (selectedCategory || categories[0])?.name || 'CATEGORY'
 			const videoTitle = activeVideo?.title?.substring(0, 20) || 'VIDEO'
-			setStatusMessage(`TV ON. ${categoryName} - ${videoTitle}...`)
+			actions.setStatusMessage(`TV ON. ${categoryName} - ${videoTitle}...`)
 			// Auto-trigger tap overlay after 2.5 seconds delay
 			setTimeout(() => {
 				if (tapTriggerRef.current) {
@@ -571,16 +537,15 @@ export default function Home() {
 				}
 			}, 2500)
 		} else {
-			setStatusMessage('TV BAND HAI. POWER DABAO AUR MASTI SHURU!')
-			setIsBuffering(false)
-			setBufferErrorMessage('')
-			setMenuOpen(false) // Close menu when TV turns off
+			actions.setStatusMessage('TV BAND HAI. POWER DABAO AUR MASTI SHURU!')
+			actions.setLoading(false)
+			actions.setMenuOpen(false) // Close menu when TV turns off
 		}
 	}
 
 	function handleChannelUp() {
-		if (!power || videosInCategory.length === 0 || !selectedCategory) {
-			console.warn('[Home] Channel up blocked:', { power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
+		if (!tvState.power || videosInCategory.length === 0 || !selectedCategory) {
+			console.warn('[Home] Channel up blocked:', { power: tvState.power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
 			return
 		}
 		
@@ -612,7 +577,7 @@ export default function Home() {
 			console.error('[Home] ❌ Error jumping to video:', err)
 		}
 		
-		setStatusMessage(`⏭️ ${selectedCategory.name} - Video ${nextIndex + 1}`)
+		actions.setStatusMessage(`⏭️ ${selectedCategory.name} - Video ${nextIndex + 1}`)
 		
 		// Execute switch pipeline (async, but don't block)
 		switchVideo(nextIndex).catch(err => {
@@ -626,8 +591,8 @@ export default function Home() {
 	}
 
 	function handleChannelDown() {
-		if (!power || videosInCategory.length === 0 || !selectedCategory) {
-			console.warn('[Home] Channel down blocked:', { power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
+		if (!tvState.power || videosInCategory.length === 0 || !selectedCategory) {
+			console.warn('[Home] Channel down blocked:', { power: tvState.power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
 			return
 		}
 		
@@ -657,7 +622,7 @@ export default function Home() {
 			console.error('[Home] ❌ Error jumping to video:', err)
 		}
 		
-		setStatusMessage(`⏮️ ${selectedCategory.name} - Video ${newIndex + 1}`)
+		actions.setStatusMessage(`⏮️ ${selectedCategory.name} - Video ${newIndex + 1}`)
 		
 		// Execute switch pipeline (async, but don't block)
 		switchVideo(newIndex).catch(err => {
@@ -666,46 +631,36 @@ export default function Home() {
 	}
 
 	function handleVolumeUp() {
-		setVolume(prev => {
-			const newVol = Math.min(1, prev + 0.1)
-			setCrtVolume(newVol)
-			setCrtIsMuted(false)
-			setStatusMessage(`🔊 AWAAZ: ${Math.round(newVol * 100)}%`)
-			return newVol
-		})
+		actions.setVolume(Math.min(1, tvState.volume + 0.1))
+		setCrtVolume(Math.min(1, tvState.volume + 0.1))
+		actions.setStatusMessage(`🔊 AWAAZ: ${Math.round(Math.min(1, tvState.volume + 0.1) * 100)}%`)
 	}
 
 	function handleVolumeDown() {
-		setVolume(prev => {
-			const newVol = Math.max(0, prev - 0.1)
-			setCrtVolume(newVol)
-			setCrtIsMuted(false)
-			setStatusMessage(`🔊 AWAAZ: ${Math.round(newVol * 100)}%`)
-			analytics.trackVolumeChange(newVol, 'down')
-			return newVol
-		})
+		actions.setVolume(Math.max(0, tvState.volume - 0.1))
+		setCrtVolume(Math.max(0, tvState.volume - 0.1))
+		actions.setStatusMessage(`🔊 AWAAZ: ${Math.round(Math.max(0, tvState.volume - 0.1) * 100)}%`)
+		analytics.trackVolumeChange(Math.max(0, tvState.volume - 0.1), 'down')
 	}
 
 	function handleMute() {
-		if (volume > 0) {
-			setPrevVolume(volume)
-			setVolume(0)
+		if (tvState.volume > 0) {
+			actions.setVolume(0)
 			setCrtVolume(0)
-			setCrtIsMuted(true)
-			setStatusMessage('🔇 AWAAZ BAND')
+			actions.setStatusMessage('🔇 AWAAZ BAND')
 			analytics.trackVolumeChange(0, 'mute')
 		} else {
-			setVolume(prevVolume || 0.5)
-			setCrtVolume(prevVolume || 0.5)
-			setCrtIsMuted(false)
-			setStatusMessage(`VOLUME: ${Math.round((prevVolume || 0.5) * 100)}%`)
+			const prevVol = tvState.isMuted ? (tvState.prevVolume || 0.5) : (tvState.volume || 0.5)
+			actions.setVolume(prevVol)
+			setCrtVolume(prevVol)
+			actions.setStatusMessage(`VOLUME: ${Math.round(prevVol * 100)}%`)
 		}
 	}
 
 	function handleChannelDirect(index) {
-		if (!power || videosInCategory.length === 0 || !selectedCategory) return
+		if (!tvState.power || videosInCategory.length === 0 || !selectedCategory) return
 		if (index < 0 || index >= videosInCategory.length) {
-			setStatusMessage(`VIDEO ${index + 1} AVAILABLE NAHI HAI`)
+			actions.setStatusMessage(`VIDEO ${index + 1} AVAILABLE NAHI HAI`)
 			return
 		}
 		
@@ -726,7 +681,7 @@ export default function Home() {
 		}
 		
 		setActiveVideoIndex(index)
-		setStatusMessage(`🎬 ${selectedCategory.name} - Video ${index + 1}`)
+		actions.setStatusMessage(`🎬 ${selectedCategory.name} - Video ${index + 1}`)
 		switchVideo(index)
 	}
 
@@ -735,7 +690,7 @@ export default function Home() {
 	const isChangingCategoryRef = useRef(false)
 
 	function handleCategoryUp() {
-		if (!power || categories.length === 0) return
+		if (!tvState.power || categories.length === 0) return
 		if (isChangingCategoryRef.current) {
 			console.log('[Home] Category change already in progress, ignoring...')
 			return
@@ -788,7 +743,7 @@ export default function Home() {
 		// Debounce the actual category change
 		categoryChangeTimeoutRef.current = setTimeout(() => {
 			setCategory(nextCategory.name)
-			setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
+			actions.setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
 			// Reset flag after state update completes
 			setTimeout(() => {
 				isChangingCategoryRef.current = false
@@ -797,7 +752,7 @@ export default function Home() {
 	}
 
 	function handleCategoryDown() {
-		if (!power || categories.length === 0) return
+		if (!tvState.power || categories.length === 0) return
 		if (isChangingCategoryRef.current) {
 			console.log('[Home] Category change already in progress, ignoring...')
 			return
@@ -852,7 +807,7 @@ export default function Home() {
 		// Debounce the actual category change
 		categoryChangeTimeoutRef.current = setTimeout(() => {
 			setCategory(prevCategory.name)
-			setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
+			actions.setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
 			// Reset flag after state update completes
 			setTimeout(() => {
 				isChangingCategoryRef.current = false
@@ -862,18 +817,17 @@ export default function Home() {
 
 	function handleMenuToggle() {
 		const startTime = performance.now()
-		setMenuOpen(prev => {
-			const isOpening = !prev
-			if (isOpening) {
-				analytics.trackMenuOpen()
-			} else {
-				analytics.trackMenuClose()
-			}
-			return !prev
-		})
+		const isOpening = !tvState.menuOpen
+		actions.setMenuOpen(isOpening)
+		
+		if (isOpening) {
+			analytics.trackMenuOpen()
+		} else {
+			analytics.trackMenuClose()
+		}
 		
 		// Track menu open performance
-		if (!menuOpen) {
+		if (isOpening) {
 			setTimeout(() => {
 				const openTime = performanceMonitor.trackMenuOpen(startTime)
 				analytics.trackPerformance('menu_open_time', openTime)
@@ -881,13 +835,13 @@ export default function Home() {
 		}
 	}
 
-// Close menu on orientation change (but allow it in fullscreen)
+	// Close menu on orientation change (but allow it in fullscreen)
 	useEffect(() => {
 		const handleOrientationChange = () => {
 			// Only close menu on orientation change if not in fullscreen
 			// In fullscreen, menu should work normally
-			if (menuOpen && !isFullscreen) {
-				setMenuOpen(false)
+			if (tvState.menuOpen && !tvState.isFullscreen) {
+				actions.setMenuOpen(false)
 			}
 		}
 
@@ -898,11 +852,11 @@ export default function Home() {
 			window.removeEventListener('orientationchange', handleOrientationChange)
 			window.removeEventListener('resize', handleOrientationChange)
 		}
-	}, [menuOpen, isFullscreen])
+	}, [tvState.menuOpen, tvState.isFullscreen, actions])
 
 	function triggerStatic() {
-		setStaticActive(true)
-		setTimeout(() => setStaticActive(false), 300)
+		actions.setStaticActive(true)
+		setTimeout(() => actions.setStaticActive(false), 300)
 	}
 
 	function handleVideoEnd() {
@@ -925,16 +879,15 @@ export default function Home() {
 
 		// Execute channel switch pipeline
 		channelSwitchPipeline.on('onStaticStart', () => {
-			setStaticActive(true)
+			actions.setStaticActive(true)
 		})
 		
 		channelSwitchPipeline.on('onStaticEnd', () => {
-			setStaticActive(false)
+			actions.setStaticActive(false)
 		})
 		
 		channelSwitchPipeline.on('onBlackScreen', () => {
-			setIsBuffering(true)
-			setBufferErrorMessage(`SWITCHING TO VIDEO ${index + 1}...`)
+			actions.setLoading(true)
 		})
 		
 		channelSwitchPipeline.on('onVideoLoad', () => {
@@ -946,10 +899,9 @@ export default function Home() {
 		})
 		
 		channelSwitchPipeline.on('onComplete', () => {
-			setIsBuffering(false)
-			setBufferErrorMessage('')
+			actions.setLoading(false)
 			const videoTitle = video.title || `Video ${index + 1}`
-			setStatusMessage(`${selectedCategory?.name || 'CATEGORY'} - ${videoTitle.substring(0, 30)}...`)
+			actions.setStatusMessage(`${selectedCategory?.name || 'CATEGORY'} - ${videoTitle.substring(0, 30)}...`)
 		})
 
 		await channelSwitchPipeline.execute()
@@ -958,7 +910,7 @@ export default function Home() {
 	// Handle category selection (this becomes the active playlist)
 	function handleSelectCategory(categoryName) {
 		setCategory(categoryName)
-		setStatusMessage(`✅ ${categoryName} SELECTED. CHANNEL BADALNE KE LIYE ↑↓`)
+		actions.setStatusMessage(`✅ ${categoryName} SELECTED. CHANNEL BADALNE KE LIYE ↑↓`)
 	}
 
 		return (
@@ -966,12 +918,12 @@ export default function Home() {
 		{/* Galaxy Background - Shows when enabled and TV is powered on */}
 		{galaxyEnabled && (
 			<Galaxy 
-				isActive={power} 
+				isActive={tvState.power} 
 				baseSpeed={0.3} 
 				density={400} 
-				volume={volume} 
-				isPlaying={power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering}
-				isBuffering={isBuffering || playbackInfo?.isBuffering}
+				volume={tvState.volume} 
+				isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
+				isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
 				videoId={activeVideo?.youtubeId}
 			/>
 		)}
@@ -1000,7 +952,7 @@ export default function Home() {
 			channels={categories}
 			
 			// UI state
-			isVisible={power}
+			isVisible={tvState.power}
 			
 			// Action handlers
 			onChangeChannel={(channel) => {
@@ -1034,20 +986,20 @@ export default function Home() {
 							targetCategory.items
 						);
 						setActiveVideoIndex(videoIndex);
-						setStatusMessage(`📺 Playing video ${videoIndex + 1} on ${targetCategory.name}`);
+						actions.setStatusMessage(`📺 Playing video ${videoIndex + 1} on ${targetCategory.name}`);
 					}, 300);
 				}
 			}}
 			onPlayExternal={({ videoId, videoTitle, thumbnail }) => {
 				// Handle YouTube external video play from VJ chat - play on TV screen
 				console.log('[VJChat] Playing external YouTube video on TV:', videoId, videoTitle);
-				setExternalVideo({
+				actions.playExternal({
 					videoId,
 					videoTitle,
 					thumbnail,
 					channelId: 'external'
 				});
-				setStatusMessage(`🎬 Playing: ${videoTitle}`);
+				actions.setStatusMessage(`🎬 Playing: ${videoTitle}`);
 			}}
 		/>
 		
@@ -1057,28 +1009,28 @@ export default function Home() {
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
 		<TVFrame 
-			power={power}
+			power={tvState.power}
 			activeChannel={activeChannel}
 			activeChannelIndex={activeVideoIndex}
 			channels={videosInCategory.map((v, i) => ({ ...v, _id: v._id || `video-${i}`, name: v.title }))}
 			onStaticTrigger={handleChannelChange}
-			statusMessage={statusMessage}
-			volume={volume}
+			statusMessage={tvState.statusMessage}
+			volume={tvState.volume}
 			crtVolume={crtVolume}
-			crtIsMuted={crtIsMuted}
-			staticActive={staticActive}
+			crtIsMuted={tvState.isMuted}
+			staticActive={tvState.staticActive}
 			allChannels={categories}
 			onVideoEnd={handleVideoEnd}
-			isBuffering={isBuffering}
-			bufferErrorMessage={bufferErrorMessage}
+			isBuffering={tvState.isLoading}
+			bufferErrorMessage={tvState.error?.message || ''}
 			playbackInfo={playbackInfo}
-			externalVideo={externalVideo}
-			onExternalVideoEnd={() => setExternalVideo(null)}
+			externalVideo={tvState.externalVideo}
+			onExternalVideoEnd={() => actions.clearExternalVideo()}
 			onTapHandlerReady={handleTapHandlerReady}
-			onFullscreenChange={setIsFullscreen}
+			onFullscreenChange={(isFs) => actions.setFullscreen(isFs)}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
 			onRemoteMouseLeave={handleRemoteMouseLeave}
-			remoteOverlayVisible={remoteOverlayVisible}
+			remoteOverlayVisible={tvState.remoteOverlayVisible}
 			onPowerToggle={handlePowerToggle}
 			onChannelUp={handleChannelUp}
 			onChannelDown={handleChannelDown}
@@ -1088,127 +1040,126 @@ export default function Home() {
 			onVolumeDown={handleVolumeDown}
 			onMute={handleMute}
 			galaxyProps={galaxyEnabled ? {
-				isActive: power,
+				isActive: tvState.power,
 				baseSpeed: 0.3,
 				density: 400,
-				volume: volume,
-				isPlaying: power && (playbackInfo?.isPlaying === true) && !isBuffering && !playbackInfo?.isBuffering,
-				isBuffering: isBuffering || playbackInfo?.isBuffering,
+				volume: tvState.volume,
+				isPlaying: tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering,
+				isBuffering: tvState.isLoading || playbackInfo?.isBuffering,
 				videoId: activeVideo?.youtubeId,
 			} : null}
 			remoteOverlayComponent={
 				<TVRemote
-					power={power}
+					power={tvState.power}
 					onPowerToggle={handlePowerToggle}
 					onChannelUp={handleChannelUp}
 					onChannelDown={handleChannelDown}
 					onChannelDirect={handleChannelDirect}
 					onCategoryUp={handleCategoryUp}
 					onCategoryDown={handleCategoryDown}
-					volume={volume}
+					volume={tvState.volume}
 					onVolumeUp={handleVolumeUp}
 					onVolumeDown={handleVolumeDown}
 					onMute={handleMute}
 					onMenuToggle={handleMenuToggle}
 					activeChannelIndex={activeVideoIndex}
 					totalChannels={videosInCategory.length}
-					menuOpen={menuOpen}
+					menuOpen={tvState.menuOpen}
 					onTapTrigger={handleTapTrigger}
 				/>
 			}
-			menuComponent={menuOpen ? (
+			menuComponent={tvState.menuOpen ? (
 				<Suspense fallback={<div className="menu-loading">Loading menu...</div>}>
 					<TVMenuV2
-						isOpen={menuOpen}
-						onClose={() => setMenuOpen(false)}
+						isOpen={tvState.menuOpen}
+						onClose={() => actions.setMenuOpen(false)}
 						channels={categories}
 						activeChannelIndex={categories.findIndex(cat => cat._id === selectedCategory?._id)}
 						onChannelSelect={(index) => {
 							const category = categories[index]
 							if (category) {
 								setCategory(category.name)
-								setMenuOpen(false)
+								actions.setMenuOpen(false)
 							}
 						}}
-						power={power}
+						power={tvState.power}
 						playbackInfo={playbackInfo}
 					/>
 				</Suspense>
 			) : null}
-				onBufferingChange={(isBuffering, errorMsg) => {
-						setIsBuffering(isBuffering)
-						setBufferErrorMessage(errorMsg || '')
-						// Auto-hide after 2 seconds
-						if (isBuffering) {
-							setTimeout(() => {
-								setIsBuffering(false)
-								setBufferErrorMessage('')
-							}, 2000)
-						}
-				}}
-				onPlaybackProgress={(info) => {
-					// Only update when active channel matches and change is meaningful
-					const activeId = activeChannel?._id
-					if (!info || !activeId || info.channelId !== activeId) return
-
-					const last = lastPlaybackInfoRef.current
-					const videoChanged = info.videoId && last?.videoId !== info.videoId
-					const timeDelta = Math.abs((info.currentTime || 0) - (last?.currentTime || 0))
-
-					if (!videoChanged && timeDelta < 0.5) return // Throttle minor updates
-
-					lastPlaybackInfoRef.current = info
-					setPlaybackInfo(info)
-					
-					// Update status message to show LIVE indicator if in timeline mode
-					if (selectedCategory?._id) {
-						const mode = broadcastStateManager.getMode(selectedCategory._id)
-						const currentStatus = statusMessage || ''
-						// Only update if not in manual mode and not showing manual/returning message
-						if (mode === 'timeline' && !currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING')) {
-							const videoTitle = info.videoTitle?.substring(0, 30) || 'VIDEO'
-							setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
-						}
+			onBufferingChange={(isBuffering, errorMsg) => {
+					actions.setLoading(isBuffering)
+					if (isBuffering) {
+						actions.setError({ message: errorMsg || '', code: 'BUFFERING' })
 					}
+					// Auto-hide after 2 seconds
+					if (isBuffering) {
+						setTimeout(() => {
+							actions.setLoading(false)
+						}, 2000)
+					}
+			}}
+			onPlaybackProgress={(info) => {
+				// Only update when active channel matches and change is meaningful
+				const activeId = activeChannel?._id
+				if (!info || !activeId || info.channelId !== activeId) return
+
+				const last = lastPlaybackInfoRef.current
+				const videoChanged = info.videoId && last?.videoId !== info.videoId
+				const timeDelta = Math.abs((info.currentTime || 0) - (last?.currentTime || 0))
+
+				if (!videoChanged && timeDelta < 0.5) return // Throttle minor updates
+
+				lastPlaybackInfoRef.current = info
+				setPlaybackInfo(info)
+				
+				// Update status message to show LIVE indicator if in timeline mode
+				if (selectedCategory?._id) {
+					const mode = broadcastStateManager.getMode(selectedCategory._id)
+					const currentStatus = tvState.statusMessage || ''
+					// Only update if not in manual mode and not showing manual/returning message
+					if (mode === 'timeline' && !currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING')) {
+						const videoTitle = info.videoTitle?.substring(0, 30) || 'VIDEO'
+						actions.setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
 				}}
 			/>
 
 				{/* Right Side - Remote Control and Categories (hidden in fullscreen) */}
-				{!isFullscreen && (
-					<div className="right-panel">
-						<TVRemote
-							power={power}
-							onPowerToggle={handlePowerToggle}
-							onChannelUp={handleChannelUp}
-							onChannelDown={handleChannelDown}
-							onChannelDirect={handleChannelDirect}
-							onCategoryUp={handleCategoryUp}
-							onCategoryDown={handleCategoryDown}
-							volume={volume}
-							onVolumeUp={handleVolumeUp}
-							onVolumeDown={handleVolumeDown}
-							onMute={handleMute}
-							onMenuToggle={handleMenuToggle}
-							activeChannelIndex={activeVideoIndex}
-							totalChannels={videosInCategory.length}
-							menuOpen={menuOpen}
-							onTapTrigger={handleTapTrigger}
-						/>
-					</div>
-				)}
-			</div>
-
-		{/* Footer / Status Text */}
-			<div className="footer-status">
-				<div className="status-text">
-					{statusMessage}
+			{!tvState.isFullscreen && (
+				<div className="right-panel">
+					<TVRemote
+						power={tvState.power}
+						onPowerToggle={handlePowerToggle}
+						onChannelUp={handleChannelUp}
+						onChannelDown={handleChannelDown}
+						onChannelDirect={handleChannelDirect}
+						onCategoryUp={handleCategoryUp}
+						onCategoryDown={handleCategoryDown}
+						volume={tvState.volume}
+						onVolumeUp={handleVolumeUp}
+						onVolumeDown={handleVolumeDown}
+						onMute={handleMute}
+						onMenuToggle={handleMenuToggle}
+						activeChannelIndex={activeVideoIndex}
+						totalChannels={videosInCategory.length}
+						menuOpen={tvState.menuOpen}
+						onTapTrigger={handleTapTrigger}
+					/>
 				</div>
+			)}
+		</div>
+
+	{/* Footer / Status Text */}
+		<div className="footer-status">
+			<div className="status-text">
+				{tvState.statusMessage}
 			</div>
 
 		</div>
 		
 		{/* Simple TV-like Survey - appears after watching for a few minutes */}
-		{surveyOpen && (
+		{/* NOTE: Survey feature pending integration with new tvState system */}
+		{/* surveyOpen && (
 			<Suspense fallback={null}>
 				<TVSurvey
 					isOpen={surveyOpen}
@@ -1216,17 +1167,18 @@ export default function Home() {
 					ageGroup={userAgeGroup}
 				/>
 			</Suspense>
-		)}
+		) */}
 		
 		{/* Easter Egg Popup */}
-		{easterEggMessage && (
+		{/* NOTE: Easter egg display now uses status message, direct popup disabled */}
+		{/* easterEggMessage && (
 			<div className="easter-egg-popup">
 				<div className="easter-egg-content">
 					<span className="easter-egg-emoji">{easterEggMessage.emoji}</span>
 					<span className="easter-egg-text">{easterEggMessage.message}</span>
 				</div>
 			</div>
-		)}
+		) */}
 		</>
 	)
 }
