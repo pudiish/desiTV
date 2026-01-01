@@ -5,6 +5,12 @@
  */
 
 const { gemini, tools } = require('../mcp');
+const { 
+  getUserProfile, 
+  updateUserPreferences, 
+  getPersonalizedSuggestions,
+  extractPreferencesFromMessage 
+} = require('../mcp/userMemory');
 
 // In-memory conversation cache (simple implementation)
 const conversations = new Map();
@@ -84,10 +90,31 @@ async function handleMessage(req, res) {
         // Extract action if present (for channel change, play video, etc.)
         if (toolResults?.action) {
           action = toolResults.action;
+          
+          // Update user preferences based on action
+          if (action.type === 'CHANGE_CHANNEL') {
+            updateUserPreferences(convId, { channel: action.channelName });
+          } else if (action.type === 'PLAY_VIDEO') {
+            updateUserPreferences(convId, { 
+              song: action.videoTitle,
+              channel: action.channelName 
+            });
+          }
+        }
+        
+        // Track trivia results
+        if (toolResults?.correct !== undefined) {
+          updateUserPreferences(convId, { triviaResult: toolResults.correct });
         }
       } catch (err) {
         console.error('[Chat] Tool execution error:', err);
       }
+    }
+    
+    // Extract and update preferences from message
+    const extractedPrefs = extractPreferencesFromMessage(message);
+    if (Object.keys(extractedPrefs).length > 0) {
+      updateUserPreferences(convId, extractedPrefs);
     }
 
     // Get AI response (or use tool's pre-built message)
@@ -97,9 +124,12 @@ async function handleMessage(req, res) {
       response = toolResults.message;
       console.log('[Chat] Using pre-built message from tool');
     } else {
+      // Add user profile to context for personalization
+      const userProfile = getUserProfile(convId);
       response = await gemini.chat(message, history, {
         ...context,
-        toolResults
+        toolResults,
+        userProfile
       });
     }
 
@@ -150,17 +180,26 @@ async function handleMessage(req, res) {
 }
 
 /**
- * Get suggestions based on context
+ * Get suggestions based on context and user history
  */
 async function getSuggestions(req, res) {
   try {
-    const suggestions = [
-      "What channels do you have? 📺",
-      "Play some party music 🎉",
-      "Switch to Retro Gold",
-      "I'm feeling romantic 💕",
-      "Play Honey Singh"
-    ];
+    const { sessionId } = req.query;
+    
+    // Get personalized suggestions if we have a session
+    let suggestions;
+    if (sessionId) {
+      suggestions = getPersonalizedSuggestions(sessionId);
+    } else {
+      // Default suggestions for new users
+      suggestions = [
+        "What channels do you have? 📺",
+        "Play some party music 🎉",
+        "Give me a trivia! 🎯",
+        "Share a romantic shayari 💕",
+        "Switch to Retro Gold"
+      ];
+    }
 
     res.json({ suggestions });
   } catch (error) {
