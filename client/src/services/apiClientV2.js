@@ -10,20 +10,10 @@
 
 import React from 'react';
 import { errorHandler, ErrorCodes } from './errorHandler';
-import { envConfig } from '../config/environment';
 
 class APIClientV2 {
   constructor() {
-    // Use environment config to get the correct API base URL
-    // This ensures it works correctly on Vercel (direct to Render) vs localhost (proxy)
-    const apiBase = envConfig.apiBaseUrl || '';
-    this.baseURL = apiBase ? `${apiBase}/api` : '/api';
-    
-    // Debug log in development
-    if (typeof window !== 'undefined' && window.location.hostname.includes('localhost')) {
-      console.log('[APIClientV2] Base URL:', this.baseURL, 'from apiBase:', apiBase);
-    }
-    
+    this.baseURL = '/api';
     this.timeout = 10000; // 10 seconds
     this.cache = new Map(); // Simple in-memory cache
     this.cacheTTL = {
@@ -83,7 +73,7 @@ class APIClientV2 {
     }
 
     // Fetch new token
-    this.csrfTokenPromise = fetch(`${this.baseURL.replace(/\/api$/, '')}/api/csrf-token`)
+    this.csrfTokenPromise = fetch(`${this.baseURL}/csrf-token`)
       .then(async (res) => {
         if (!res.ok) {
           throw new Error(`Failed to get CSRF token: ${res.status}`);

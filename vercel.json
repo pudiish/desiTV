@@ -12,6 +12,10 @@
     {
       "source": "/health",
       "destination": "https://desitv-api.onrender.com/health"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -34,15 +38,6 @@
     },
     {
       "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.(js|mjs))",
       "headers": [
         {
           "key": "Cache-Control",
