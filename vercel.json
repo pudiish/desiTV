@@ -12,10 +12,6 @@
     {
       "source": "/health",
       "destination": "https://desitv-api.onrender.com/health"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/index.html"
     }
   ],
   "headers": [
