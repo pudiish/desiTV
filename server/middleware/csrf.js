@@ -147,7 +147,8 @@ function csrfProtection(req, res, next) {
   const readOnlyEndpoints = [
     '/youtube/metadata',
     '/analytics',
-    '/viewer-count'
+    '/viewer-count',
+    '/chat'  // Chat has its own rate limiting
   ];
   if (readOnlyEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
     return next();

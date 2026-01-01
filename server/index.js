@@ -141,6 +141,7 @@ const analyticsRoutes = require('./routes/analytics');
 const globalEpochRoutes = require('./routes/globalEpoch');
 const viewerCountRoutes = require('./routes/viewerCount');
 const liveStateRoutes = require('./routes/liveState'); // 🌟 NEW: Server-authoritative LIVE state
+const chatRoutes = require('./routes/chat'); // 🤖 VJ Assistant chatbot
 
 // CSRF protection
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
@@ -162,6 +163,7 @@ app.use('/api/broadcast-state', broadcastStateRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/chat', chatRoutes); // 🤖 VJ Assistant chatbot
 
 // health check with security stats
 app.get('/health', (req, res) => res.json({ 

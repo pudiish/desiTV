@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
 import { Galaxy } from '../components/backgrounds'
+import { VJChat } from '../components/chat'
 import { SessionManager } from '../services/storage'
 import { analytics, performanceMonitor } from '../services/analytics'
 import { channelManager } from '../logic/channel'
@@ -981,6 +982,59 @@ export default function Home() {
 		>
 			<span className="galaxy-icon">✨</span>
 		</button>
+		
+		{/* VJ Chat Assistant - Bottom Right Corner */}
+		<VJChat 
+			// Current playback state - REAL-TIME context
+			currentChannel={selectedCategory?.name}
+			currentChannelId={selectedCategory?._id}
+			currentVideo={videosInCategory[activeVideoIndex] || null}
+			currentVideoIndex={activeVideoIndex}
+			totalVideos={videosInCategory.length}
+			
+			// Available data
+			channels={categories}
+			
+			// UI state
+			isVisible={power}
+			
+			// Action handlers
+			onChangeChannel={(channel) => {
+				// Handle channel change from VJ chat
+				if (channel) {
+					const targetCategory = categories.find(
+						c => c._id === channel._id || c.name === channel.name
+					);
+					if (targetCategory) {
+						console.log('[VJChat] Changing channel to:', targetCategory.name);
+						setCategory(targetCategory.name);
+					}
+				}
+			}}
+			onPlayVideo={({ channelId, channelName, videoIndex }) => {
+				// Handle video play from VJ chat
+				const targetCategory = categories.find(
+					c => c._id === channelId || c.name === channelName
+				);
+				if (targetCategory) {
+					console.log('[VJChat] Playing video:', videoIndex, 'on', targetCategory.name);
+					// First change to the channel
+					setCategory(targetCategory.name);
+					// Then jump to the specific video after a short delay
+					setTimeout(() => {
+						broadcastStateManager.setManualMode(targetCategory._id, true);
+						broadcastStateManager.jumpToVideo(
+							targetCategory._id,
+							videoIndex,
+							0,
+							targetCategory.items
+						);
+						setActiveVideoIndex(videoIndex);
+						setStatusMessage(`📺 Playing video ${videoIndex + 1} on ${targetCategory.name}`);
+					}, 300);
+				}
+			}}
+		/>
 		
 		<div className="main-container">
 			{/* Global glass overlay covering window while keeping remote above */}
