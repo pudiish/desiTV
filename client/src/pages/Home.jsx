@@ -989,6 +989,7 @@ export default function Home() {
 			currentChannel={selectedCategory?.name}
 			currentChannelId={selectedCategory?._id}
 			currentVideo={videosInCategory[activeVideoIndex] || null}
+			nextVideo={videosInCategory[activeVideoIndex + 1] || videosInCategory[0] || null}
 			currentVideoIndex={activeVideoIndex}
 			totalVideos={videosInCategory.length}
 			

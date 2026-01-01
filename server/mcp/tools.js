@@ -27,6 +27,12 @@ const toolDefinitions = {
     execute: getNowPlaying,
     usesContext: true  // Flag: uses frontend context, not DB
   },
+  get_up_next: {
+    name: 'get_up_next',
+    description: 'Get the next video that will play (uses real-time context)',
+    execute: getUpNext,
+    usesContext: true
+  },
   get_channels: {
     name: 'get_channels',
     description: 'Get list of TV channels/categories',
@@ -82,6 +88,32 @@ function getNowPlaying(params = {}, context = {}) {
       channel: currentChannel,
       position: `Video ${(currentVideoIndex || 0) + 1} of ${totalVideos || '?'}`,
       duration: currentVideo.duration
+    }
+  };
+}
+
+/**
+ * Get what's up next - uses REAL-TIME context from frontend
+ * This is the key tool for "what's next?" questions
+ */
+function getUpNext(params = {}, context = {}) {
+  const { currentChannel, nextVideo, currentVideoIndex, totalVideos } = context;
+  
+  if (!nextVideo) {
+    return {
+      success: false,
+      error: 'No information about upcoming video',
+      suggestion: 'The playlist might be at the end or still loading'
+    };
+  }
+  
+  return {
+    success: true,
+    upNext: {
+      title: nextVideo.title,
+      artist: nextVideo.artist || 'Unknown Artist',
+      channel: currentChannel,
+      position: `Will be video ${(currentVideoIndex || 0) + 2} of ${totalVideos || '?'}`
     }
   };
 }
@@ -415,6 +447,21 @@ function detectIntent(message) {
     }
   }
   
+  // INFO: What's UP NEXT? (uses real-time context)
+  const upNextPatterns = [
+    /what(?:'s| is| will be)?\s*(?:up\s*)?next/i,
+    /next\s*(?:song|video|track)/i,
+    /what(?:'s| is)\s*coming\s*(?:up|next)/i,
+    /after\s*this/i,
+    /upcoming/i
+  ];
+  
+  for (const pattern of upNextPatterns) {
+    if (pattern.test(lower)) {
+      return { tool: 'get_up_next', params: {}, usesContext: true };
+    }
+  }
+  
   // ACTION: Change channel (highest priority)
   const changePatterns = [
     /(?:switch|change|go|tune)\s*(?:to|into)?\s*(?:the\s+)?(?:channel\s+)?["']?([^"']+?)["']?\s*(?:channel)?$/i,
@@ -484,6 +531,7 @@ module.exports = {
   executeTool,
   detectIntent,
   getNowPlaying,
+  getUpNext,
   getChannels,
   searchVideos,
   getWhatsPlaying,

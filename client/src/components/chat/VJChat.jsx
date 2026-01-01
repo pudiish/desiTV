@@ -21,6 +21,7 @@ const VJChat = ({
   currentChannel,           // Channel name (string)
   currentChannelId,         // Channel ID for actions
   currentVideo,             // Current video object {title, artist, youtubeId, duration}
+  nextVideo,                // Next video in playlist {title, artist, youtubeId, duration}
   currentVideoIndex,        // Index in playlist (number)
   totalVideos,              // Total videos in current channel
   
@@ -129,6 +130,12 @@ const VJChat = ({
           duration: currentVideo.duration,
           youtubeId: currentVideo.youtubeId || currentVideo.id
         } : null,
+        // Next video in queue
+        nextVideo: nextVideo ? {
+          title: nextVideo.title,
+          artist: nextVideo.artist || nextVideo.channelTitle,
+          duration: nextVideo.duration
+        } : null,
         currentVideoIndex,
         totalVideos,
         
@@ -156,7 +163,7 @@ const VJChat = ({
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, currentVideoIndex, totalVideos, channels, executeAction]);
+  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, channels, executeAction]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
