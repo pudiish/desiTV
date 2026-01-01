@@ -49,6 +49,7 @@ const VJChat = ({
   // Action handlers
   onChangeChannel,
   onPlayVideo,
+  onPlayExternal, // NEW: Handle external YouTube videos
   
   // UI state
   isVisible = true
@@ -152,10 +153,24 @@ const VJChat = ({
         }
         break;
       
+      case 'PLAY_EXTERNAL':
+        // Play external video from YouTube (not in our database)
+        console.log('[VJChat] Playing external video:', action.videoId);
+        if (onPlayExternal) {
+          onPlayExternal({
+            videoId: action.videoId,
+            videoTitle: action.videoTitle
+          });
+        } else if (window.open) {
+          // Fallback: open in new tab if no handler
+          window.open(`https://www.youtube.com/watch?v=${action.videoId}`, '_blank');
+        }
+        break;
+      
       default:
         console.log('[VJChat] Unknown action type:', action.type);
     }
-  }, [onChangeChannel, onPlayVideo, channels]);
+  }, [onChangeChannel, onPlayVideo, onPlayExternal, channels]);
 
   const handleSend = useCallback(async (text = inputValue) => {
     if (!text.trim() || isLoading) return;

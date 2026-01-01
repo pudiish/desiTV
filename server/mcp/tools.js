@@ -3,8 +3,9 @@
  * 
  * ARCHITECTURE:
  * - INFO tools: Use real-time context passed from frontend
- * - SEARCH tools: Query MongoDB database
+ * - SEARCH tools: Query MongoDB database OR Knowledge Base
  * - ACTION tools: Return actions for frontend to execute
+ * - EXTERNAL: Search YouTube for songs NOT in our database
  * 
  * The context object contains:
  * - currentChannel: Channel name
@@ -13,11 +14,19 @@
  * - currentVideoIndex: Position in playlist
  * - totalVideos: Total videos in channel
  * - availableChannels: [{id, name}]
+ * 
+ * KNOWLEDGE BASE:
+ * All queries first check the knowledge base (fast, indexed)
+ * If not found, falls back to YouTube search for external content
  */
 
 const Channel = require('../models/Channel');
 const path = require('path');
 const fs = require('fs');
+
+// Import Knowledge Base and YouTube Search services
+const knowledgeBase = require('./knowledgeBase');
+const youtubeSearch = require('./youtubeSearch');
 
 // Load VJ content data
 let vjContent = {};
@@ -75,7 +84,49 @@ const toolDefinitions = {
     description: 'Change to a specific channel',
     execute: changeChannel
   },
-  // NEW: Interactive features
+  // NEW: YouTube Search for external songs
+  search_youtube: {
+    name: 'search_youtube',
+    description: 'Search YouTube for songs NOT in our database',
+    execute: searchYouTubeForSong
+  },
+  play_external: {
+    name: 'play_external',
+    description: 'Play a song from YouTube (not in our database)',
+    execute: playExternalVideo
+  },
+  // Knowledge Base queries
+  get_artists: {
+    name: 'get_artists',
+    description: 'List all available artists in our database',
+    execute: getArtists
+  },
+  get_songs_by_artist: {
+    name: 'get_songs_by_artist',
+    description: 'Get all songs by a specific artist',
+    execute: getSongsByArtist
+  },
+  get_genres: {
+    name: 'get_genres',
+    description: 'List all available music genres',
+    execute: getGenres
+  },
+  get_songs_by_genre: {
+    name: 'get_songs_by_genre',
+    description: 'Get songs in a specific genre',
+    execute: getSongsByGenre
+  },
+  get_db_stats: {
+    name: 'get_db_stats',
+    description: 'Get database statistics',
+    execute: getDbStats
+  },
+  smart_play: {
+    name: 'smart_play',
+    description: 'Intelligently play content - tries DB first, then YouTube',
+    execute: smartPlay
+  },
+  // Interactive features
   get_trivia: {
     name: 'get_trivia',
     description: 'Get a music trivia question',
@@ -540,12 +591,324 @@ async function playVideo(params = {}) {
     return { 
       success: false, 
       error: `Couldn't find a video matching "${query}"`,
-      message: `🤔 Hmm, couldn't find "${query}" in our library. Try:\n• "play Honey Singh"\n• "play romantic songs"\n• "switch to Desi Beats"`
+      message: `🤔 Hmm, couldn't find "${query}" in our library.\n\nWant me to search YouTube? Say "play ${query} from youtube"`
     };
   } catch (error) {
     console.error('[Tools] playVideo error:', error);
     return { success: false, error: error.message, message: 'Oops! Something went wrong searching. Try again? 😅' };
   }
+}
+
+/**
+ * NEW: Search YouTube for songs NOT in our database
+ */
+async function searchYouTubeForSong(params = {}) {
+  const { query, artist, movie } = params;
+  
+  if (!query) {
+    return { success: false, error: 'Search query required' };
+  }
+  
+  try {
+    // First check if it's in our database
+    const dbResult = knowledgeBase.searchVideos(query, { limit: 1 });
+    if (dbResult.found) {
+      return {
+        success: true,
+        source: 'database',
+        video: dbResult.bestMatch,
+        message: `🎵 Found "${dbResult.bestMatch.title}" in our library!\n\nSay "play ${dbResult.bestMatch.title}" to play it!`
+      };
+    }
+    
+    // Not in database - search YouTube
+    const ytResult = await youtubeSearch.searchSong(query, { artist, movie });
+    
+    if (!ytResult.success || !ytResult.found) {
+      return {
+        success: false,
+        error: 'Song not found',
+        message: `🔍 Could not find "${query}" on YouTube. Try:\n• Different song name\n• Add artist name\n• Check spelling`
+      };
+    }
+    
+    const video = ytResult.bestMatch;
+    return {
+      success: true,
+      source: 'youtube',
+      video: {
+        title: video.title,
+        youtubeId: video.youtubeId,
+        channel: video.channel,
+        thumbnail: video.thumbnail,
+        duration: video.durationFormatted
+      },
+      message: `🎵 Found on YouTube!\n\n"${video.title}"\nby ${video.channel}\n\n⏱️ Duration: ${video.durationFormatted || 'Unknown'}\n\nSay "play this" to play it!`,
+      action: {
+        type: 'PLAY_EXTERNAL',
+        videoId: video.youtubeId,
+        videoTitle: video.title
+      }
+    };
+  } catch (error) {
+    console.error('[Tools] searchYouTubeForSong error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * NEW: Play external video from YouTube (not in database)
+ */
+async function playExternalVideo(params = {}) {
+  const { youtubeId, query } = params;
+  
+  // If youtubeId provided directly
+  if (youtubeId) {
+    // Verify it's valid and appropriate
+    const verification = await youtubeSearch.verifyVideo(youtubeId);
+    if (!verification.valid) {
+      return {
+        success: false,
+        error: verification.reason,
+        message: `❌ Cannot play this video: ${verification.reason}`
+      };
+    }
+    
+    return {
+      success: true,
+      action: {
+        type: 'PLAY_EXTERNAL',
+        videoId: youtubeId,
+        videoTitle: verification.video?.title || 'Unknown'
+      },
+      message: `🎵 Playing: "${verification.video?.title}"!`
+    };
+  }
+  
+  // If query provided, search first
+  if (query) {
+    const searchResult = await searchYouTubeForSong({ query });
+    if (searchResult.success && searchResult.action) {
+      return searchResult;
+    }
+    return {
+      success: false,
+      error: 'Video not found',
+      message: `🤔 Could not find "${query}". Try a different search?`
+    };
+  }
+  
+  return { success: false, error: 'Either youtubeId or query required' };
+}
+
+/**
+ * NEW: Smart Play - tries database first, then YouTube
+ * This is the MAIN play function for comprehensive coverage
+ */
+async function smartPlay(params = {}) {
+  const { query, channelName, forceExternal = false } = params;
+  
+  if (!query) {
+    return { success: false, error: 'What should I play?' };
+  }
+  
+  // Step 1: Check knowledge base (fast)
+  if (!forceExternal) {
+    const kbResult = knowledgeBase.searchVideos(query, { channel: channelName, limit: 1 });
+    
+    if (kbResult.found && kbResult.bestMatch) {
+      const video = kbResult.bestMatch;
+      
+      // Find channel ID for this video
+      const channel = await Channel.findOne({
+        name: video.channel,
+        isActive: true
+      }).select('_id items').lean();
+      
+      if (channel) {
+        const videoIndex = channel.items.findIndex(i => i.youtubeId === video.youtubeId);
+        
+        return {
+          success: true,
+          source: 'database',
+          action: {
+            type: 'PLAY_VIDEO',
+            channelId: channel._id.toString(),
+            channelName: video.channel,
+            videoIndex: videoIndex >= 0 ? videoIndex : 0,
+            videoTitle: video.title,
+            videoId: video.youtubeId
+          },
+          message: `🎵 Playing "${video.title}" on ${video.channel}!`
+        };
+      }
+    }
+  }
+  
+  // Step 2: Not in database - search YouTube
+  console.log(`[SmartPlay] "${query}" not in database, searching YouTube...`);
+  
+  const ytResult = await youtubeSearch.searchSong(query);
+  
+  if (ytResult.success && ytResult.found) {
+    const video = ytResult.bestMatch;
+    
+    return {
+      success: true,
+      source: 'youtube',
+      action: {
+        type: 'PLAY_EXTERNAL',
+        videoId: video.youtubeId,
+        videoTitle: video.title
+      },
+      message: `🎵 Found on YouTube!\n\n"${video.title}"\n\n⏱️ ${video.durationFormatted || ''}\n\n(Note: This is from YouTube, not our library)`
+    };
+  }
+  
+  return {
+    success: false,
+    error: 'Song not found',
+    message: `🤔 Sorry, couldn't find "${query}" in our library or on YouTube!\n\nTry:\n• Different song name\n• Artist + song name\n• Check spelling`
+  };
+}
+
+/**
+ * NEW: Get all artists from knowledge base
+ */
+function getArtists() {
+  const result = knowledgeBase.getAllArtists();
+  
+  if (result.count === 0) {
+    return { success: false, message: '🤔 No artists indexed yet!' };
+  }
+  
+  const artistList = result.artists
+    .sort((a, b) => b.songCount - a.songCount)
+    .slice(0, 15)
+    .map(a => `• ${a.name} (${a.songCount} songs)`)
+    .join('\n');
+  
+  return {
+    success: true,
+    artists: result.artists,
+    count: result.count,
+    message: `🎤 Artists in our library:\n\n${artistList}\n\nSay "songs by [artist]" for their songs!`
+  };
+}
+
+/**
+ * NEW: Get songs by a specific artist
+ */
+function getSongsByArtist(params = {}) {
+  const { artistName } = params;
+  
+  if (!artistName) {
+    return getArtists(); // Show all artists if no name provided
+  }
+  
+  const result = knowledgeBase.getSongsByArtist(artistName);
+  
+  if (!result.found) {
+    // Check if partial match exists
+    const allArtists = knowledgeBase.getAllArtists();
+    const similar = allArtists.artists.filter(a => 
+      a.name.toLowerCase().includes(artistName.toLowerCase()) ||
+      artistName.toLowerCase().includes(a.name.toLowerCase().split(' ')[0])
+    );
+    
+    if (similar.length > 0) {
+      return {
+        success: false,
+        message: `🤔 "${artistName}" not found. Did you mean:\n${similar.map(a => `• ${a.name}`).join('\n')}?`
+      };
+    }
+    
+    return {
+      success: false,
+      message: `🤔 No songs found for "${artistName}" in our library.\n\nTry searching YouTube: "play ${artistName} song from youtube"`
+    };
+  }
+  
+  const songList = result.songs
+    .slice(0, 10)
+    .map((s, i) => `${i + 1}. ${s.title}`)
+    .join('\n');
+  
+  return {
+    success: true,
+    artist: result.artist,
+    songCount: result.songCount,
+    songs: result.songs,
+    message: `🎤 ${result.artist} - ${result.songCount} songs:\n\n${songList}${result.songCount > 10 ? `\n\n...and ${result.songCount - 10} more!` : ''}\n\nSay "play [song name]" to play!`
+  };
+}
+
+/**
+ * NEW: Get all genres
+ */
+function getGenres() {
+  const result = knowledgeBase.getAllGenres();
+  
+  if (result.count === 0) {
+    return { success: false, message: '🤔 No genres indexed yet!' };
+  }
+  
+  const genreList = result.genres
+    .map(g => `• ${g.genre} (${g.songCount} songs)`)
+    .join('\n');
+  
+  return {
+    success: true,
+    genres: result.genres,
+    count: result.count,
+    message: `🎵 Music genres:\n\n${genreList}\n\nSay "play [genre] songs" for that vibe!`
+  };
+}
+
+/**
+ * NEW: Get songs by genre
+ */
+function getSongsByGenre(params = {}) {
+  const { genre } = params;
+  
+  if (!genre) {
+    return getGenres();
+  }
+  
+  const result = knowledgeBase.getSongsByGenre(genre);
+  
+  if (!result.found) {
+    return {
+      success: false,
+      message: `🤔 No "${genre}" songs found. Try: party, romantic, sad, retro, punjabi...`
+    };
+  }
+  
+  const songList = result.songs
+    .slice(0, 8)
+    .map((s, i) => `${i + 1}. ${s.title}`)
+    .join('\n');
+  
+  return {
+    success: true,
+    genre: result.genre,
+    songCount: result.songCount,
+    songs: result.songs,
+    message: `🎵 ${result.genre.toUpperCase()} songs (${result.songCount}):\n\n${songList}\n\nSay "play [song]" to play!`
+  };
+}
+
+/**
+ * NEW: Get database statistics
+ */
+function getDbStats() {
+  const stats = knowledgeBase.getStats();
+  
+  return {
+    success: true,
+    stats,
+    message: `📊 DesiTV Library Stats:\n\n📺 ${stats.totalChannels} Channels\n🎵 ${stats.totalVideos} Songs/Videos\n🎤 ${stats.totalArtists} Artists\n🎶 ${stats.totalGenres} Genres\n\nWhat do you want to watch?`
+  };
 }
 
 /**
@@ -606,14 +969,25 @@ function detectIntent(message) {
     }
   }
   
-  // PRIORITY 1: Shayari patterns (BEFORE mood detection!)
-  if (/shayari|poetry|poem|dedicate|dedication/i.test(lower)) {
+  // PRIORITY 1: Dedication patterns (BEFORE shayari - catches "dedicate song")
+  if (/dedicate\s+(?:a\s+)?(?:song|gaana)/i.test(lower) || /dedication/i.test(lower)) {
+    const dedicationMatch = lower.match(/(?:to|for)\s+(?:my\s+)?(\w+)/i);
+    const toName = dedicationMatch ? dedicationMatch[1] : 'someone special';
+    let dedicationType = 'love';
+    if (lower.includes('friend') || lower.includes('dost')) dedicationType = 'friendship';
+    if (lower.includes('sad') || lower.includes('dard') || lower.includes('heartbreak')) dedicationType = 'heartbreak';
+    if (lower.includes('party') || lower.includes('celebration')) dedicationType = 'party';
+    return { tool: 'dedicate_song', params: { dedicationType, toName } };
+  }
+  
+  // PRIORITY 2: Shayari patterns (after dedication)
+  if (/shayari|poetry|poem/i.test(lower)) {
     const mood = /sad|dard/i.test(lower) ? 'sad' : 
                  /friend/i.test(lower) ? 'friendship' : 'romantic';
     return { tool: 'get_shayari', params: { mood } };
   }
   
-  // PRIORITY 2: Trivia patterns
+  // PRIORITY 3: Trivia patterns
   if (/trivia|quiz|question|test me/i.test(lower)) {
     return { tool: 'get_trivia', params: {} };
   }
@@ -623,7 +997,19 @@ function detectIntent(message) {
     return { tool: 'this_day_in_history', params: {} };
   }
   
+  // PRIORITY: YouTube search - BEFORE "play on channel" patterns
+  // Matches: "play X from youtube", "search youtube for X"
+  if (/(?:from\s+youtube|on\s+youtube|youtube)/i.test(lower)) {
+    const queryMatch = lower.match(/(?:play|search|find)\s+(.+?)\s+(?:from|on)\s+youtube/i) ||
+                       lower.match(/search\s+youtube\s+(?:for\s+)?(.+)/i) ||
+                       lower.match(/youtube\s+(?:search|play)\s+(.+)/i);
+    if (queryMatch) {
+      return { tool: 'search_youtube', params: { query: queryMatch[1].trim() } };
+    }
+  }
+  
   // ACTION: Play specific video ON a channel (e.g., "play hookah bar on club nights")
+  // EXCLUDE youtube which is handled above
   const playOnChannelPatterns = [
     /(?:play|switch to|put on)\s+["']?(.+?)["']?\s+(?:on|in|from)\s+(?:channel\s+)?["']?(.+?)["']?$/i,
     /(?:i meant|i want)\s+["']?(.+?)["']?\s+(?:on|in|from)\s+(?:channel\s+)?["']?(.+?)["']?$/i
@@ -631,7 +1017,7 @@ function detectIntent(message) {
   
   for (const pattern of playOnChannelPatterns) {
     const match = lower.match(pattern);
-    if (match) {
+    if (match && !match[2].includes('youtube')) {  // Skip if channel name is "youtube"
       return { tool: 'play_video', params: { query: match[1].trim(), channelName: match[2].trim() } };
     }
   }
@@ -650,7 +1036,14 @@ function detectIntent(message) {
     }
   }
   
-  // ACTION: Play specific video
+  // PRIORITY: Genre-based play requests - BEFORE general play patterns
+  // Matches: "play party songs", "play romantic music"
+  const genrePlayPattern = lower.match(/play\s+(party|romantic|sad|retro|punjabi|devotional|item)\s+(?:songs?|music|tracks?)/i);
+  if (genrePlayPattern) {
+    return { tool: 'get_songs_by_genre', params: { genre: genrePlayPattern[1] } };
+  }
+  
+  // ACTION: Play specific video (AFTER YouTube and genre checks)
   const playPatterns = [
     /(?:play|put on)\s+["']?(.+?)["']?(?:\s+(?:song|video))?$/i,
     /(?:i want to (?:hear|watch|see))\s+["']?(.+?)["']?/i,
@@ -678,11 +1071,41 @@ function detectIntent(message) {
     }
   }
   
+  // PRIORITY: Genre-based song requests (before general artist query)
+  // Matches: "play party songs", "show romantic songs", "punjabi music"
+  const knownGenres = ['party', 'romantic', 'sad', 'retro', 'punjabi', 'hip-hop', 'sufi', 'devotional', 'item'];
+  const genreSongPattern = new RegExp(`(?:play|show|list|give me)\\s+(${knownGenres.join('|')})\\s+(?:songs?|music|tracks?)`, 'i');
+  const genreSongMatch = lower.match(genreSongPattern);
+  if (genreSongMatch) {
+    return { tool: 'get_songs_by_genre', params: { genre: genreSongMatch[1] } };
+  }
+  
   // Search patterns (info only, no action)
-  if (lower.includes('search') || lower.includes('find')) {
+  // BUT exclude "search youtube" which is handled later
+  if ((lower.includes('search') || lower.includes('find')) && !lower.includes('youtube')) {
     const match = lower.match(/(?:search|find)\s+(?:for\s+)?(.+)/i);
     if (match) {
       return { tool: 'search_videos', params: { query: match[1].trim() } };
+    }
+  }
+  
+  // Artist songs query - "songs by X", "arijit songs", etc
+  // SKIP if it matches "similar songs" or "how many songs"
+  if (!/similar|how many/i.test(lower)) {
+    const artistSongsPatterns = [
+      /songs?\s+(?:by|of|from)\s+(.+)/i,
+      /^(.+?)(?:'s)?\s+songs?$/i  // Must be at start/end to avoid "similar songs"
+    ];
+    for (const pattern of artistSongsPatterns) {
+      const match = lower.match(pattern);
+      if (match) {
+        const artistName = match[1].trim();
+        // Check if it's an artist (not a genre or channel)
+        if (!knownGenres.includes(artistName.toLowerCase()) && 
+            !['channel', 'desi', 'club', 'similar', 'many', 'all'].some(na => artistName.includes(na))) {
+          return { tool: 'get_songs_by_artist', params: { artistName } };
+        }
+      }
     }
   }
   
@@ -760,6 +1183,53 @@ function detectIntent(message) {
   // Check trivia answer patterns
   if (/^(answer|jawab|reveal|batao)/i.test(lower)) {
     return { tool: 'reveal_trivia', params: {}, usesContext: true };
+  }
+  
+  // NEW: Artist-specific queries
+  if (/(?:songs?\s+(?:by|of|from)|what\s+songs?\s+(?:does|do)\s+\w+\s+have|list\s+\w+\s+songs?)/i.test(lower)) {
+    const artistMatch = lower.match(/(?:songs?\s+(?:by|of|from)|what\s+songs?\s+(?:does|do))\s+(.+?)(?:\s+have|\s+got|$)/i);
+    if (artistMatch) {
+      return { tool: 'get_songs_by_artist', params: { artistName: artistMatch[1].trim() } };
+    }
+  }
+  
+  // NEW: Show all artists
+  if (/(?:show|list|what)\s*(?:all\s+)?artists?|who\s+(?:do\s+you\s+have|is\s+in)/i.test(lower)) {
+    return { tool: 'get_artists', params: {} };
+  }
+  
+  // NEW: Genre queries
+  if (/(?:show|list|what)\s*(?:all\s+)?(?:genres?|categories|types)/i.test(lower)) {
+    return { tool: 'get_genres', params: {} };
+  }
+  
+  // NEW: Database stats - BEFORE other patterns that might catch "how many"
+  if (/(?:how many|stats|statistics|library\s+(?:size|info)|total\s+(?:songs?|videos?))/i.test(lower)) {
+    return { tool: 'get_db_stats', params: {} };
+  }
+  
+  // NEW: Similar content patterns - catch before other patterns
+  if (/similar\s+(?:songs?|videos?|content)|more\s+like\s+(?:this|it)|aise\s+aur|aur\s+bhi/i.test(lower)) {
+    return { tool: 'get_similar', params: {}, usesContext: true };
+  }
+  
+  // NEW: External YouTube search (explicit request) - BEFORE general play
+  if (/(?:from\s+youtube|search\s+youtube|youtube|external\s+song|outside\s+(?:database|library))/i.test(lower)) {
+    const queryMatch = lower.match(/(?:play|search|find)\s+(.+?)\s+(?:from|on)\s+youtube/i) ||
+                       lower.match(/search\s+youtube\s+(?:for\s+)?(.+)/i) ||
+                       lower.match(/youtube\s+(?:search|play)\s+(.+)/i) ||
+                       lower.match(/(?:play|search|find)\s+(.+?)\s+(?:external|outside)/i);
+    if (queryMatch) {
+      return { tool: 'search_youtube', params: { query: queryMatch[1].trim() } };
+    }
+    // If just "from youtube" without specific query
+    return { tool: 'search_youtube', params: { query: lower.replace(/from\s+youtube|youtube/i, '').trim() } };
+  }
+  
+  // NEW: "Play this" after YouTube search
+  if (/^play\s+(?:this|it)$/i.test(lower.trim())) {
+    // This is handled in controller - needs context of last search
+    return { tool: 'play_last_search', params: {} };
   }
   
   // If user types a short answer (possible trivia response)
@@ -1105,14 +1575,28 @@ module.exports = {
   toolDefinitions,
   executeTool,
   detectIntent,
+  // Info tools
   getNowPlaying,
   getUpNext,
   getChannels,
   searchVideos,
   getWhatsPlaying,
   getRecommendations,
+  // Action tools
   changeChannel,
   playVideo,
+  // NEW: Smart play with DB + YouTube fallback
+  smartPlay,
+  // NEW: YouTube search
+  searchYouTubeForSong,
+  playExternalVideo,
+  // NEW: Knowledge base queries
+  getArtists,
+  getSongsByArtist,
+  getGenres,
+  getSongsByGenre,
+  getDbStats,
+  // Interactive features
   getTrivia,
   checkTriviaAnswer,
   getShayari,
