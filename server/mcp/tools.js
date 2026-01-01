@@ -16,6 +16,18 @@
  */
 
 const Channel = require('../models/Channel');
+const path = require('path');
+const fs = require('fs');
+
+// Load VJ content data
+let vjContent = {};
+try {
+  const contentPath = path.join(__dirname, '../data/vjContent.json');
+  vjContent = JSON.parse(fs.readFileSync(contentPath, 'utf8'));
+  console.log('[Tools] Loaded VJ content data');
+} catch (err) {
+  console.warn('[Tools] Could not load vjContent.json:', err.message);
+}
 
 /**
  * Tool definitions for the AI
@@ -25,7 +37,7 @@ const toolDefinitions = {
     name: 'get_now_playing',
     description: 'Get what is currently playing (uses real-time context)',
     execute: getNowPlaying,
-    usesContext: true  // Flag: uses frontend context, not DB
+    usesContext: true
   },
   get_up_next: {
     name: 'get_up_next',
@@ -57,6 +69,22 @@ const toolDefinitions = {
     name: 'change_channel',
     description: 'Change to a specific channel',
     execute: changeChannel
+  },
+  // NEW: Interactive features
+  get_trivia: {
+    name: 'get_trivia',
+    description: 'Get a music trivia question',
+    execute: getTrivia
+  },
+  get_shayari: {
+    name: 'get_shayari',
+    description: 'Get a romantic/mood-based shayari',
+    execute: getShayari
+  },
+  this_day_in_history: {
+    name: 'this_day_in_history',
+    description: 'Get music/movie history for today',
+    execute: getThisDayInHistory
   },
   play_video: {
     name: 'play_video',
@@ -511,6 +539,23 @@ function detectIntent(message) {
     }
   }
   
+  // NEW: Trivia patterns
+  if (/trivia|quiz|question|test me/i.test(lower)) {
+    return { tool: 'get_trivia', params: {} };
+  }
+  
+  // NEW: Shayari patterns
+  if (/shayari|poetry|poem|dedicate|dedication/i.test(lower)) {
+    const mood = /sad|dard/i.test(lower) ? 'sad' : 
+                 /friend/i.test(lower) ? 'friendship' : 'romantic';
+    return { tool: 'get_shayari', params: { mood } };
+  }
+  
+  // NEW: This day in history
+  if (/this day|today in|throwback|history|remember when/i.test(lower)) {
+    return { tool: 'this_day_in_history', params: {} };
+  }
+  
   // Artist/song search
   const artists = ['honey singh', 'arijit', 'atif', 'sonu nigam', 'shreya', 'badshah', 'neha kakkar'];
   for (const artist of artists) {
@@ -526,6 +571,85 @@ function detectIntent(message) {
   return null;
 }
 
+/**
+ * NEW TOOLS: Interactive Features
+ */
+
+/**
+ * Get a random trivia question
+ */
+function getTrivia() {
+  const triviaList = vjContent.trivia || [];
+  if (triviaList.length === 0) {
+    return { success: false, error: 'No trivia available' };
+  }
+  
+  const trivia = triviaList[Math.floor(Math.random() * triviaList.length)];
+  return {
+    success: true,
+    trivia: {
+      question: trivia.question,
+      hint: trivia.hint,
+      year: trivia.year,
+      // Don't send answer - let VJ reveal it later!
+      _answer: trivia.answer
+    }
+  };
+}
+
+/**
+ * Get a shayari based on mood
+ */
+function getShayari(params = {}) {
+  const { mood = 'romantic' } = params;
+  const shayariList = vjContent.shayari?.[mood] || vjContent.shayari?.romantic || [];
+  
+  if (shayariList.length === 0) {
+    return { success: false, error: 'No shayari available' };
+  }
+  
+  const shayari = shayariList[Math.floor(Math.random() * shayariList.length)];
+  return {
+    success: true,
+    shayari,
+    mood
+  };
+}
+
+/**
+ * Get "This Day in History" content
+ */
+function getThisDayInHistory() {
+  const today = new Date();
+  const dateKey = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  const dayData = vjContent.thisDay?.[dateKey];
+  
+  // If no specific data for today, return generic response
+  if (!dayData) {
+    const year = 2000 + Math.floor(Math.random() * 10); // Random year 2000-2009
+    return {
+      success: true,
+      thisDay: {
+        date: dateKey,
+        year,
+        message: `Aaj ke din ${year} mein Bollywood mein kya chal raha tha? Let me think... 🤔`,
+        events: ['Music channels were ruling!', 'Remixes were the craze!'],
+        songs: ['2000s hits were everywhere!']
+      }
+    };
+  }
+  
+  return {
+    success: true,
+    thisDay: {
+      date: dateKey,
+      events: dayData.events,
+      songs: dayData.songs
+    }
+  };
+}
+
 module.exports = {
   toolDefinitions,
   executeTool,
@@ -537,5 +661,8 @@ module.exports = {
   getWhatsPlaying,
   getRecommendations,
   changeChannel,
-  playVideo
+  playVideo,
+  getTrivia,
+  getShayari,
+  getThisDayInHistory
 };

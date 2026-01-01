@@ -123,16 +123,21 @@
   gap: 8px;
 }
 
+.vj-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .vj-avatar {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .vj-title {
   font-weight: 600;
   color: #d4a574;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 .vj-status {
@@ -161,6 +166,43 @@
 
 .vj-close-btn:hover {
   color: #d4a574;
+}
+
+/* Persona Tabs */
+.vj-persona-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.vj-persona-tab {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vj-persona-tab:hover {
+  background: rgba(212, 165, 116, 0.15);
+  border-color: rgba(212, 165, 116, 0.3);
+  transform: scale(1.1);
+}
+
+.vj-persona-tab.active {
+  background: linear-gradient(135deg, #d4a574, #c49564);
+  border-color: #e5b685;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(212, 165, 116, 0.4);
 }
 
 /* Messages Area */
@@ -240,6 +282,21 @@
   border-bottom-left-radius: 4px;
 }
 
+/* System messages (persona switch) */
+.vj-message.system {
+  align-self: center;
+  max-width: 100%;
+}
+
+.vj-msg-system {
+  padding: 4px 12px;
+  font-size: 11px;
+  color: #888;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  text-align: center;
+}
+
 /* Typing indicator */
 .vj-typing {
   display: flex;
@@ -261,6 +318,40 @@
 @keyframes vj-typing-dot {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
   30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Quick Actions */
+.vj-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(212, 165, 116, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.vj-quick-action-btn {
+  background: linear-gradient(135deg, rgba(212, 165, 116, 0.15), rgba(212, 165, 116, 0.05));
+  border: 1px solid rgba(212, 165, 116, 0.3);
+  color: #d4a574;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.vj-quick-action-btn:hover {
+  background: linear-gradient(135deg, rgba(212, 165, 116, 0.25), rgba(212, 165, 116, 0.15));
+  border-color: #d4a574;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(212, 165, 116, 0.2);
+}
+
+.vj-quick-action-btn:active {
+  transform: translateY(0);
 }
 
 /* Suggestions */

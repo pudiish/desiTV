@@ -1,36 +1,53 @@
 /**
  * VJChat - Retro TV VJ Assistant Chat Component
  * 
- * A creative, theme-matching chat interface styled like a retro TV overlay
- * Appears as a small VJ button that expands into a chat bubble
- * Supports actions: channel changes, video playback, etc.
+ * Enhanced with:
+ * - 4 VJ Personas (Bindaas, LateNight, Comedy, Retro)
+ * - Quick action buttons (Trivia, Shayari, Throwback)
+ * - Time-aware greetings
+ * - Mood-based persona switching
  * 
  * ARCHITECTURE:
  * - Receives FULL context from parent (current video, channel, playlist)
- * - Sends context with every message to server
- * - Server uses context for accurate "what's playing" responses
- * - Server returns actions for channel/video changes
+ * - Sends context + persona with every message to server
+ * - Server uses context for accurate responses + persona for personality
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { sendMessage, getSuggestions } from '../../services/chatService';
 import './VJChat.css';
 
+// VJ Persona definitions (mirrors server)
+const PERSONAS = {
+  bindaas: { id: 'bindaas', name: 'DJ Bindaas', avatar: '🎧', desc: 'Party Mode!' },
+  latenight: { id: 'latenight', name: 'RJ Chaand', avatar: '🌙', desc: 'Late Night' },
+  comedy: { id: 'comedy', name: 'Pappu VJ', avatar: '😂', desc: 'Comedy' },
+  retro: { id: 'retro', name: 'Nostalgia Aunty', avatar: '📺', desc: 'Retro' }
+};
+
+// Quick action buttons
+const QUICK_ACTIONS = [
+  { id: 'trivia', label: '🎯 Trivia', message: 'Give me a trivia question!' },
+  { id: 'shayari', label: '💕 Shayari', message: 'Share a romantic shayari' },
+  { id: 'throwback', label: '📅 Throwback', message: 'This day in history' },
+  { id: 'mood', label: '🎵 Mood', message: 'Recommend based on my mood' }
+];
+
 const VJChat = ({ 
   // Current state from parent
-  currentChannel,           // Channel name (string)
-  currentChannelId,         // Channel ID for actions
-  currentVideo,             // Current video object {title, artist, youtubeId, duration}
-  nextVideo,                // Next video in playlist {title, artist, youtubeId, duration}
-  currentVideoIndex,        // Index in playlist (number)
-  totalVideos,              // Total videos in current channel
+  currentChannel,
+  currentChannelId,
+  currentVideo,
+  nextVideo,
+  currentVideoIndex,
+  totalVideos,
   
   // Available data
-  channels = [],            // All available channels [{_id, name, items}]
+  channels = [],
   
   // Action handlers
-  onChangeChannel,          // (channel) => void
-  onPlayVideo,              // ({channelId, videoIndex}) => void
+  onChangeChannel,
+  onPlayVideo,
   
   // UI state
   isVisible = true
@@ -40,8 +57,30 @@ const VJChat = ({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
+  const [selectedPersona, setSelectedPersona] = useState('comedy'); // Default persona
+  const [showQuickActions, setShowQuickActions] = useState(true);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Get time-appropriate default persona
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 22 || hour < 5) {
+      setSelectedPersona('latenight');
+    } else if (hour >= 6 && hour < 12) {
+      setSelectedPersona('bindaas');
+    } else {
+      // Channel-based selection
+      const channelLower = (currentChannel || '').toLowerCase();
+      if (channelLower.includes('retro') || channelLower.includes('gold')) {
+        setSelectedPersona('retro');
+      } else if (channelLower.includes('love') || channelLower.includes('night')) {
+        setSelectedPersona('latenight');
+      } else if (channelLower.includes('party') || channelLower.includes('club')) {
+        setSelectedPersona('bindaas');
+      }
+    }
+  }, [currentChannel]);
 
   // Load suggestions on mount
   useEffect(() => {
@@ -63,12 +102,21 @@ const VJChat = ({
   // Add welcome message when opened for first time
   useEffect(() => {
     if (isOpen && messages.length === 0) {
+      const persona = PERSONAS[selectedPersona];
+      const hour = new Date().getHours();
+      let greeting = '';
+      
+      if (hour >= 5 && hour < 12) greeting = 'Good morning';
+      else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+      else if (hour >= 17 && hour < 21) greeting = 'Good evening';
+      else greeting = 'Late night vibes';
+      
       const welcomeMsg = currentVideo?.title 
-        ? `Hey yaar! 🎙️ I see you're watching "${currentVideo.title}" on ${currentChannel}! Ask me anything - switch channels, find songs, or get recommendations!`
-        : 'Hey yaar! 🎙️ DesiTV VJ here! Ask me to switch channels, find songs, or get mood-based recommendations!';
-      setMessages([{ role: 'assistant', content: welcomeMsg }]);
+        ? `${persona.avatar} ${greeting}! I'm ${persona.name}! You're watching "${currentVideo.title}" on ${currentChannel}. Ask me anything - trivia, shayari, song search, or mood recommendations!`
+        : `${persona.avatar} ${greeting}! I'm ${persona.name}, your DesiTV VJ! Try the quick actions below or ask me anything!`;
+      setMessages([{ role: 'assistant', content: welcomeMsg, persona: selectedPersona }]);
     }
-  }, [isOpen, messages.length, currentVideo?.title, currentChannel]);
+  }, [isOpen, messages.length, currentVideo?.title, currentChannel, selectedPersona]);
 
   /**
    * Execute action from AI response
@@ -81,7 +129,6 @@ const VJChat = ({
     switch (action.type) {
       case 'CHANGE_CHANNEL':
         if (onChangeChannel) {
-          // Find channel from available channels or use ID
           const channel = channels.find(
             ch => ch._id === action.channelId || 
                   ch.name?.toLowerCase() === action.channelName?.toLowerCase()
@@ -99,7 +146,6 @@ const VJChat = ({
             videoTitle: action.videoTitle
           });
         } else if (onChangeChannel) {
-          // Fallback: at least change to the right channel
           const channel = channels.find(ch => ch._id === action.channelId);
           onChangeChannel(channel || { _id: action.channelId, name: action.channelName });
         }
@@ -115,6 +161,7 @@ const VJChat = ({
 
     const userMessage = text.trim();
     setInputValue('');
+    setShowQuickActions(false); // Hide quick actions after first message
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
@@ -130,7 +177,6 @@ const VJChat = ({
           duration: currentVideo.duration,
           youtubeId: currentVideo.youtubeId || currentVideo.id
         } : null,
-        // Next video in queue
         nextVideo: nextVideo ? {
           title: nextVideo.title,
           artist: nextVideo.artist || nextVideo.channelTitle,
@@ -139,7 +185,10 @@ const VJChat = ({
         currentVideoIndex,
         totalVideos,
         
-        // Available channels (names only to reduce payload)
+        // Persona preference
+        persona: selectedPersona,
+        
+        // Available channels
         availableChannels: channels.map(ch => ({ id: ch._id, name: ch.name }))
       };
       
@@ -147,7 +196,11 @@ const VJChat = ({
       const result = await sendMessage(userMessage, context);
       console.log('[VJChat] Response:', result);
       
-      setMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: result.response,
+        persona: selectedPersona 
+      }]);
       
       // Execute any action returned by the AI
       if (result.action) {
@@ -158,12 +211,13 @@ const VJChat = ({
       console.error('[VJChat] Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: error.message || 'Oops! Technical glitch 📺 Try again?' 
+        content: error.message || 'Oops! Technical glitch 📺 Try again?',
+        persona: selectedPersona
       }]);
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, channels, executeAction]);
+  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, channels, executeAction, selectedPersona]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -172,11 +226,23 @@ const VJChat = ({
     }
   };
 
-  const handleSuggestionClick = (suggestion) => {
-    handleSend(suggestion);
+  const handleQuickAction = (action) => {
+    handleSend(action.message);
+  };
+
+  const handlePersonaChange = (personaId) => {
+    setSelectedPersona(personaId);
+    const persona = PERSONAS[personaId];
+    // Add persona switch message
+    setMessages(prev => [...prev, { 
+      role: 'system', 
+      content: `${persona.avatar} Switched to ${persona.name}!`
+    }]);
   };
 
   if (!isVisible) return null;
+
+  const currentPersona = PERSONAS[selectedPersona];
 
   return (
     <div className={`vj-chat-container ${isOpen ? 'open' : ''}`}>
@@ -186,9 +252,11 @@ const VJChat = ({
           {/* Header */}
           <div className="vj-chat-header">
             <div className="vj-header-info">
-              <span className="vj-avatar">🎙️</span>
-              <span className="vj-title">VJ Assistant</span>
-              <span className="vj-status">● LIVE</span>
+              <span className="vj-avatar">{currentPersona.avatar}</span>
+              <div className="vj-header-text">
+                <span className="vj-title">{currentPersona.name}</span>
+                <span className="vj-status">● LIVE</span>
+              </div>
             </div>
             <button 
               className="vj-close-btn" 
@@ -199,6 +267,20 @@ const VJChat = ({
             </button>
           </div>
 
+          {/* Persona Tabs */}
+          <div className="vj-persona-tabs">
+            {Object.values(PERSONAS).map(persona => (
+              <button
+                key={persona.id}
+                className={`vj-persona-tab ${selectedPersona === persona.id ? 'active' : ''}`}
+                onClick={() => handlePersonaChange(persona.id)}
+                title={persona.desc}
+              >
+                {persona.avatar}
+              </button>
+            ))}
+          </div>
+
           {/* Messages */}
           <div className="vj-chat-messages">
             {messages.map((msg, idx) => (
@@ -206,13 +288,21 @@ const VJChat = ({
                 key={idx} 
                 className={`vj-message ${msg.role}`}
               >
-                {msg.role === 'assistant' && <span className="vj-msg-avatar">🎙️</span>}
-                <div className="vj-msg-content">{msg.content}</div>
+                {msg.role === 'assistant' && (
+                  <span className="vj-msg-avatar">
+                    {PERSONAS[msg.persona]?.avatar || '🎙️'}
+                  </span>
+                )}
+                {msg.role === 'system' ? (
+                  <div className="vj-msg-system">{msg.content}</div>
+                ) : (
+                  <div className="vj-msg-content">{msg.content}</div>
+                )}
               </div>
             ))}
             {isLoading && (
               <div className="vj-message assistant">
-                <span className="vj-msg-avatar">🎙️</span>
+                <span className="vj-msg-avatar">{currentPersona.avatar}</span>
                 <div className="vj-msg-content vj-typing">
                   <span></span><span></span><span></span>
                 </div>
@@ -221,14 +311,29 @@ const VJChat = ({
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Actions */}
+          {showQuickActions && messages.length <= 2 && (
+            <div className="vj-quick-actions">
+              {QUICK_ACTIONS.map(action => (
+                <button 
+                  key={action.id}
+                  className="vj-quick-action-btn"
+                  onClick={() => handleQuickAction(action)}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Suggestions */}
-          {messages.length <= 2 && suggestions.length > 0 && (
+          {!showQuickActions && messages.length <= 4 && suggestions.length > 0 && (
             <div className="vj-suggestions">
               {suggestions.slice(0, 3).map((sug, idx) => (
                 <button 
                   key={idx}
                   className="vj-suggestion-chip"
-                  onClick={() => handleSuggestionClick(sug)}
+                  onClick={() => handleSend(sug)}
                 >
                   {sug}
                 </button>
@@ -244,7 +349,7 @@ const VJChat = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask VJ anything..."
+              placeholder={`Ask ${currentPersona.name} anything...`}
               disabled={isLoading}
               maxLength={200}
             />
@@ -259,14 +364,14 @@ const VJChat = ({
         </div>
       )}
 
-      {/* VJ Toggle Button - Retro mic style */}
+      {/* VJ Toggle Button */}
       <button
         className={`vj-toggle-btn ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="Ask VJ Assistant"
         aria-label="Toggle VJ Chat"
       >
-        <span className="vj-btn-icon">🎙️</span>
+        <span className="vj-btn-icon">{currentPersona.avatar}</span>
         {!isOpen && <span className="vj-btn-pulse"></span>}
       </button>
     </div>

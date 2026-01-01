@@ -1,0 +1,144 @@
+{
+  "trivia": [
+    {
+      "question": "Which 2006 film featured the hit song 'Kajra Re' with Aishwarya Rai, Abhishek and Amitabh Bachchan?",
+      "answer": "Bunty Aur Babli",
+      "year": 2005,
+      "hint": "A con artist couple movie"
+    },
+    {
+      "question": "Who sang 'Dil To Pagal Hai' title track?",
+      "answer": "Lata Mangeshkar and Udit Narayan",
+      "year": 1997,
+      "hint": "Legendary singers"
+    },
+    {
+      "question": "Which Honey Singh song was the first Indian song to cross 100 million views on YouTube?",
+      "answer": "Brown Rang",
+      "year": 2012,
+      "hint": "Color-related title"
+    },
+    {
+      "question": "The song 'Chaiyya Chaiyya' was shot on top of a moving train. Which movie?",
+      "answer": "Dil Se",
+      "year": 1998,
+      "hint": "Shah Rukh Khan romantic thriller"
+    },
+    {
+      "question": "Which AR Rahman album won the Oscar for Best Original Score?",
+      "answer": "Slumdog Millionaire",
+      "year": 2008,
+      "hint": "Danny Boyle film"
+    },
+    {
+      "question": "Complete the lyric: 'Tujhe dekha toh ye jaana...'",
+      "answer": "sanam",
+      "year": 1995,
+      "hint": "DDLJ song"
+    },
+    {
+      "question": "Which singer is known as the 'King of Playback Singing' in Bollywood?",
+      "answer": "Mohammed Rafi",
+      "hint": "Legend from golden era"
+    },
+    {
+      "question": "The song 'Munni Badnaam Hui' is from which Salman Khan movie?",
+      "answer": "Dabangg",
+      "year": 2010,
+      "hint": "Chulbul Pandey's film"
+    }
+  ],
+  
+  "thisDay": {
+    "01-01": {
+      "events": ["New Year releases traditionally feature big Bollywood films"],
+      "songs": ["Auld Lang Syne (Indian version)", "Party songs compilation"]
+    },
+    "01-02": {
+      "events": ["2004: Kal Ho Naa Ho was ruling the charts", "2006: Rang De Basanti promotions in full swing"],
+      "songs": ["Kal Ho Naa Ho title track", "Rang De Basanti"]
+    },
+    "02-14": {
+      "events": ["Valentine's Day - Romantic songs rule the airwaves!"],
+      "songs": ["Tum Hi Ho", "Pehla Nasha", "Tujhe Dekha Toh"]
+    },
+    "08-15": {
+      "events": ["Independence Day - Patriotic songs everywhere!"],
+      "songs": ["Rang De Basanti", "Maa Tujhe Salaam", "Vande Mataram"]
+    },
+    "10-15": {
+      "events": ["Diwali season - Festive releases!"],
+      "songs": ["Festival special songs", "Happy Diwali tracks"]
+    }
+  },
+  
+  "shayari": {
+    "romantic": [
+      "Mohabbat mein koi fariyaad na kar, jo milta nahi uski yaad na kar ❤️",
+      "Dil mein ho tum, aankhon mein tum, har dhadkan mein bas tum hi tum 💕",
+      "Teri aankhon ke siwa duniya mein rakha kya hai... ✨",
+      "Ishq mein hum tumhein kya batayein, kho gaye hum toh kho gaye 🌙"
+    ],
+    "sad": [
+      "Dard-e-dil, dard-e-jigar, dil mein samaaye raat bhar 💔",
+      "Tanhaai mein bhi teri yaad aati hai, har saans mein tu hi mehsoos hoti hai 🥀",
+      "Bichhad ke tujhse yun laga, jaise khud se door ho gaye 😢"
+    ],
+    "friendship": [
+      "Dosti ka rishta toh khoon ke rishte se bhi ooncha hai yaar! 🤝",
+      "Yaaron ka yaar hoon main, har dard ka pyaar hoon main 💪",
+      "Dost ban ke raho tum, dosti nibhayenge hum ❤️"
+    ]
+  },
+  
+  "movieMemories": {
+    "DDLJ": {
+      "year": 1995,
+      "fact": "Still running at Maratha Mandir since 1995!",
+      "songs": ["Tujhe Dekha Toh", "Mehndi Laga Ke Rakhna", "Ruk Ja O Dil Deewane"]
+    },
+    "Dil To Pagal Hai": {
+      "year": 1997,
+      "fact": "The dance rehearsal scenes became iconic!",
+      "songs": ["Dil To Pagal Hai", "Are Re Are", "Dholna"]
+    },
+    "Kuch Kuch Hota Hai": {
+      "year": 1998,
+      "fact": "Friendship bands became a craze after this movie!",
+      "songs": ["Kuch Kuch Hota Hai", "Tum Paas Aaye", "Koi Mil Gaya"]
+    },
+    "Lagaan": {
+      "year": 2001,
+      "fact": "Oscar nominated! The cricket match took 21 days to shoot!",
+      "songs": ["Mitwa", "Chale Chalo", "O Rey Chhori"]
+    },
+    "Dil Chahta Hai": {
+      "year": 2001,
+      "fact": "Started the Goa trip trend among friends!",
+      "songs": ["Dil Chahta Hai", "Jaane Kyon", "Tanhayee"]
+    }
+  },
+  
+  "festivals": {
+    "diwali": {
+      "greeting": "Shubh Deepavali! 🪔✨",
+      "songs": ["Happy Diwali", "Jai Ho", "Festival dance numbers"],
+      "mood": "festive, bright, celebration"
+    },
+    "holi": {
+      "greeting": "Holi ki hardik shubhkamnayein! 🎨",
+      "songs": ["Rang Barse", "Holi Khele Raghuveera", "Balam Pichkari"],
+      "mood": "colorful, fun, masti"
+    },
+    "navratri": {
+      "greeting": "Navratri ki shubhkamnayein! 🙏",
+      "songs": ["Dholi Taro", "Nagada Sang Dhol", "Garba hits"],
+      "mood": "devotional, energetic, dance"
+    },
+    "eid": {
+      "greeting": "Eid Mubarak! 🌙",
+      "songs": ["Eid Mubarak", "Salman Khan Eid songs"],
+      "mood": "celebration, family, joy"
+    }
+  }
+}
