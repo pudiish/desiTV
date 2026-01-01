@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { apiClient } from '../../services/apiClient'
+import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
 export default function VideoFetcher() {
@@ -21,14 +22,11 @@ export default function VideoFetcher() {
 		setError(null)
 		setResults([])
 		try {
-			const response = await fetch(
-				`/api/youtube/search?q=${encodeURIComponent(searchQuery)}`
-			)
-			if (!response.ok) throw new Error('Search failed')
-			const data = await response.json()
-			setResults(data.items || [])
+			const result = await apiClientV2.searchYouTube({ query: searchQuery })
+			if (!result.success) throw new Error('Search failed')
+			setResults(result.data?.items || [])
 			if (window.adminNotify)
-				window.adminNotify(`Found ${(data.items || []).length} videos`, 'success')
+				window.adminNotify(`Found ${(result.data?.items || []).length} videos`, 'success')
 		} catch (err) {
 			setError(err.message)
 			if (window.adminNotify) window.adminNotify(err.message, 'error')
@@ -45,9 +43,9 @@ export default function VideoFetcher() {
 
 	const fetchVideoDetails = async (videoId) => {
 		try {
-			const response = await fetch(`/api/youtube/video/${videoId}`)
-			if (!response.ok) throw new Error('Failed to fetch details')
-			return await response.json()
+			const result = await apiClientV2.getVideoMetadata({ youtubeId: videoId })
+			if (!result.success) throw new Error('Failed to fetch details')
+			return result.data
 		} catch (err) {
 			if (window.adminNotify) window.adminNotify(err.message, 'error')
 			return null
