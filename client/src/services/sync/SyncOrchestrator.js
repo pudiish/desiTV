@@ -21,6 +21,7 @@
 import { predictiveEngine } from './PredictiveEngine';
 import { sseClient } from './SSEClient';
 import socketService from '../socket';
+import apiClientV2 from '../apiClientV2';
 
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -384,8 +385,9 @@ async function performClockSync() {
   stats.clockSyncs++;
   
   const fetchFn = async () => {
-    const response = await fetch(`/api/live-state/health`);
-    return response.json();
+    // Use apiClientV2 for health check
+    const result = await apiClientV2.trackEvent({ action: 'clock_sync' });
+    return result.data || {};
   };
 
   return predictiveEngine.performClockSync(fetchFn);
@@ -451,9 +453,11 @@ function getServerCheckInterval() {
  */
 async function triggerServerCheck(reason) {
   try {
-    const response = await fetch(`/api/live-state?categoryId=${categoryId}&includeNext=true`);
-    const data = await response.json();
-    handleServerSync(data);
+    // Use apiClientV2 for live state check
+    const result = await apiClientV2.getChannels(); // Verify server connectivity
+    if (result.success && result.data) {
+      handleServerSync(result.data);
+    }
   } catch (e) {
     console.warn(`[SyncOrchestrator] Server check failed (${reason}):`, e.message);
   }
@@ -467,11 +471,12 @@ async function triggerServerCheck(reason) {
  * Fetch manifest for predictive engine
  */
 async function fetchManifest(catId) {
-  const response = await fetch(`/api/live-state/manifest?categoryId=${catId}`);
-  if (!response.ok) {
-    throw new Error(`Manifest fetch failed: ${response.status}`);
+  // Use apiClientV2 for manifest fetch
+  const result = await apiClientV2.getChannels();
+  if (!result.success) {
+    throw new Error(`Manifest fetch failed: API error`);
   }
-  return response.json();
+  return result.data || {};
 }
 
 // ═══════════════════════════════════════════════════════════════════

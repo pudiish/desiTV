@@ -9,6 +9,7 @@ import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '.
 import { PLAYBACK } from '../../config/constants/playback'
 import { joinChannel, leaveChannel } from '../../services/api/viewerCountService'
 import { loadYouTubeAPI } from '../../utils/youtubeLoader'
+import apiClientV2 from '../../services/apiClientV2'
 
 /**
  * Enhanced Player Component with:
@@ -97,33 +98,29 @@ onBufferingChange = null,
 		}
 		
 		try {
-			// Check video status via API
-			const response = await fetch('/api/youtube/metadata', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ youtubeId: videoId })
-			})
+			// Check video status via API using unified client
+			const result = await apiClientV2.getVideoMetadata({ youtubeId: videoId })
 			
-			if (!response.ok) {
+			if (!result.success) {
 				// API error - assume invalid
-				const result = { valid: false, reason: 'API error' }
-				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
-				return result
+				const cacheResult = { valid: false, reason: 'API error' }
+				videoValidationCacheRef.current.set(videoId, { result: cacheResult, timestamp: Date.now() })
+				return cacheResult
 			}
 			
-			const data = await response.json()
+			const data = result.data
 			
 			// Check if video is embeddable and exists
 			if (!data.embeddable) {
-				const result = { valid: false, reason: 'Not embeddable' }
-				videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
-				return result
+				const cacheResult = { valid: false, reason: 'Not embeddable' }
+				videoValidationCacheRef.current.set(videoId, { result: cacheResult, timestamp: Date.now() })
+				return cacheResult
 			}
 			
 			// Video is valid
-			const result = { valid: true }
-			videoValidationCacheRef.current.set(videoId, { result, timestamp: Date.now() })
-			return result
+			const cacheResult = { valid: true }
+			videoValidationCacheRef.current.set(videoId, { result: cacheResult, timestamp: Date.now() })
+			return cacheResult
 		} catch (err) {
 			console.warn(`[Player] Validation error for ${videoId}:`, err.message)
 			// On validation error, allow video to load (might be network issue)

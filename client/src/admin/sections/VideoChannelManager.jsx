@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../../services/apiClient'
+import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
 const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/
@@ -25,11 +26,10 @@ export default function VideoChannelManager() {
 
   const fetchChannels = async () => {
     try {
-      const response = await fetch('/api/channels')
-      if (response.ok) {
-        const json = await response.json()
+      const result = await apiClientV2.getChannels()
+      if (result.success) {
         // Handle both array and {data: array, checksum: ...} response formats
-        const data = Array.isArray(json) ? json : (json.data || [])
+        const data = Array.isArray(result.data) ? result.data : (result.data?.data || result.data || [])
         setChannels(data)
       }
     } catch (err) {

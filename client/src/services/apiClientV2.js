@@ -139,9 +139,9 @@ class APIClientV2 {
   /**
    * Send chat message to VJ
    */
-  async sendChatMessage(message, context = {}) {
+  async sendChatMessage(payload) {
     return this.request('POST', '/chat/message', {
-      body: { message, context, sessionId: this.sessionId },
+      body: payload,
       cacheKey: null // Never cache chat
     });
   }

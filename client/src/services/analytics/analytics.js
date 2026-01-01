@@ -3,6 +3,8 @@
  * Tracks user behavior without interfering with TV watching experience
  */
 
+import apiClientV2 from '../apiClientV2';
+
 class Analytics {
 	constructor() {
 		this.sessionId = this.generateSessionId()
@@ -227,21 +229,14 @@ class Analytics {
 		this.events = [] // Clear events after copying
 		
 		try {
-			const response = await fetch(this.endpoint, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					sessionId: this.sessionId,
-					events: eventsToSend
-				}),
-				// Don't block on send - fire and forget
-				keepalive: true
+			// Use apiClientV2 for fire-and-forget analytics
+			const result = await apiClientV2.trackEvent({
+				sessionId: this.sessionId,
+				events: eventsToSend
 			})
 			
-			if (!response.ok) {
-				console.warn('[Analytics] Failed to send events:', response.status)
+			if (!result.success) {
+				console.warn('[Analytics] Failed to send events')
 				// Re-add events if send failed (for retry)
 				this.events.unshift(...eventsToSend)
 			}

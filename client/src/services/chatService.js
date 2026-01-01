@@ -2,9 +2,10 @@
  * Chat Service
  * 
  * Client-side service for DesiTV VJ Assistant
+ * Now uses unified apiClientV2 for consistent error handling and caching
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+import { apiClientV2 } from './apiClientV2';
 
 let sessionId = null;
 
@@ -16,49 +17,25 @@ let sessionId = null;
  */
 export async function sendMessage(message, context = {}) {
   try {
-    const response = await fetch(`${API_BASE}/api/chat/message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        sessionId,
-        context
-      })
+    const result = await apiClientV2.sendChatMessage({
+      message,
+      sessionId,
+      context
     });
 
-    // Check if response is ok first
-    if (!response.ok) {
-      let errorMsg = 'Chat request failed';
-      try {
-        const error = await response.json();
-        errorMsg = error.error || errorMsg;
-      } catch (e) {
-        // Response wasn't JSON
-        errorMsg = `Server error (${response.status})`;
-      }
-      throw new Error(errorMsg);
+    if (!result.success) {
+      throw new Error(result.error?.userMessage || 'Chat request failed');
     }
 
-    // Try to parse JSON response
-    let data;
-    try {
-      const text = await response.text();
-      if (!text) {
-        throw new Error('Empty response from server');
-      }
-      data = JSON.parse(text);
-    } catch (e) {
-      throw new Error('Invalid response from server');
+    // Update session ID if provided
+    if (result.data.sessionId) {
+      sessionId = result.data.sessionId;
     }
     
-    sessionId = data.sessionId;
-    
     return {
-      response: data.response,
-      toolUsed: data.toolUsed,
-      action: data.action || null // Include action for UI to execute
+      response: result.data.response,
+      toolUsed: result.data.toolUsed,
+      action: result.data.action || null // Include action for UI to execute
     };
   } catch (error) {
     console.error('[ChatService] Error:', error);
@@ -72,11 +49,19 @@ export async function sendMessage(message, context = {}) {
  */
 export async function getSuggestions() {
   try {
-    const response = await fetch(`${API_BASE}/api/chat/suggestions`);
-    if (!response.ok) throw new Error('Failed to get suggestions');
+    const result = await apiClientV2.getChatSuggestions();
     
-    const data = await response.json();
-    return data.suggestions || [];
+    if (!result.success) {
+      // Return fallback suggestions on error
+      console.warn('[ChatService] Failed to fetch suggestions, using defaults');
+      return [
+        "What's playing?",
+        "I'm in a party mood",
+        "Show me channels"
+      ];
+    }
+    
+    return result.data.suggestions || [];
   } catch (error) {
     console.error('[ChatService] Suggestions error:', error);
     return [

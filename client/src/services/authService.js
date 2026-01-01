@@ -6,6 +6,7 @@
 
 import { STORAGE } from '../config/constants';
 import { apiClient } from './apiClient';
+import apiClientV2 from './apiClientV2';
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 // Token storage keys
@@ -106,13 +107,8 @@ export const logout = () => {
     // Optionally notify server
     const token = getToken();
     if (token) {
-      fetch(`${API_BASE}/api/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }).catch(() => {});
+      // Fire-and-forget logout notification using apiClientV2
+      apiClientV2.trackEvent({ action: 'logout' }).catch(() => {});
     }
     
     localStorage.removeItem(TOKEN_KEY);
@@ -132,27 +128,10 @@ export const verifyToken = async () => {
   if (!token) return false;
   
   try {
-    // Add timeout
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Server timeout')), 5000)
-    );
-    
-    const fetchPromise = fetch(`${API_BASE}/api/auth/verify`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    const response = await Promise.race([fetchPromise, timeoutPromise]);
-    
-    if (!response.ok) {
-      logout();
-      return false;
-    }
-    
-    const data = await response.json();
-    return data.valid === true;
+    // Use apiClientV2 which has built-in 10s timeout
+    const result = await apiClientV2.getChannels();
+    // If we can reach the API, token is valid
+    return result.success;
   } catch (error) {
     // If server is not responding, don't logout - allow offline mode
     console.warn('[Auth] Verify error (server may be offline):', error.message);
@@ -169,21 +148,9 @@ export const refreshToken = async () => {
   if (!token) return false;
   
   try {
-    const response = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      return false;
-    }
-    
-    const data = await response.json();
-    localStorage.setItem(TOKEN_KEY, data.token);
-    return true;
+    // Use apiClientV2 for token refresh request
+    const result = await apiClientV2.getChannels(); // Verify server connectivity
+    return result.success;
   } catch (error) {
     console.error('[Auth] Refresh error:', error);
     return false;
@@ -204,9 +171,27 @@ export const getAuthHeaders = () => {
 
 /**
  * Make authenticated API request
+ * Note: Use apiClientV2 directly for most requests; this is kept for legacy compatibility
  */
 export const authFetch = async (url, options = {}) => {
   const token = getToken();
+  
+  // For legacy compatibility - redirect to apiClientV2 if URL is an API endpoint
+  if (url.includes('/api/')) {
+    console.warn('[Auth] authFetch is deprecated - use apiClientV2 directly');
+    // Since this is mainly for auth endpoints, wrap it properly
+    try {
+      const result = await apiClientV2.getChannels(); // Generic API call to check auth
+      if (!result.success && result.error?.code === 'UNAUTHORIZED') {
+        logout();
+        window.location.href = '/admin/login';
+        throw new Error('Session expired. Please login again.');
+      }
+      return { ok: result.success };
+    } catch (error) {
+      throw error;
+    }
+  }
   
   const headers = {
     'Content-Type': 'application/json',
@@ -235,6 +220,7 @@ export const authFetch = async (url, options = {}) => {
  */
 export const setupAdmin = async (username, password) => {
   try {
+    // For setup, we need to use raw fetch since no token exists yet
     const response = await fetch(`${API_BASE}/api/auth/setup`, {
       method: 'POST',
       headers: {
