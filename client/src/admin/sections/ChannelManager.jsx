@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { HybridStateManager } from '../../logic/state'
 import { apiClient } from '../../services/apiClient'
+import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
 /**
@@ -62,17 +63,16 @@ function ChannelManagerContent() {
 	const fetchChannels = async () => {
 		setLoading(true)
 		try {
-			// ROAST: "HybridStateManager. Because one state management solution isn't enough."
-			const data = await HybridStateManager.get('channels', async () => {
-				const response = await fetch('/api/channels')
-				if (!response.ok) throw new Error('Failed to fetch channels')
-				const json = await response.json()
-				// ROAST: "Handling both array and {data: array, checksum: ...} formats
-				// That's what happens when the backend can't decide on a single API contract."
-				return Array.isArray(json) ? json : (json.data || [])
-			})
-		setChannels(Array.isArray(data) ? data : [])
-			setError(null)
+			// Use apiClientV2 with automatic caching
+			const result = await apiClientV2.getChannels()
+			if (result.success) {
+				const data = result.data
+				const channelsArray = Array.isArray(data) ? data : (data?.data || [])
+				setChannels(channelsArray)
+				setError(null)
+			} else {
+				throw new Error(result.error?.userMessage || 'Failed to fetch channels')
+			}
 		} catch (err) {
 			console.error('[ChannelManager] Fetch channels error:', err)
 			setError(err.message)
