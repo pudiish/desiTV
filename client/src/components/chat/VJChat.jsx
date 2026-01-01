@@ -30,7 +30,8 @@ const QUICK_ACTIONS = [
   { id: 'trivia', label: '🎯 Trivia', message: 'Give me a trivia question!' },
   { id: 'shayari', label: '💕 Shayari', message: 'Share a romantic shayari' },
   { id: 'throwback', label: '📅 Throwback', message: 'This day in history' },
-  { id: 'mood', label: '🎵 Mood', message: 'Recommend based on my mood' }
+  { id: 'dedicate', label: '🎁 Dedicate', message: 'Dedicate a song to my friend' },
+  { id: 'movie', label: '🎬 Movies', message: 'Movie memories' }
 ];
 
 const VJChat = ({ 

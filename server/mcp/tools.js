@@ -79,7 +79,20 @@ const toolDefinitions = {
   get_trivia: {
     name: 'get_trivia',
     description: 'Get a music trivia question',
-    execute: getTrivia
+    execute: getTrivia,
+    usesContext: true  // Needs sessionId for answer tracking
+  },
+  check_trivia_answer: {
+    name: 'check_trivia_answer',
+    description: 'Check if trivia answer is correct',
+    execute: checkTriviaAnswer,
+    usesContext: true
+  },
+  reveal_trivia: {
+    name: 'reveal_trivia',
+    description: 'Reveal the trivia answer',
+    execute: (params, context) => revealTriviaAnswer(context.sessionId),
+    usesContext: true
   },
   get_shayari: {
     name: 'get_shayari',
@@ -90,6 +103,16 @@ const toolDefinitions = {
     name: 'this_day_in_history',
     description: 'Get music/movie history for today',
     execute: getThisDayInHistory
+  },
+  dedicate_song: {
+    name: 'dedicate_song',
+    description: 'Dedicate a song to someone with VJ intro',
+    execute: dedicateSong
+  },
+  get_movie_memory: {
+    name: 'get_movie_memory',
+    description: 'Get facts and memories about a classic movie',
+    execute: getMovieMemory
   },
   play_video: {
     name: 'play_video',
@@ -694,6 +717,44 @@ function detectIntent(message) {
     }
   }
   
+  // Dedication patterns
+  const dedicationPatterns = [
+    /dedicate.*(?:to|for)\s+(\w+)/i,
+    /dedication.*(?:to|for)\s+(\w+)/i,
+    /(?:song|gaana)\s+(?:dedicate|dedication).*(?:to|for)\s+(\w+)/i
+  ];
+  for (const pattern of dedicationPatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      const toName = match[1];
+      let dedicationType = 'love';
+      if (lower.includes('friend') || lower.includes('dost')) dedicationType = 'friendship';
+      if (lower.includes('sad') || lower.includes('dard') || lower.includes('heartbreak')) dedicationType = 'heartbreak';
+      if (lower.includes('party') || lower.includes('celebration')) dedicationType = 'party';
+      return { tool: 'dedicate_song', params: { dedicationType, toName } };
+    }
+  }
+  
+  // Movie memory patterns
+  const moviePatterns = [
+    /(?:tell me about|facts about|remember)\s+(?:the movie\s+)?(.+)/i,
+    /(.+)\s+(?:movie|film)\s+(?:facts|memories|trivia)/i,
+    /movie\s+(?:memory|memories)/i
+  ];
+  if (/movie.*(?:memory|memories|facts)|(?:ddlj|dil chahta|lagaan|kuch kuch|k3g)/i.test(lower)) {
+    const movieMatch = lower.match(/(?:ddlj|dil chahta hai|dil to pagal|lagaan|kuch kuch|k3g|rang de basanti)/i);
+    return { tool: 'get_movie_memory', params: { movieName: movieMatch ? movieMatch[0] : null } };
+  }
+  
+  // Check trivia answer patterns
+  if (/^(answer|jawab|reveal|batao)/i.test(lower)) {
+    return { tool: 'reveal_trivia', params: {}, usesContext: true };
+  }
+  
+  // If user types a short answer (possible trivia response)
+  // This should be handled after checking other patterns
+  // Will be detected in controller based on active trivia session
+  
   return null;
 }
 
@@ -704,7 +765,8 @@ function detectIntent(message) {
 /**
  * Get a random trivia question - returns pre-built message
  */
-function getTrivia() {
+function getTrivia(params = {}, context = {}) {
+  const { sessionId } = context;
   const triviaList = vjContent.trivia || [];
   if (triviaList.length === 0) {
     return { 
@@ -716,17 +778,23 @@ function getTrivia() {
   
   const trivia = triviaList[Math.floor(Math.random() * triviaList.length)];
   
+  // Store trivia for answer checking
+  if (sessionId) {
+    storeTrivia(sessionId, trivia);
+  }
+  
   // Return pre-built message so AI doesn't hallucinate
   return {
     success: true,
     trivia: {
+      id: trivia.id,
       question: trivia.question,
       hint: trivia.hint,
       year: trivia.year,
-      answer: trivia.answer
+      difficulty: trivia.difficulty
     },
     // Pre-built message - AI won't make up questions
-    message: `🎯 TRIVIA TIME!\n\n${trivia.question}\n\n💡 Hint: ${trivia.hint}\n\n(Reply with your answer!)`
+    message: `🎯 TRIVIA TIME! ${trivia.difficulty === 'hard' ? '🔥 HARD' : trivia.difficulty === 'medium' ? '⭐ MEDIUM' : '✨ EASY'}\n\n${trivia.question}\n\n💡 Hint: ${trivia.hint}\n\n(Type your answer!)`
   };
 }
 
@@ -789,6 +857,168 @@ function getThisDayInHistory() {
   };
 }
 
+// Store last trivia for answer checking (simple in-memory)
+let lastTrivia = {};
+
+/**
+ * Store trivia for later answer checking
+ */
+function storeTrivia(sessionId, trivia) {
+  lastTrivia[sessionId] = {
+    ...trivia,
+    timestamp: Date.now()
+  };
+  // Clean up old entries (older than 10 minutes)
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  for (const key of Object.keys(lastTrivia)) {
+    if (lastTrivia[key].timestamp < cutoff) {
+      delete lastTrivia[key];
+    }
+  }
+}
+
+/**
+ * Check trivia answer
+ */
+function checkTriviaAnswer(params = {}) {
+  const { answer, sessionId } = params;
+  
+  if (!answer) {
+    return { success: false, message: '🤔 Kya answer hai? Batao toh!' };
+  }
+  
+  // Get the last trivia question
+  const trivia = lastTrivia[sessionId];
+  
+  if (!trivia) {
+    return { 
+      success: false, 
+      message: '❓ Pehle trivia question lo! Say "give me trivia"' 
+    };
+  }
+  
+  const userAnswer = answer.toLowerCase().trim();
+  const correctAnswer = trivia.answer.toLowerCase();
+  const acceptedAnswers = trivia.acceptedAnswers || [correctAnswer];
+  
+  // Check if answer matches
+  const isCorrect = acceptedAnswers.some(accepted => 
+    userAnswer.includes(accepted.toLowerCase()) || 
+    accepted.toLowerCase().includes(userAnswer)
+  );
+  
+  if (isCorrect) {
+    delete lastTrivia[sessionId]; // Clear for next question
+    return {
+      success: true,
+      correct: true,
+      message: `🎉 SAHI JAWAB!\n\n✅ "${trivia.answer}" bilkul correct hai!\n\n${trivia.year ? `📅 Ye ${trivia.year} ki baat hai!` : ''}\n\nEk aur trivia chahiye? Say "trivia"!`
+    };
+  } else {
+    return {
+      success: true,
+      correct: false,
+      message: `❌ Galat jawab! Try again?\n\n💡 Hint: ${trivia.hint}\n\n(Ya "answer batao" bolo for the answer)`
+    };
+  }
+}
+
+/**
+ * Reveal trivia answer
+ */
+function revealTriviaAnswer(sessionId) {
+  const trivia = lastTrivia[sessionId];
+  if (!trivia) {
+    return { success: false, message: '❓ Koi trivia question nahi hai!' };
+  }
+  
+  delete lastTrivia[sessionId];
+  return {
+    success: true,
+    message: `🔓 Answer: ${trivia.answer}\n\n${trivia.year ? `📅 Year: ${trivia.year}` : ''}\n\nEk aur trivia? Say "trivia"!`
+  };
+}
+
+/**
+ * Dedicate a song to someone
+ */
+function dedicateSong(params = {}) {
+  const { dedicationType = 'love', toName, fromName } = params;
+  
+  const dedications = vjContent.dedications || {};
+  const dedication = dedications[dedicationType] || dedications.love;
+  
+  if (!dedication) {
+    return { success: false, message: '💝 Dedication system loading... try again!' };
+  }
+  
+  const intro = dedication.intros[Math.floor(Math.random() * dedication.intros.length)];
+  const song = dedication.songs[Math.floor(Math.random() * dedication.songs.length)];
+  
+  let message = `💝 SPECIAL DEDICATION\n\n${intro}\n\n`;
+  
+  if (toName && fromName) {
+    message += `🎁 From: ${fromName}\n💕 To: ${toName}\n\n`;
+  } else if (toName) {
+    message += `💕 For: ${toName}\n\n`;
+  }
+  
+  message += `🎵 "${song}"\n\n`;
+  message += `Say "play ${song}" to play this dedication!`;
+  
+  return {
+    success: true,
+    dedication: { type: dedicationType, song, intro },
+    message
+  };
+}
+
+/**
+ * Get movie memories/facts
+ */
+function getMovieMemory(params = {}) {
+  const { movieName } = params;
+  
+  const memories = vjContent.movieMemories || {};
+  
+  if (!movieName) {
+    // Return a random movie memory
+    const movieKeys = Object.keys(memories);
+    if (movieKeys.length === 0) {
+      return { success: false, message: '🎬 Movie database is empty!' };
+    }
+    const randomKey = movieKeys[Math.floor(Math.random() * movieKeys.length)];
+    const movie = memories[randomKey];
+    
+    return {
+      success: true,
+      movie: { name: randomKey, ...movie },
+      message: `🎬 MOVIE MEMORIES: ${randomKey} (${movie.year})\n\n📌 ${movie.fact}\n\n🎵 Songs: ${movie.songs.join(', ')}\n\n💬 "${movie.quote}"`
+    };
+  }
+  
+  // Search for specific movie
+  const searchTerm = movieName.toLowerCase();
+  const foundKey = Object.keys(memories).find(key => 
+    key.toLowerCase().includes(searchTerm) || 
+    searchTerm.includes(key.toLowerCase())
+  );
+  
+  if (!foundKey) {
+    return { 
+      success: false, 
+      message: `🤔 "${movieName}" ki memories nahi mili. Try: DDLJ, Dil Chahta Hai, Lagaan...` 
+    };
+  }
+  
+  const movie = memories[foundKey];
+  return {
+    success: true,
+    movie: { name: foundKey, ...movie },
+    message: `🎬 MOVIE MEMORIES: ${foundKey} (${movie.year})\n\n📌 ${movie.fact}\n\n🎵 Songs: ${movie.songs.join(', ')}\n\n💬 "${movie.quote}"`
+  };
+}
+
 module.exports = {
   toolDefinitions,
   executeTool,
@@ -802,6 +1032,11 @@ module.exports = {
   changeChannel,
   playVideo,
   getTrivia,
+  checkTriviaAnswer,
   getShayari,
-  getThisDayInHistory
+  getThisDayInHistory,
+  dedicateSong,
+  getMovieMemory,
+  storeTrivia,
+  revealTriviaAnswer
 };

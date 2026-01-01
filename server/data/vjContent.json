@@ -1,74 +1,221 @@
 {
   "trivia": [
     {
+      "id": "t1",
       "question": "Which 2006 film featured the hit song 'Kajra Re' with Aishwarya Rai, Abhishek and Amitabh Bachchan?",
       "answer": "Bunty Aur Babli",
+      "acceptedAnswers": ["bunty aur babli", "bunty or babli", "bunty and babli"],
       "year": 2005,
-      "hint": "A con artist couple movie"
+      "hint": "A con artist couple movie",
+      "difficulty": "medium"
     },
     {
+      "id": "t2",
       "question": "Who sang 'Dil To Pagal Hai' title track?",
       "answer": "Lata Mangeshkar and Udit Narayan",
+      "acceptedAnswers": ["lata mangeshkar", "udit narayan", "lata and udit", "lata udit"],
       "year": 1997,
-      "hint": "Legendary singers"
+      "hint": "Legendary singers",
+      "difficulty": "medium"
     },
     {
+      "id": "t3",
       "question": "Which Honey Singh song was the first Indian song to cross 100 million views on YouTube?",
       "answer": "Brown Rang",
+      "acceptedAnswers": ["brown rang", "brownrang"],
       "year": 2012,
-      "hint": "Color-related title"
+      "hint": "Color-related title",
+      "difficulty": "easy"
     },
     {
+      "id": "t4",
       "question": "The song 'Chaiyya Chaiyya' was shot on top of a moving train. Which movie?",
       "answer": "Dil Se",
+      "acceptedAnswers": ["dil se", "dilse"],
       "year": 1998,
-      "hint": "Shah Rukh Khan romantic thriller"
+      "hint": "Shah Rukh Khan romantic thriller",
+      "difficulty": "easy"
     },
     {
+      "id": "t5",
       "question": "Which AR Rahman album won the Oscar for Best Original Score?",
       "answer": "Slumdog Millionaire",
+      "acceptedAnswers": ["slumdog millionaire", "slumdog"],
       "year": 2008,
-      "hint": "Danny Boyle film"
+      "hint": "Danny Boyle film",
+      "difficulty": "easy"
     },
     {
+      "id": "t6",
       "question": "Complete the lyric: 'Tujhe dekha toh ye jaana...'",
       "answer": "sanam",
+      "acceptedAnswers": ["sanam", "sanam pyar hota hai"],
       "year": 1995,
-      "hint": "DDLJ song"
+      "hint": "DDLJ song",
+      "difficulty": "easy"
     },
     {
+      "id": "t7",
       "question": "Which singer is known as the 'King of Playback Singing' in Bollywood?",
       "answer": "Mohammed Rafi",
-      "hint": "Legend from golden era"
+      "acceptedAnswers": ["mohammed rafi", "mohammad rafi", "rafi", "rafi sahab"],
+      "hint": "Legend from golden era",
+      "difficulty": "medium"
     },
     {
+      "id": "t8",
       "question": "The song 'Munni Badnaam Hui' is from which Salman Khan movie?",
       "answer": "Dabangg",
+      "acceptedAnswers": ["dabangg", "dabang"],
       "year": 2010,
-      "hint": "Chulbul Pandey's film"
+      "hint": "Chulbul Pandey's film",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t9",
+      "question": "Which movie's soundtrack features 'Kal Ho Naa Ho', 'Maahi Ve', and 'It's The Time To Disco'?",
+      "answer": "Kal Ho Naa Ho",
+      "acceptedAnswers": ["kal ho naa ho", "kal ho na ho", "khnh"],
+      "year": 2003,
+      "hint": "Shah Rukh Khan, Preity Zinta film",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t10",
+      "question": "Who composed the music for 'Rockstar' featuring songs like 'Kun Faya Kun' and 'Sadda Haq'?",
+      "answer": "A.R. Rahman",
+      "acceptedAnswers": ["ar rahman", "a.r. rahman", "a r rahman", "rahman"],
+      "year": 2011,
+      "hint": "Oscar-winning composer",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t11",
+      "question": "Which female singer gave voice to 'Chikni Chameli' from Agneepath?",
+      "answer": "Shreya Ghoshal",
+      "acceptedAnswers": ["shreya ghoshal", "shreya"],
+      "year": 2012,
+      "hint": "Most awarded female playback singer",
+      "difficulty": "medium"
+    },
+    {
+      "id": "t12",
+      "question": "'Lungi Dance' was a tribute to which superstar?",
+      "answer": "Rajinikanth",
+      "acceptedAnswers": ["rajinikanth", "rajini", "thalaiva"],
+      "year": 2013,
+      "hint": "South Indian superstar",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t13",
+      "question": "Which Arijit Singh song from 'Aashiqui 2' became a massive heartbreak anthem?",
+      "answer": "Tum Hi Ho",
+      "acceptedAnswers": ["tum hi ho", "tumhi ho"],
+      "year": 2013,
+      "hint": "Ab tum hi ho...",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t14",
+      "question": "The iconic song 'Pehla Nasha' is from which Aamir Khan movie?",
+      "answer": "Jo Jeeta Wohi Sikandar",
+      "acceptedAnswers": ["jo jeeta wohi sikandar", "jo jeeta wohi sikander"],
+      "year": 1992,
+      "hint": "Aamir Khan's college movie",
+      "difficulty": "medium"
+    },
+    {
+      "id": "t15",
+      "question": "Which rapper created the viral hit 'Kala Chashma' remix for Baar Baar Dekho?",
+      "answer": "Badshah",
+      "acceptedAnswers": ["badshah", "aditya singh sisodia"],
+      "year": 2016,
+      "hint": "DJ wale babu",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t16",
+      "question": "'Naatu Naatu' from RRR won India's first Oscar for which category?",
+      "answer": "Best Original Song",
+      "acceptedAnswers": ["best original song", "original song", "best song"],
+      "year": 2023,
+      "hint": "Academy Award category for music",
+      "difficulty": "easy"
+    },
+    {
+      "id": "t17",
+      "question": "Which 2015 Salman Khan movie features both 'Prem Ratan Dhan Payo' and 'Jalte Diye'?",
+      "answer": "Prem Ratan Dhan Payo",
+      "acceptedAnswers": ["prem ratan dhan payo", "prdp"],
+      "year": 2015,
+      "hint": "Diwali release with Sonam Kapoor",
+      "difficulty": "medium"
+    },
+    {
+      "id": "t18",
+      "question": "The song 'Why This Kolaveri Di' was sung by which actor/singer?",
+      "answer": "Dhanush",
+      "acceptedAnswers": ["dhanush"],
+      "year": 2011,
+      "hint": "South Indian actor married to Rajinikanth's daughter",
+      "difficulty": "medium"
+    },
+    {
+      "id": "t19",
+      "question": "Which music composer created 'Dil Se', 'Rang De Basanti', and 'Delhi 6' soundtracks?",
+      "answer": "A.R. Rahman",
+      "acceptedAnswers": ["ar rahman", "a.r. rahman", "rahman"],
+      "hint": "Mozart of Madras",
+      "difficulty": "medium"
+    },
+    {
+      "id": "t20",
+      "question": "Gulzar wrote the lyrics for which Oscar-winning song?",
+      "answer": "Jai Ho",
+      "acceptedAnswers": ["jai ho"],
+      "year": 2008,
+      "hint": "From Slumdog Millionaire",
+      "difficulty": "medium"
     }
   ],
   
   "thisDay": {
     "01-01": {
-      "events": ["New Year releases traditionally feature big Bollywood films"],
-      "songs": ["Auld Lang Syne (Indian version)", "Party songs compilation"]
+      "events": ["New Year releases traditionally feature big Bollywood films", "2017: Dangal crossed 300 crore"],
+      "songs": ["Auld Lang Syne (Indian version)", "Party All Night", "Party With Bhoothnath"]
     },
     "01-02": {
       "events": ["2004: Kal Ho Naa Ho was ruling the charts", "2006: Rang De Basanti promotions in full swing"],
-      "songs": ["Kal Ho Naa Ho title track", "Rang De Basanti"]
+      "songs": ["Kal Ho Naa Ho title track", "Rang De Basanti", "Lukka Chuppi"]
+    },
+    "01-26": {
+      "events": ["Republic Day - Patriotic songs everywhere!", "2019: Uri released - 'How's the josh!'"],
+      "songs": ["Maa Tujhe Salaam", "Vande Mataram", "Teri Mitti"]
     },
     "02-14": {
-      "events": ["Valentine's Day - Romantic songs rule the airwaves!"],
-      "songs": ["Tum Hi Ho", "Pehla Nasha", "Tujhe Dekha Toh"]
+      "events": ["Valentine's Day - Romantic songs rule!", "Every radio station plays love songs"],
+      "songs": ["Tum Hi Ho", "Pehla Nasha", "Tujhe Dekha Toh", "Raabta"]
+    },
+    "03-08": {
+      "events": ["Women's Day - Celebrating women in music"],
+      "songs": ["Choli Ke Peeche", "Chikni Chameli", "Badtameez Dil"]
     },
     "08-15": {
-      "events": ["Independence Day - Patriotic songs everywhere!"],
-      "songs": ["Rang De Basanti", "Maa Tujhe Salaam", "Vande Mataram"]
+      "events": ["Independence Day - Desh bhakti everywhere!", "Big patriotic releases traditionally"],
+      "songs": ["Rang De Basanti", "Maa Tujhe Salaam", "Vande Mataram", "Ae Watan"]
     },
     "10-15": {
-      "events": ["Diwali season - Festive releases!"],
-      "songs": ["Festival special songs", "Happy Diwali tracks"]
+      "events": ["Diwali season - Festive releases!", "Big Khan movies traditionally"],
+      "songs": ["Festival special songs", "Nagada Sang Dhol", "Happy Diwali"]
+    },
+    "12-25": {
+      "events": ["Christmas Day - Party songs trending", "Winter wedding season peaks"],
+      "songs": ["Chittiyaan Kalaiyaan", "Gallan Goodiyaan", "London Thumakda"]
+    },
+    "12-31": {
+      "events": ["New Year's Eve - Party anthems rule!"],
+      "songs": ["Party All Night", "Badtameez Dil", "Abhi Toh Party Shuru Hui Hai"]
     }
   },
   
@@ -77,68 +224,158 @@
       "Mohabbat mein koi fariyaad na kar, jo milta nahi uski yaad na kar ❤️",
       "Dil mein ho tum, aankhon mein tum, har dhadkan mein bas tum hi tum 💕",
       "Teri aankhon ke siwa duniya mein rakha kya hai... ✨",
-      "Ishq mein hum tumhein kya batayein, kho gaye hum toh kho gaye 🌙"
+      "Ishq mein hum tumhein kya batayein, kho gaye hum toh kho gaye 🌙",
+      "Tumse milke aisa laga, tumse milke... jaane kya hua 💫",
+      "Dil ki har dhadkan mein tera naam hai, tu hi mera subah tu hi shaam hai 🌹",
+      "Mohabbat ki raahon mein chalna sikha de, har lamha tere saath guzaarna sikha de ❤️",
+      "Tere bina zindagi se koi shikwa to nahi, teri bina zindagi bhi zindagi to nahi 💝",
+      "Ishq mein gham hai, gham mein khushi, ye kaisa asar hai tera mere dil pe 🥀",
+      "Tumhare bina jee na lagta kahi, tumhe dekhe bina chain aata nahi 💕"
     ],
     "sad": [
       "Dard-e-dil, dard-e-jigar, dil mein samaaye raat bhar 💔",
       "Tanhaai mein bhi teri yaad aati hai, har saans mein tu hi mehsoos hoti hai 🥀",
-      "Bichhad ke tujhse yun laga, jaise khud se door ho gaye 😢"
+      "Bichhad ke tujhse yun laga, jaise khud se door ho gaye 😢",
+      "Woh jo hum mein tum mein qarar tha, tumhe yaad ho ke na yaad ho 💔",
+      "Dil ne phir yaad kiya, woh jo kabhi apna tha... 🌧️",
+      "Tanhaiyon ka safar hai, koi humsafar nahi, dil pe bojh bahut hai, koi saathi nahi 😔",
+      "Khamosh sa ye jahaan hai, andhera sa ye makaan hai, tere bina mere yaar, kuch bhi yahaan nahi 🖤"
     ],
     "friendship": [
       "Dosti ka rishta toh khoon ke rishte se bhi ooncha hai yaar! 🤝",
       "Yaaron ka yaar hoon main, har dard ka pyaar hoon main 💪",
-      "Dost ban ke raho tum, dosti nibhayenge hum ❤️"
+      "Dost ban ke raho tum, dosti nibhayenge hum ❤️",
+      "Ye dosti hum nahi todenge, todenge dam magar tera saath na chhodenge 🤜🤛",
+      "Sachche dost woh hote hain jo mushkil mein kaam aate hain 💯",
+      "Teri dosti mein yaar, duniya ki har khushi mili 🌟",
+      "Dosti mein na koi contract hota hai, na koi deadline, bas pyaar hota hai ❤️"
+    ],
+    "motivational": [
+      "Himmat kar, hausla rakh, manzil tujhe zaroor milegi 💪",
+      "Girte hain shahsawar hi maidan-e-jung mein, woh tifl kya gire jo ghutno ke bal chale 🔥",
+      "Thokar bhi zaroor khana, kyunki yahaan se hi uthna seekhoge 🚀",
+      "Sapne woh nahi jo neend mein aayein, sapne woh hain jo neend na aane dein ✨"
     ]
   },
   
   "movieMemories": {
     "DDLJ": {
       "year": 1995,
-      "fact": "Still running at Maratha Mandir since 1995!",
-      "songs": ["Tujhe Dekha Toh", "Mehndi Laga Ke Rakhna", "Ruk Ja O Dil Deewane"]
+      "fact": "Still running at Maratha Mandir since 1995! Over 1300 weeks!",
+      "songs": ["Tujhe Dekha Toh", "Mehndi Laga Ke Rakhna", "Ruk Ja O Dil Deewane"],
+      "quote": "Bade bade deshon mein aisi chhoti chhoti baatein hoti rehti hain"
     },
     "Dil To Pagal Hai": {
       "year": 1997,
       "fact": "The dance rehearsal scenes became iconic!",
-      "songs": ["Dil To Pagal Hai", "Are Re Are", "Dholna"]
+      "songs": ["Dil To Pagal Hai", "Are Re Are", "Dholna"],
+      "quote": "Kahin na kahin, koi na koi, mere liye bana hai"
     },
     "Kuch Kuch Hota Hai": {
       "year": 1998,
       "fact": "Friendship bands became a craze after this movie!",
-      "songs": ["Kuch Kuch Hota Hai", "Tum Paas Aaye", "Koi Mil Gaya"]
+      "songs": ["Kuch Kuch Hota Hai", "Tum Paas Aaye", "Koi Mil Gaya"],
+      "quote": "Pyaar dosti hai"
     },
     "Lagaan": {
       "year": 2001,
       "fact": "Oscar nominated! The cricket match took 21 days to shoot!",
-      "songs": ["Mitwa", "Chale Chalo", "O Rey Chhori"]
+      "songs": ["Mitwa", "Chale Chalo", "O Rey Chhori"],
+      "quote": "Ab tera kya hoga Kachra?"
     },
     "Dil Chahta Hai": {
       "year": 2001,
       "fact": "Started the Goa trip trend among friends!",
-      "songs": ["Dil Chahta Hai", "Jaane Kyon", "Tanhayee"]
+      "songs": ["Dil Chahta Hai", "Jaane Kyon", "Tanhayee"],
+      "quote": "Tumhara style hi alag hai yaar"
+    },
+    "Kabhi Khushi Kabhie Gham": {
+      "year": 2001,
+      "fact": "First Indian film to gross $3 million in UK!",
+      "songs": ["Kabhi Khushi Kabhie Gham", "Bole Chudiyan", "You Are My Soniya"],
+      "quote": "Keh diya na, bas keh diya"
+    },
+    "Rang De Basanti": {
+      "year": 2006,
+      "fact": "India's official Oscar entry that year!",
+      "songs": ["Rang De Basanti", "Lukka Chuppi", "Tu Bin Bataye"],
+      "quote": "No country is perfect, you have to make it perfect"
     }
   },
   
   "festivals": {
     "diwali": {
       "greeting": "Shubh Deepavali! 🪔✨",
-      "songs": ["Happy Diwali", "Jai Ho", "Festival dance numbers"],
+      "songs": ["Happy Diwali", "Jai Ho", "Nagada Sang Dhol", "London Thumakda"],
       "mood": "festive, bright, celebration"
     },
     "holi": {
       "greeting": "Holi ki hardik shubhkamnayein! 🎨",
-      "songs": ["Rang Barse", "Holi Khele Raghuveera", "Balam Pichkari"],
+      "songs": ["Rang Barse", "Holi Khele Raghuveera", "Balam Pichkari", "Badri Ki Dulhania"],
       "mood": "colorful, fun, masti"
     },
     "navratri": {
       "greeting": "Navratri ki shubhkamnayein! 🙏",
-      "songs": ["Dholi Taro", "Nagada Sang Dhol", "Garba hits"],
+      "songs": ["Dholi Taro", "Nagada Sang Dhol", "Shubhaarambh", "Tattad Tattad"],
       "mood": "devotional, energetic, dance"
     },
     "eid": {
       "greeting": "Eid Mubarak! 🌙",
-      "songs": ["Eid Mubarak", "Salman Khan Eid songs"],
+      "songs": ["Eid Mubarak", "Aaj Ki Party", "Mubarak Eid Mubarak"],
       "mood": "celebration, family, joy"
+    },
+    "christmas": {
+      "greeting": "Merry Christmas! 🎄",
+      "songs": ["Jingle Bells (Bollywood style)", "Party songs"],
+      "mood": "celebration, winter, party"
     }
-  }
+  },
+  
+  "dedications": {
+    "love": {
+      "intros": ["Ye gaana hai unke liye jo pyaar mein hain...", "Dil se dil tak, ye dedication hai...", "Kisi khaas ke liye, ye special song..."],
+      "songs": ["Tum Hi Ho", "Pehla Nasha", "Tujhe Dekha Toh", "Raabta", "Tera Ban Jaunga"]
+    },
+    "friendship": {
+      "intros": ["Doston ke naam ye gaana...", "Yaaron ke liye, ye special track...", "Friendship day ho ya na ho, ye gaana hai sabke liye..."],
+      "songs": ["Ye Dosti", "Atrangi Yaari", "Dil Chahta Hai", "Tera Yaar Hoon Main"]
+    },
+    "heartbreak": {
+      "intros": ["Dard mein jo hain, ye unke liye...", "Dil toota hai? Ye gaana samjhega...", "Kabhi kabhi yunhi dard hota hai..."],
+      "songs": ["Channa Mereya", "Phir Le Aaya Dil", "Agar Tum Saath Ho", "Ae Dil Hai Mushkil"]
+    },
+    "party": {
+      "intros": ["Party start ho gayi hai!", "Dj, bass badha de!", "Nachne ka time hai!"],
+      "songs": ["Badtameez Dil", "Party All Night", "Abhi Toh Party", "London Thumakda"]
+    }
+  },
+  
+  "personaStyles": {
+    "bindaas": {
+      "greetings": ["Kya haal hai bhai!", "Arey party people!", "Kya scene hai?", "Let's rock!"],
+      "reactions": ["Dhasu!", "Mast hai yaar!", "Bole toh ekdum jhakaas!", "Bindaas!"],
+      "transitions": ["Aur sun...", "Ek aur baat...", "Waise...", "By the way..."],
+      "emoji": "🎧"
+    },
+    "latenight": {
+      "greetings": ["Raat ki mehfil mein swagat hai...", "Chaandni raat, dil ki baat...", "Khamoshi mein bhi sangeet hai..."],
+      "reactions": ["Dil ko chu liya...", "Waah...", "Kya baat hai...", "Sunehre pal..."],
+      "transitions": ["Aur ek yaad...", "Dil kehta hai...", "Suno..."],
+      "emoji": "🌙"
+    },
+    "comedy": {
+      "greetings": ["Hasna mana hai? Hum nahi maante!", "Laughter is the best medicine... free bhi hai!", "Kya scene hai dosto!"],
+      "reactions": ["Hahaha!", "Lol bhai!", "Arre wah!", "Mast joke tha!"],
+      "transitions": ["Aur suno comedy...", "Ek aur masti...", "Waise mazak mein..."],
+      "emoji": "😂"
+    },
+    "retro": {
+      "greetings": ["Purane zamane ki yaadein...", "Woh bhi kya din the...", "Nostalgia ki duniya mein swagat hai..."],
+      "reactions": ["Classic!", "Evergreen!", "Timeless!", "Kya yaad dilaya!"],
+      "transitions": ["Yaad aaya...", "Usi daur mein...", "Aur ek purani yaad..."],
+      "emoji": "📺"
+    }
+  },
+  
+  "triviaState": {}
 }

@@ -45,16 +45,38 @@ async function handleMessage(req, res) {
     const convId = sessionId || generateSessionId();
     let history = conversations.get(convId) || [];
 
+    // Build context with sessionId for trivia tracking
+    const fullContext = {
+      ...context,
+      sessionId: convId
+    };
+
     // Detect if we need to use tools
     const intent = tools.detectIntent(message);
     let toolResults = null;
     let action = null;
 
-    if (intent) {
+    // Check if this might be a trivia answer (short message, no detected intent)
+    if (!intent && message.length < 50) {
+      // Could be a trivia answer - check with the check_trivia_answer tool
+      try {
+        const answerCheck = await tools.executeTool('check_trivia_answer', 
+          { answer: message, sessionId: convId }, 
+          fullContext
+        );
+        if (answerCheck && answerCheck.success !== false) {
+          toolResults = answerCheck;
+        }
+      } catch (err) {
+        // Not a trivia answer, continue normally
+      }
+    }
+
+    if (intent && !toolResults) {
       try {
         // Pass context to tools that need it (like get_now_playing)
         if (intent.usesContext) {
-          toolResults = await tools.executeTool(intent.tool, intent.params, context);
+          toolResults = await tools.executeTool(intent.tool, intent.params, fullContext);
         } else {
           toolResults = await tools.executeTool(intent.tool, intent.params);
         }
