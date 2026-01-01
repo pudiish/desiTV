@@ -62,9 +62,9 @@ class EnvironmentConfig {
         return ''  // Vite proxy will forward /api/* to backend
       }
       
-      // PRODUCTION on Vercel: Routes are rewritten to API server
+      // PRODUCTION on Vercel: Use Render API directly (rewrites not reliable)
       if (hostname.includes('vercel.app')) {
-        return ''  // Vercel rewrites handle /api/*
+        return 'https://desitv-api.onrender.com'  // Direct connection to Render API
       }
       
       // PRODUCTION on Render or custom domain
