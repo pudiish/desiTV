@@ -114,6 +114,12 @@ const toolDefinitions = {
     description: 'Get facts and memories about a classic movie',
     execute: getMovieMemory
   },
+  get_similar: {
+    name: 'get_similar',
+    description: 'Get similar songs/channels based on what is playing',
+    execute: getSimilar,
+    usesContext: true
+  },
   play_video: {
     name: 'play_video',
     description: 'Play a specific video by search',
@@ -717,6 +723,11 @@ function detectIntent(message) {
     }
   }
   
+  // Similar/related content patterns
+  if (/similar|like this|more like|related|same type|aise aur|aur bhi/i.test(lower)) {
+    return { tool: 'get_similar', params: {}, usesContext: true };
+  }
+  
   // Dedication patterns
   const dedicationPatterns = [
     /dedicate.*(?:to|for)\s+(\w+)/i,
@@ -1019,6 +1030,77 @@ function getMovieMemory(params = {}) {
   };
 }
 
+/**
+ * Get similar songs/channels based on current context
+ */
+async function getSimilar(params = {}, context = {}) {
+  const { currentChannel, currentVideo } = context;
+  
+  if (!currentChannel && !currentVideo) {
+    return {
+      success: false,
+      message: '🤔 Play something first, then I can suggest similar!'
+    };
+  }
+  
+  try {
+    // Find channels with similar category
+    const channels = await Channel.find({ isActive: true })
+      .select('name category items')
+      .lean();
+    
+    // Get current channel info
+    const current = channels.find(c => c.name === currentChannel);
+    const currentCategory = current?.category || '';
+    
+    // Find similar by category
+    const similarChannels = channels.filter(c => 
+      c.name !== currentChannel && 
+      (c.category === currentCategory || 
+       c.name.toLowerCase().includes(currentCategory.toLowerCase()))
+    ).slice(0, 3);
+    
+    // Build response
+    let message = `🎵 Based on "${currentVideo?.title || currentChannel}":\n\n`;
+    
+    if (similarChannels.length > 0) {
+      message += `📺 Similar channels:\n`;
+      similarChannels.forEach(c => {
+        const sampleSong = c.items?.[0]?.title || 'Various songs';
+        message += `• ${c.name} - "${sampleSong}"\n`;
+      });
+    }
+    
+    // Suggest from same channel
+    if (current?.items?.length > 1) {
+      const otherSongs = current.items
+        .filter(i => i.title !== currentVideo?.title)
+        .slice(0, 3);
+      
+      if (otherSongs.length > 0) {
+        message += `\n🎶 More from ${currentChannel}:\n`;
+        otherSongs.forEach(s => {
+          message += `• "${s.title}"\n`;
+        });
+      }
+    }
+    
+    message += `\nSay "play [song]" or "switch to [channel]"!`;
+    
+    return {
+      success: true,
+      similar: {
+        channels: similarChannels.map(c => c.name),
+        currentCategory
+      },
+      message
+    };
+  } catch (error) {
+    console.error('[Tools] getSimilar error:', error);
+    return { success: false, message: 'Could not find similar content 😅' };
+  }
+}
+
 module.exports = {
   toolDefinitions,
   executeTool,
@@ -1037,6 +1119,7 @@ module.exports = {
   getThisDayInHistory,
   dedicateSong,
   getMovieMemory,
+  getSimilar,
   storeTrivia,
   revealTriviaAnswer
 };

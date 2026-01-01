@@ -43,6 +43,25 @@ async function chat(userMessage, conversationHistory = [], context = {}) {
   // Build persona-aware system prompt
   let systemContext = buildSystemPrompt(persona, context);
   
+  // Add user profile info for personalization
+  if (context.userProfile) {
+    const profile = context.userProfile;
+    systemContext += `\n\n[USER PREFERENCES - Use these to personalize]:`;
+    if (profile.favoriteArtists?.length > 0) {
+      systemContext += `\n- Favorite artists: ${profile.favoriteArtists.join(', ')}`;
+    }
+    if (profile.favoriteGenres?.length > 0) {
+      systemContext += `\n- Likes: ${profile.favoriteGenres.join(', ')} music`;
+    }
+    if (profile.triviaScore?.total > 0) {
+      const accuracy = Math.round((profile.triviaScore.correct / profile.triviaScore.total) * 100);
+      systemContext += `\n- Trivia score: ${accuracy}% (${profile.triviaScore.correct}/${profile.triviaScore.total})`;
+    }
+    if (profile.interactionCount > 3) {
+      systemContext += `\n- Returning user (${profile.interactionCount} interactions)`;
+    }
+  }
+  
   // Add tool results if available
   if (context.toolResults) {
     systemContext += `\n\nDATA FROM DATABASE:`;
