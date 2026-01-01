@@ -5,7 +5,7 @@
  * Now uses unified apiClientV2 for consistent error handling and caching
  */
 
-import { apiClientV2 } from './apiClientV2';
+import apiClientV2 from './apiClientV2';
 
 let sessionId = null;
 

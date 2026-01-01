@@ -1,3 +1,4 @@
+/** @jsx React.createElement */
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
 import { Galaxy } from '../components/backgrounds'
@@ -132,6 +133,11 @@ export default function Home() {
 	// Handle swipe down to dismiss (mobile only)
 	const handleRemoteSwipeDismiss = useCallback(() => {
 		actions.setRemoteOverlayVisible(false)
+	}, [actions])
+
+	// Stable handler for fullscreen changes from TVFrame
+	const handleFullscreenChange = useCallback((isFs) => {
+		actions.setFullscreen(isFs)
 	}, [actions])
 
 	// Trigger tap for remote buttons and screen clicks
@@ -537,6 +543,10 @@ export default function Home() {
 				}
 			}, 2500)
 		} else {
+			// Clear external video when powering off
+			if (tvState.externalVideo) {
+				actions.clearExternalVideo();
+			}
 			actions.setStatusMessage('TV BAND HAI. POWER DABAO AUR MASTI SHURU!')
 			actions.setLoading(false)
 			actions.setMenuOpen(false) // Close menu when TV turns off
@@ -547,6 +557,12 @@ export default function Home() {
 		if (!tvState.power || videosInCategory.length === 0 || !selectedCategory) {
 			console.warn('[Home] Channel up blocked:', { power: tvState.power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
 			return
+		}
+		
+		// Clear external video if playing (exit external player)
+		if (tvState.externalVideo) {
+			console.log('[Home] Clearing external video - returning to TV mode');
+			actions.clearExternalVideo();
 		}
 		
 		const startTime = performance.now()
@@ -594,6 +610,12 @@ export default function Home() {
 		if (!tvState.power || videosInCategory.length === 0 || !selectedCategory) {
 			console.warn('[Home] Channel down blocked:', { power: tvState.power, videosCount: videosInCategory.length, hasCategory: !!selectedCategory })
 			return
+		}
+		
+		// Clear external video if playing (exit external player)
+		if (tvState.externalVideo) {
+			console.log('[Home] Clearing external video - returning to TV mode');
+			actions.clearExternalVideo();
 		}
 		
 		// Switch to previous video within the selected category
@@ -664,6 +686,12 @@ export default function Home() {
 			return
 		}
 		
+		// Clear external video if playing (exit external player)
+		if (tvState.externalVideo) {
+			console.log('[Home] Clearing external video - returning to TV mode');
+			actions.clearExternalVideo();
+		}
+		
 		// Jump to this video in broadcast state (so Player plays it)
 		try {
 			broadcastStateManager.jumpToVideo(
@@ -691,6 +719,13 @@ export default function Home() {
 
 	function handleCategoryUp() {
 		if (!tvState.power || categories.length === 0) return
+		
+		// Clear external video if playing (exit external player)
+		if (tvState.externalVideo) {
+			console.log('[Home] Clearing external video - returning to TV mode');
+			actions.clearExternalVideo();
+		}
+		
 		if (isChangingCategoryRef.current) {
 			console.log('[Home] Category change already in progress, ignoring...')
 			return
@@ -753,6 +788,13 @@ export default function Home() {
 
 	function handleCategoryDown() {
 		if (!tvState.power || categories.length === 0) return
+		
+		// Clear external video if playing (exit external player)
+		if (tvState.externalVideo) {
+			console.log('[Home] Clearing external video - returning to TV mode');
+			actions.clearExternalVideo();
+		}
+		
 		if (isChangingCategoryRef.current) {
 			console.log('[Home] Category change already in progress, ignoring...')
 			return
@@ -1025,9 +1067,31 @@ export default function Home() {
 			bufferErrorMessage={tvState.error?.message || ''}
 			playbackInfo={playbackInfo}
 			externalVideo={tvState.externalVideo}
-			onExternalVideoEnd={() => actions.clearExternalVideo()}
+			onExternalVideoEnd={() => {
+				// 🎬 Netflix-grade: When external video ends, return to channel playback (manual mode)
+				console.log('[Home] External video ended - returning to channel playback');
+				actions.clearExternalVideo();
+				// Resume channel playback - use handleChannelUp to go to next video
+				if (selectedCategory && videosInCategory.length > 0) {
+					// Switch to next video in current channel (manual mode)
+					const nextIndex = (activeVideoIndex + 1) % videosInCategory.length;
+					setActiveVideoIndex(nextIndex);
+					broadcastStateManager.jumpToVideo(
+						selectedCategory._id,
+						nextIndex,
+						0,
+						videosInCategory
+					);
+					broadcastStateManager.setManualMode(selectedCategory._id, true);
+					setVideoSwitchTimestamp(Date.now());
+					actions.setStatusMessage(`⏭️ ${selectedCategory.name} - Video ${nextIndex + 1}`);
+					switchVideo(nextIndex).catch(err => {
+						console.error('[Home] Error switching video after external playback:', err);
+					});
+				}
+			}}
 			onTapHandlerReady={handleTapHandlerReady}
-			onFullscreenChange={(isFs) => actions.setFullscreen(isFs)}
+			onFullscreenChange={handleFullscreenChange}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
 			onRemoteMouseLeave={handleRemoteMouseLeave}
 			remoteOverlayVisible={tvState.remoteOverlayVisible}
@@ -1121,7 +1185,9 @@ export default function Home() {
 					if (mode === 'timeline' && !currentStatus.includes('MANUAL') && !currentStatus.includes('RETURNING')) {
 						const videoTitle = info.videoTitle?.substring(0, 30) || 'VIDEO'
 						actions.setStatusMessage(`● LIVE - ${selectedCategory.name} - ${videoTitle}...`)
-				}}
+					}
+				}
+			}}
 			/>
 
 				{/* Right Side - Remote Control and Categories (hidden in fullscreen) */}
@@ -1147,14 +1213,14 @@ export default function Home() {
 					/>
 				</div>
 			)}
-		</div>
-
-	{/* Footer / Status Text */}
-		<div className="footer-status">
-			<div className="status-text">
-				{tvState.statusMessage}
 			</div>
 
+			{/* Footer / Status Text */}
+			<div className="footer-status">
+				<div className="status-text">
+					{tvState.statusMessage}
+				</div>
+			</div>
 		</div>
 		
 		{/* Simple TV-like Survey - appears after watching for a few minutes */}

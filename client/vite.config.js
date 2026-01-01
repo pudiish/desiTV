@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production'
   
   // Get ports from environment variables with sensible defaults
-  const serverPort = parseInt(env.PORT) || parseInt(env.VITE_SERVER_PORT) || 5003
+  const serverPort = parseInt(env.PORT) || parseInt(env.VITE_SERVER_PORT) || 5000
   const clientPort = parseInt(env.VITE_CLIENT_PORT) || 5173
   
   console.log(`[Vite] Server port: ${serverPort}, Client port: ${clientPort}`)

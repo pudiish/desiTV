@@ -5,6 +5,8 @@
  * Single source of truth for all TV state
  */
 
+import React from 'react'
+
 export const initialTVState = {
   // Power & Volume
   power: false,
@@ -139,7 +141,7 @@ export function tvReducer(state, action) {
       return { ...state, isFullscreen: action.payload };
     
     case TVActions.TOGGLE_REMOTE_OVERLAY:
-      return { ...state, remoteOverlayVisible: !state.remoteOverlayVisible };
+      return { ...state, remoteOverlayVisible: action.payload !== undefined ? action.payload : !state.remoteOverlayVisible };
     
     case TVActions.SET_SURVEY_OPEN:
       return { ...state, surveyOpen: action.payload };
@@ -184,17 +186,27 @@ export function useTVState() {
   const [state, dispatch] = React.useReducer(tvReducer, initialTVState);
   
   // Dispatch helpers (less verbose)
-  const actions = {
+  const _actions = {
     setPower: (power) => dispatch({ type: TVActions.SET_POWER, payload: power }),
     setVolume: (vol) => dispatch({ type: TVActions.SET_VOLUME, payload: vol }),
     toggleMute: () => dispatch({ type: TVActions.TOGGLE_MUTE }),
     setCategory: (cat) => dispatch({ type: TVActions.SELECT_CATEGORY, payload: cat }),
     setVideoIndex: (idx) => dispatch({ type: TVActions.SET_ACTIVE_VIDEO_INDEX, payload: idx }),
     playExternal: (video) => dispatch({ type: TVActions.SET_EXTERNAL_VIDEO, payload: video }),
-    stopExternal: () => dispatch({ type: TVActions.CLEAR_EXTERNAL_VIDEO }),
+    clearExternalVideo: () => dispatch({ type: TVActions.CLEAR_EXTERNAL_VIDEO }),
     setStatusMessage: (msg) => dispatch({ type: TVActions.SET_STATUS_MESSAGE, payload: msg }),
-    setBuffering: (buffering) => dispatch({ type: TVActions.SET_BUFFERING, payload: buffering }),
+    setLoading: (loading) => dispatch({ type: TVActions.SET_BUFFERING, payload: loading }),
+    setError: (error) => dispatch({ type: TVActions.SET_BUFFER_ERROR, payload: error }),
+    setMenuOpen: (open) => dispatch({ type: TVActions.SET_MENU_OPEN, payload: open }),
+    setStaticActive: (active) => dispatch({ type: TVActions.SET_STATIC_ACTIVE, payload: active }),
+    setFullscreen: (fullscreen) => dispatch({ type: TVActions.SET_FULLSCREEN, payload: fullscreen }),
+    toggleGalaxy: () => dispatch({ type: TVActions.TOGGLE_GALAXY }),
+    setRemoteOverlayVisible: (visible) => dispatch({ type: TVActions.TOGGLE_REMOTE_OVERLAY, payload: visible }),
+    resetState: () => dispatch({ type: TVActions.RESET_TO_INITIAL }),
   };
-  
+
+  // Memoize actions to keep stable references across renders
+  const actions = React.useMemo(() => _actions, [dispatch]);
+
   return [state, actions];
 }

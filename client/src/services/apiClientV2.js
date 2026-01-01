@@ -254,3 +254,6 @@ export function useAPI(apiCall, dependencies = []) {
 
   return { loading, data, error };
 }
+
+// Default export for convenience
+export default apiClientV2;
