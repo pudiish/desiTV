@@ -385,9 +385,12 @@ async function performClockSync() {
   stats.clockSyncs++;
   
   const fetchFn = async () => {
-    // Use apiClientV2 for health check
-    const result = await apiClientV2.trackEvent({ action: 'clock_sync' });
-    return result.data || {};
+    // Use apiClientV2 for health check to get server time
+    const result = await apiClientV2.request('GET', '/live-state/health');
+    if (result.success && result.data?.serverTimeMs) {
+      return { serverTimeMs: result.data.serverTimeMs };
+    }
+    return {};
   };
 
   return predictiveEngine.performClockSync(fetchFn);
@@ -471,10 +474,10 @@ async function triggerServerCheck(reason) {
  * Fetch manifest for predictive engine
  */
 async function fetchManifest(catId) {
-  // Use apiClientV2 for manifest fetch
-  const result = await apiClientV2.getChannels();
+  // Use apiClientV2 to fetch manifest for specific category
+  const result = await apiClientV2.request('GET', `/live-state/manifest?categoryId=${encodeURIComponent(catId)}`);
   if (!result.success) {
-    throw new Error(`Manifest fetch failed: API error`);
+    throw new Error(`Manifest fetch failed for category ${catId}: ${result.message || 'API error'}`);
   }
   return result.data || {};
 }

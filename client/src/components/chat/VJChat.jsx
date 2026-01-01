@@ -14,6 +14,11 @@ import './VJChat.css';
 // Single VJ Persona
 const VJ = { name: 'DJ Desi', avatar: '🎧' };
 
+// Generate unique message ID
+const generateMessageId = () => {
+  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+};
+
 // Only high-accuracy quick actions
 const QUICK_ACTIONS = [
   { id: 'playing', label: "🎵 What's playing?", message: "What song is playing?" },
@@ -39,6 +44,7 @@ const VJChat = ({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [sessionId, setSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -50,7 +56,8 @@ const VJChat = ({
   // Focus input when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const id = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(id);
     }
   }, [isOpen]);
 
@@ -59,12 +66,20 @@ const VJChat = ({
     if (isOpen && messages.length === 0) {
       const welcomeMsg = currentVideo?.title 
         ? `${VJ.avatar} Hey! I'm ${VJ.name}. You're watching "${currentVideo.title}". Ask me anything!`
-        : `${VJ.avatar} Hey! I'm ${VJ.name}, your DesiTV VJ! Try the buttons below or just ask!`;
-      setMessages([{ role: 'assistant', content: welcomeMsg }]);
+        : `${VJ.avatar} Hey! I'm ${VJ.name}. Ask me anything!`;
+      setMessages([{ id: generateMessageId(), role: 'assistant', content: welcomeMsg }]);
     }
-  }, [isOpen, messages.length, currentVideo?.title]);
+  }, [isOpen, currentVideo]);
 
-  // Execute action from response
+  // Reset session when chat closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSessionId(null);
+      setMessages([]);
+      setShowQuickActions(true);
+    }
+  }, [isOpen]);
+
   const executeAction = useCallback((action) => {
     if (!action) return;
     console.log('[VJChat] Executing action:', action);
@@ -76,7 +91,11 @@ const VJChat = ({
             ch => ch._id === action.channelId || 
                   ch.name?.toLowerCase() === action.channelName?.toLowerCase()
           );
-          onChangeChannel(channel || { _id: action.channelId, name: action.channelName });
+          if (channel) {
+            onChangeChannel(channel);
+          } else {
+            console.warn('[VJChat] Channel not found:', action.channelId, action.channelName);
+          }
         }
         break;
       
@@ -115,7 +134,7 @@ const VJChat = ({
     const userMessage = text.trim();
     setInputValue('');
     setShowQuickActions(false);
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { id: generateMessageId(), role: 'user', content: userMessage }]);
     setIsLoading(true);
 
     try {
@@ -133,10 +152,16 @@ const VJChat = ({
         totalVideos
       };
       
-      console.log('[VJChat] Sending:', { message: userMessage, context });
-      const result = await sendMessage(userMessage, context);
+      console.log('[VJChat] Sending:', { message: userMessage, context, sessionId });
+      const result = await sendMessage(userMessage, context, sessionId);
+      
+      // Update sessionId if returned from server
+      if (result.sessionId) {
+        setSessionId(result.sessionId);
+      }
       
       setMessages(prev => [...prev, { 
+        id: generateMessageId(),
         role: 'assistant', 
         content: result.response
       }]);
@@ -147,13 +172,14 @@ const VJChat = ({
     } catch (error) {
       console.error('[VJChat] Error:', error);
       setMessages(prev => [...prev, { 
+        id: generateMessageId(),
         role: 'assistant', 
         content: error.message || 'Oops! Try again? 😅'
       }]);
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, executeAction]);
+  }, [inputValue, isLoading, sessionId, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, executeAction]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -193,8 +219,8 @@ const VJChat = ({
 
           {/* Messages */}
           <div className="vj-chat-messages">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`vj-message ${msg.role}`}>
+            {messages.map((msg) => (
+              <div key={msg.id} className={`vj-message ${msg.role}`}>
                 {msg.role === 'assistant' && (
                   <span className="vj-msg-avatar">{VJ.avatar}</span>
                 )}

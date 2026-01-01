@@ -11,9 +11,9 @@ function parseISODuration(duration) {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-// POST /api/youtube/metadata { youtubeId }
-router.post('/metadata', async (req, res) => {
-  const { youtubeId } = req.body;
+// GET /api/youtube/metadata?youtubeId=...
+router.get('/metadata', async (req, res) => {
+  const { youtubeId } = req.query;
   if (!youtubeId) return res.status(400).json({ message: 'Missing youtubeId' });
   const KEY = process.env.YOUTUBE_API_KEY;
   if (!KEY) return res.status(500).json({ message: 'YOUTUBE_API_KEY not configured on server' });

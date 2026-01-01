@@ -14,6 +14,7 @@ const {
   getPersonalizedSuggestions,
   extractPreferencesFromMessage 
 } = require('../mcp/userMemory');
+const logger = require('../utils/logger');
 
 // In-memory conversation cache
 const conversations = new Map();
@@ -38,12 +39,14 @@ async function handleMessage(req, res) {
     const convId = sessionId || generateSessionId();
     let history = conversations.get(convId) || [];
 
-    // Log context for debugging
-    console.log('[Chat] Input:', { 
-      message, 
+    // Log context for debugging (message excluded in production to protect PII)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const logData = {
+      ...(isProduction ? {} : { message }), // Only include message in development
       channel: context.currentChannel,
       video: context.currentVideo?.title 
-    });
+    };
+    logger.debug('Chat', 'Input:', logData);
 
     // =========================================================================
     // CORE LOGIC: Process through VJCore

@@ -10,6 +10,7 @@ import { PLAYBACK } from '../../config/constants/playback'
 import { joinChannel, leaveChannel } from '../../services/api/viewerCountService'
 import { loadYouTubeAPI } from '../../utils/youtubeLoader'
 import apiClientV2 from '../../services/apiClientV2'
+import { ErrorCodes } from '../../services/errorHandler'
 
 /**
  * Enhanced Player Component with:
@@ -102,10 +103,17 @@ onBufferingChange = null,
 			const result = await apiClientV2.getVideoMetadata(videoId)
 			
 			if (!result.success) {
-				// API error - assume invalid
-				const cacheResult = { valid: false, reason: 'API error' }
-				videoValidationCacheRef.current.set(videoId, { result: cacheResult, timestamp: Date.now() })
-				return cacheResult
+				// Only cache definitive invalid responses (e.g., 404 - video not found)
+				// Don't cache transient API failures (network errors, timeouts, 500s, etc.)
+				if (result.errorCode === ErrorCodes.YOUTUBE_NOT_FOUND) {
+					// Video explicitly not found - cache as invalid
+					const cacheResult = { valid: false, reason: 'Video not found' }
+					videoValidationCacheRef.current.set(videoId, { result: cacheResult, timestamp: Date.now() })
+					return cacheResult
+				}
+				// Transient API failure - don't cache, allow video to load
+				// YouTube player will handle validation on its own
+				return { valid: true }
 			}
 			
 			const data = result.data

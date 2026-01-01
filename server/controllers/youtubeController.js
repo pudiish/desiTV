@@ -9,12 +9,12 @@ const youtubeService = require('../services/youtubeService');
 
 class YouTubeController {
   /**
-   * POST /api/youtube/metadata
+   * GET /api/youtube/metadata?youtubeId=...
    * Get video metadata from YouTube API
    */
   async getVideoMetadata(request, response) {
     try {
-      const { youtubeId } = request.body;
+      const { youtubeId } = request.query;
       const metadata = await youtubeService.getVideoMetadata(youtubeId);
       response.json(metadata);
     } catch (error) {

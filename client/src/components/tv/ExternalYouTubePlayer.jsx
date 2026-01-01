@@ -17,14 +17,34 @@ export function ExternalYouTubePlayer({ videoId, videoTitle, onEnded }) {
   const [embedError, setEmbedError] = useState(false);
   const checkIntervalRef = useRef(null);
   const startTimeRef = useRef(Date.now());
+  const timeoutIdsRef = useRef([]);
+  const isMountedRef = useRef(true);
+
+  // Track component mount/unmount state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear all timeouts on unmount
+      timeoutIdsRef.current.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      timeoutIdsRef.current = [];
+    };
+  }, []);
 
   // Monitor YouTube iframe for video end using postMessage + polling fallback
   useEffect(() => {
     if (!iframeRef.current || !onEnded) return;
 
-    let videoEnded = false;
+    const YOUTUBE_ORIGINS = [
+      'https://www.youtube.com',
+      'https://www.youtube-nocookie.com'
+    ];
 
     const handleMessage = (event) => {
+      // Only accept messages from YouTube
+      if (!YOUTUBE_ORIGINS.includes(event.origin)) return;
       // Only accept messages from YouTube
       if (event.origin !== 'https://www.youtube.com') return;
       
@@ -44,28 +64,34 @@ export function ExternalYouTubePlayer({ videoId, videoTitle, onEnded }) {
             if (!videoEnded) {
               videoEnded = true;
               console.log('[ExternalYouTubePlayer] 🎬 Video ended (postMessage) - returning to channel playback');
-              if (onEnded) {
+              if (isMountedRef.current && onEnded) {
                 onEnded();
               }
             }
           } else if (data.info === 1) {
             // Video playing
-            setIsPlaying(true);
-            setEmbedError(false); // Clear any previous errors
+            if (isMountedRef.current) {
+              setIsPlaying(true);
+              setEmbedError(false); // Clear any previous errors
+            }
           }
         } else if (data.event === 'onError') {
           // Video error - might be embedding restriction
           console.warn('[ExternalYouTubePlayer] Video error detected:', data.info);
           if (data.info === 101 || data.info === 150) {
             // 101: Video not available, 150: Embedding disabled
-            setEmbedError(true);
+            if (isMountedRef.current) {
+              setEmbedError(true);
+            }
             // Auto-open in YouTube and return to channel
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
+              if (!isMountedRef.current) return;
               window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
-              if (onEnded) {
+              if (isMountedRef.current && onEnded) {
                 onEnded();
               }
             }, 2000);
+            timeoutIdsRef.current.push(timeoutId);
           }
         }
       } catch (err) {
@@ -76,29 +102,34 @@ export function ExternalYouTubePlayer({ videoId, videoTitle, onEnded }) {
     window.addEventListener('message', handleMessage);
 
     // Also monitor iframe load to detect embedding restrictions
-    const iframe = iframeRef.current;
-    if (iframe) {
-      const handleIframeLoad = () => {
+    let handleIframeLoad = null;
+    if (iframeRef.current) {
+      handleIframeLoad = () => {
         // Check if iframe content indicates embedding is disabled
         // This is a fallback check - postMessage is more reliable
-        setTimeout(() => {
+        const timeoutId1 = setTimeout(() => {
+          if (!isMountedRef.current) return;
           try {
             // Try to access iframe content (will fail if cross-origin, which is expected)
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            const iframeDoc = iframeRef.current?.contentDocument || iframeRef.current?.contentWindow?.document;
             if (iframeDoc) {
               const bodyText = iframeDoc.body?.innerText || '';
               if (bodyText.includes('Video unavailable') || 
                   bodyText.includes('embedding disabled') ||
                   bodyText.includes('Playback on other websites')) {
                 console.warn('[ExternalYouTubePlayer] Embedding restriction detected via iframe content');
-                setEmbedError(true);
+                if (isMountedRef.current) {
+                  setEmbedError(true);
+                }
                 // Auto-open in YouTube after brief delay
-                setTimeout(() => {
+                const timeoutId2 = setTimeout(() => {
+                  if (!isMountedRef.current) return;
                   window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
-                  if (onEnded) {
+                  if (isMountedRef.current && onEnded) {
                     onEnded();
                   }
                 }, 2000);
+                timeoutIdsRef.current.push(timeoutId2);
               }
             }
           } catch (e) {
@@ -107,16 +138,10 @@ export function ExternalYouTubePlayer({ videoId, videoTitle, onEnded }) {
             // If we can't access it, it's likely working correctly
           }
         }, 3000); // Give it 3 seconds to load
+        timeoutIdsRef.current.push(timeoutId1);
       };
 
-      iframe.addEventListener('load', handleIframeLoad);
-      
-      return () => {
-        window.removeEventListener('message', handleMessage);
-        if (iframe) {
-          iframe.removeEventListener('load', handleIframeLoad);
-        }
-      };
+      iframeRef.current.addEventListener('load', handleIframeLoad);
     }
 
     // Polling fallback: Check if iframe is still active (simple heuristic)
@@ -125,6 +150,7 @@ export function ExternalYouTubePlayer({ videoId, videoTitle, onEnded }) {
     checkIntervalRef.current = setInterval(() => {
       if (videoEnded) {
         clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
         return;
       }
 
@@ -137,12 +163,21 @@ export function ExternalYouTubePlayer({ videoId, videoTitle, onEnded }) {
       }
     }, 2000); // Check every 2 seconds
 
+    // Unified cleanup return
     return () => {
       window.removeEventListener('message', handleMessage);
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
         checkIntervalRef.current = null;
       }
+      if (iframeRef.current && handleIframeLoad) {
+        iframeRef.current.removeEventListener('load', handleIframeLoad);
+      }
+      // Clear all tracked timeouts
+      timeoutIdsRef.current.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      timeoutIdsRef.current = [];
     };
   }, [videoId, onEnded, isPlaying]);
 

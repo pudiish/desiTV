@@ -1,4 +1,3 @@
-/** @jsx React.createElement */
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
 import { Galaxy } from '../components/backgrounds'

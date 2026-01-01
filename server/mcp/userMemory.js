@@ -38,7 +38,20 @@ function createUserProfile() {
 /**
  * Get or create user profile
  */
-function getUserProfile(sessionId) {
+/**
+ * Get user profile without side effects (for read operations)
+ */
+function peekUserProfile(sessionId) {
+  if (!sessionId || !userMemory.has(sessionId)) {
+    return createUserProfile();
+  }
+  return userMemory.get(sessionId);
+}
+
+/**
+ * Get or create user profile
+ */
+function getUserProfile(sessionId, { trackInteraction = true } = {}) {
   if (!sessionId) return createUserProfile();
   
   if (!userMemory.has(sessionId)) {
@@ -46,8 +59,11 @@ function getUserProfile(sessionId) {
   }
   
   const profile = userMemory.get(sessionId);
-  profile.lastInteraction = Date.now();
-  profile.interactionCount++;
+  
+  if (trackInteraction) {
+    profile.lastInteraction = Date.now();
+    profile.interactionCount++;
+  }
   
   // Track active hours
   const hour = new Date().getHours();
@@ -235,19 +251,31 @@ function extractPreferencesFromMessage(message) {
 function cleanupOldUsers() {
   const cutoff = Date.now() - USER_MEMORY_TTL;
   for (const [sessionId, profile] of userMemory.entries()) {
-    if (profile.lastInteraction < cutoff) {
+    // Treat missing/nullable lastInteraction as expired
+    if (!profile.lastInteraction || profile.lastInteraction < cutoff) {
       userMemory.delete(sessionId);
     }
   }
 }
 
-// Periodic cleanup
-setInterval(cleanupOldUsers, 60 * 60 * 1000); // Every hour
+// Periodic cleanup - store interval ID for cleanup
+let cleanupIntervalId = setInterval(cleanupOldUsers, 60 * 60 * 1000); // Every hour
+
+/**
+ * Stop the periodic cleanup (useful for tests/hot-reload)
+ */
+function stopCleanup() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+}
 
 module.exports = {
   getUserProfile,
   updateUserPreferences,
   getPersonalizedSuggestions,
   getPersonalizedGreeting,
-  extractPreferencesFromMessage
+  extractPreferencesFromMessage,
+  stopCleanup
 };

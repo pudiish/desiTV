@@ -103,7 +103,7 @@ export function tvReducer(state, action) {
       return {
         ...state,
         isMuted: !state.isMuted,
-        prevVolume: state.isMuted ? state.volume : state.prevVolume,
+        prevVolume: state.isMuted ? state.prevVolume : state.volume,
         volume: state.isMuted ? state.prevVolume : 0
       };
     
@@ -185,8 +185,8 @@ export function tvReducer(state, action) {
 export function useTVState() {
   const [state, dispatch] = React.useReducer(tvReducer, initialTVState);
   
-  // Dispatch helpers (less verbose)
-  const _actions = {
+  // Memoize actions to keep stable references across renders
+  const actions = React.useMemo(() => ({
     setPower: (power) => dispatch({ type: TVActions.SET_POWER, payload: power }),
     setVolume: (vol) => dispatch({ type: TVActions.SET_VOLUME, payload: vol }),
     toggleMute: () => dispatch({ type: TVActions.TOGGLE_MUTE }),
@@ -203,10 +203,7 @@ export function useTVState() {
     toggleGalaxy: () => dispatch({ type: TVActions.TOGGLE_GALAXY }),
     setRemoteOverlayVisible: (visible) => dispatch({ type: TVActions.TOGGLE_REMOTE_OVERLAY, payload: visible }),
     resetState: () => dispatch({ type: TVActions.RESET_TO_INITIAL }),
-  };
-
-  // Memoize actions to keep stable references across renders
-  const actions = React.useMemo(() => _actions, [dispatch]);
+  }), []);
 
   return [state, actions];
 }

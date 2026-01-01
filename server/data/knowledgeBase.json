@@ -2,7 +2,7 @@
   "meta": {
     "totalChannels": 6,
     "totalVideos": 107,
-    "generatedAt": "2026-01-01T19:33:42.910Z"
+    "generatedAt": "2026-01-01T23:29:07.868Z"
   },
   "channels": [
     {
@@ -80,9 +80,7 @@
       "songCount": 17,
       "searchTerms": [
         "honey singh",
-        "yo yo",
-        "honey",
-        "hone singh"
+        "yo yo"
       ],
       "songs": [
         {
@@ -547,6 +545,21 @@
           "title": "Naah -  Harrdy Sandhu Feat. Nora Fatehi | Jaani | B Praak | Official Music Video",
           "youtubeId": "8qs2dZO6wcc",
           "channel": "Club Nights"
+        }
+      ]
+    },
+    {
+      "name": "KK",
+      "songCount": 1,
+      "searchTerms": [
+        "k.k.",
+        "kk"
+      ],
+      "songs": [
+        {
+          "title": "Khuda Jaane | Full Song | Bachna Ae Haseeno | Ranbir Kapoor, Deepika | Vishal & Shekhar, KK, Shilpa",
+          "youtubeId": "cmMiyZaSELo",
+          "channel": "Late Night Love"
         }
       ]
     },

@@ -144,11 +144,13 @@ function csrfProtection(req, res, next) {
 
   // Skip CSRF for read-only data endpoints (POST used for body params)
   // Note: req.path here is relative to where middleware is mounted
+  // Note: /chat/message is NOT exempted - it performs state-changing operations
+  // (updates user preferences, stores conversation history, triggers actions)
+  // GET /chat/suggestions is exempted via safeMethods check above
   const readOnlyEndpoints = [
     '/youtube/metadata',
     '/analytics',
-    '/viewer-count',
-    '/chat'  // Chat has its own rate limiting
+    '/viewer-count'
   ];
   if (readOnlyEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
     return next();

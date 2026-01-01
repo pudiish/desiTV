@@ -207,7 +207,7 @@ async function getVideoDetails(youtubeId) {
 /**
  * Validate that content is appropriate (music/video song)
  */
-function isAppropriateContent(video) {
+function isAppropriateContent(video, requireMusicIndicators = false) {
   const titleLower = video.title.toLowerCase();
   const descLower = (video.description || '').toLowerCase();
   
@@ -240,8 +240,12 @@ function isAppropriateContent(video) {
   // If has music indicator, it's likely appropriate
   if (hasMusicIndicator) return true;
   
-  // Otherwise, allow but with lower confidence
-  // (The YouTube category filter should have already filtered)
+  // If strict music validation required, reject non-music content
+  if (requireMusicIndicators) {
+    return false;
+  }
+  
+  // Otherwise, allow with lower confidence (category filter already applied)
   return true;
 }
 

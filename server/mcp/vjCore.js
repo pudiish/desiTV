@@ -13,6 +13,7 @@ const Channel = require('../models/Channel');
 const { searchYouTube } = require('./youtubeSearch');
 const path = require('path');
 const fs = require('fs');
+const logger = require('../utils/logger');
 
 // Load VJ content
 let vjContent = {};
@@ -284,8 +285,9 @@ const INTENTS = {
     patterns: [
       /play\s+["']?(.+?)["']?\s*(?:from|on|via)\s*youtube/i,
       /(?:search|find)\s+["']?(.+?)["']?\s*(?:on|from)?\s*youtube/i,
-      /youtube\s*(?:se|par|pe)?\s*["']?(.+?)["']?/i,
-      /can\s*you\s*play\s*(?:through|from|on)\s*youtube/i
+      /youtube\s*(?:se|par|pe)?\s*["']?(.+?)["']?/i
+      // Note: Generic "can you play through youtube" queries without a specific query
+      // are better handled by the general handler, which will prompt for clarification
     ],
     handler: 'handleYouTubeSearch',
     extractParam: 1
@@ -751,6 +753,7 @@ async function handleGeneral(context, param) {
           message: `🤔 "${trimmedParam}" samajh nahi aaya.\n\n📺 Try these channels: ${channelNames}\n\nYa bolo "play [gaane ka naam]"!`
         };
       } catch (err) {
+        logger.error('Error fetching channels:', err);
         // Fall through to AI
       }
     }

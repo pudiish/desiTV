@@ -184,7 +184,9 @@ export default function VideoManager() {
 						setMessage({ type: 'error', text: '❌ Could not fetch YouTube data' })
 					}
 				} catch (oembedErr) {
-					setMessage({ type: 'error', text: `❌ ${result.error?.userMessage || 'Could not fetch YouTube data'}` })
+					console.error('oEmbed fetch error:', oembedErr)
+					const errorMessage = oembedErr?.message || oembedErr?.toString() || 'Could not fetch YouTube data'
+					setMessage({ type: 'error', text: `❌ ${errorMessage}` })
 				}
 			}
 		} catch (err) {

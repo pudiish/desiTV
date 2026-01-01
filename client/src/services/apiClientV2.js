@@ -67,7 +67,7 @@ class APIClientV2 {
     try {
       // Check cache for GET requests
       if (method === 'GET') {
-        const cacheKey = this.getCacheKey(endpoint, options.params);
+        const cacheKey = this.getCacheKey(endpoint);
         const cached = this.getCache(cacheKey);
         if (cached) {
           return { success: true, data: cached, fromCache: true };
@@ -90,7 +90,10 @@ class APIClientV2 {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      const data = contentType?.includes('application/json') 
+        ? await response.json() 
+        : null;
 
       // Cache successful GET responses
       if (method === 'GET') {
@@ -169,8 +172,7 @@ class APIClientV2 {
    * Get video metadata
    */
   async getVideoMetadata(youtubeId) {
-    return this.request('POST', '/youtube/metadata', {
-      body: { youtubeId },
+    return this.request('GET', `/youtube/metadata?youtubeId=${encodeURIComponent(youtubeId)}`, {
       cacheKey: 'metadata'
     });
   }
@@ -236,7 +238,7 @@ export function useAPI(apiCall, dependencies = []) {
         }
       } catch (err) {
         if (isMounted) {
-          setError(err.message);
+          setError({ success: false, message: err.message });
         }
       } finally {
         if (isMounted) {

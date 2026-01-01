@@ -104,11 +104,16 @@ export const login = async (username, password) => {
  */
 export const logout = () => {
   try {
-    // Optionally notify server
+    // Notify server to invalidate the session
     const token = getToken();
     if (token) {
-      // Fire-and-forget logout notification using apiClientV2
-      apiClientV2.trackEvent({ action: 'logout' }).catch(() => {});
+      // Fire-and-forget logout request to invalidate server session
+      apiClientV2.request('POST', '/auth/logout', {
+        headers: getAuthHeaders()
+      }).catch((error) => {
+        // Log error but don't block logout - local cleanup will proceed regardless
+        console.warn('[Auth] Logout API call failed (proceeding with local cleanup):', error);
+      });
     }
     
     localStorage.removeItem(TOKEN_KEY);
@@ -176,21 +181,37 @@ export const getAuthHeaders = () => {
 export const authFetch = async (url, options = {}) => {
   const token = getToken();
   
-  // For legacy compatibility - redirect to apiClientV2 if URL is an API endpoint
+  // For legacy compatibility - proxy requests to API endpoints
+  // Note: Using fetch directly to properly handle 401 status codes
+  // (apiClientV2.request() doesn't expose HTTP status codes for error handling)
   if (url.includes('/api/')) {
     console.warn('[Auth] authFetch is deprecated - use apiClientV2 directly');
-    // Since this is mainly for auth endpoints, wrap it properly
-    try {
-      const result = await apiClientV2.getChannels(); // Generic API call to check auth
-      if (!result.success && result.error?.code === 'UNAUTHORIZED') {
-        logout();
-        window.location.href = '/admin/login';
-        throw new Error('Session expired. Please login again.');
-      }
-      return { ok: result.success };
-    } catch (error) {
-      throw error;
+    
+    // Build headers with auth
+    const headers = {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+      ...(options.headers || {})
+    };
+    
+    // Make the request using fetch to get access to response.status for 401 handling
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers,
+      body: options.body,
+      ...(options.signal && { signal: options.signal })
+    });
+    
+    // Handle 401 - token expired/invalid (preserve existing unauthorized handling)
+    if (response.status === 401) {
+      logout();
+      window.location.href = '/admin/login';
+      throw new Error('Session expired. Please login again.');
     }
+    
+    // Return response in the expected format: { ok: boolean, ... }
+    // For compatibility, return the actual Response object which has ok, status, json(), etc.
+    return response;
   }
   
   const headers = {
