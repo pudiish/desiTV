@@ -16,6 +16,28 @@ const crypto = require('crypto');
 // In production, consider using Redis or session store
 const tokenStore = new Map();
 const TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_TOKEN_STORE_SIZE = 10000; // Maximum tokens to store
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // Cleanup every hour
+
+// Start periodic cleanup
+let cleanupIntervalId = null;
+
+function startPeriodicCleanup() {
+  if (cleanupIntervalId) return;
+  cleanupIntervalId = setInterval(cleanupExpiredTokens, CLEANUP_INTERVAL);
+  // Don't prevent Node.js from exiting
+  if (cleanupIntervalId.unref) cleanupIntervalId.unref();
+}
+
+function stopPeriodicCleanup() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+}
+
+// Start cleanup on module load
+startPeriodicCleanup();
 
 /**
  * Generate a secure random CSRF token
@@ -37,9 +59,19 @@ function storeToken(token, req) {
     expiresAt: Date.now() + TOKEN_EXPIRY
   });
 
-  // Clean up expired tokens periodically
-  if (tokenStore.size > 1000) {
+  // Clean up if store exceeds max size
+  if (tokenStore.size > MAX_TOKEN_STORE_SIZE) {
     cleanupExpiredTokens();
+    // If still over limit after cleanup, remove oldest entries
+    if (tokenStore.size > MAX_TOKEN_STORE_SIZE) {
+      const entriesToRemove = tokenStore.size - MAX_TOKEN_STORE_SIZE + 100; // Remove extra 100 for buffer
+      let removed = 0;
+      for (const key of tokenStore.keys()) {
+        if (removed >= entriesToRemove) break;
+        tokenStore.delete(key);
+        removed++;
+      }
+    }
   }
 }
 

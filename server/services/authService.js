@@ -9,6 +9,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const Admin = require('../models/Admin');
 
+// Validate JWT_SECRET at module load
+if (!process.env.JWT_SECRET) {
+  console.error('[AuthService] CRITICAL: JWT_SECRET environment variable is not set!');
+  console.error('[AuthService] Authentication will fail. Please set JWT_SECRET in your .env file.');
+  // In production, we should exit. In development, warn but continue.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+}
+
 // Track failed login attempts (in-memory for free tier)
 const failedAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;

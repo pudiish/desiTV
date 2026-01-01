@@ -20,7 +20,7 @@ async function run(){
     console.error('MONGO_URI not set');
     process.exit(1);
   }
-  await mongoose.connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true });
+  await mongoose.connect(MONGO);
   console.log('Connected to Mongo');
 
   // Use provided URL or default

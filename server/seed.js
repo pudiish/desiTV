@@ -20,7 +20,7 @@ if (!MONGO) {
   process.exit(1);
 }
 
-mongoose.connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(MONGO)
   .then(async () => {
     console.log('Connected to Mongo, seeding...');
 

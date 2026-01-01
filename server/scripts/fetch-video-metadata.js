@@ -120,7 +120,7 @@ async function scrapeYouTubeTitle(videoId) {
 
 async function fetchMetadata() {
   try {
-    await mongoose.connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true });
+    await mongoose.connect(MONGO);
     console.log('✅ Connected to MongoDB');
     
     const channels = await Channel.find({});

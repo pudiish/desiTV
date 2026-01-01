@@ -257,8 +257,18 @@ export const setupAdmin = async (username, password) => {
 };
 
 // Auto-refresh token before expiry (check every 30 minutes)
-if (typeof window !== 'undefined') {
-  setInterval(() => {
+// Store interval ID for cleanup
+let tokenRefreshInterval = null;
+
+function startTokenRefresh() {
+  if (typeof window === 'undefined') return;
+  
+  // Clear any existing interval
+  if (tokenRefreshInterval) {
+    clearInterval(tokenRefreshInterval);
+  }
+  
+  tokenRefreshInterval = setInterval(() => {
     const token = getToken();
     if (token) {
       try {
@@ -274,6 +284,16 @@ if (typeof window !== 'undefined') {
   }, 30 * 60 * 1000);
 }
 
+function stopTokenRefresh() {
+  if (tokenRefreshInterval) {
+    clearInterval(tokenRefreshInterval);
+    tokenRefreshInterval = null;
+  }
+}
+
+// Start auto-refresh on module load
+startTokenRefresh();
+
 export default {
   getToken,
   getAdminInfo,
@@ -285,4 +305,6 @@ export default {
   getAuthHeaders,
   authFetch,
   setupAdmin,
+  startTokenRefresh,
+  stopTokenRefresh,
 };

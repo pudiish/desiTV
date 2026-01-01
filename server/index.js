@@ -117,10 +117,8 @@ if (!isProduction || process.env.DEBUG) {
 	});
 }
 
-// MongoDB connection options
+// MongoDB connection options (useNewUrlParser/useUnifiedTopology removed - deprecated in Mongoose 7+)
 const mongoOptions = {
-	useNewUrlParser: true,
-	useUnifiedTopology: true,
 	maxPoolSize: isProduction ? 5 : 3,
 	minPoolSize: 1,
 	serverSelectionTimeoutMS: 5000,
@@ -341,17 +339,3 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 		console.error('[DesiTV] Database connection will retry automatically...');
 	});
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-	const cache = require('./utils/cache');
-	if (cache && typeof cache.destroy === 'function') {
-		await cache.destroy();
-	}
-});
-
-process.on('SIGTERM', async () => {
-	const cache = require('./utils/cache');
-	if (cache && typeof cache.destroy === 'function') {
-		await cache.destroy();
-	}
-	});

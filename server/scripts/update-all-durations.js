@@ -96,7 +96,7 @@ function fetchYouTubeVideoDetails(videoIds) {
 
 async function updateAllDurations() {
   try {
-    await mongoose.connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true });
+    await mongoose.connect(MONGO);
     console.log('✅ Connected to MongoDB\n');
     
     const channels = await Channel.find({});

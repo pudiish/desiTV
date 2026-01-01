@@ -99,7 +99,7 @@ function categorizeByChannel(channelName) {
 
 async function reorganizeChannels() {
   try {
-    await mongoose.connect(MONGO, { useNewUrlParser: true, useUnifiedTopology: true });
+    await mongoose.connect(MONGO);
     console.log('✅ Connected to MongoDB');
     
     // Fetch all existing channels
