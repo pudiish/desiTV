@@ -129,9 +129,6 @@ export default function VideoManager() {
 			
 			// Sync the new (empty) channel state
 			syncBroadcastState(data._id)
-			} else {
-				setMessage({ type: 'error', text: `❌ ${data.message || 'Failed to create category'}` })
-			}
 		} catch (err) {
 			setMessage({ type: 'error', text: `❌ ${err.message}` })
 		} finally {
