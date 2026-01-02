@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspens
 import { TVFrame, TVRemote } from '../components/tv'
 import { Galaxy } from '../components/backgrounds'
 import { VJChat } from '../components/chat'
+import { ExternalVideoHint } from '../components/overlays'
 import { SessionManager } from '../services/storage'
 import { analytics, performanceMonitor } from '../services/analytics'
 import { channelManager } from '../logic/channel'
@@ -59,11 +60,22 @@ export default function Home() {
 	const remoteHideTimeoutRef = useRef(null) // Auto-hide timer for overlay remote
 	// Track video switch timestamp to force Player recalculation
 	const [videoSwitchTimestamp, setVideoSwitchTimestamp] = useState(Date.now())
+	// External video hint toast state
+	const [showExternalHint, setShowExternalHint] = useState(false)
 
 	// Store tap handler from Player (passed through TVFrame)
 	const handleTapHandlerReady = (handler) => {
 		tapTriggerRef.current = handler
 	}
+
+	// Show external video hint when external video starts playing
+	useEffect(() => {
+		if (tvState.externalVideo) {
+			setShowExternalHint(true)
+		} else {
+			setShowExternalHint(false)
+		}
+	}, [tvState.externalVideo])
 
 	// Callback to show/hide remote overlay (triggered from TVFrame sensor or mobile toggle)
 	const handleRemoteEdgeHover = useCallback(() => {
@@ -1210,6 +1222,14 @@ export default function Home() {
 					}
 				}
 			}}
+			/>
+			
+			{/* External Video Hint Toast - Shows exit instructions when external video is playing */}
+			<ExternalVideoHint
+				videoTitle={tvState.externalVideo?.videoTitle || ''}
+				show={showExternalHint && tvState.externalVideo !== null}
+				duration={5000}
+				onDismiss={() => setShowExternalHint(false)}
 			/>
 
 				{/* Right Side - Remote Control and Categories (hidden in fullscreen) */}

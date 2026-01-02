@@ -287,85 +287,40 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 							justifyContent: 'center' 
 						}}>
 							{externalVideo ? (
-								// Show external YouTube video on TV
-								<div style={{
-									position: 'absolute',
-									top: 0,
-									left: 0,
-									right: 0,
-									bottom: 0,
-									width: '100%',
-									height: '100%',
-									display: 'flex',
-									flexDirection: 'column',
-									backgroundColor: '#000',
-									zIndex: 100
-								}}>
-									{/* Title bar */}
-									<div style={{
-										background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
-										color: '#d4a574',
-										padding: '12px 16px',
-										fontSize: '14px',
-										fontWeight: '600',
-										textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-										lineHeight: 1.3,
-										maxHeight: '60px',
-										overflow: 'hidden',
-										textOverflow: 'ellipsis'
-									}}>
-										🎬 {externalVideo.videoTitle}
-									</div>
-									{/* YouTube iframe - fills remaining space */}
+								// External YouTube video - seamless TV-style player
+								<div 
+									style={{
+										position: 'absolute',
+										top: 0,
+										left: 0,
+										right: 0,
+										bottom: 0,
+										width: '100%',
+										height: '100%',
+										backgroundColor: '#000',
+										zIndex: 100,
+										overflow: 'hidden'
+									}}
+									data-external-video="true"
+								>
+									{/* YouTube iframe - seamless fullscreen, no controls */}
 									<iframe
 										style={{
-											flex: 1,
+											position: 'absolute',
+											top: '50%',
+											left: '50%',
+											transform: 'translate(-50%, -50%)',
 											width: '100%',
 											height: '100%',
 											border: 'none',
-											backgroundColor: '#000'
+											backgroundColor: '#000',
+											pointerEvents: 'auto'
 										}}
-										src={`https://www.youtube.com/embed/${externalVideo.videoId}?autoplay=1&controls=1&modestbranding=1`}
+										src={`https://www.youtube.com/embed/${externalVideo.videoId}?autoplay=1&controls=0&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&fs=0&playsinline=1`}
 										title={externalVideo.videoTitle}
 										allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-										allowFullScreen
-										onEnded={onExternalVideoEnd}
+										allowFullScreen={false}
 									/>
-									{/* Close button (top right) */}
-									<button
-										onClick={() => onExternalVideoEnd?.()}
-										style={{
-											position: 'absolute',
-											top: '12px',
-											right: '12px',
-											width: '36px',
-											height: '36px',
-											background: 'rgba(0, 0, 0, 0.7)',
-											border: '2px solid #d4a574',
-											borderRadius: '50%',
-											color: '#d4a574',
-											fontSize: '20px',
-											cursor: 'pointer',
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											zIndex: 20,
-											fontWeight: 'bold',
-											transition: 'all 0.2s ease'
-										}}
-										onMouseEnter={e => {
-											e.target.style.background = 'rgba(0, 0, 0, 0.9)';
-											e.target.style.borderColor = '#e5b685';
-											e.target.style.color = '#e5b685';
-										}}
-										onMouseLeave={e => {
-											e.target.style.background = 'rgba(0, 0, 0, 0.7)';
-											e.target.style.borderColor = '#d4a574';
-											e.target.style.color = '#d4a574';
-										}}
-									>
-										✕
-									</button>
 								</div>
 							) : activeChannel ? (
 								<Player 
