@@ -468,13 +468,14 @@ echo ""
 echo "🔍 Verifying environment variables..."
 MISSING_VARS=()
 
-if [ -z "$MONGO_URI" ]; then MISSING_VARS+=("MONGO_URI"); fi
-if [ -z "$GOOGLE_AI_KEY" ]; then MISSING_VARS+=("GOOGLE_AI_KEY"); fi
-if [ -z "$YOUTUBE_API_KEY" ]; then MISSING_VARS+=("YOUTUBE_API_KEY"); fi
-if [ -z "$JWT_SECRET" ]; then MISSING_VARS+=("JWT_SECRET"); fi
-if [ -z "$ADMIN_USERNAME" ]; then MISSING_VARS+=("ADMIN_USERNAME"); fi
-if [ -z "$ADMIN_PASSWORD" ]; then MISSING_VARS+=("ADMIN_PASSWORD"); fi
-if [ -z "$REDIS_URL" ]; then MISSING_VARS+=("REDIS_URL"); fi
+# Use safe parameter expansion to avoid "unbound variable" errors
+if [ -z "${MONGO_URI:-}" ]; then MISSING_VARS+=("MONGO_URI"); fi
+if [ -z "${GOOGLE_AI_KEY:-}" ]; then MISSING_VARS+=("GOOGLE_AI_KEY"); fi
+if [ -z "${YOUTUBE_API_KEY:-}" ]; then MISSING_VARS+=("YOUTUBE_API_KEY"); fi
+if [ -z "${JWT_SECRET:-}" ]; then MISSING_VARS+=("JWT_SECRET"); fi
+if [ -z "${ADMIN_USERNAME:-}" ]; then MISSING_VARS+=("ADMIN_USERNAME"); fi
+if [ -z "${ADMIN_PASSWORD:-}" ]; then MISSING_VARS+=("ADMIN_PASSWORD"); fi
+if [ -z "${REDIS_URL:-}" ]; then MISSING_VARS+=("REDIS_URL"); fi
 
 if [ ${#MISSING_VARS[@]} -gt 0 ]; then
   echo "❌ ERROR: Missing environment variables:"
@@ -484,15 +485,14 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
   exit 1
 else
   echo "✅ All critical environment variables are loaded:"
-  echo "   ✓ MONGO_URI=$(echo $MONGO_URI | cut -c1-40)..."
-  echo "   ✓ GOOGLE_AI_KEY=$(echo $GOOGLE_AI_KEY | cut -c1-20)..."
-  echo "   ✓ YOUTUBE_API_KEY=$(echo $YOUTUBE_API_KEY | cut -c1-20)..."
-  echo "   ✓ JWT_SECRET=$(echo $JWT_SECRET | cut -c1-20)..."
-  echo "   ✓ ADMIN_USERNAME=$ADMIN_USERNAME"
-  echo "   ✓ REDIS_URL=$REDIS_URL"
+  echo "   ✓ MONGO_URI=$(echo ${MONGO_URI:-} | cut -c1-40)..."
+  echo "   ✓ GOOGLE_AI_KEY=$(echo ${GOOGLE_AI_KEY:-} | cut -c1-20)..."
+  echo "   ✓ YOUTUBE_API_KEY=$(echo ${YOUTUBE_API_KEY:-} | cut -c1-20)..."
+  echo "   ✓ JWT_SECRET=$(echo ${JWT_SECRET:-} | cut -c1-20)..."
+  echo "   ✓ ADMIN_USERNAME=${ADMIN_USERNAME:-}"
+  echo "   ✓ REDIS_URL=${REDIS_URL:-}"
 fi
 echo ""
-
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════╗"
 echo "║                🎬 DesiTV™ Development Server                  ║"
