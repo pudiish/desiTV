@@ -1,14 +1,14 @@
 /**
  * Google Gemini API Client
  * 
- * Uses Gemma 3 4B (free tier with high quota) for DesiTV chatbot
+ * Uses Gemma 3 4B IT (free tier with 30 RPM quota) for DesiTV chatbot
  * Now with persona support!
  */
 
 const { selectPersona, buildSystemPrompt, detectMood, getTimeOfDay } = require('./personas');
 
 const GEMINI_API_KEY = process.env.GOOGLE_AI_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent';
 
 // Debug: log API key status (not the key itself)
 if (!GEMINI_API_KEY) {
@@ -18,7 +18,7 @@ if (!GEMINI_API_KEY) {
   const keyPreview = GEMINI_API_KEY.substring(0, 20) + '...' + GEMINI_API_KEY.substring(GEMINI_API_KEY.length - 5);
   console.log('[Gemini] API Key loaded successfully:', keyPreview);
 }
-console.log('[Gemini] Using model: gemini-2.5-flash');
+console.log('[Gemini] Using model: gemma-3-4b-it (30 RPM free tier)');
 
 /**
  * Make a request to Gemini API with persona support
