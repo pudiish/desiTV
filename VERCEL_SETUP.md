@@ -5,7 +5,7 @@
 The following environment variables **must** be set in Vercel for the application to work correctly:
 
 ### API Keys
-- **GEMINI_API_KEY** or **google_ai**: Google Gemini API key for VJ Assistant chat
+- **GOOGLE_AI_KEY**: Google Gemini API key for VJ Assistant chat
 - **YOUTUBE_API_KEY**: YouTube Data API v3 key for video searches
 
 ### Database
@@ -34,7 +34,7 @@ The following environment variables **must** be set in Vercel for the applicatio
 3. Click **Settings** tab
 4. Navigate to **Environment Variables**
 5. Add each variable:
-   - **Name**: Variable name (e.g., `GEMINI_API_KEY`)
+   - **Name**: Variable name (e.g., `GOOGLE_AI_KEY`)
    - **Value**: The actual key value
    - **Select Environments**: Choose Production, Preview, or Development as needed
 6. Click **Save**
@@ -42,7 +42,7 @@ The following environment variables **must** be set in Vercel for the applicatio
 ### Option 2: Via Vercel CLI
 
 ```bash
-vercel env add GEMINI_API_KEY
+vercel env add GOOGLE_AI_KEY
 vercel env add YOUTUBE_API_KEY
 vercel env add MONGO_URI
 # ... etc
@@ -52,7 +52,7 @@ vercel env add MONGO_URI
 
 Your current `.env` file contains:
 ```
-GEMINI_API_KEY=AIzaSyDby-PAVBCIHPs9YddyoO74GJJbWOgIPBk
+GOOGLE_AI_KEY=AIzaSyDby-PAVBCIHPs9YddyoO74GJJbWOgIPBk
 YOUTUBE_API_KEY=AIzaSyAaUOFX1CCGSj_LcEoTSyMsnDyD5dl9tfw
 ```
 
@@ -61,7 +61,7 @@ These need to be added to Vercel's environment variables section.
 ## Troubleshooting
 
 ### AI responses failing in production
-- Verify `GEMINI_API_KEY` or `google_ai` is set in Vercel
+- Verify `GOOGLE_AI_KEY` is set in Vercel
 - Check the server logs in Vercel for warnings about missing API keys
 - Ensure the API key is valid and has available quota
 
@@ -108,7 +108,7 @@ This will show you:
 **Step 2: Verify on Render/Vercel Dashboard**
 - Go to your project settings
 - Check "Environment Variables" section
-- Confirm `GEMINI_API_KEY` or `google_ai` is there
+- Confirm `GOOGLE_AI_KEY` is there
 - Make sure the value is correct (should start with `AIzaSy...`)
 
 **Step 3: Force redeploy after adding environment variables**
@@ -138,9 +138,9 @@ This will show you:
 
 ### Quick Checklist
 
-- [ ] Added `GEMINI_API_KEY` environment variable to Vercel/Render
+- [ ] Added `GOOGLE_AI_KEY` environment variable to Vercel/Render
 - [ ] API key starts with `AIzaSy...`
 - [ ] Redeployed application after adding environment variable
-- [ ] Checked `/api/diagnostics` endpoint - shows `geminiConfigured: true`
+- [ ] Checked `/api/diagnostics` endpoint - shows `googleAiConfigured: true`
 - [ ] Verified in Vercel/Render logs - no "API key found" warnings
 - [ ] Tested chat API with a simple query like "hi"

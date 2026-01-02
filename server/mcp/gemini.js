@@ -7,15 +7,13 @@
 
 const { selectPersona, buildSystemPrompt, detectMood, getTimeOfDay } = require('./personas');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.google_ai || process.env.GOOGLE_AI_KEY;
+const GEMINI_API_KEY = process.env.GOOGLE_AI_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b:generateContent';
 
 // Debug: log API key status (not the key itself)
 if (!GEMINI_API_KEY) {
-  console.warn('[Gemini] WARNING: No API key found in environment variables!');
-  console.warn('[Gemini] Checked: GEMINI_API_KEY, google_ai, GOOGLE_AI_KEY');
-  console.warn('[Gemini] Available env vars:', Object.keys(process.env).filter(k => k.toUpperCase().includes('API') || k.toUpperCase().includes('KEY')).join(', '));
-  console.warn('[Gemini] Set GEMINI_API_KEY or google_ai in your environment to enable Gemini API');
+  console.warn('[Gemini] WARNING: GOOGLE_AI_KEY environment variable not configured!');
+  console.warn('[Gemini] Please set GOOGLE_AI_KEY in your environment');
 } else {
   const keyPreview = GEMINI_API_KEY.substring(0, 20) + '...' + GEMINI_API_KEY.substring(GEMINI_API_KEY.length - 5);
   console.log('[Gemini] API Key loaded successfully:', keyPreview);
