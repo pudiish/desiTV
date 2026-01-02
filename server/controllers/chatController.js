@@ -65,13 +65,26 @@ async function handleMessage(req, res) {
       // Only for general conversation - AI can respond
       try {
         const userProfile = getUserProfile(convId);
+        console.log('[Chat] Calling Gemini API with:', {
+          messageLength: message.length,
+          historyLength: history.length,
+          hasProfile: !!userProfile
+        });
         response = await gemini.chat(message, history, {
           ...context,
           userProfile
         });
+        console.log('[Chat] Gemini response received:', {
+          length: response.length,
+          preview: response.substring(0, 50)
+        });
       } catch (aiError) {
         // If AI fails (expired key, quota, etc), use fallback response
-        console.warn('[Chat] AI failed, using fallback response:', aiError.message);
+        console.error('[Chat] AI error caught:', {
+          message: aiError.message,
+          type: aiError.constructor.name,
+          fullError: aiError
+        });
         if (aiError.message?.includes('API key') || aiError.message?.includes('INVALID_ARGUMENT')) {
           // API key issue - return helpful message
           response = "🎧 DJ Desi's brain is temporarily out of order (API key issue). Try a simpler question or contact admin!";

@@ -8,11 +8,11 @@
 const { selectPersona, buildSystemPrompt, detectMood, getTimeOfDay } = require('./personas');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.google_ai || process.env.GOOGLE_AI_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
 // Debug: log API key status (not the key itself)
 console.log('[Gemini] API Key configured:', !!GEMINI_API_KEY, 'Length:', GEMINI_API_KEY?.length || 0);
-console.log('[Gemini] Using model: gemma-3-4b-it (free tier)');
+console.log('[Gemini] Using model: gemini-2.5-flash-lite (high quota free tier)');
 
 /**
  * Make a request to Gemini API with persona support
@@ -107,26 +107,45 @@ async function chat(userMessage, conversationHistory = [], context = {}) {
   });
 
   try {
+    const requestBody = {
+      contents,
+      generationConfig: {
+        temperature: 0.85,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 256,
+      }
+    };
+
+    console.log('[Gemini] Making API request to:', GEMINI_API_URL);
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          temperature: 0.85, // Slightly higher for more personality
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 256,
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
+
+    console.log('[Gemini] Response status:', response.status, response.statusText);
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('[Gemini] API error:', error);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error('[Gemini] API error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: error
+      });
+      
+      // Parse error details if JSON
+      let errorMessage = `Gemini API error: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(error);
+        if (errorJson.error?.message) {
+          errorMessage = errorJson.error.message;
+        }
+      } catch (e) {}
+      
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
