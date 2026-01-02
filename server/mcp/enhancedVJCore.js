@@ -83,6 +83,11 @@ class EnhancedVJCore {
     const { intent, payload } = detectedIntent;
 
     switch (intent) {
+      case 'greeting':
+        return {
+          response: `👋 Hey there! I'm DesiAgent, your personal AI DJ. Try asking me to "play a song", or "what's playing?" - I can search our library and help you discover new vibes!`,
+          action: null
+        };
       case 'play_suggestion':
         return await this.handlePlaySuggestion(payload, context);
       case 'search_song':
@@ -237,7 +242,11 @@ class EnhancedVJCore {
     const song = context.playerContext?.currentSong;
     
     if (!song || song.title === 'Unknown') {
-      return { response: '🎧 Nothing playing right now', action: null };
+      // Return a fun response instead of "nothing playing"
+      return { 
+        response: '🎵 Currently vibing to the sound of silence! 🔇 Try searching for a song or pick a channel first!', 
+        action: null 
+      };
     }
 
     return {

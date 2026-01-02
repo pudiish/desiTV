@@ -62,22 +62,13 @@ class EnvironmentConfig {
         return ''  // Vite proxy will forward /api/* to backend
       }
       
-      // PRODUCTION on Vercel: Routes are rewritten to API server
+      // PRODUCTION on Vercel/Render: Routes are rewritten to API server
+      // Vercel rewrites /api/* to backend, so use empty string
       if (hostname.includes('vercel.app')) {
         return ''  // Vercel rewrites handle /api/*
       }
       
-      // PRODUCTION on Render: Use explicit backend URL
-      if (hostname.includes('onrender.com')) {
-        // Check if VITE_API_BASE is set (from build-time env vars)
-        if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) {
-          return import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-        }
-        // Fallback to constructing Render backend URL (assumes desitv-server.onrender.com)
-        return 'https://desitv-api.onrender.com'
-      }
-      
-      // PRODUCTION on custom domain or other hosts
+      // PRODUCTION on Render or custom domain
       if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) {
         return import.meta.env.VITE_API_BASE.replace(/\/$/, '')
       }

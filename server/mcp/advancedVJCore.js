@@ -43,14 +43,15 @@ class ResponseCache {
 }
 
 const INTENT_PATTERNS = {
-  play_suggestion: { pattern: /(?:play|chal)\s+(.+)/i, confidence: 0.95 },
-  search_song: { pattern: /(?:search|find|dhundo)\s+(.+)/i, confidence: 0.9 },
+  greeting: { pattern: /^(?:hi|hey|hello|hiya|yo|sup|namaste|howdy)$/i, confidence: 0.99 },
+  play_suggestion: { pattern: /play\s+(.+)/i, confidence: 0.95 },
+  search_song: { pattern: /(?:search|find)\s+(.+)/i, confidence: 0.9 },
   mood_suggestion: { pattern: /(?:feeling|vibe|mood)\s+(.+)/i, confidence: 0.85 },
-  artist_search: { pattern: /(?:artist|singer)\s+(.+)/i, confidence: 0.9 },
+  artist_search: { pattern: /(?:artist|singer|by)\s+(.+)/i, confidence: 0.9 },
   genre_search: { pattern: /(?:genre|type)\s+(.+)/i, confidence: 0.9 },
-  current_playing: { pattern: /(?:what'?s? playing|now playing|current)/i, confidence: 0.95 },
-  yes_response: { pattern: /^(?:yes|yeah|sure|ok|haan|bilkul)$/i, confidence: 0.98 },
-  no_response: { pattern: /^(?:no|nah|nope|nahin|mat|nahi)$/i, confidence: 0.98 }
+  current_playing: { pattern: /(?:what|what's|whats|playing|now|current|song)/i, confidence: 0.95 },
+  yes_response: { pattern: /^(?:yes|yeah|sure|ok)$/i, confidence: 0.98 },
+  no_response: { pattern: /^(?:no|nah|nope)$/i, confidence: 0.98 }
 };
 
 class IntentDetector {

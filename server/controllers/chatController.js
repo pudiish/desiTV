@@ -16,7 +16,7 @@ async function initVJCore() {
 
 async function handleMessage(req, res) {
   try {
-    const { message, sessionId, userId, channelId } = req.body;
+    const { message, sessionId, userId, channelId, context } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
@@ -26,13 +26,16 @@ async function handleMessage(req, res) {
       return res.status(400).json({ error: 'Message too long' });
     }
 
+    // Extract channelId from context if not at top level
+    const actualChannelId = channelId || context?.currentChannelId;
+
     const vj = await initVJCore();
     const convId = sessionId || generateSessionId();
     let history = conversations.get(convId) || [];
 
-    console.log('[Chat] Processing:', { message, userId, channelId });
+    console.log('[Chat] Processing:', { message, userId, channelId: actualChannelId });
 
-    const result = await vj.processMessage(message, userId || convId, channelId);
+    const result = await vj.processMessage(message, userId || convId, actualChannelId);
 
     if (result.blocked) {
       return res.status(400).json({ response: result.response, blocked: true });
