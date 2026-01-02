@@ -176,8 +176,7 @@ class APIClientV2 {
    * Get video metadata
    */
   async getVideoMetadata(youtubeId) {
-    return this.request('POST', '/youtube/metadata', {
-      body: { youtubeId },
+    return this.request('GET', `/youtube/metadata?youtubeId=${encodeURIComponent(youtubeId)}`, {
       cacheKey: 'metadata'
     });
   }
