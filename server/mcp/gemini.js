@@ -8,11 +8,11 @@
 const { selectPersona, buildSystemPrompt, detectMood, getTimeOfDay } = require('./personas');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.google_ai || process.env.GOOGLE_AI_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b:generateContent';
 
 // Debug: log API key status (not the key itself)
 console.log('[Gemini] API Key configured:', !!GEMINI_API_KEY, 'Length:', GEMINI_API_KEY?.length || 0);
-console.log('[Gemini] Using model: gemini-2.5-flash-lite (high quota free tier)');
+console.log('[Gemini] Using model: gemma-3-4b (30 RPM free tier, higher quota)');
 
 /**
  * Make a request to Gemini API with persona support
