@@ -8,7 +8,7 @@
 const { selectPersona, buildSystemPrompt, detectMood, getTimeOfDay } = require('./personas');
 
 const GEMINI_API_KEY = process.env.GOOGLE_AI_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 // Debug: log API key status (not the key itself)
 if (!GEMINI_API_KEY) {
@@ -18,7 +18,7 @@ if (!GEMINI_API_KEY) {
   const keyPreview = GEMINI_API_KEY.substring(0, 20) + '...' + GEMINI_API_KEY.substring(GEMINI_API_KEY.length - 5);
   console.log('[Gemini] API Key loaded successfully:', keyPreview);
 }
-console.log('[Gemini] Using model: gemma-3-4b (30 RPM free tier)');
+console.log('[Gemini] Using model: gemini-2.5-flash');
 
 /**
  * Make a request to Gemini API with persona support
@@ -48,6 +48,13 @@ async function chat(userMessage, conversationHistory = [], context = {}) {
 
   // Build persona-aware system prompt
   let systemContext = buildSystemPrompt(persona, context);
+  
+  // For factual/knowledge queries, reduce persona influence
+  const looksLikeFactualQuery = /^(tell|what|who|when|where|why|how|about|explain|describe|list)/i.test(userMessage.trim());
+  
+  if (looksLikeFactualQuery) {
+    systemContext = 'You are a helpful, knowledgeable assistant. Provide accurate, factual information. Be friendly but informative.';
+  }
   
   // Add user profile info for personalization
   if (context.userProfile) {
@@ -119,7 +126,7 @@ async function chat(userMessage, conversationHistory = [], context = {}) {
         temperature: 0.85,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 256,
+        maxOutputTokens: 2048,
       }
     };
 
@@ -160,6 +167,9 @@ async function chat(userMessage, conversationHistory = [], context = {}) {
     if (!text) {
       throw new Error('No response from Gemini');
     }
+
+    console.log('[Gemini] Response text length:', text.length);
+    console.log('[Gemini] Response preview:', text.substring(0, 100));
 
     return text;
   } catch (error) {
