@@ -44,6 +44,8 @@ class ResponseCache {
 
 const INTENT_PATTERNS = {
   greeting: { pattern: /^(?:hi|hey|hello|hiya|yo|sup|namaste|howdy)$/i, confidence: 0.99 },
+  joke: { pattern: /(?:joke|funny|laugh|comedy|hilarious)/i, confidence: 0.9 },
+  suggestion: { pattern: /(?:suggest|recommend|pick|choose|what should|any suggestion)/i, confidence: 0.85 },
   play_suggestion: { pattern: /play\s+(.+)/i, confidence: 0.95 },
   search_song: { pattern: /(?:search|find)\s+(.+)/i, confidence: 0.9 },
   mood_suggestion: { pattern: /(?:feeling|vibe|mood)\s+(.+)/i, confidence: 0.85 },

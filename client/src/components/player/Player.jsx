@@ -88,7 +88,11 @@ onBufferingChange = null,
 	// Video validation utility - check video status before loading
 	// Defined early so it can be used in useEffect hooks
 	const validateVideoBeforeLoad = useCallback(async (videoId) => {
-		if (!videoId) return { valid: false, reason: 'No video ID' }
+		// Ensure videoId is a string, not an object
+		if (!videoId || typeof videoId !== 'string') {
+			console.warn('[Player] Invalid videoId type:', typeof videoId, videoId);
+			return { valid: false, reason: `Invalid video ID: ${typeof videoId}` };
+		}
 		
 		// Check cache first (valid for 5 minutes)
 		const cacheEntry = videoValidationCacheRef.current.get(videoId)

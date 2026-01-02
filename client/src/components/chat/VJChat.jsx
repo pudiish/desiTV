@@ -99,10 +99,16 @@ const VJChat = ({
       case 'PLAY_EXTERNAL':
         // Play external YouTube video on main TV
         console.log('[VJChat] Playing external YouTube on TV:', action.videoId);
+        // Validate videoId is a string, not an object
+        const validVideoId = typeof action.videoId === 'string' ? action.videoId : null;
+        if (!validVideoId) {
+          console.error('[VJChat] Invalid videoId passed to PLAY_EXTERNAL:', action.videoId);
+          return;
+        }
         if (onPlayExternal) {
           onPlayExternal({
-            videoId: action.videoId,
-            videoTitle: action.videoTitle,
+            videoId: validVideoId,
+            videoTitle: action.videoTitle || 'Unknown',
             thumbnail: action.thumbnail,
             channel: action.channel
           });

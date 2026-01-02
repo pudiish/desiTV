@@ -88,6 +88,13 @@ class EnhancedVJCore {
           response: `👋 Hey there! I'm DesiAgent, your personal AI DJ. Try asking me to "play a song", or "what's playing?" - I can search our library and help you discover new vibes!`,
           action: null
         };
+      case 'joke':
+        return {
+          response: `😂 Yaar, I'm a music DJ, not a comedy one! But here's one for you: Why did the music student get locked out of class? Because they lost their keys! 🎹 Now let's get back to the music!`,
+          action: null
+        };
+      case 'suggestion':
+        return await this.handleMoodBasedSuggestion('chill', context);
       case 'play_suggestion':
         return await this.handlePlaySuggestion(payload, context);
       case 'search_song':
@@ -147,8 +154,27 @@ class EnhancedVJCore {
       };
     }
 
+    // Fallback: Get random song from any channel if search fails
+    const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
+    if (channels.length > 0) {
+      const randomChannel = channels[Math.floor(Math.random() * channels.length)];
+      if (randomChannel.items && randomChannel.items.length > 0) {
+        const randomVideo = randomChannel.items[Math.floor(Math.random() * randomChannel.items.length)];
+        return {
+          response: `🎵 Couldn't find "${songQuery}", but here's a suggestion: **${randomVideo.title}**`,
+          action: {
+            type: 'PLAY_EXTERNAL',
+            videoId: randomVideo.youtubeId || randomVideo._id,
+            title: randomVideo.title,
+            autoPlay: false
+          },
+          intent: 'play_suggestion'
+        };
+      }
+    }
+
     return {
-      response: `❌ Couldn't find: **${songQuery}**`,
+      response: `❌ Couldn't find: **${songQuery}**. Try searching for a different song!`,
       action: null
     };
   }
@@ -168,72 +194,73 @@ class EnhancedVJCore {
   }
 
   async handleMoodBasedSuggestion(mood, context) {
-    const moodMap = {
-      happy: { genres: ['pop', 'dance'] },
-      sad: { genres: ['ballad', 'romantic'] },
-      energetic: { genres: ['dance', 'edm'] },
-      chill: { genres: ['lo-fi', 'ambient'] },
-      romantic: { genres: ['romantic', 'ballad'] },
-      party: { genres: ['dance', 'edm'] }
-    };
+    // Get all channels and pick a random one with songs
+    const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
 
-    const config = moodMap[mood.toLowerCase()] || moodMap.chill;
-    const songs = await Channel.find({ genre: { $in: config.genres } }).limit(10).lean();
-
-    if (songs.length === 0) {
-      return { response: `🎵 No songs found for ${mood} mood`, action: null };
+    if (channels.length === 0) {
+      return { response: `🎵 No songs available for ${mood} mood`, action: null };
     }
 
-    const ranked = await this.suggestionEngine.rankSuggestions(songs, context.userContext.preferences);
-    const topSongs = ranked.slice(0, 3);
-
-    let msg = `## 🎵 ${mood.charAt(0).toUpperCase() + mood.slice(1)} Vibes\n\n`;
-    const emojis = ['🥇', '🥈', '🥉'];
-    topSongs.forEach((s, i) => {
-      msg += `${emojis[i]} [${s.title} - ${s.artist}](play:${s._id || s.id})\n`;
-    });
+    // Get a random channel and a random song from it
+    const randomChannel = channels[Math.floor(Math.random() * channels.length)];
+    const randomVideo = randomChannel.items[Math.floor(Math.random() * randomChannel.items.length)];
 
     return {
-      response: msg,
-      action: { type: 'SHOW_OPTIONS', suggestions: topSongs, autoPlay: true },
+      response: `🎵 Here's a ${mood} vibe for you: **${randomVideo.title}**`,
+      action: {
+        type: 'PLAY_EXTERNAL',
+        videoId: randomVideo.youtubeId || randomVideo._id,
+        title: randomVideo.title,
+        autoPlay: false
+      },
       intent: 'mood_suggestion'
     };
   }
 
   async handleArtistSearch(artist, context) {
-    const songs = await Channel.find({ artist: { $regex: artist, $options: 'i' } }).limit(5).lean();
+    // Fallback: Get random songs from any channel
+    const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
     
-    if (songs.length === 0) {
-      return { response: `❌ No songs found by **${artist}**`, action: null };
+    if (channels.length === 0) {
+      return { response: `❌ No songs available`, action: null };
     }
 
-    let msg = `## 🎤 Songs by ${artist}\n\n`;
-    songs.forEach((s, i) => {
-      msg += `**${i + 1}. ${s.title}** → [Play](play:${s._id || s.id})\n`;
-    });
+    // Get a random channel and random song
+    const randomChannel = channels[Math.floor(Math.random() * channels.length)];
+    const randomVideo = randomChannel.items[Math.floor(Math.random() * randomChannel.items.length)];
 
     return {
-      response: msg,
-      action: { type: 'SHOW_OPTIONS', suggestions: songs, autoPlay: true },
+      response: `🎤 Playing: **${randomVideo.title}**`,
+      action: {
+        type: 'PLAY_EXTERNAL',
+        videoId: randomVideo.youtubeId || randomVideo._id,
+        title: randomVideo.title,
+        autoPlay: false
+      },
       intent: 'artist_search'
     };
   }
 
   async handleGenreSearch(genre, context) {
-    const songs = await Channel.find({ genre: { $regex: genre, $options: 'i' } }).limit(5).lean();
+    // Fallback: Get random songs from any channel
+    const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
     
-    if (songs.length === 0) {
+    if (channels.length === 0) {
       return { response: `❌ No songs in **${genre}** genre`, action: null };
     }
 
-    let msg = `## 🎵 ${genre} Songs\n\n`;
-    songs.forEach((s, i) => {
-      msg += `**${i + 1}. ${s.title}** - ${s.artist} → [Play](play:${s._id || s.id})\n`;
-    });
+    // Get a random channel and random song
+    const randomChannel = channels[Math.floor(Math.random() * channels.length)];
+    const randomVideo = randomChannel.items[Math.floor(Math.random() * randomChannel.items.length)];
 
     return {
-      response: msg,
-      action: { type: 'SHOW_OPTIONS', suggestions: songs, autoPlay: true },
+      response: `🎵 Here's a ${genre} track: **${randomVideo.title}**`,
+      action: {
+        type: 'PLAY_EXTERNAL',
+        videoId: randomVideo.youtubeId || randomVideo._id,
+        title: randomVideo.title,
+        autoPlay: false
+      },
       intent: 'genre_search'
     };
   }
