@@ -200,6 +200,19 @@ PORT="${PORT:-5000}"
 VITE_CLIENT_PORT="${VITE_CLIENT_PORT:-5173}"
 REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
 
+# Export critical environment variables for child processes
+export MONGO_URI
+export JWT_SECRET
+export ADMIN_USERNAME
+export ADMIN_PASSWORD
+export YOUTUBE_API_KEY
+export VITE_CLIENT_PORT
+export PORT
+export REDIS_URL
+export REDIS_FALLBACK_ENABLED
+export GOOGLE_AI_KEY
+export NODE_ENV="${NODE_ENV:-development}"
+
 # Update .env if values were missing
 if ! grep -q "^PORT=" .env 2>/dev/null; then
   echo "PORT=$PORT" >> .env
@@ -449,6 +462,35 @@ SERVER_PORT=$PORT
 CLIENT_PORT=$VITE_CLIENT_PORT
 
 echo "✅ Using ports: Server=$SERVER_PORT, Client=$CLIENT_PORT"
+echo ""
+
+# Verify all critical environment variables are set
+echo "🔍 Verifying environment variables..."
+MISSING_VARS=()
+
+if [ -z "$MONGO_URI" ]; then MISSING_VARS+=("MONGO_URI"); fi
+if [ -z "$GOOGLE_AI_KEY" ]; then MISSING_VARS+=("GOOGLE_AI_KEY"); fi
+if [ -z "$YOUTUBE_API_KEY" ]; then MISSING_VARS+=("YOUTUBE_API_KEY"); fi
+if [ -z "$JWT_SECRET" ]; then MISSING_VARS+=("JWT_SECRET"); fi
+if [ -z "$ADMIN_USERNAME" ]; then MISSING_VARS+=("ADMIN_USERNAME"); fi
+if [ -z "$ADMIN_PASSWORD" ]; then MISSING_VARS+=("ADMIN_PASSWORD"); fi
+if [ -z "$REDIS_URL" ]; then MISSING_VARS+=("REDIS_URL"); fi
+
+if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+  echo "❌ ERROR: Missing environment variables:"
+  printf '   - %s\n' "${MISSING_VARS[@]}"
+  echo ""
+  echo "💡 Tip: Update your .env file with the missing variables"
+  exit 1
+else
+  echo "✅ All critical environment variables are loaded:"
+  echo "   ✓ MONGO_URI=$(echo $MONGO_URI | cut -c1-40)..."
+  echo "   ✓ GOOGLE_AI_KEY=$(echo $GOOGLE_AI_KEY | cut -c1-20)..."
+  echo "   ✓ YOUTUBE_API_KEY=$(echo $YOUTUBE_API_KEY | cut -c1-20)..."
+  echo "   ✓ JWT_SECRET=$(echo $JWT_SECRET | cut -c1-20)..."
+  echo "   ✓ ADMIN_USERNAME=$ADMIN_USERNAME"
+  echo "   ✓ REDIS_URL=$REDIS_URL"
+fi
 echo ""
 
 echo ""
