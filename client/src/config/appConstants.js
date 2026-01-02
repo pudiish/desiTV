@@ -80,12 +80,13 @@ export const VJ_MESSAGES = {
   YOUTUBE_QUOTA: 'YouTube quota hit! Try later! 📺',
 };
 
+// ============= VJ ACTIONS =============
 export const VJ_ACTION_TYPES = {
   PLAY_VIDEO: 'PLAY_VIDEO',
   PLAY_EXTERNAL: 'PLAY_EXTERNAL',
   CHANGE_CHANNEL: 'CHANGE_CHANNEL',
   SHOW_INFO: 'SHOW_INFO',
-  NONE: 'NONE',
+  NONE: null,
 };
 
 // ============= ERROR CODES =============

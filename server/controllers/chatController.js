@@ -14,7 +14,6 @@ const {
   getPersonalizedSuggestions,
   extractPreferencesFromMessage 
 } = require('../mcp/userMemory');
-const logger = require('../utils/logger');
 
 // In-memory conversation cache
 const conversations = new Map();
@@ -39,14 +38,12 @@ async function handleMessage(req, res) {
     const convId = sessionId || generateSessionId();
     let history = conversations.get(convId) || [];
 
-    // Log context for debugging (message excluded in production to protect PII)
-    const isProduction = process.env.NODE_ENV === 'production';
-    const logData = {
-      ...(isProduction ? {} : { message }), // Only include message in development
+    // Log context for debugging
+    console.log('[Chat] Input:', { 
+      message, 
       channel: context.currentChannel,
       video: context.currentVideo?.title 
-    };
-    logger.debug('Chat', 'Input:', logData);
+    });
 
     // =========================================================================
     // CORE LOGIC: Process through VJCore
@@ -66,11 +63,24 @@ async function handleMessage(req, res) {
 
     if (result.passToAI) {
       // Only for general conversation - AI can respond
-      const userProfile = getUserProfile(convId);
-      response = await gemini.chat(message, history, {
-        ...context,
-        userProfile
-      });
+      try {
+        const userProfile = getUserProfile(convId);
+        response = await gemini.chat(message, history, {
+          ...context,
+          userProfile
+        });
+      } catch (aiError) {
+        // If AI fails (expired key, quota, etc), use fallback response
+        console.warn('[Chat] AI failed, using fallback response:', aiError.message);
+        if (aiError.message?.includes('API key') || aiError.message?.includes('INVALID_ARGUMENT')) {
+          // API key issue - return helpful message
+          response = "🎧 DJ Desi's brain is temporarily out of order (API key issue). Try a simpler question or contact admin!";
+        } else if (aiError.message?.includes('429') || aiError.message?.includes('quota')) {
+          response = "🔥 DJ Desi is overwhelmed! Too many requests. Take a breather and ask again later!";
+        } else {
+          response = "😅 Oops! DJ Desi couldn't understand that. Try asking differently!";
+        }
+      }
     } else if (result.message) {
       // Use pre-built message directly (NO AI HALLUCINATION)
       response = result.message;
@@ -126,10 +136,11 @@ async function handleMessage(req, res) {
     console.error('[Chat] Error:', error.message);
     console.error('[Chat] Full error:', error);
     
-    // Friendly error messages
-    if (error.message?.includes('API key')) {
+    // Friendly error messages based on actual error
+    if (error.message?.includes('API key') || error.message?.includes('INVALID_ARGUMENT')) {
+      console.error('[Chat] Gemini API key issue detected');
       return res.status(503).json({ 
-        error: 'VJ is taking a chai break ☕ Try again later!' 
+        error: 'VJ needs a working API key ☕ Please check GOOGLE_AI environment variable. Contact admin to fix this!' 
       });
     }
     

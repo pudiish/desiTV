@@ -9,14 +9,8 @@
 
 const fetch = require('node-fetch');
 
-// YouTube API Key - MUST be set in environment variables
-// Never hardcode API keys in source code!
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-
-if (!YOUTUBE_API_KEY) {
-  console.warn('[youtubeSearch] ⚠️  YOUTUBE_API_KEY not set in environment variables');
-  console.warn('[youtubeSearch] Set it in your .env file: YOUTUBE_API_KEY=your_key_here');
-}
+// YouTube API Key (we'll use the same approach as server config)
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAWlDmcM9i9FTvVPpM7Y91P3AjGBDK4YYg';
 
 // Content validation patterns
 const MUSIC_INDICATORS = [
@@ -60,11 +54,6 @@ async function searchYouTube(query, options = {}) {
     musicOnly = true, 
     type = 'video'
   } = options;
-  
-  // Check if API key is configured
-  if (!YOUTUBE_API_KEY) {
-    throw new Error('YOUTUBE_API_KEY not configured. Please set it in your .env file.');
-  }
   
   try {
     // Build search query - add music/song keywords if musicOnly
@@ -153,11 +142,6 @@ async function searchYouTube(query, options = {}) {
  * Get video details by ID
  */
 async function getVideoDetails(youtubeId) {
-  // Check if API key is configured
-  if (!YOUTUBE_API_KEY) {
-    throw new Error('YOUTUBE_API_KEY not configured. Please set it in your .env file.');
-  }
-  
   try {
     const params = new URLSearchParams({
       part: 'snippet,contentDetails,statistics',
@@ -207,7 +191,7 @@ async function getVideoDetails(youtubeId) {
 /**
  * Validate that content is appropriate (music/video song)
  */
-function isAppropriateContent(video, requireMusicIndicators = false) {
+function isAppropriateContent(video) {
   const titleLower = video.title.toLowerCase();
   const descLower = (video.description || '').toLowerCase();
   
@@ -240,12 +224,8 @@ function isAppropriateContent(video, requireMusicIndicators = false) {
   // If has music indicator, it's likely appropriate
   if (hasMusicIndicator) return true;
   
-  // If strict music validation required, reject non-music content
-  if (requireMusicIndicators) {
-    return false;
-  }
-  
-  // Otherwise, allow with lower confidence (category filter already applied)
+  // Otherwise, allow but with lower confidence
+  // (The YouTube category filter should have already filtered)
   return true;
 }
 

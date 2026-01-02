@@ -23,7 +23,6 @@
 const Channel = require('../models/Channel');
 const path = require('path');
 const fs = require('fs');
-const escapeStringRegexp = require('escape-string-regexp');
 
 // Import Knowledge Base and YouTube Search services
 const knowledgeBase = require('./knowledgeBase');
@@ -277,23 +276,10 @@ async function searchVideos(params = {}) {
       return { success: false, error: 'Query required', message: '🤔 What should I search for?' };
     }
 
-    // Enforce maximum query length to prevent ReDoS attacks
-    const MAX_QUERY_LENGTH = 500;
-    if (typeof query !== 'string' || query.length > MAX_QUERY_LENGTH) {
-      return { 
-        success: false, 
-        error: 'Query too long', 
-        message: `🔍 Query must be ${MAX_QUERY_LENGTH} characters or less. Please try a shorter search term.` 
-      };
-    }
-
-    // Escape regex metacharacters to prevent regex injection/ReDoS
-    const escapedQuery = escapeStringRegexp(query);
-
     // Search in channel items
     const channels = await Channel.find({
       isActive: true,
-      'items.title': { $regex: escapedQuery, $options: 'i' }
+      'items.title': { $regex: query, $options: 'i' }
     })
       .select('name category items')
       .lean();
@@ -388,12 +374,11 @@ async function getChannelSongs(params = {}) {
       return { success: false, error: 'Channel name required', message: '🤔 Which channel?' };
     }
 
-    const escapedChannelName = escapeStringRegexp(channelName);
     const channel = await Channel.findOne({
       isActive: true,
       $or: [
-        { name: { $regex: escapedChannelName, $options: 'i' } },
-        { category: { $regex: escapedChannelName, $options: 'i' } }
+        { name: { $regex: channelName, $options: 'i' } },
+        { category: { $regex: channelName, $options: 'i' } }
       ]
     })
       .select('name category items')
@@ -515,12 +500,11 @@ async function changeChannel(params = {}) {
     }
 
     // Find matching channel
-    const escapedChannelName = escapeStringRegexp(channelName);
     const channel = await Channel.findOne({
       isActive: true,
       $or: [
-        { name: { $regex: escapedChannelName, $options: 'i' } },
-        { category: { $regex: escapedChannelName, $options: 'i' } }
+        { name: { $regex: channelName, $options: 'i' } },
+        { category: { $regex: channelName, $options: 'i' } }
       ]
     })
       .select('name category _id items')
@@ -566,19 +550,15 @@ async function playVideo(params = {}) {
       return { success: false, error: 'Video search query required' };
     }
 
-    // Escape regex metacharacters to prevent regex injection
-    const escapedQuery = escapeStringRegexp(query);
-    const escapedChannelName = channelName ? escapeStringRegexp(channelName) : null;
-
     // Build search query
     let searchQuery = { 
       isActive: true,
-      'items.title': { $regex: escapedQuery, $options: 'i' }
+      'items.title': { $regex: query, $options: 'i' }
     };
 
     // Optional: filter by channel
-    if (channelName && escapedChannelName) {
-      searchQuery.name = { $regex: escapedChannelName, $options: 'i' };
+    if (channelName) {
+      searchQuery.name = { $regex: channelName, $options: 'i' };
     }
 
     const channels = await Channel.find(searchQuery)
@@ -1347,17 +1327,14 @@ function getThisDayInHistory() {
     };
   }
   
-  const events = Array.isArray(dayData.events) ? dayData.events : [];
-  const songs = Array.isArray(dayData.songs) ? dayData.songs : [];
-  
   return {
     success: true,
     thisDay: {
       date: dateKey,
-      events: events,
-      songs: songs
+      events: dayData.events,
+      songs: dayData.songs
     },
-    message: `📅 This Day in Bollywood!\n\n${events.join('\n')}\n\n🎵 Hit songs: ${songs.join(', ')}`
+    message: `📅 This Day in Bollywood!\n\n${dayData.events.join('\n')}\n\n🎵 Hit songs: ${dayData.songs.join(', ')}`
   };
 }
 
@@ -1402,19 +1379,13 @@ function checkTriviaAnswer(params = {}) {
   }
   
   const userAnswer = answer.toLowerCase().trim();
-  // Derive correctAnswer with null/type guard
-  const correctAnswer = (trivia && typeof trivia.answer === 'string') 
-    ? trivia.answer.toLowerCase() 
-    : '';
-  // Normalize acceptedAnswers with type guards
-  const acceptedAnswers = (trivia.acceptedAnswers && Array.isArray(trivia.acceptedAnswers))
-    ? trivia.acceptedAnswers.map(item => String(item).toLowerCase())
-    : (correctAnswer ? [correctAnswer] : []);
+  const correctAnswer = trivia.answer.toLowerCase();
+  const acceptedAnswers = trivia.acceptedAnswers || [correctAnswer];
   
   // Check if answer matches
   const isCorrect = acceptedAnswers.some(accepted => 
-    userAnswer.includes(accepted) || 
-    accepted.includes(userAnswer)
+    userAnswer.includes(accepted.toLowerCase()) || 
+    accepted.toLowerCase().includes(userAnswer)
   );
   
   if (isCorrect) {
@@ -1462,16 +1433,6 @@ function dedicateSong(params = {}) {
     return { success: false, message: '💝 Dedication system loading... try again!' };
   }
   
-  // Guard: verify intros is a non-empty array
-  if (!Array.isArray(dedication.intros) || dedication.intros.length === 0) {
-    return { success: false, message: '💝 Dedication system loading... try again!' };
-  }
-  
-  // Guard: verify songs is a non-empty array
-  if (!Array.isArray(dedication.songs) || dedication.songs.length === 0) {
-    return { success: false, message: '💝 Dedication system loading... try again!' };
-  }
-  
   const intro = dedication.intros[Math.floor(Math.random() * dedication.intros.length)];
   const song = dedication.songs[Math.floor(Math.random() * dedication.songs.length)];
   
@@ -1494,10 +1455,11 @@ function dedicateSong(params = {}) {
 }
 
 /**
- * Get movie memories - facts and trivia about classic Bollywood movies
+ * Get movie memories/facts
  */
-async function getMovieMemory(params = {}) {
+function getMovieMemory(params = {}) {
   const { movieName } = params;
+  
   const memories = vjContent.movieMemories || {};
   
   if (!movieName) {
@@ -1512,7 +1474,7 @@ async function getMovieMemory(params = {}) {
     return {
       success: true,
       movie: { name: randomKey, ...movie },
-      message: `🎬 MOVIE MEMORIES: ${randomKey} (${movie.year || 'Unknown'})\n\n📌 ${movie.fact || 'No fact available'}\n\n🎵 Songs: ${(movie.songs || []).join(', ') || 'None listed'}\n\n💬 "${movie.quote || ''}"`
+      message: `🎬 MOVIE MEMORIES: ${randomKey} (${movie.year})\n\n📌 ${movie.fact}\n\n🎵 Songs: ${movie.songs.join(', ')}\n\n💬 "${movie.quote}"`
     };
   }
   
@@ -1534,7 +1496,7 @@ async function getMovieMemory(params = {}) {
   return {
     success: true,
     movie: { name: foundKey, ...movie },
-    message: `🎬 MOVIE MEMORIES: ${foundKey} (${movie.year || 'Unknown'})\n\n📌 ${movie.fact || 'No fact available'}\n\n🎵 Songs: ${(movie.songs || []).join(', ') || 'None listed'}\n\n💬 "${movie.quote || ''}"`
+    message: `🎬 MOVIE MEMORIES: ${foundKey} (${movie.year})\n\n📌 ${movie.fact}\n\n🎵 Songs: ${movie.songs.join(', ')}\n\n💬 "${movie.quote}"`
   };
 }
 

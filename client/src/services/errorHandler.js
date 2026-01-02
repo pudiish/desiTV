@@ -36,10 +36,6 @@ const ErrorMessages = {
     user: 'No internet connection. Check your WiFi! 📡',
     severity: 'error'
   },
-  [ErrorCodes.API_ERROR]: {
-    user: 'Server error. Please try again or contact support.',
-    severity: 'error'
-  },
   [ErrorCodes.YOUTUBE_NOT_FOUND]: {
     user: 'Video not found on YouTube. Try a different query! 🔍',
     severity: 'warning'
@@ -48,16 +44,8 @@ const ErrorMessages = {
     user: 'YouTube quota exceeded. Try again later! 📺',
     severity: 'error'
   },
-  [ErrorCodes.YOUTUBE_INVALID]: {
-    user: 'Invalid YouTube link or ID. Check the URL and try again.',
-    severity: 'warning'
-  },
   [ErrorCodes.CHAT_TIMEOUT]: {
     user: 'DJ Desi is thinking... took too long! ⏱️',
-    severity: 'warning'
-  },
-  [ErrorCodes.CHAT_INVALID_INPUT]: {
-    user: 'Invalid chat input. Please correct your message and resend.',
     severity: 'warning'
   },
   [ErrorCodes.UNKNOWN]: {

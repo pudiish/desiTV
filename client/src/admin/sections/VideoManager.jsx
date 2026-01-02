@@ -129,8 +129,11 @@ export default function VideoManager() {
 			
 			// Sync the new (empty) channel state
 			syncBroadcastState(data._id)
+			} else {
+				setMessage({ type: 'error', text: `❌ ${data.message || 'Failed to create category'}` })
+			}
 		} catch (err) {
-			setMessage({ type: 'error', text: `❌ ${err.message || 'Failed to create category'}` })
+			setMessage({ type: 'error', text: `❌ ${err.message}` })
 		} finally {
 			setAddingChannel(false)
 		}
@@ -141,7 +144,7 @@ export default function VideoManager() {
 		setFetchingYT(true)
 		try {
 			// Use apiClientV2 which handles YouTube metadata with caching
-			const result = await apiClientV2.getVideoMetadata(id)
+			const result = await apiClientV2.getVideoMetadata({ youtubeId: id })
 			
 			if (result.success) {
 				const data = result.data
@@ -184,9 +187,7 @@ export default function VideoManager() {
 						setMessage({ type: 'error', text: '❌ Could not fetch YouTube data' })
 					}
 				} catch (oembedErr) {
-					console.error('oEmbed fetch error:', oembedErr)
-					const errorMessage = oembedErr?.message || oembedErr?.toString() || 'Could not fetch YouTube data'
-					setMessage({ type: 'error', text: `❌ ${errorMessage}` })
+					setMessage({ type: 'error', text: `❌ ${result.error?.userMessage || 'Could not fetch YouTube data'}` })
 				}
 			}
 		} catch (err) {

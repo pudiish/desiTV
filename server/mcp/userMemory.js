@@ -38,20 +38,7 @@ function createUserProfile() {
 /**
  * Get or create user profile
  */
-/**
- * Get user profile without side effects (for read operations)
- */
-function peekUserProfile(sessionId) {
-  if (!sessionId || !userMemory.has(sessionId)) {
-    return createUserProfile();
-  }
-  return userMemory.get(sessionId);
-}
-
-/**
- * Get or create user profile
- */
-function getUserProfile(sessionId, { trackInteraction = true } = {}) {
+function getUserProfile(sessionId) {
   if (!sessionId) return createUserProfile();
   
   if (!userMemory.has(sessionId)) {
@@ -59,11 +46,8 @@ function getUserProfile(sessionId, { trackInteraction = true } = {}) {
   }
   
   const profile = userMemory.get(sessionId);
-  
-  if (trackInteraction) {
-    profile.lastInteraction = Date.now();
-    profile.interactionCount++;
-  }
+  profile.lastInteraction = Date.now();
+  profile.interactionCount++;
   
   // Track active hours
   const hour = new Date().getHours();
@@ -251,31 +235,19 @@ function extractPreferencesFromMessage(message) {
 function cleanupOldUsers() {
   const cutoff = Date.now() - USER_MEMORY_TTL;
   for (const [sessionId, profile] of userMemory.entries()) {
-    // Treat missing/nullable lastInteraction as expired
-    if (!profile.lastInteraction || profile.lastInteraction < cutoff) {
+    if (profile.lastInteraction < cutoff) {
       userMemory.delete(sessionId);
     }
   }
 }
 
-// Periodic cleanup - store interval ID for cleanup
-let cleanupIntervalId = setInterval(cleanupOldUsers, 60 * 60 * 1000); // Every hour
-
-/**
- * Stop the periodic cleanup (useful for tests/hot-reload)
- */
-function stopCleanup() {
-  if (cleanupIntervalId) {
-    clearInterval(cleanupIntervalId);
-    cleanupIntervalId = null;
-  }
-}
+// Periodic cleanup
+setInterval(cleanupOldUsers, 60 * 60 * 1000); // Every hour
 
 module.exports = {
   getUserProfile,
   updateUserPreferences,
   getPersonalizedSuggestions,
   getPersonalizedGreeting,
-  extractPreferencesFromMessage,
-  stopCleanup
+  extractPreferencesFromMessage
 };

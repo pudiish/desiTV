@@ -2,7 +2,7 @@
   "trivia": [
     {
       "id": "t1",
-      "question": "Which 2005 film featured the hit song 'Kajra Re' with Aishwarya Rai, Abhishek and Amitabh Bachchan?",
+      "question": "Which 2006 film featured the hit song 'Kajra Re' with Aishwarya Rai, Abhishek and Amitabh Bachchan?",
       "answer": "Bunty Aur Babli",
       "acceptedAnswers": ["bunty aur babli", "bunty or babli", "bunty and babli"],
       "year": 2005,
@@ -59,7 +59,6 @@
       "question": "Which singer is known as the 'King of Playback Singing' in Bollywood?",
       "answer": "Mohammed Rafi",
       "acceptedAnswers": ["mohammed rafi", "mohammad rafi", "rafi", "rafi sahab"],
-      "year": 1966,
       "hint": "Legend from golden era",
       "difficulty": "medium"
     },
@@ -167,7 +166,6 @@
       "question": "Which music composer created 'Dil Se', 'Rang De Basanti', and 'Delhi 6' soundtracks?",
       "answer": "A.R. Rahman",
       "acceptedAnswers": ["ar rahman", "a.r. rahman", "rahman"],
-      "year": 1998,
       "hint": "Mozart of Madras",
       "difficulty": "medium"
     },
@@ -328,7 +326,7 @@
     },
     "christmas": {
       "greeting": "Merry Christmas! 🎄",
-      "songs": ["Chittiyaan Kalaiyaan", "Party songs"],
+      "songs": ["Jingle Bells (Bollywood style)", "Party songs"],
       "mood": "celebration, winter, party"
     }
   },

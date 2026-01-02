@@ -102,7 +102,7 @@ async function runTests() {
   // Test 8: Thanks
   console.log('\nTEST 8: Thanks');
   const thanks = await vjCore.processMessage('thank you', {});
-  if (thanks.message && (thanks.message.includes('welcome') || thanks.message.includes('pleasure') || thanks.message.length > 0)) {
+  if (thanks.message) {
     console.log('✅ PASS - Thanks response');
     passed++;
   } else {

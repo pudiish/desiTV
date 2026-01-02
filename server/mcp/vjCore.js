@@ -13,7 +13,6 @@ const Channel = require('../models/Channel');
 const { searchYouTube } = require('./youtubeSearch');
 const path = require('path');
 const fs = require('fs');
-const logger = require('../utils/logger');
 
 // Load VJ content
 let vjContent = {};
@@ -21,14 +20,6 @@ try {
   vjContent = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/vjContent.json'), 'utf8'));
 } catch (err) {
   console.warn('[VJCore] Could not load vjContent.json');
-}
-
-// Load knowledge base for channel search terms
-let knowledgeBase = null;
-try {
-  knowledgeBase = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/knowledgeBase.json'), 'utf8'));
-} catch (err) {
-  console.warn('[VJCore] Could not load knowledgeBase.json');
 }
 
 // ============================================================================
@@ -285,9 +276,8 @@ const INTENTS = {
     patterns: [
       /play\s+["']?(.+?)["']?\s*(?:from|on|via)\s*youtube/i,
       /(?:search|find)\s+["']?(.+?)["']?\s*(?:on|from)?\s*youtube/i,
-      /youtube\s*(?:se|par|pe)?\s*["']?(.+?)["']?/i
-      // Note: Generic "can you play through youtube" queries without a specific query
-      // are better handled by the general handler, which will prompt for clarification
+      /youtube\s*(?:se|par|pe)?\s*["']?(.+?)["']?/i,
+      /can\s*you\s*play\s*(?:through|from|on)\s*youtube/i
     ],
     handler: 'handleYouTubeSearch',
     extractParam: 1
@@ -332,21 +322,6 @@ const INTENTS = {
 
 function detectIntent(message) {
   const lower = message.toLowerCase().trim();
-  
-  // Handle very short ambiguous queries (like "live", "beats", etc.)
-  // These might be channel keywords, so we'll check in handleGeneral
-  const words = lower.split(/\s+/).filter(w => w.length > 0);
-  if (words.length === 1 && words[0].length >= 3 && words[0].length <= 20) {
-    // Single word that's not a greeting/thanks - might be channel name
-    const singleWord = words[0];
-    if (!/^(hi|hey|hello|thanks|thank|namaste|ok|yes|no|hmm|yeah|yup)$/i.test(singleWord)) {
-      return { 
-        intent: 'GENERAL', 
-        handler: 'handleGeneral',
-        param: singleWord
-      };
-    }
-  }
   
   for (const [intentName, config] of Object.entries(INTENTS)) {
     for (const pattern of config.patterns) {
@@ -438,8 +413,10 @@ async function handleSwitchChannel(context, param) {
   }
   
   try {
-    // Use the improved channel finder with fuzzy matching
-    const channel = await findChannelByName(param);
+    const channel = await Channel.findOne({
+      isActive: true,
+      name: { $regex: param, $options: 'i' }
+    }).select('name _id').lean();
     
     if (!channel) {
       const available = await Channel.find({ isActive: true }).select('name').lean();
@@ -464,88 +441,13 @@ async function handleSwitchChannel(context, param) {
   }
 }
 
-// Helper function to find channel by name (fuzzy matching with knowledgeBase support)
-async function findChannelByName(query) {
-  if (!query) return null;
-  
-  const channels = await Channel.find({ isActive: true })
-    .select('name _id')
-    .lean();
-  
-  const normalizedQuery = query.toLowerCase().trim();
-  
-  // Try exact match first (case-insensitive)
-  let exactMatch = channels.find(ch => 
-    ch.name.toLowerCase() === normalizedQuery
-  );
-  if (exactMatch) return exactMatch;
-  
-  // Try partial match (channel name contains query or vice versa)
-  let partialMatch = channels.find(ch => {
-    const chName = ch.name.toLowerCase();
-    return chName.includes(normalizedQuery) || normalizedQuery.includes(chName);
-  });
-  if (partialMatch) return partialMatch;
-  
-  // Try matching against knowledgeBase search terms (more flexible)
-  if (knowledgeBase && knowledgeBase.channels) {
-    for (const kbChannel of knowledgeBase.channels) {
-      if (kbChannel.searchTerms && kbChannel.searchTerms.length > 0) {
-        for (const term of kbChannel.searchTerms) {
-          const termLower = term.toLowerCase();
-          // Check if query matches any search term (exact or partial)
-          if (termLower === normalizedQuery || 
-              termLower.includes(normalizedQuery) || 
-              normalizedQuery.includes(termLower)) {
-            // Find the actual channel by ID (compare both as strings)
-            const matchedChannel = channels.find(ch => 
-              ch._id.toString() === kbChannel.id || 
-              ch._id.toString() === String(kbChannel.id)
-            );
-            if (matchedChannel) return matchedChannel;
-          }
-        }
-      }
-    }
-  }
-  
-  // Try fuzzy match on channel names
-  let bestChannel = null;
-  let bestScore = 0;
-  
-  for (const channel of channels) {
-    const score = fuzzyMatch(normalizedQuery, channel.name.toLowerCase());
-    if (score > bestScore && score >= 0.6) { // Lower threshold for channel names
-      bestScore = score;
-      bestChannel = channel;
-    }
-  }
-  
-  return bestChannel;
-}
-
 // Netflix-grade song search with fuzzy matching + YouTube fallback
 async function handlePlaySong(context, param) {
   if (!param) {
-    return { success: false, message: '🤔 Kya bajana hai? Gaane ka naam batao ya channel ka naam!' };
+    return { success: false, message: '🤔 Kya bajana hai? Gaane ka naam batao!' };
   }
   
   try {
-    // Step 0: FIRST check if param matches a channel name
-    // This handles cases like "play desi beats" or "play retro gold"
-    const channelMatch = await findChannelByName(param);
-    if (channelMatch) {
-      return {
-        success: true,
-        action: {
-          type: 'CHANGE_CHANNEL',
-          channelId: channelMatch._id.toString(),
-          channelName: channelMatch.name
-        },
-        message: `📺 Switching to ${channelMatch.name}!`
-      };
-    }
-    
     // Step 1: Search in our library with fuzzy matching
     const channels = await Channel.find({ isActive: true })
       .select('name items _id')
@@ -587,20 +489,7 @@ async function handlePlaySong(context, param) {
       };
     }
     
-    // Step 2: Not found in library
-    // For very short queries, suggest channels first
-    if (param.length < 5) {
-      const available = await Channel.find({ isActive: true }).select('name').lean();
-      const channelNames = available.slice(0, 4).map(c => c.name).join(', ');
-      return {
-        success: true,
-        message: `🔍 "${param}" nahi mila.\n\n📺 Available channels: ${channelNames}\n\n💡 Bolo "play ${param} from youtube" to search YouTube!`,
-        suggestYouTube: true,
-        searchQuery: param
-      };
-    }
-    
-    // For longer queries, offer YouTube search
+    // Step 2: Not found in library - offer YouTube search
     return {
       success: true,
       message: `🔍 "${param}" nahi mila library mein.\n\n💡 Bolo "play ${param} from youtube" to search YouTube!`,
@@ -726,40 +615,7 @@ function handleThanks() {
   };
 }
 
-async function handleGeneral(context, param) {
-  // Handle ambiguous single-word queries that might be channel names
-  if (param && param.trim().length > 2 && param.trim().length < 30) {
-    const trimmedParam = param.trim();
-    const channelMatch = await findChannelByName(trimmedParam);
-    if (channelMatch) {
-      return {
-        success: true,
-        action: {
-          type: 'CHANGE_CHANNEL',
-          channelId: channelMatch._id.toString(),
-          channelName: channelMatch.name
-        },
-        message: `📺 Switching to ${channelMatch.name}!`
-      };
-    }
-    
-    // If no channel match and query is very short, list available channels
-    if (trimmedParam.length < 6) {
-      try {
-        const available = await Channel.find({ isActive: true }).select('name').lean();
-        const channelNames = available.slice(0, 4).map(c => c.name).join(', ');
-        return {
-          success: true,
-          message: `🤔 "${trimmedParam}" samajh nahi aaya.\n\n📺 Try these channels: ${channelNames}\n\nYa bolo "play [gaane ka naam]"!`
-        };
-      } catch (err) {
-        logger.error('Error fetching channels:', err);
-        // Fall through to AI
-      }
-    }
-  }
-  
-  // For truly general conversation, pass to AI
+function handleGeneral() {
   return {
     success: true,
     passToAI: true,

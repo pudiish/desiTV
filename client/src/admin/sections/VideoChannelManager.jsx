@@ -29,17 +29,7 @@ export default function VideoChannelManager() {
       const result = await apiClientV2.getChannels()
       if (result.success) {
         // Handle both array and {data: array, checksum: ...} response formats
-        // Explicitly check each step to ensure we always get an array
-        let data = []
-        if (Array.isArray(result.data)) {
-          data = result.data
-        } else if (result.data && Array.isArray(result.data.data)) {
-          data = result.data.data
-        } else if (result.data && Array.isArray(result.data.items)) {
-          data = result.data.items
-        } else {
-          data = []
-        }
+        const data = Array.isArray(result.data) ? result.data : (result.data?.data || result.data || [])
         setChannels(data)
       }
     } catch (err) {

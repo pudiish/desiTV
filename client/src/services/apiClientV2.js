@@ -21,8 +21,6 @@ class APIClientV2 {
       suggestions: 2 * 60 * 1000, // 2 minutes
       metadata: 60 * 1000 // 1 minute
     };
-    this.csrfToken = null; // CSRF token cache
-    this.csrfTokenPromise = null; // Promise for token fetch in progress
   }
 
   /**
@@ -59,117 +57,47 @@ class APIClientV2 {
   }
 
   /**
-   * Get CSRF token from server
-   */
-  async getCsrfToken() {
-    // Return cached token if available
-    if (this.csrfToken) {
-      return this.csrfToken;
-    }
-
-    // If a fetch is already in progress, wait for it
-    if (this.csrfTokenPromise) {
-      return this.csrfTokenPromise;
-    }
-
-    // Fetch new token
-    this.csrfTokenPromise = fetch(`${this.baseURL}/csrf-token`)
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to get CSRF token: ${res.status}`);
-        }
-        const data = await res.json();
-        this.csrfToken = data.token;
-        this.csrfTokenPromise = null;
-        return data.token;
-      })
-      .catch((err) => {
-        this.csrfTokenPromise = null;
-        console.warn('[APIClientV2] CSRF token fetch failed:', err);
-        return null;
-      });
-
-    return this.csrfTokenPromise;
-  }
-
-  /**
-   * Clear CSRF token (force refresh on next request)
-   */
-  clearCsrfToken() {
-    this.csrfToken = null;
-    this.csrfTokenPromise = null;
-  }
-
-  /**
    * Generic fetch with timeout and error handling
    */
   async request(method, endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    
+    // DEBUG: Log the request
+    if (endpoint.includes('chat')) {
+      console.log(`[APIClientV2] ${method} ${url}`, { body: options.body });
+    }
 
     try {
       // Check cache for GET requests
       if (method === 'GET') {
-        const cacheKey = this.getCacheKey(endpoint);
+        const cacheKey = this.getCacheKey(endpoint, options.params);
         const cached = this.getCache(cacheKey);
         if (cached) {
           return { success: true, data: cached, fromCache: true };
         }
       }
 
-      // Get CSRF token for state-changing requests
-      const stateChangingMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
-      const needsCsrfToken = stateChangingMethods.includes(method.toUpperCase());
-      
-      let csrfToken = null;
-      if (needsCsrfToken) {
-        csrfToken = await this.getCsrfToken();
-        // If token fetch failed, retry once
-        if (!csrfToken) {
-          this.clearCsrfToken();
-          csrfToken = await this.getCsrfToken();
-        }
-        // If still no token, log warning but proceed (server will reject with 403)
-        if (!csrfToken) {
-          console.warn('[APIClientV2] CSRF token unavailable, request may fail');
-        }
-      }
-
-      // Build headers
-      const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
-      };
-
-      // Add CSRF token to headers if available
-      if (csrfToken) {
-        headers['X-CSRF-Token'] = csrfToken;
-      }
-
       const response = await fetch(url, {
         method,
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
-      // Update CSRF token from response header if present (token refresh)
-      const newCsrfToken = response.headers.get('X-CSRF-Token');
-      if (newCsrfToken) {
-        this.csrfToken = newCsrfToken;
-      }
-
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[APIClientV2] Response error ${response.status}: ${errorText}`);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const contentType = response.headers.get('content-type');
-      const data = contentType?.includes('application/json') 
-        ? await response.json() 
-        : null;
+      const data = await response.json();
 
       // Cache successful GET responses
       if (method === 'GET') {
@@ -248,7 +176,8 @@ class APIClientV2 {
    * Get video metadata
    */
   async getVideoMetadata(youtubeId) {
-    return this.request('GET', `/youtube/metadata?youtubeId=${encodeURIComponent(youtubeId)}`, {
+    return this.request('POST', '/youtube/metadata', {
+      body: { youtubeId },
       cacheKey: 'metadata'
     });
   }
@@ -314,7 +243,7 @@ export function useAPI(apiCall, dependencies = []) {
         }
       } catch (err) {
         if (isMounted) {
-          setError({ success: false, message: err.message });
+          setError(err.message);
         }
       } finally {
         if (isMounted) {

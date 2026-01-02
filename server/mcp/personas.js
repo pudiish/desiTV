@@ -74,13 +74,11 @@ function getTimeOfDay() {
  * Detect mood from message (simplified)
  */
 function detectMood(message) {
-  if (typeof message !== 'string') return 'default';
-  
   const lower = message.toLowerCase();
   
-  if (/sad|upset|lonely|miss|dukhi|udaas/.test(lower)) return 'chill';
-  if (/happy|excited|party|mast|maza/.test(lower)) return 'energetic';
-  if (/romantic|love|pyaar|ishq/.test(lower)) return 'romantic';
+  if (/sad|upset|lonely|miss|dukhi|udaas/i.test(lower)) return 'chill';
+  if (/happy|excited|party|mast|maza/i.test(lower)) return 'energetic';
+  if (/romantic|love|pyaar|ishq/i.test(lower)) return 'romantic';
   
   return 'default';
 }
@@ -110,7 +108,7 @@ function getGreeting() {
 /**
  * Build system prompt
  */
-function buildSystemPrompt(context = {}) {
+function buildSystemPrompt(persona, context = {}) {
   let prompt = VJ.systemPrompt;
   
   if (context.currentChannel) {

@@ -3,27 +3,19 @@
  * 
  * Client-side service for DesiTV VJ Assistant
  * Now uses unified apiClientV2 for consistent error handling and caching
- * 
- * IMPORTANT: This service is CLIENT-ONLY and must not be used in SSR contexts.
- * All functions accept sessionId as a parameter to avoid cross-request/user leakage.
- * Callers should manage sessionId in component state or a session manager.
  */
 
 import apiClientV2 from './apiClientV2';
 
-// Guard against SSR usage
-if (typeof window === 'undefined') {
-  console.warn('[ChatService] WARNING: This service is client-only and should not be used in SSR contexts.');
-}
+let sessionId = null;
 
 /**
  * Send a message to VJ Assistant
  * @param {string} message - User's message
  * @param {Object} context - Current context (channel, etc.)
- * @param {string|null} sessionId - Current session ID (null for new sessions)
- * @returns {Promise<Object>} Response with AI message and updated sessionId
+ * @returns {Promise<Object>} Response with AI message
  */
-export async function sendMessage(message, context = {}, sessionId = null) {
+export async function sendMessage(message, context = {}) {
   try {
     const result = await apiClientV2.sendChatMessage({
       message,
@@ -35,14 +27,15 @@ export async function sendMessage(message, context = {}, sessionId = null) {
       throw new Error(result.error?.userMessage || 'Chat request failed');
     }
 
-    // Return updated session ID if provided
-    const updatedSessionId = result.data.sessionId || sessionId;
+    // Update session ID if provided
+    if (result.data.sessionId) {
+      sessionId = result.data.sessionId;
+    }
     
     return {
       response: result.data.response,
       toolUsed: result.data.toolUsed,
-      action: result.data.action || null, // Include action for UI to execute
-      sessionId: updatedSessionId // Return updated session ID for caller to manage
+      action: result.data.action || null // Include action for UI to execute
     };
   } catch (error) {
     console.error('[ChatService] Error:', error);
@@ -79,7 +72,15 @@ export async function getSuggestions() {
   }
 }
 
+/**
+ * Reset chat session
+ */
+export function resetSession() {
+  sessionId = null;
+}
+
 export default {
   sendMessage,
-  getSuggestions
+  getSuggestions,
+  resetSession
 };

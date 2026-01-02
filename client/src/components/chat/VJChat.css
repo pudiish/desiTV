@@ -48,16 +48,6 @@
   border-color: #e5b685;
 }
 
-.vj-toggle-btn:focus-visible {
-  outline: 3px solid #d4a574;
-  outline-offset: 3px;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(212, 165, 116, 0.2),
-    0 0 20px rgba(212, 165, 116, 0.1),
-    0 0 0 2px rgba(212, 165, 116, 0.6);
-}
-
 .vj-btn-icon {
   position: relative;
   z-index: 2;
@@ -140,25 +130,19 @@
 }
 
 .vj-avatar {
+  font-size: 20px;
+}
+
+.vj-title {
+  font-weight: 600;
+  color: #d4a574;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
 .vj-status {
   font-size: 9px;
   color: #00ff88;
-  background: rgba(0, 255, 136, 0.1);
-  padding: 2px 6px;
-  border-radius: 8px;
-  animation: vj-blink 1.5s ease-in-out infinite;
-}
-
-@keyframes vj-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vj-status {
-    animation: none;
-  }
-}
   background: rgba(0, 255, 136, 0.1);
   padding: 2px 6px;
   border-radius: 8px;
@@ -181,13 +165,6 @@
 }
 
 .vj-close-btn:hover {
-  color: #d4a574;
-}
-
-.vj-close-btn:focus-visible {
-  outline: 2px solid #d4a574;
-  outline-offset: 2px;
-  border-radius: 4px;
   color: #d4a574;
 }
 
@@ -325,15 +302,6 @@
   transform: translateY(0);
 }
 
-.vj-quick-action-btn:focus-visible {
-  outline: 2px solid #d4a574;
-  outline-offset: 2px;
-  border-color: #d4a574;
-  box-shadow: 
-    0 2px 8px rgba(212, 165, 116, 0.2),
-    0 0 0 2px rgba(212, 165, 116, 0.4);
-}
-
 /* Suggestions */
 .vj-suggestions {
   display: flex;
@@ -357,14 +325,6 @@
 .vj-suggestion-chip:hover {
   background: rgba(212, 165, 116, 0.2);
   border-color: #d4a574;
-}
-
-.vj-suggestion-chip:focus-visible {
-  outline: 2px solid #d4a574;
-  outline-offset: 2px;
-  background: rgba(212, 165, 116, 0.2);
-  border-color: #d4a574;
-  box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.4);
 }
 
 /* Input Area */
@@ -419,14 +379,6 @@
 .vj-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.vj-send-btn:focus-visible:not(:disabled) {
-  outline: 3px solid #d4a574;
-  outline-offset: 2px;
-  box-shadow: 
-    0 2px 8px rgba(212, 165, 116, 0.3),
-    0 0 0 2px rgba(212, 165, 116, 0.5);
 }
 
 /* Mobile Responsive */
@@ -541,15 +493,6 @@
   border-color: #e5b685;
   color: #e5b685;
   transform: scale(1.1);
-}
-
-.vj-youtube-close:focus-visible {
-  outline: 3px solid #d4a574;
-  outline-offset: 3px;
-  border-color: #e5b685;
-  box-shadow: 
-    0 0 0 2px rgba(212, 165, 116, 0.6),
-    0 0 20px rgba(212, 165, 116, 0.4);
 }
 
 /* Mobile responsive */
