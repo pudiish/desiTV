@@ -178,6 +178,28 @@ app.get('/health', (req, res) => res.json({
 	}
 }));
 
+// Diagnostic endpoint - check API key configuration
+app.get('/api/diagnostics', (req, res) => {
+	const diagnostics = {
+		environment: isProduction ? 'production' : 'development',
+		nodeVersion: process.version,
+		apiKeys: {
+			geminiConfigured: !!(process.env.GEMINI_API_KEY || process.env.google_ai || process.env.GOOGLE_AI_KEY),
+			youtubeConfigured: !!process.env.YOUTUBE_API_KEY,
+			mongoConfigured: !!process.env.MONGO_URI
+		},
+		envVarsPresent: {
+			GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
+			google_ai: !!process.env.google_ai,
+			GOOGLE_AI_KEY: !!process.env.GOOGLE_AI_KEY,
+			YOUTUBE_API_KEY: !!process.env.YOUTUBE_API_KEY,
+			MONGO_URI: !!process.env.MONGO_URI
+		},
+		timestamp: new Date().toISOString()
+	};
+	res.json(diagnostics);
+});
+
 // error handler (last middleware)
 const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);

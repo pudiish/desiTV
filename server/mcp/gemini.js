@@ -14,10 +14,13 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 if (!GEMINI_API_KEY) {
   console.warn('[Gemini] WARNING: No API key found in environment variables!');
   console.warn('[Gemini] Checked: GEMINI_API_KEY, google_ai, GOOGLE_AI_KEY');
-  console.warn('[Gemini] Set one of these in your environment to enable Gemini API');
+  console.warn('[Gemini] Available env vars:', Object.keys(process.env).filter(k => k.toUpperCase().includes('API') || k.toUpperCase().includes('KEY')).join(', '));
+  console.warn('[Gemini] Set GEMINI_API_KEY or google_ai in your environment to enable Gemini API');
+} else {
+  const keyPreview = GEMINI_API_KEY.substring(0, 20) + '...' + GEMINI_API_KEY.substring(GEMINI_API_KEY.length - 5);
+  console.log('[Gemini] API Key loaded successfully:', keyPreview);
 }
-console.log('[Gemini] API Key configured:', !!GEMINI_API_KEY);
-console.log('[Gemini] Using model: gemma-3-4b (30 RPM free tier, higher quota)');
+console.log('[Gemini] Using model: gemma-3-4b (30 RPM free tier)');
 
 /**
  * Make a request to Gemini API with persona support
