@@ -10,10 +10,13 @@
 
 import React from 'react';
 import { errorHandler, ErrorCodes } from './errorHandler';
+import { envConfig } from '../config/environment';
 
 class APIClientV2 {
   constructor() {
-    this.baseURL = '/api';
+    // Get API base URL from environment config (supports local proxy and remote backends)
+    const apiBase = envConfig.apiBaseUrl;
+    this.baseURL = `${apiBase}/api`;
     this.timeout = 10000; // 10 seconds
     this.cache = new Map(); // Simple in-memory cache
     this.cacheTTL = {

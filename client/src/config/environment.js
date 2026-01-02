@@ -67,7 +67,17 @@ class EnvironmentConfig {
         return ''  // Vercel rewrites handle /api/*
       }
       
-      // PRODUCTION on Render or custom domain
+      // PRODUCTION on Render: Use explicit backend URL
+      if (hostname.includes('onrender.com')) {
+        // Check if VITE_API_BASE is set (from build-time env vars)
+        if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) {
+          return import.meta.env.VITE_API_BASE.replace(/\/$/, '')
+        }
+        // Fallback to constructing Render backend URL (assumes desitv-server.onrender.com)
+        return 'https://desitv-api.onrender.com'
+      }
+      
+      // PRODUCTION on custom domain or other hosts
       if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) {
         return import.meta.env.VITE_API_BASE.replace(/\/$/, '')
       }
