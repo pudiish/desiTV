@@ -9,8 +9,8 @@
 
 const fetch = require('node-fetch');
 
-// YouTube API Key (we'll use the same approach as server config)
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyAWlDmcM9i9FTvVPpM7Y91P3AjGBDK4YYg';
+// YouTube API Key - load from environment variable
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 // Content validation patterns
 const MUSIC_INDICATORS = [
@@ -54,6 +54,16 @@ async function searchYouTube(query, options = {}) {
     musicOnly = true, 
     type = 'video'
   } = options;
+  
+  // Validate API key is configured
+  if (!YOUTUBE_API_KEY) {
+    console.error('[YouTubeSearch] YOUTUBE_API_KEY is not configured');
+    return {
+      success: false,
+      error: 'YouTube API key not configured',
+      videos: []
+    };
+  }
   
   try {
     // Build search query - add music/song keywords if musicOnly
