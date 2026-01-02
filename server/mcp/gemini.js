@@ -11,7 +11,12 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.google_ai || pr
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b:generateContent';
 
 // Debug: log API key status (not the key itself)
-console.log('[Gemini] API Key configured:', !!GEMINI_API_KEY, 'Length:', GEMINI_API_KEY?.length || 0);
+if (!GEMINI_API_KEY) {
+  console.warn('[Gemini] WARNING: No API key found in environment variables!');
+  console.warn('[Gemini] Checked: GEMINI_API_KEY, google_ai, GOOGLE_AI_KEY');
+  console.warn('[Gemini] Set one of these in your environment to enable Gemini API');
+}
+console.log('[Gemini] API Key configured:', !!GEMINI_API_KEY);
 console.log('[Gemini] Using model: gemma-3-4b (30 RPM free tier, higher quota)');
 
 /**
