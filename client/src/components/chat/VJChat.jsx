@@ -32,6 +32,9 @@ const VJChat = ({
   onChangeChannel,
   onPlayVideo,
   onPlayExternal, // YouTube external video handler
+  onGoLive, // NEW: Go live handler
+  mode = 'live', // NEW: Current playback mode
+  isPlaying = false, // NEW: Is video playing
   isVisible = true
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -104,10 +107,18 @@ const VJChat = ({
         }
         break;
       
+      case 'GO_LIVE':
+        // Return to live/timeline mode
+        console.log('[VJChat] Going LIVE - returning to broadcast timeline');
+        if (onGoLive) {
+          onGoLive(action.channelId);
+        }
+        break;
+      
       default:
         console.log('[VJChat] Unknown action:', action.type);
     }
-  }, [onChangeChannel, onPlayVideo, onPlayExternal, channels]);
+  }, [onChangeChannel, onPlayVideo, onPlayExternal, onGoLive, channels]);
 
   const handleSend = useCallback(async (text = inputValue) => {
     if (!text.trim() || isLoading) return;
@@ -119,7 +130,7 @@ const VJChat = ({
     setIsLoading(true);
 
     try {
-      // Build context
+      // Build enriched context for backend
       const context = {
         currentChannel,
         currentChannelId,
@@ -130,7 +141,9 @@ const VJChat = ({
         } : null,
         nextVideo: nextVideo ? { title: nextVideo.title } : null,
         currentVideoIndex,
-        totalVideos
+        totalVideos,
+        mode, // 'live' | 'manual' | 'external'
+        isPlaying
       };
       
       console.log('[VJChat] Sending:', { message: userMessage, context });
@@ -153,7 +166,7 @@ const VJChat = ({
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, executeAction]);
+  }, [inputValue, isLoading, currentChannel, currentChannelId, currentVideo, nextVideo, currentVideoIndex, totalVideos, mode, isPlaying, executeAction]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

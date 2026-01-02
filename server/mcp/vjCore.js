@@ -187,7 +187,7 @@ function stringSimilarity(s1, s2) {
 }
 
 // ============================================================================
-// CONTEXT VALIDATION
+// CONTEXT VALIDATION - Enhanced with mode detection
 // ============================================================================
 function validateContext(context) {
   const clean = {
@@ -195,11 +195,23 @@ function validateContext(context) {
     hasChannel: false,
     video: null,
     channel: null,
+    channelId: null,
     contentType: 'video',
     videoIndex: 0,
     totalVideos: 0,
-    nextVideo: null
+    nextVideo: null,
+    mode: 'live', // 'live' | 'manual' | 'external'
+    isPlaying: false
   };
+  
+  // Debug log - helps troubleshoot context issues
+  console.log('[VJCore] Raw context received:', {
+    hasCurrentVideo: !!context?.currentVideo,
+    videoTitle: context?.currentVideo?.title?.substring(0, 30),
+    channel: context?.currentChannel,
+    channelId: context?.currentChannelId,
+    mode: context?.mode
+  });
   
   if (context.currentVideo && context.currentVideo.title) {
     clean.hasVideo = true;
@@ -217,8 +229,14 @@ function validateContext(context) {
     clean.channel = context.currentChannel;
   }
   
-  clean.videoIndex = context.currentVideoIndex || 0;
-  clean.totalVideos = context.totalVideos || 0;
+  if (context.currentChannelId) {
+    clean.channelId = context.currentChannelId;
+  }
+  
+  clean.videoIndex = context.currentVideoIndex ?? 0;
+  clean.totalVideos = context.totalVideos ?? 0;
+  clean.mode = context.mode || 'live';
+  clean.isPlaying = context.isPlaying ?? true;
   
   if (context.nextVideo && context.nextVideo.title) {
     clean.nextVideo = {
@@ -263,10 +281,31 @@ const INTENTS = {
     ],
     handler: 'handleChannels'
   },
+  // GO_LIVE must come before SWITCH_CHANNEL to avoid "go live" matching switch pattern
+  GO_LIVE: {
+    patterns: [
+      /go\s*(?:back\s*to\s*)?live/i,
+      /return\s*(?:to)?\s*live/i,
+      /sync\s*(?:with)?\s*(?:live|timeline|broadcast)/i,
+      /live\s*(?:mode|pe|par|chal)/i,
+      /timeline\s*(?:pe|par|mode)/i
+    ],
+    handler: 'handleGoLive'
+  },
+  // MODE must come before SWITCH_CHANNEL too
+  MODE: {
+    patterns: [
+      /(?:am\s*i|what)\s*(?:on|in)?\s*(?:live|manual)\s*(?:mode)?/i,
+      /(?:current|which)\s*mode/i,
+      /mode\s*kya\s*hai/i
+    ],
+    handler: 'handleGetMode'
+  },
   SWITCH_CHANNEL: {
     patterns: [
-      /(?:switch|change|go)\s*(?:to|into)?\s*(?:channel\s+)?["']?([^"']+?)["']?$/i,
-      /(?:tune|put)\s*(?:to|on)\s*["']?([^"']+?)["']?$/i
+      /(?:switch|change)\s*(?:to|into)?\s*(?:channel\s+)?["']?([^"']+?)["']?$/i,
+      /(?:tune|put)\s*(?:to|on)\s*["']?([^"']+?)["']?$/i,
+      /go\s*to\s*(?:channel\s+)?["']?([^"']+?)["']?$/i
     ],
     handler: 'handleSwitchChannel',
     extractParam: 1
@@ -615,6 +654,41 @@ function handleThanks() {
   };
 }
 
+// NEW: Go live handler - returns to timeline/broadcast mode
+function handleGoLive(context) {
+  const ctx = validateContext(context);
+  
+  return {
+    success: true,
+    action: {
+      type: 'GO_LIVE',
+      channelId: ctx.channelId
+    },
+    message: `📡 Going LIVE! Syncing with the broadcast timeline...`
+  };
+}
+
+// NEW: Get current mode handler
+function handleGetMode(context) {
+  const ctx = validateContext(context);
+  
+  const modeEmoji = ctx.mode === 'live' ? '📡' : ctx.mode === 'manual' ? '🎮' : '🔗';
+  const modeText = ctx.mode === 'live' ? 'LIVE broadcast' : ctx.mode === 'manual' ? 'MANUAL control' : 'External video';
+  
+  let response = `${modeEmoji} You're in ${modeText} mode!`;
+  
+  if (ctx.mode === 'manual') {
+    response += '\n\n💡 Say "go live" to sync back with the broadcast!';
+  } else if (ctx.mode === 'external') {
+    response += '\n\n💡 Press channel UP/DOWN to return to TV channels!';
+  }
+  
+  return {
+    success: true,
+    message: response
+  };
+}
+
 function handleGeneral() {
   return {
     success: true,
@@ -648,6 +722,8 @@ async function processMessage(message, context = {}) {
     handleShayari,
     handleGreeting,
     handleThanks,
+    handleGoLive,
+    handleGetMode,
     handleGeneral
   };
   

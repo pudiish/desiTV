@@ -995,6 +995,10 @@ export default function Home() {
 			// UI state
 			isVisible={tvState.power}
 			
+			// NEW: Playback mode and state
+			mode={tvState.externalVideo ? 'external' : (selectedCategory && broadcastStateManager.getMode(selectedCategory._id))}
+			isPlaying={playbackInfo?.isPlaying ?? false}
+			
 			// Action handlers
 			onChangeChannel={(channel) => {
 				// Handle channel change from VJ chat
@@ -1005,6 +1009,10 @@ export default function Home() {
 					if (targetCategory) {
 						console.log('[VJChat] Changing channel to:', targetCategory.name);
 						setCategory(targetCategory.name);
+						actions.setStatusMessage(`📺 Switching to ${targetCategory.name}...`);
+					} else {
+						console.warn('[VJChat] Channel not found:', channel);
+						actions.setStatusMessage(`❌ Channel not found`);
 					}
 				}
 			}}
@@ -1041,6 +1049,21 @@ export default function Home() {
 					channelId: 'external'
 				});
 				actions.setStatusMessage(`🎬 Playing: ${videoTitle}`);
+			}}
+			onGoLive={(channelId) => {
+				// NEW: Return to live/timeline mode
+				const targetChannelId = channelId || selectedCategory?._id;
+				if (targetChannelId) {
+					console.log('[VJChat] Going LIVE - returning to timeline for:', targetChannelId);
+					// Clear external video if playing
+					if (tvState.externalVideo) {
+						actions.clearExternalVideo();
+					}
+					// Reset to timeline mode
+					broadcastStateManager.setManualMode(targetChannelId, false);
+					broadcastStateManager.resetChannelOffset(targetChannelId);
+					actions.setStatusMessage(`📡 LIVE - Synced with broadcast!`);
+				}
 			}}
 		/>
 		
