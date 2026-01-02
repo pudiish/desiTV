@@ -1,24 +1,26 @@
 /**
- * VJChat - Minimal VJ Assistant Chat Component
+ * VJChat - Netflix-Grade AI Assistant Chat
  * 
- * SIMPLIFIED:
- * - Single persona: DJ Desi
- * - Only high-accuracy quick actions
- * - Clean, minimal UI
+ * DESIGN PRINCIPLES:
+ * - Clean, minimal interface (only essential UI)
+ * - Fast response feedback
+ * - Focus on experimentation & understanding
+ * - App-integrated styling (matches DesiTV aesthetic)
+ * - Progressive disclosure (more features as needed)
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { sendMessage } from '../../services/chatService';
 import './VJChat.css';
 
-// Single VJ Persona
-const VJ = { name: 'DJ Desi', avatar: '🎧' };
+// DesiAgent - AI Assistant for DesiTV
+const VJ = { name: 'DesiAgent', avatar: '🤖', color: '#d4a574' };
 
-// Only high-accuracy quick actions
+// High-confidence actions for instant response
 const QUICK_ACTIONS = [
-  { id: 'playing', label: "🎵 What's playing?", message: "What song is playing?" },
-  { id: 'channels', label: '📺 Channels', message: 'What channels do you have?' },
-  { id: 'trivia', label: '🎯 Trivia', message: 'Give me a trivia!' }
+  { id: 'playing', label: "What's playing?", message: "What song is playing?", icon: '🎵' },
+  { id: 'channels', label: 'Channels', message: 'What channels do you have?', icon: '📺' },
+  { id: 'trivia', label: 'Trivia', message: 'Give me a trivia!', icon: '🎯' }
 ];
 
 const VJChat = ({ 
@@ -62,7 +64,7 @@ const VJChat = ({
     if (isOpen && messages.length === 0) {
       const welcomeMsg = currentVideo?.title 
         ? `${VJ.avatar} Hey! I'm ${VJ.name}. You're watching "${currentVideo.title}". Ask me anything!`
-        : `${VJ.avatar} Hey! I'm ${VJ.name}, your DesiTV VJ! Try the buttons below or just ask!`;
+        : `${VJ.avatar} Yo! I'm ${VJ.name}, your AI sidekick on DesiTV! Try the buttons below or drop a command!`;
       setMessages([{ role: 'assistant', content: welcomeMsg }]);
     }
   }, [isOpen, messages.length, currentVideo?.title]);
@@ -179,6 +181,191 @@ const VJChat = ({
     handleSend(action.message);
   };
 
+  // Parse markdown for clickable options
+  const parseMessageContent = (content) => {
+    if (typeof content !== 'string') return content;
+    
+    // Check for clickable option format: [🎵 Song Name - Artist](play:video-id)
+    const optionRegex = /\[([^\]]+)\]\(play:([^)]+)\)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = optionRegex.exec(content)) !== null) {
+      // Add text before link
+      if (match.index > lastIndex) {
+        parts.push({
+          type: 'text',
+          content: content.substring(lastIndex, match.index)
+        });
+      }
+      
+      // Add clickable option
+      const [, label, videoId] = match;
+      parts.push({
+        type: 'option',
+        label,
+        videoId
+      });
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        type: 'text',
+        content: content.substring(lastIndex)
+      });
+    }
+    
+    return parts.length > 0 ? parts : [{ type: 'text', content }];
+  };
+
+  // Parse markdown formatting
+  const parseMarkdownLine = (line) => {
+    if (!line) return <br key={Math.random()} />;
+
+    // Headings: # Title → <h3>, ## Title → <h4>, ### Title → <h5>
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const headingLevel = 2 + level; // # = h3, ## = h4, ### = h5
+      const HeadingTag = `h${headingLevel}`;
+      return (
+        <HeadingTag key={Math.random()} className="vj-msg-heading">
+          {parseInlineMarkdown(headingMatch[2])}
+        </HeadingTag>
+      );
+    }
+
+    // Dividers: --- or ===
+    if (/^[-=]{3,}$/.test(line)) {
+      return <hr key={Math.random()} className="vj-msg-divider" />;
+    }
+
+    // Unordered lists: -, *, or +
+    const listMatch = line.match(/^[\s]*[-*+]\s+(.+)$/);
+    if (listMatch) {
+      return (
+        <li key={Math.random()} className="vj-msg-list-item">
+          {parseInlineMarkdown(listMatch[1])}
+        </li>
+      );
+    }
+
+    // Ordered lists: 1., 2., etc.
+    const orderedMatch = line.match(/^[\s]*\d+\.\s+(.+)$/);
+    if (orderedMatch) {
+      return (
+        <li key={Math.random()} className="vj-msg-list-item">
+          {parseInlineMarkdown(orderedMatch[1])}
+        </li>
+      );
+    }
+
+    // Regular paragraph with inline markdown
+    return (
+      <span key={Math.random()}>
+        {parseInlineMarkdown(line)}
+      </span>
+    );
+  };
+
+  // Parse inline markdown: **bold**, *italic*, `code`
+  const parseInlineMarkdown = (text) => {
+    const parts = [];
+    let lastIndex = 0;
+    
+    // Match **bold**, *italic*, `code`, and [links](url)
+    const regex = /(\*\*[^\*]+\*\*|\*[^\*]+\*|`[^`]+`|\[[^\]]+\]\([^\)]+\))/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      // Add text before match
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+
+      const matched = match[0];
+      
+      // Bold: **text**
+      if (matched.startsWith('**') && matched.endsWith('**')) {
+        parts.push(
+          <strong key={match.index} className="vj-msg-bold">
+            {matched.slice(2, -2)}
+          </strong>
+        );
+      }
+      // Italic: *text*
+      else if (matched.startsWith('*') && matched.endsWith('*')) {
+        parts.push(
+          <em key={match.index} className="vj-msg-italic">
+            {matched.slice(1, -1)}
+          </em>
+        );
+      }
+      // Code: `text`
+      else if (matched.startsWith('`') && matched.endsWith('`')) {
+        parts.push(
+          <code key={match.index} className="vj-msg-code">
+            {matched.slice(1, -1)}
+          </code>
+        );
+      }
+
+      lastIndex = match.index + matched.length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
+  const renderMessageContent = (content) => {
+    const parts = parseMessageContent(content);
+    
+    return parts.map((part, idx) => {
+      if (part.type === 'text') {
+        // Split by newlines and parse markdown formatting
+        const lines = part.content.split('\n');
+        return (
+          <div key={idx} className="vj-msg-text">
+            {lines.map((line, lineIdx) => (
+              <React.Fragment key={lineIdx}>
+                {parseMarkdownLine(line)}
+                {lineIdx < lines.length - 1 && <div style={{ height: '4px' }} />}
+              </React.Fragment>
+            ))}
+          </div>
+        );
+      } else if (part.type === 'option') {
+        return (
+          <button
+            key={idx}
+            className="vj-msg-option"
+            onClick={() => {
+              // Extract video data from label if it contains it
+              const videoAction = {
+                type: 'PLAY_EXTERNAL',
+                videoId: part.videoId,
+                videoTitle: part.label.replace(/^[🎵📺🎯]*\s*/, '') // Remove emoji prefix
+              };
+              executeAction(videoAction);
+              setInputValue('');
+            }}
+            title={`Play: ${part.label}`}
+          >
+            {part.label}
+          </button>
+        );
+      }
+    });
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -211,7 +398,9 @@ const VJChat = ({
                 {msg.role === 'assistant' && (
                   <span className="vj-msg-avatar">{VJ.avatar}</span>
                 )}
-                <div className="vj-msg-content">{msg.content}</div>
+                <div className="vj-msg-content">
+                  {renderMessageContent(msg.content)}
+                </div>
               </div>
             ))}
             {isLoading && (
@@ -233,8 +422,10 @@ const VJChat = ({
                   key={action.id}
                   className="vj-quick-action-btn"
                   onClick={() => handleQuickAction(action)}
+                  title={action.label}
                 >
-                  {action.label}
+                  <span className="icon">{action.icon}</span>
+                  <span className="label">{action.label}</span>
                 </button>
               ))}
             </div>
@@ -248,7 +439,7 @@ const VJChat = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask DJ Desi anything..."
+              placeholder="Ask DesiAgent..."
               disabled={isLoading}
               maxLength={200}
             />
@@ -267,7 +458,7 @@ const VJChat = ({
       <button
         className={`vj-toggle-btn ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
-        title="Ask DJ Desi"
+        title="Ask DesiAgent"
         aria-label="Toggle VJ Chat"
       >
         <span className="vj-btn-icon">{VJ.avatar}</span>

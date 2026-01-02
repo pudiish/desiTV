@@ -1,143 +1,58 @@
-/**
- * Chat Controller - Minimal Clean Architecture
- * 
- * RULE: Use VJCore for all message processing
- * VJCore handles factual queries with pre-built messages (NO AI)
- * Only general conversation goes to AI
- */
+const EnhancedVJCore = require('../mcp/enhancedVJCore');
+const userMemory = require('../mcp/userMemory');
+const broadcastStateService = require('../services/broadcastStateService');
 
-const vjCore = require('../mcp/vjCore');
-const { gemini } = require('../mcp');
-const { 
-  getUserProfile, 
-  updateUserPreferences, 
-  getPersonalizedSuggestions,
-  extractPreferencesFromMessage 
-} = require('../mcp/userMemory');
-
-// In-memory conversation cache
 const conversations = new Map();
-const CONVERSATION_TTL = 30 * 60 * 1000; // 30 minutes
+const CONVERSATION_TTL = 30 * 60 * 1000;
 
-/**
- * Handle chat message - MINIMAL VERSION
- */
+let vjCore = null;
+
+async function initVJCore() {
+  if (!vjCore) {
+    vjCore = new EnhancedVJCore(userMemory, broadcastStateService);
+  }
+  return vjCore;
+}
+
 async function handleMessage(req, res) {
   try {
-    const { message, sessionId, context = {} } = req.body;
+    const { message, sessionId, userId, channelId } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
     }
 
     if (message.length > 500) {
-      return res.status(400).json({ error: 'Message too long (max 500 chars)' });
+      return res.status(400).json({ error: 'Message too long' });
     }
 
-    // Get or create session
+    const vj = await initVJCore();
     const convId = sessionId || generateSessionId();
     let history = conversations.get(convId) || [];
 
-    // Log context for debugging
-    console.log('[Chat] Input:', { 
-      message, 
-      channel: context.currentChannel,
-      video: context.currentVideo?.title 
-    });
+    console.log('[Chat] Processing:', { message, userId, channelId });
 
-    // =========================================================================
-    // CORE LOGIC: Process through VJCore
-    // VJCore returns pre-built messages for factual queries (no hallucination)
-    // Only passes to AI for general conversation
-    // =========================================================================
-    const result = await vjCore.processMessage(message, context);
-    console.log('[Chat] VJCore result:', { 
-      success: result.success, 
-      hasMessage: !!result.message,
-      passToAI: result.passToAI,
-      action: result.action
-    });
+    const result = await vj.processMessage(message, userId || convId, channelId);
 
-    let response;
-    let action = result.action || null;
-
-    if (result.passToAI) {
-      // Only for general conversation - AI can respond
-      try {
-        const userProfile = getUserProfile(convId);
-        console.log('[Chat] Calling Gemini API with:', {
-          messageLength: message.length,
-          historyLength: history.length,
-          hasProfile: !!userProfile
-        });
-        response = await gemini.chat(message, history, {
-          ...context,
-          userProfile
-        });
-        console.log('[Chat] Gemini response received:', {
-          length: response.length,
-          preview: response.substring(0, 50)
-        });
-      } catch (aiError) {
-        // If AI fails (expired key, quota, etc), use fallback response
-        console.error('[Chat] AI error caught:', {
-          message: aiError.message,
-          type: aiError.constructor.name,
-          fullError: aiError
-        });
-        if (aiError.message?.includes('API key') || aiError.message?.includes('INVALID_ARGUMENT')) {
-          // API key issue - return helpful message
-          response = "🎧 DJ Desi's brain is temporarily out of order (API key issue). Try a simpler question or contact admin!";
-        } else if (aiError.message?.includes('429') || aiError.message?.includes('quota')) {
-          response = "🔥 DJ Desi is overwhelmed! Too many requests. Take a breather and ask again later!";
-        } else {
-          response = "😅 Oops! DJ Desi couldn't understand that. Try asking differently!";
-        }
-      }
-    } else if (result.message) {
-      // Use pre-built message directly (NO AI HALLUCINATION)
-      response = result.message;
-    } else {
-      response = '🤔 Samajh nahi aaya. Phir se bolo?';
+    if (result.blocked) {
+      return res.status(400).json({ response: result.response, blocked: true });
     }
 
-    // Update preferences if action taken
-    if (action) {
-      if (action.type === 'CHANGE_CHANNEL') {
-        updateUserPreferences(convId, { channel: action.channelName });
-      } else if (action.type === 'PLAY_VIDEO') {
-        updateUserPreferences(convId, { 
-          song: action.videoTitle,
-          channel: action.channelName 
-        });
-      }
-    }
+    let response = result.response;
+    const action = result.action || null;
 
-    // Extract and update preferences from message
-    const extractedPrefs = extractPreferencesFromMessage(message);
-    if (Object.keys(extractedPrefs).length > 0) {
-      updateUserPreferences(convId, extractedPrefs);
-    }
-
-    // Update conversation history
     history.push({ role: 'user', content: message });
     history.push({ role: 'assistant', content: response });
     
-    // Keep only last 10 messages
     if (history.length > 10) {
       history = history.slice(-10);
     }
     
     conversations.set(convId, history);
 
-    // Clean up old conversations periodically
     if (Math.random() < 0.1) {
       cleanupConversations();
     }
-
-    console.log('[Chat] Final response:', {
-      action
-    });
 
     res.json({
       response,
@@ -147,52 +62,23 @@ async function handleMessage(req, res) {
 
   } catch (error) {
     console.error('[Chat] Error:', error.message);
-    console.error('[Chat] Full error:', error);
-    
-    // Friendly error messages based on actual error
-    if (error.message?.includes('API key') || error.message?.includes('INVALID_ARGUMENT')) {
-      console.error('[Chat] Gemini API key issue detected');
-      return res.status(503).json({ 
-        error: 'VJ needs a working API key ☕ Please check GOOGLE_AI environment variable. Contact admin to fix this!' 
-      });
-    }
-    
-    if (error.message?.includes('429') || error.message?.includes('quota')) {
-      return res.status(503).json({ 
-        error: 'VJ is too popular today! 🔥 Free quota hit - try again in a few seconds or tomorrow!' 
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Oops! VJ got confused 😅 Try asking differently?' 
-    });
+    res.status(500).json({ error: 'Processing failed' });
   }
 }
 
-/**
- * Get suggestions based on context and user history
- */
 async function getSuggestions(req, res) {
   try {
     const { sessionId } = req.query;
-    
-    let suggestions;
-    if (sessionId) {
-      suggestions = getPersonalizedSuggestions(sessionId);
-    } else {
-      suggestions = [
-        "What's playing now? 🎵",
-        "What channels do you have? 📺",
-        "Play some party music 🎉",
-        "Give me a trivia! 🎯",
-        "Share a shayari 💕"
-      ];
-    }
-
+    const suggestions = [
+      "What's playing now? 🎵",
+      "Play party music 🎉",
+      "Random song 🎸",
+      "Comedy videos 😂"
+    ];
     res.json({ suggestions });
   } catch (error) {
-    console.error('[Chat] Suggestions error:', error);
-    res.status(500).json({ error: 'Failed to get suggestions' });
+    console.error('[Chat] Suggestions error:', error.message);
+    res.status(500).json({ error: 'Failed' });
   }
 }
 

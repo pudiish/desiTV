@@ -631,23 +631,37 @@ async function searchYouTubeForSong(params = {}) {
         message: `🔍 Could not find "${query}" on YouTube. Try:\n• Different song name\n• Add artist name\n• Check spelling`
       };
     }
+
+    // Format multiple results as clickable options
+    const options = ytResult.videos.slice(0, 3); // Top 3 results
     
-    const video = ytResult.bestMatch;
+    let messageLines = [`🎵 Found on YouTube! Pick a song:\n`];
+    const optionButtons = options.map((video, idx) => {
+      const duration = video.durationFormatted || 'Unknown';
+      const label = `${video.title} - ${video.channel}`;
+      return `[${label}](play:${video.youtubeId})`;
+    }).join('\n');
+    
+    const message = messageLines.join('') + optionButtons;
+    
+    // Return first match for automatic action, but show all options in message
+    const firstVideo = options[0];
     return {
       success: true,
       source: 'youtube',
       video: {
-        title: video.title,
-        youtubeId: video.youtubeId,
-        channel: video.channel,
-        thumbnail: video.thumbnail,
-        duration: video.durationFormatted
+        title: firstVideo.title,
+        youtubeId: firstVideo.youtubeId,
+        channel: firstVideo.channel,
+        thumbnail: firstVideo.thumbnail,
+        duration: firstVideo.durationFormatted
       },
-      message: `🎵 Found on YouTube!\n\n"${video.title}"\nby ${video.channel}\n\n⏱️ Duration: ${video.durationFormatted || 'Unknown'}\n\nSay "play this" to play it!`,
+      message,
+      videos: options, // All options for reference
       action: {
         type: 'PLAY_EXTERNAL',
-        videoId: video.youtubeId,
-        videoTitle: video.title
+        videoId: firstVideo.youtubeId,
+        videoTitle: firstVideo.title
       }
     };
   } catch (error) {

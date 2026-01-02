@@ -23,6 +23,44 @@ try {
 }
 
 // ============================================================================
+// SIMPLE STRING SIMILARITY (Levenshtein Distance)
+// ============================================================================
+function stringSimilarity(str1, str2) {
+  if (!str1 || !str2) return 0;
+  
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
+  
+  if (s1 === s2) return 1;
+  if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+  
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  
+  const editDistance = levenshteinDistance(shorter, longer);
+  return 1 - (editDistance / longer.length);
+}
+
+function levenshteinDistance(s1, s2) {
+  const costs = [];
+  for (let i = 0; i <= s1.length; i++) {
+    let lastValue = i;
+    for (let j = 0; j <= s2.length; j++) {
+      if (i === 0) {
+        costs[j] = j;
+      } else if (j > 0) {
+        const newValue = costs[j - 1];
+        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+          costs[j - 1] = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+        }
+        lastValue = costs[j];
+      }
+    }
+  }
+  return costs[s2.length];
+}
+
+// ============================================================================
 // CONTENT TYPE DETECTION
 // ============================================================================
 const CONTENT_PATTERNS = {
@@ -39,6 +77,54 @@ const CONTENT_PATTERNS = {
     /movie/i, /film/i, /full\s*movie/i, /cinema/i
   ]
 };
+
+// ============================================================================
+// CONTENT FILTERING - DesiTV Only (No explicit, no general knowledge)
+// ============================================================================
+const BLOCKED_PATTERNS = {
+  explicit: [
+    /sex|porn|xxx|nude|adult|18+|18\+|masturbat|dildo|gay|lesbian|kiss|romance|dating|dating tips|bed room|bedroom/i,
+    /mms|leak|viral|hot body|bikini|swimsuit/i,
+    /relationship|crush|propose|propose to|marriage tips|how to impress/i,
+  ],
+  general_knowledge: [
+    /^(?:what|who|when|where|why|how)\s+(?:is|are|was|were|do|does)\s+(?!.*(?:song|music|comedy|movie|channel|video))/i,
+    /physics|chemistry|math|biology|history|geography|science|coding|programming|algorithm/i,
+    /covid|vaccine|election|politics|war|military|terrorism/i,
+    /investment|stock|crypto|forex|trading|business plan/i,
+    /homework|assignment|exam|study|tutorial/i
+  ]
+};
+
+function detectIfBlocked(message) {
+  const msg = message.toLowerCase();
+  
+  for (const pattern of BLOCKED_PATTERNS.explicit) {
+    if (pattern.test(msg)) {
+      return {
+        blocked: true,
+        reason: 'explicit',
+        message: '🎧 DJ Desi: Yaar, ye sab baatein nahi! Bas gaane, hassi, aur maza! Kya sunna hai? 🎵'
+      };
+    }
+  }
+  
+  // Check for general knowledge that's NOT about DesiTV content
+  const isDesiTVRelated = /song|music|comedy|funny|hassi|movie|channel|video|gaana|bazao|play|kya chal/i.test(msg);
+  
+  for (const pattern of BLOCKED_PATTERNS.general_knowledge) {
+    if (pattern.test(msg) && !isDesiTVRelated) {
+      return {
+        blocked: true,
+        reason: 'general_knowledge',
+        message: '😅 DJ Desi: Bhai/Behen, main bass gaane aur hassi ka expert hoon! Kya DesiTV mein sunna hai? 🎵'
+      };
+    }
+  }
+  
+  return { blocked: false };
+}
+
 
 function detectContentType(title, channel) {
   const text = `${title} ${channel}`.toLowerCase();
@@ -246,6 +332,47 @@ function validateContext(context) {
   }
   
   return clean;
+}
+
+// ============================================================================
+// BEHAVIOR DETECTION - Understand user patterns for selective responses
+// ============================================================================
+function detectUserBehavior(message, context = {}) {
+  const msg = message.toLowerCase();
+  
+  // Detect gender/preference signals from language
+  let gender = 'neutral';
+  
+  // Male-leaning words (Hindi/Hinglish)
+  if (/\bbhai\b|\byaar\b|\bbro\b|\bustad\b|boss|dude/i.test(msg)) {
+    gender = 'male';
+  }
+  
+  // Female-leaning words
+  if (/\bsister\b|\bauntie\b|\bdidi\b|\bbehen\b|girl|lady|beautiful|gorgeous/i.test(msg)) {
+    gender = 'female';
+  }
+  
+  // Detect vibe/mood
+  let mood = 'neutral';
+  if (/sad|upset|dukhi|udaas|lonely|miss|alone/i.test(msg)) {
+    mood = 'chill';
+  } else if (/party|celebrate|excited|energetic|mast|fun|hassi|dance|jump/i.test(msg)) {
+    mood = 'energetic';
+  } else if (/romantic|love|pyaar|missing|beloved|sweetheart/i.test(msg)) {
+    mood = 'romantic';
+  }
+  
+  // Detect if request is action-oriented (play, switch) vs info (tell me, what's)
+  const isAction = /^(?:play|switch|change|go|tune|bajao|put)/i.test(msg);
+  const isQuestion = /^(?:what|who|which|how|can you|can i|kya)/i.test(msg);
+  
+  return {
+    gender,
+    mood,
+    isAction,
+    isQuestion
+  };
 }
 
 // ============================================================================
@@ -708,6 +835,25 @@ async function processMessage(message, context = {}) {
     video: context.currentVideo?.title?.substring(0, 50)
   });
   
+  // =========================================================================
+  // STEP 1: Check if message is blocked (explicit or off-topic)
+  // =========================================================================
+  const blockCheck = detectIfBlocked(message);
+  if (blockCheck.blocked) {
+    console.log('[VJCore] Blocked:', blockCheck.reason);
+    return {
+      success: false,
+      passToAI: false,
+      message: blockCheck.message
+    };
+  }
+  
+  // =========================================================================
+  // STEP 2: Detect user behavior for selective responses
+  // =========================================================================
+  const behavior = detectUserBehavior(message, context);
+  console.log('[VJCore] User behavior:', behavior);
+  
   const detected = detectIntent(message);
   console.log('[VJCore] Intent:', detected.intent, detected.param ? `(${detected.param})` : '');
   
@@ -732,8 +878,17 @@ async function processMessage(message, context = {}) {
     return { success: false, message: '🤔 Samajh nahi aaya. Phir se bolo?' };
   }
   
-  return await handler(context, detected.param);
+  // Pass behavior info along for AI context (if needed)
+  const result = await handler(context, detected.param, behavior);
+  
+  // Add behavior info to response for AI processing
+  if (result.passToAI) {
+    result.userBehavior = behavior;
+  }
+  
+  return result;
 }
+
 
 module.exports = {
   processMessage,
@@ -741,5 +896,8 @@ module.exports = {
   validateContext,
   extractArtistFromTitle,
   fuzzyMatch,
-  detectContentType
+  detectContentType,
+  detectUserBehavior,
+  detectIfBlocked,
+  stringSimilarity
 };

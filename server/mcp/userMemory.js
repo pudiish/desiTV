@@ -20,10 +20,19 @@ function createUserProfile() {
     preferredPersona: null,
     preferredMood: null,
     
+    // Behavior signals (detected from messages)
+    detectedGender: 'neutral', // 'male', 'female', 'neutral'
+    detectedMood: 'neutral', // 'chill', 'energetic', 'romantic', 'neutral'
+    likesTrivia: false,
+    likesShayari: false,
+    prefersActions: false, // true if often uses "play", "switch" vs asking
+    prefersQuestions: false, // true if often asks vs commands
+    
     // Interaction history
     channelsVisited: [],
     songsPlayed: [],
     triviaScore: { correct: 0, total: 0 },
+    moodDistribution: {}, // track mood over time
     
     // Time-based patterns
     activeHours: [],
@@ -230,6 +239,84 @@ function extractPreferencesFromMessage(message) {
 }
 
 /**
+ * Track user behavior to understand gender/mood preferences
+ */
+function trackUserBehavior(sessionId, behavior, intentType) {
+  const profile = getUserProfile(sessionId);
+  
+  // Update detected gender (weighted average of signals)
+  if (behavior.gender !== 'neutral') {
+    // Simple exponential moving average
+    const current = profile.detectedGender || 'neutral';
+    if (current !== behavior.gender) {
+      // Gradually shift towards detected gender
+      if (Math.random() > 0.3) {
+        profile.detectedGender = behavior.gender;
+      }
+    } else {
+      profile.detectedGender = behavior.gender;
+    }
+  }
+  
+  // Update detected mood
+  if (behavior.mood !== 'neutral') {
+    profile.detectedMood = behavior.mood;
+    profile.moodDistribution[behavior.mood] = (profile.moodDistribution[behavior.mood] || 0) + 1;
+  }
+  
+  // Track interaction style
+  if (behavior.isAction) {
+    profile.prefersActions = true;
+    profile.prefersQuestions = false;
+  } else if (behavior.isQuestion) {
+    profile.prefersQuestions = true;
+    profile.prefersActions = false;
+  }
+  
+  // Track intent preferences
+  if (intentType === 'TRIVIA') {
+    profile.likesTrivia = true;
+  } else if (intentType === 'SHAYARI') {
+    profile.likesShayari = true;
+  }
+  
+  userMemory.set(sessionId, profile);
+  return profile;
+}
+
+/**
+ * Get behavior-aware response recommendation
+ */
+function getBehaviorAwareResponse(sessionId) {
+  const profile = getUserProfile(sessionId);
+  
+  // If detected as female-leaning, avoid certain topics
+  if (profile.detectedGender === 'female') {
+    return {
+      avoidExplicit: true,
+      favorTone: 'warm', // warmer, more empathetic
+      suggestions: ['Song trivia', 'Comedy videos', 'Shayari']
+    };
+  }
+  
+  // If detected as male-leaning, more energetic tone
+  if (profile.detectedGender === 'male') {
+    return {
+      avoidExplicit: true,
+      favorTone: 'energetic', // fun, bro-like
+      suggestions: ['Party music', 'Comedy', 'Trivia']
+    };
+  }
+  
+  // Default neutral
+  return {
+    avoidExplicit: true,
+    favorTone: 'neutral',
+    suggestions: ['What would you like?']
+  };
+}
+
+/**
  * Cleanup old user data
  */
 function cleanupOldUsers() {
@@ -249,5 +336,7 @@ module.exports = {
   updateUserPreferences,
   getPersonalizedSuggestions,
   getPersonalizedGreeting,
-  extractPreferencesFromMessage
+  extractPreferencesFromMessage,
+  trackUserBehavior,
+  getBehaviorAwareResponse
 };
