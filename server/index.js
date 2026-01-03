@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const compression = require('compression');
 const { warmChannelsList, startPeriodicWarming } = require('./utils/cacheWarmer');
+const { startKeepAlive, stopKeepAlive } = require('./utils/keepAlive');
 
 // Load project root .env first (useful when running from project root),
 // then load server/.env to allow overrides.
@@ -305,6 +306,12 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 				const localIP = getLocalIP();
 				console.log(`[DesiTV] Local:   http://localhost:${PORT}`);
 				console.log(`[DesiTV] Network: http://${localIP}:${PORT}`);
+			}
+			
+			// Start keep-alive for Render free tier (pings every 14 minutes)
+			const keepAliveInterval = startKeepAlive();
+			if (keepAliveInterval) {
+				console.log('[DesiTV] 🔄 Keep-alive service started');
 			}
 		});
 
