@@ -145,10 +145,10 @@
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .galaxy-toggle-btn {
-    bottom: 15px;
-    left: 15px;
-    width: 40px;
-    height: 40px;
+    bottom: 65px; /* Above footer status bar */
+    left: 12px;
+    width: 42px;
+    height: 42px;
     font-size: 18px;
   }
 }

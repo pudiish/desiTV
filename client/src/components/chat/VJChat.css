@@ -850,22 +850,23 @@
 }
 
 /* Mobile Responsive */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .vj-chat-container {
-    bottom: 70px; /* Above mobile nav */
-    right: 10px;
+    bottom: 65px; /* Above footer status bar - aligned with Galaxy button */
+    right: 12px;
   }
 
   .vj-toggle-btn {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     font-size: 18px;
   }
 
   .vj-chat-window {
-    width: calc(100vw - 20px);
-    right: -5px;
+    width: calc(100vw - 24px);
+    right: -6px;
     height: 380px;
+    bottom: 55px;
   }
 }
 

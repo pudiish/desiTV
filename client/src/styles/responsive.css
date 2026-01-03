@@ -167,16 +167,30 @@
 	}
 	
 	.footer-status {
-		padding: 8px 10px;
+		padding: 6px 12px;
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
 		z-index: var(--z-menu);
+		background: rgba(13, 11, 9, 0.95);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border-top: 1px solid rgba(212, 165, 116, 0.2);
+		height: 45px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 	
 	.status-text {
-		font-size: 7px;
+		font-size: 8px;
+		letter-spacing: 0.5px;
+	}
+	
+	/* Add padding to main container for footer */
+	.main-container {
+		padding-bottom: 50px;
 	}
 }
 
@@ -352,16 +366,25 @@
 	}
 	
 	.footer-status {
-		padding: 5px 8px;
+		padding: 6px 10px;
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
 		z-index: var(--z-menu);
+		background: rgba(13, 11, 9, 0.95);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border-top: 1px solid rgba(212, 165, 116, 0.2);
+		height: 45px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 	
 	.status-text {
-		font-size: 6px;
+		font-size: 7px;
+		letter-spacing: 0.5px;
 	}
 }
 
