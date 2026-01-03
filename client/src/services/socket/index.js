@@ -19,13 +19,21 @@ const RECONNECT_DELAY_BASE = 1000;
 
 /**
  * Get socket server URL
+ * Note: Vercel doesn't support WebSockets, so in production we connect
+ * directly to the Render backend for socket connections
  */
 function getSocketUrl() {
-  // In production, socket is on same origin
-  // In dev, use server URL
+  // In production on Vercel, connect to Render backend for WebSocket
   if (import.meta.env.PROD) {
+    const hostname = window.location.hostname;
+    // Vercel doesn't support WebSockets - connect to Render backend
+    if (hostname.includes('vercel.app')) {
+      return import.meta.env.VITE_SOCKET_URL || 'https://desitv-api.onrender.com';
+    }
+    // Other production deployments (e.g., self-hosted)
     return window.location.origin;
   }
+  // Development - use local server
   return import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
 }
 
