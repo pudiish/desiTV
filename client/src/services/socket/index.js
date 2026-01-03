@@ -90,6 +90,16 @@ export function connect() {
 }
 
 /**
+ * Get active socket instance
+ */
+export function getSocket() {
+  if (!socket) {
+    return connect();
+  }
+  return socket;
+}
+
+/**
  * Disconnect from socket server
  */
 export function disconnect() {

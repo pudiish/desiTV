@@ -42,6 +42,89 @@ const BLOCKED_CONTENT = [
   'violent'
 ];
 
+// Official channel indicators (higher = more official)
+const OFFICIAL_CHANNELS = [
+  'vevo',           // VEVO channels
+  't-series',       // T-Series
+  'tseries',
+  'zee music',      // Zee Music
+  'sony music',     // Sony Music
+  'universal music',
+  'warner music',
+  'yrf',            // Yash Raj Films
+  'tips official',  // Tips Music
+  'saregama',       // Saregama
+  'speed records',  // Speed Records
+  'white hill',     // White Hill Music
+  'desi melodies',
+  'atlantic',
+  'republic',
+  'interscope',
+  'rca'
+];
+
+/**
+ * Calculate "official score" for a video result
+ * Higher score = more likely to be official content
+ * @param {string} channelTitle - YouTube channel name
+ * @param {string} videoTitle - Video title
+ * @param {object} preferences - User preferences (cover, karaoke, fanmade)
+ */
+function getOfficialScore(channelTitle, videoTitle, preferences = {}) {
+  const channel = (channelTitle || '').toLowerCase();
+  const title = (videoTitle || '').toLowerCase();
+  let score = 0;
+
+  // If user explicitly wants cover/karaoke/fanmade, prioritize those
+  if (preferences.wantsCover && title.includes('cover')) {
+    score += 60; // Boost covers when requested
+  }
+  if (preferences.wantsKaraoke && title.includes('karaoke')) {
+    score += 60; // Boost karaoke when requested
+  }
+  if (preferences.wantsFanmade && (title.includes('fan made') || title.includes('fanmade'))) {
+    score += 60; // Boost fan versions when requested
+  }
+  if (preferences.wantsRemix && title.includes('remix')) {
+    score += 60; // Boost remixes when requested
+  }
+
+  // Check if channel name matches official patterns
+  for (const official of OFFICIAL_CHANNELS) {
+    if (channel.includes(official)) {
+      score += 50;
+      break;
+    }
+  }
+
+  // Bonus for "official" in title
+  if (title.includes('official music video')) score += 30;
+  else if (title.includes('official video')) score += 25;
+  else if (title.includes('official')) score += 15;
+
+  // Only penalize non-official content if user didn't explicitly request it
+  if (!preferences.wantsCover && title.includes('cover')) score -= 20;
+  if (!preferences.wantsKaraoke && title.includes('karaoke')) score -= 30;
+  if (!preferences.wantsRemix && title.includes('remix') && !channel.includes('official')) score -= 10;
+  if (title.includes('lyric video') || title.includes('lyrics')) score -= 5;
+  if (!preferences.wantsFanmade && (title.includes('fan made') || title.includes('fanmade'))) score -= 40;
+
+  return score;
+}
+
+/**
+ * Detect user preferences from query
+ */
+function detectVersionPreferences(query) {
+  const q = query.toLowerCase();
+  return {
+    wantsCover: /\b(cover|covered|acoustic cover)\b/i.test(q),
+    wantsKaraoke: /\b(karaoke|instrumental|minus one)\b/i.test(q),
+    wantsFanmade: /\b(fan made|fanmade|fan version|tribute)\b/i.test(q),
+    wantsRemix: /\b(remix|remixed|dj mix|club mix)\b/i.test(q)
+  };
+}
+
 /**
  * Search YouTube for a video
  * @param {string} query - Search query
@@ -55,6 +138,11 @@ async function searchYouTube(query, options = {}) {
     type = 'video'
   } = options;
   
+  // Detect user preferences from query (cover, karaoke, remix, fanmade)
+  const preferences = detectVersionPreferences(query);
+  const hasSpecialRequest = preferences.wantsCover || preferences.wantsKaraoke || 
+                            preferences.wantsFanmade || preferences.wantsRemix;
+  
   // Validate API key is configured
   if (!YOUTUBE_API_KEY) {
     console.error('[YouTubeSearch] YOUTUBE_API_KEY is not configured');
@@ -66,17 +154,20 @@ async function searchYouTube(query, options = {}) {
   }
   
   try {
-    // Build search query - add music/song keywords if musicOnly
+    // Build search query based on user preferences
     let searchQuery = query;
-    if (musicOnly && !query.toLowerCase().includes('song')) {
-      searchQuery = `${query} official song`;
+    if (musicOnly && !hasSpecialRequest) {
+      // Only add "official music video" if user didn't ask for cover/karaoke/etc
+      if (!query.toLowerCase().includes('official')) {
+        searchQuery = `${query} official music video`;
+      }
     }
     
     const params = new URLSearchParams({
       part: 'snippet',
       q: searchQuery,
       type,
-      maxResults: maxResults.toString(),
+      maxResults: Math.min(maxResults * 2, 15).toString(), // Fetch more to filter
       key: YOUTUBE_API_KEY,
       videoCategoryId: '10', // Music category
       regionCode: 'IN' // India for Bollywood/Desi content
@@ -107,7 +198,22 @@ async function searchYouTube(query, options = {}) {
       };
     }
     
-    // Process and validate results
+    // Get video IDs to fetch duration details (to filter out Shorts)
+    const videoIds = data.items.map(item => item.id.videoId).join(',');
+    const videoDetailsResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+    );
+    const videoDetailsData = await videoDetailsResponse.json();
+    
+    // Create a map of video durations
+    const durationMap = {};
+    if (videoDetailsData.items) {
+      videoDetailsData.items.forEach(item => {
+        durationMap[item.id] = parseDuration(item.contentDetails.duration);
+      });
+    }
+    
+    // Process and validate results - FILTER OUT SHORTS (< 60 seconds)
     const videos = data.items
       .map(item => ({
         youtubeId: item.id.videoId,
@@ -115,9 +221,15 @@ async function searchYouTube(query, options = {}) {
         description: item.snippet.description,
         thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
         channel: item.snippet.channelTitle,
-        publishedAt: item.snippet.publishedAt
+        publishedAt: item.snippet.publishedAt,
+        duration: durationMap[item.id.videoId] || 0,
+        // Score for sorting: prioritize based on user preferences
+        officialScore: getOfficialScore(item.snippet.channelTitle, item.snippet.title, preferences)
       }))
-      .filter(video => isAppropriateContent(video));
+      .filter(video => isAppropriateContent(video))
+      .filter(video => !isYouTubeShort(video)) // Filter out Shorts
+      .sort((a, b) => b.officialScore - a.officialScore) // Sort by official score
+      .slice(0, maxResults); // Take only requested number
     
     if (videos.length === 0) {
       return {
@@ -237,6 +349,40 @@ function isAppropriateContent(video) {
   // Otherwise, allow but with lower confidence
   // (The YouTube category filter should have already filtered)
   return true;
+}
+
+/**
+ * Check if a video is a YouTube Short (should be filtered out)
+ * Shorts are: < 60 seconds OR have #shorts in title/description
+ */
+function isYouTubeShort(video) {
+  const titleLower = (video.title || '').toLowerCase();
+  const descLower = (video.description || '').toLowerCase();
+  
+  // Check duration - Shorts are under 60 seconds
+  if (video.duration && video.duration > 0 && video.duration < 60) {
+    console.log(`[YouTubeSearch] Filtering out Short (duration: ${video.duration}s): ${video.title}`);
+    return true;
+  }
+  
+  // Check for #shorts hashtag in title or description
+  if (titleLower.includes('#shorts') || titleLower.includes('#short')) {
+    console.log(`[YouTubeSearch] Filtering out Short (hashtag in title): ${video.title}`);
+    return true;
+  }
+  
+  if (descLower.includes('#shorts') || descLower.includes('#short')) {
+    console.log(`[YouTubeSearch] Filtering out Short (hashtag in desc): ${video.title}`);
+    return true;
+  }
+  
+  // Check for "shorts" in title pattern like "Song Name | Shorts"
+  if (/\|\s*shorts?\s*$/i.test(video.title) || /shorts?\s*\|/i.test(video.title)) {
+    console.log(`[YouTubeSearch] Filtering out Short (title pattern): ${video.title}`);
+    return true;
+  }
+  
+  return false;
 }
 
 /**

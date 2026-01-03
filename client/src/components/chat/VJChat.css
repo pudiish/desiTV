@@ -227,9 +227,10 @@
 
 .vj-message {
   display: flex;
-  gap: 10px;
-  max-width: 85%;
+  gap: 8px;
+  max-width: 88%;
   animation: vj-msg-in 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+  min-width: 0;
 }
 
 @keyframes vj-msg-in {
@@ -263,10 +264,14 @@
 .vj-msg-content {
   padding: 10px 14px;
   border-radius: 14px;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   word-break: break-word;
+  overflow-wrap: break-word;
   max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* User message - Gold gradient */
@@ -287,13 +292,18 @@
   backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
+  max-width: 260px;
 }
 
 /* Message text wrapper */
 .vj-msg-text {
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* ============================================================================
@@ -361,32 +371,42 @@
 
 /* Clickable search option buttons */
 .vj-msg-option {
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.15) 0%, rgba(212, 165, 116, 0.08) 100%);
-  border: 1.5px solid var(--vj-primary);
-  color: var(--vj-primary);
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 13px;
+  background: linear-gradient(135deg, rgba(212, 165, 116, 0.12) 0%, rgba(212, 165, 116, 0.06) 100%);
+  border: 1px solid rgba(212, 165, 116, 0.5);
+  color: var(--vj-text-primary);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: all 0.2s ease;
   text-align: left;
-  text-overflow: ellipsis;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  align-self: flex-start;
-  min-width: 200px;
-  max-width: 100%;
+  line-height: 1.3;
 }
 
 .vj-msg-option:hover {
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.25) 0%, rgba(212, 165, 116, 0.15) 100%);
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(212, 165, 116, 0.2);
+  background: linear-gradient(135deg, rgba(212, 165, 116, 0.25) 0%, rgba(212, 165, 116, 0.12) 100%);
+  border-color: var(--vj-primary);
+  color: var(--vj-primary);
 }
 
 .vj-msg-option:active {
-  transform: translateX(2px);
+  background: rgba(212, 165, 116, 0.3);
+  transform: scale(0.98);
+}
+
+/* Options list container */
+.vj-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
 }
 
 /* ============================================================================

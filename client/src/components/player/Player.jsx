@@ -103,7 +103,7 @@ onBufferingChange = null,
 		
 		try {
 			// Check video status via API using unified client
-			const result = await apiClientV2.getVideoMetadata({ youtubeId: videoId })
+			const result = await apiClientV2.getVideoMetadata(videoId)
 			
 			if (!result.success) {
 				// API error - assume invalid
@@ -584,6 +584,8 @@ onBufferingChange = null,
 
 			// Validate video before loading (with timeout to avoid blocking)
 			try {
+				// Skip validation for now if it's causing 404 loops, or handle 404 gracefully
+				// The APIClientV2 error handler is logging the 404, which is expected if a video is deleted
 				const validation = await Promise.race([
 					validateVideoBeforeLoad(videoId),
 					new Promise((resolve) => setTimeout(() => resolve({ valid: true }), 2000)) // 2s timeout - allow loading if validation takes too long
@@ -598,6 +600,7 @@ onBufferingChange = null,
 					return
 				}
 			} catch (err) {
+				// If validation fails (e.g. network error), log but try to play anyway
 				console.warn('[Player] Validation error, allowing video to load:', err)
 				// On validation error, allow video to load (might be network issue)
 			}

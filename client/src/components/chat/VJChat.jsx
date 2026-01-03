@@ -96,13 +96,14 @@ const VJChat = ({
         }
         break;
       
+      case 'PLAY_YOUTUBE':
       case 'PLAY_EXTERNAL':
         // Play external YouTube video on main TV
-        console.log('[VJChat] Playing external YouTube on TV:', action.videoId);
+        console.log('[VJChat] Playing YouTube video on TV:', action.videoId);
         // Validate videoId is a string, not an object
         const validVideoId = typeof action.videoId === 'string' ? action.videoId : null;
         if (!validVideoId) {
-          console.error('[VJChat] Invalid videoId passed to PLAY_EXTERNAL:', action.videoId);
+          console.error('[VJChat] Invalid videoId passed to PLAY_YOUTUBE/PLAY_EXTERNAL:', action.videoId);
           return;
         }
         if (onPlayExternal) {
@@ -112,6 +113,24 @@ const VJChat = ({
             thumbnail: action.thumbnail,
             channel: action.channel
           });
+        }
+        break;
+      
+      case 'SHOW_OPTIONS':
+        // Show multiple search result options
+        console.log('[VJChat] Showing search options:', action.suggestions);
+        if (action.suggestions && action.suggestions.length > 0) {
+          // Create clickable options - truncate titles for clean display
+          const truncate = (str, maxLen = 40) => str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
+          const optionsContent = action.suggestions
+            .slice(0, 5)
+            .map(s => `[🎵 ${truncate(s.title)}](play:${s.id || s.videoId})`)
+            .join('\n\n');
+            
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: optionsContent
+          }]);
         }
         break;
       
@@ -333,6 +352,35 @@ const VJChat = ({
 
   const renderMessageContent = (content) => {
     const parts = parseMessageContent(content);
+    
+    // Check if this message contains only options
+    const hasOnlyOptions = parts.every(p => p.type === 'option' || (p.type === 'text' && !p.content.trim()));
+    
+    if (hasOnlyOptions) {
+      // Render as a clean options list
+      return (
+        <div className="vj-options-list">
+          {parts.filter(p => p.type === 'option').map((part, idx) => (
+            <button
+              key={idx}
+              className="vj-msg-option"
+              onClick={() => {
+                const videoAction = {
+                  type: 'PLAY_EXTERNAL',
+                  videoId: part.videoId,
+                  videoTitle: part.label.replace(/^[🎵📺🎯]*\s*/, '')
+                };
+                executeAction(videoAction);
+                setInputValue('');
+              }}
+              title={part.label}
+            >
+              {part.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
     
     return parts.map((part, idx) => {
       if (part.type === 'text') {

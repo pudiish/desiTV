@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { gemini } = require('./server/mcp');
 
 async function test() {

@@ -43,7 +43,7 @@ export default function VideoFetcher() {
 
 	const fetchVideoDetails = async (videoId) => {
 		try {
-			const result = await apiClientV2.getVideoMetadata({ youtubeId: videoId })
+			const result = await apiClientV2.getVideoMetadata(videoId)
 			if (!result.success) throw new Error('Failed to fetch details')
 			return result.data
 		} catch (err) {

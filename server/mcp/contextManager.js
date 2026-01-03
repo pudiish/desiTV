@@ -1,5 +1,6 @@
 const { BroadcastState } = require('../models/BroadcastState');
 const UserSession = require('../models/UserSession');
+const liveStateService = require('../services/liveStateService');
 
 class ContextManager {
   constructor(broadcastStateService, userMemory) {
@@ -32,11 +33,49 @@ class ContextManager {
   }
 
   async getPlayerContext(channelId) {
-    if (!channelId) return { status: 'unavailable' };
+    if (!channelId) {
+      console.log('[ContextManager] No channelId provided');
+      return { status: 'unavailable' };
+    }
     
     try {
+      // Try LiveStateService first (modern system)
+      try {
+        const liveState = await liveStateService.getLiveState(channelId, true);
+        if (liveState && liveState.live) {
+          return {
+            status: 'active',
+            channelId,
+            currentSong: {
+              videoId: liveState.live.videoId,
+              title: liveState.live.videoTitle || 'Unknown',
+              artist: 'Unknown', // LiveState doesn't currently return artist separately
+              duration: liveState.live.duration || 0
+            },
+            timeline: {
+              position: liveState.live.position || 0,
+              total: liveState.live.duration || 0,
+              progress: (liveState.live.position / liveState.live.duration) || 0
+            },
+            queue: {
+              next: liveState.next ? { 
+                videoId: liveState.next.videoId, 
+                title: liveState.next.videoTitle 
+              } : null,
+              remaining: liveState.playlist?.videoCount || 0
+            }
+          };
+        }
+      } catch (liveErr) {
+        // Fallback to legacy broadcast state if live state fails
+        // console.log('[ContextManager] LiveState lookup failed, trying legacy:', liveErr.message);
+      }
+
       const state = await this.broadcastStateService?.getStateByChannelId(channelId);
-      if (!state) return { status: 'no_broadcast' };
+      if (!state) {
+        console.log('[ContextManager] No broadcast state found for channel:', channelId);
+        return { status: 'no_broadcast' };
+      }
 
       return {
         status: 'active',
@@ -59,7 +98,8 @@ class ContextManager {
       };
     } catch (err) {
       console.error('[ContextManager] Player context error:', err.message);
-      return { status: 'error', error: err.message };
+      // Return degraded context instead of error - chat should work without broadcast
+      return { status: 'unavailable', reason: err.message };
     }
   }
 
@@ -67,8 +107,16 @@ class ContextManager {
     if (!userId) return { authenticated: false };
 
     try {
-      const session = await UserSession?.findById(userId).lean();
-      const memory = await this.userMemory?.getMemory(userId);
+      // Check if userId is a valid MongoDB ObjectId format
+      const isValidObjectId = /^[a-f\d]{24}$/i.test(userId);
+      
+      let session = null;
+      if (isValidObjectId) {
+        session = await UserSession?.findById(userId).lean();
+      }
+      
+      // Use getUserProfile instead of getMemory
+      const memory = await this.userMemory?.getUserProfile(userId);
 
       return {
         authenticated: !!session,
@@ -76,18 +124,33 @@ class ContextManager {
         preferences: {
           favoriteArtists: memory?.favoriteArtists || [],
           favoriteGenres: memory?.favoriteGenres || [],
-          mood: memory?.currentMood || 'neutral',
+          mood: memory?.detectedMood || memory?.preferredMood || 'neutral',
           language: session?.language || 'en'
         },
         history: {
-          recentSongs: memory?.recentSongs?.slice(0, 5) || [],
-          suggestedCount: memory?.suggestedCount || 0,
-          acceptedCount: memory?.acceptedCount || 0
+          recentSongs: memory?.songsPlayed?.slice(0, 5) || [],
+          suggestedCount: memory?.interactionCount || 0,
+          acceptedCount: 0 // Not currently tracked in simple profile
         }
       };
     } catch (err) {
       console.error('[ContextManager] User context error:', err.message);
-      return { authenticated: false, error: err.message };
+      // Return partial context instead of failing completely
+      return { 
+        authenticated: false, 
+        userId,
+        preferences: {
+          favoriteArtists: [],
+          favoriteGenres: [],
+          mood: 'neutral',
+          language: 'en'
+        },
+        history: {
+          recentSongs: [],
+          suggestedCount: 0,
+          acceptedCount: 0
+        }
+      };
     }
   }
 
@@ -125,9 +188,14 @@ class ContextManager {
   }
 
   validateContext(playerContext, userContext) {
-    const playerValid = playerContext && playerContext.status !== 'error';
+    // Player context can be in various states - unavailable, no_broadcast, error are all OK
+    // The important thing is that we have SOME context data
+    const playerValid = playerContext && playerContext !== null;
+    // User context can be anonymous - don't require authenticated session
     const userValid = userContext && !userContext.error;
-    return playerValid && userValid;
+    // We can proceed with degraded context (no broadcast, anonymous user)
+    // Only fail if both are missing
+    return (playerValid || userContext) && userValid;
   }
 
   getEmergencyContext(userId, channelId) {

@@ -43,25 +43,31 @@ class ResponseCache {
 }
 
 const INTENT_PATTERNS = {
-  greeting: { pattern: /^(?:hi|hey|hello|hiya|yo|sup|namaste|howdy)$/i, confidence: 0.99 },
-  joke: { pattern: /(?:joke|funny|laugh|comedy|hilarious)/i, confidence: 0.9 },
+  greeting: { pattern: /(?:^hi$|^hey$|^hello$|^hiya$|^yo$|^sup$|^namaste$|^howdy$|good\s+(?:morning|evening|night|day)|^g'day$|^howdy$|good\s+night)/i, confidence: 0.99 },
+  joke: { pattern: /(?:joke|funny|laugh|comedy|hilarious|rofl|lol)/i, confidence: 0.9 },
   suggestion: { pattern: /(?:suggest|recommend|pick|choose|what should|any suggestion)/i, confidence: 0.85 },
   play_suggestion: { pattern: /play\s+(.+)/i, confidence: 0.95 },
   search_song: { pattern: /(?:search|find)\s+(.+)/i, confidence: 0.9 },
   mood_suggestion: { pattern: /(?:feeling|vibe|mood)\s+(.+)/i, confidence: 0.85 },
   artist_search: { pattern: /(?:artist|singer|by)\s+(.+)/i, confidence: 0.9 },
   genre_search: { pattern: /(?:genre|type)\s+(.+)/i, confidence: 0.9 },
+  channels_list: { pattern: /(?:channels|show.*channels|list.*channels|what.*channels|which.*channels|all.*channels|available.*channels)/i, confidence: 0.95 },
   current_playing: { pattern: /(?:what|what's|whats|playing|now|current|song)/i, confidence: 0.95 },
-  yes_response: { pattern: /^(?:yes|yeah|sure|ok)$/i, confidence: 0.98 },
-  no_response: { pattern: /^(?:no|nah|nope)$/i, confidence: 0.98 }
+  yes_response: { pattern: /^(?:yes|yeah|sure|ok|okk|okay|k)$/i, confidence: 0.98 },
+  no_response: { pattern: /^(?:no|nah|nope)$/i, confidence: 0.98 },
+  gratitude: { pattern: /(?:thank|thanks|thanku|thankyou|gracias|merci|dhanyavaad)/i, confidence: 0.9 },
+  goodbye: { pattern: /(?:bye|goodbye|see you|later|cya|goodbye|see ya)/i, confidence: 0.9 },
+  chat: { pattern: /(?:talk|chat|speak|conversation|ask|question|tell me|who|what|where|when|why|how|are you|do you)/i, confidence: 0.8 }
 };
 
 class IntentDetector {
-  constructor() {
+  constructor(semanticSearcher = null) {
     this.lastSuggestion = null;
+    this.semanticSearcher = semanticSearcher;
   }
 
   detect(message) {
+    // First try exact pattern matching
     for (const [name, config] of Object.entries(INTENT_PATTERNS)) {
       const match = message.match(config.pattern);
       if (match) {
@@ -73,6 +79,30 @@ class IntentDetector {
         };
       }
     }
+
+    // Fallback: Use semantic analysis for common queries
+    const lowerMsg = message.toLowerCase();
+    
+    // Check for artist/person mentions (e.g., "tell me about adnan shami")
+    if ((lowerMsg.includes('about') || lowerMsg.includes('who') || lowerMsg.includes('info')) && 
+        message.length > 5) {
+      // Extract the potential artist name
+      const words = message.split(/\s+/);
+      const meaningfulWords = words.filter(w => w.length > 3 && !['about', 'tell', 'who', 'is', 'that'].includes(w.toLowerCase()));
+      if (meaningfulWords.length > 0) {
+        const artistName = meaningfulWords.slice(-2).join(' '); // Take last 2 words
+        return {
+          intent: 'artist_search',
+          confidence: 0.75,
+          payload: artistName
+        };
+      }
+    }
+
+    // REMOVED: Aggressive generic search fallback
+    // We now rely on explicit "search" or "play" keywords.
+    // If no intent is matched, EnhancedVJCore will default to 'chat' via Gemini.
+
     return null;
   }
 

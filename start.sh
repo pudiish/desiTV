@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
-# start.sh - load project .env and run dev servers with network access
+# DesiTV Development Server Startup
+# Initializes dependencies, validates environment, and starts dev servers
 # Usage: ./start.sh
-# 
-# All configuration is loaded from .env file - no hardcoded values
 
 set -euo pipefail
+
+# Color codes for terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+BOLD='\033[1m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -509,14 +518,34 @@ echo "║                                                               ║"
 echo "║  �� To access from mobile:                                    ║"
 printf "║     Open http://%-15s:%-6s on your phone         ║\n" "$LOCAL_IP" "$CLIENT_PORT"
 echo "║                                                               ║"
+# Beautiful startup banner
+show_startup_banner() {
+  echo -e ""
+  echo -e "${MAGENTA}╔═══════════════════════════════════════════════════════════════╗${RESET}"
+  echo -e "${MAGENTA}║${RESET}                  ${BOLD}🎬 DesiTV Development Server${RESET}                 ${MAGENTA}║${RESET}"
+  echo -e "${MAGENTA}╠═══════════════════════════════════════════════════════════════╣${RESET}"
+  echo -e "${MAGENTA}║${RESET}                                                               ${MAGENTA}║${RESET}"
+  echo -e "${MAGENTA}║${RESET}  ${CYAN}📺 Your Indian Entertainment Hub${RESET}                         ${MAGENTA}║${RESET}"
+  echo -e "${MAGENTA}║${RESET}                                                               ${MAGENTA}║${RESET}"
+  echo -e "${MAGENTA}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+  echo -e ""
+}
+
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🚀 Starting dev servers..."
+
+# Show startup banner
+show_startup_banner
+
+echo "🚀 Initializing services..."
 echo ""
 
-# Start Redis before starting the dev servers
+# Start Redis
 start_redis
 
+echo ""
+echo -e "${GREEN}✅ All systems ready!${RESET}"
+echo -e "${CYAN}Starting development servers...${RESET}"
 echo ""
 
 # Start the dev servers

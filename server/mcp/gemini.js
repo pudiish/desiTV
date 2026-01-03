@@ -49,11 +49,11 @@ async function chat(userMessage, conversationHistory = [], context = {}) {
   // Build persona-aware system prompt
   let systemContext = buildSystemPrompt(persona, context);
   
-  // For factual/knowledge queries, reduce persona influence
+  // For factual/knowledge queries, ensure accuracy but KEEP the persona
   const looksLikeFactualQuery = /^(tell|what|who|when|where|why|how|about|explain|describe|list)/i.test(userMessage.trim());
   
   if (looksLikeFactualQuery) {
-    systemContext = 'You are a helpful, knowledgeable assistant. Provide accurate, factual information. Be friendly but informative.';
+    systemContext += '\n\n[INSTRUCTION: The user asked a factual question. Answer it ACCURATELY, but keep your "Desi" persona. Don\'t be boring. Explain it like you are talking to a friend over chai. Use your Hinglish style.]';
   }
   
   // Add user profile info for personalization

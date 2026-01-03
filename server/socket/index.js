@@ -14,6 +14,7 @@
 const { Server } = require('socket.io');
 const liveStateService = require('../services/liveStateService');
 const { encodeStateDelta } = require('../utils/deltaCompression');
+const chatLogic = require('../services/chatLogic');
 
 // Track connected clients per category
 const categoryRooms = new Map(); // categoryId -> Set of socket ids
@@ -45,6 +46,55 @@ function initializeSocket(httpServer, corsOptions) {
 
   io.on('connection', (socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
+
+    // --- Chat Events ---
+
+    // Handle chat message
+    socket.on('chat:message', async (data, callback) => {
+      try {
+        const { message, sessionId, context } = data;
+        const channelId = context?.currentChannelId;
+        const userIp = socket.handshake.address;
+
+        // Process message using shared logic
+        const result = await chatLogic.processMessage({
+          message,
+          sessionId,
+          userId: socket.id, // Use socket ID as user ID if not provided
+          channelId,
+          userIp
+        });
+
+        // Send response back via callback (acknowledgement)
+        if (callback) {
+          callback({ success: true, data: result });
+        } else {
+          // Or emit event if no callback provided
+          socket.emit('chat:response', { success: true, data: result });
+        }
+
+      } catch (error) {
+        console.error('[Socket] Chat error:', error.message);
+        const errorResponse = { success: false, error: error.message };
+        if (callback) {
+          callback(errorResponse);
+        } else {
+          socket.emit('chat:error', errorResponse);
+        }
+      }
+    });
+
+    // Get chat suggestions
+    socket.on('chat:suggestions', (callback) => {
+      try {
+        const suggestions = chatLogic.getSuggestions();
+        if (callback) callback({ success: true, data: suggestions });
+      } catch (error) {
+        if (callback) callback({ success: false, error: error.message });
+      }
+    });
+
+    // --- Live State Events ---
 
     // Client subscribes to a category
     socket.on('subscribe', async (categoryId) => {

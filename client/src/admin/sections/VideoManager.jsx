@@ -141,7 +141,7 @@ export default function VideoManager() {
 		setFetchingYT(true)
 		try {
 			// Use apiClientV2 which handles YouTube metadata with caching
-			const result = await apiClientV2.getVideoMetadata({ youtubeId: id })
+			const result = await apiClientV2.getVideoMetadata(id)
 			
 			if (result.success) {
 				const data = result.data

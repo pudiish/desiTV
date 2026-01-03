@@ -32,6 +32,10 @@ router.get('/metadata', async (req, res) => {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      // If 404 from YouTube, return 404 to client
+      if (response.status === 404) {
+        return res.status(404).json({ message: 'Video not found on YouTube' });
+      }
       return res.status(response.status).json({ 
         message: 'YouTube API error', 
         error: errorData || response.statusText 
