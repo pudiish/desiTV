@@ -4,8 +4,10 @@
  * - Samples dominant colors from YouTube thumbnail
  * - Smooth 3-second transitions between palettes
  * - Organic flowing particle movement
+ * - 📱 Mobile optimized with reduced effects
  */
 import React, { useRef, useEffect, useState } from 'react'
+import mobilePerformanceOptimizer from '../../services/mobilePerformanceOptimizer'
 import './Galaxy.css'
 
 const Galaxy = ({ 
@@ -22,6 +24,17 @@ const Galaxy = ({
   const particlesRef = useRef([])
   const timeRef = useRef(0)
   const intensityRef = useRef(0)
+  const lastFrameTimeRef = useRef(0)
+  const [performanceSettings, setPerformanceSettings] = useState(() => mobilePerformanceOptimizer.getSettings())
+  
+  // Subscribe to performance mode changes
+  useEffect(() => {
+    const unsubscribe = mobilePerformanceOptimizer.subscribe(setPerformanceSettings)
+    return unsubscribe
+  }, [])
+
+  // Skip rendering entirely if Galaxy is disabled for performance
+  const shouldRender = performanceSettings.enableGalaxy && isActive
   
   // Color palette state - current and target for smooth transitions
   const currentColorsRef = useRef([
@@ -178,10 +191,11 @@ const Galaxy = ({
       return lerpColor(colors[i1], colors[i2], t * t * (3 - 2 * t))
     }
 
-    // Create particles
+    // Create particles - use optimized count for mobile
     const createParticles = () => {
       particlesRef.current = []
-      for (let i = 0; i < density; i++) {
+      const particleCount = mobilePerformanceOptimizer.getParticleCount(density)
+      for (let i = 0; i < particleCount; i++) {
         const angle = Math.random() * Math.PI * 2
         const dist = Math.pow(Math.random(), 0.5) * Math.max(width, height) * 0.6
         
@@ -206,9 +220,26 @@ const Galaxy = ({
     }
     createParticles()
 
-    // Animation
+    // Animation with FPS throttling for mobile
     let lastTime = 0
     const animate = (timestamp) => {
+      // Skip if not active or galaxy disabled
+      if (!shouldRender) {
+        animationRef.current = requestAnimationFrame(animate)
+        return
+      }
+      
+      // FPS throttling for mobile performance
+      const targetFPS = performanceSettings.animationFPS
+      if (targetFPS > 0 && targetFPS < 60) {
+        const frameInterval = 1000 / targetFPS
+        if (timestamp - lastFrameTimeRef.current < frameInterval) {
+          animationRef.current = requestAnimationFrame(animate)
+          return
+        }
+        lastFrameTimeRef.current = timestamp
+      }
+      
       const dt = Math.min(timestamp - lastTime, 50)
       lastTime = timestamp
 
@@ -362,7 +393,12 @@ const Galaxy = ({
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
       window.removeEventListener('resize', handleResize)
     }
-  }, [isActive, baseSpeed, density, isPlaying, volume])
+  }, [isActive, baseSpeed, density, isPlaying, volume, shouldRender, performanceSettings.animationFPS])
+
+  // Don't render canvas if Galaxy is disabled for performance
+  if (!performanceSettings.enableGalaxy) {
+    return null
+  }
 
   return (
     <canvas

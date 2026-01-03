@@ -5,7 +5,11 @@
  * 
  * Uses canvas to sample colors from video thumbnails and creates
  * a reactive color palette that the galaxy can use
+ * 
+ * 📱 Mobile-aware: Disabled on mobile to reduce CPU usage
  */
+
+import mobilePerformanceOptimizer from './mobilePerformanceOptimizer'
 
 class VideoColorExtractor {
   constructor() {
@@ -246,8 +250,15 @@ class VideoColorExtractor {
 
   /**
    * Start continuous color extraction for a video
+   * 📱 Disabled on mobile to save battery
    */
   startExtraction(videoId) {
+    // Skip color extraction on mobile to reduce CPU usage
+    if (!mobilePerformanceOptimizer.shouldEnableColorExtraction()) {
+      console.log('[ColorExtractor] Skipping extraction (mobile power saving)')
+      return
+    }
+    
     if (this.lastVideoId === videoId && this.isExtracting) return
     
     this.stopExtraction()
@@ -257,10 +268,11 @@ class VideoColorExtractor {
     // Extract immediately
     this.extractFromThumbnail(videoId)
     
-    // Set up periodic mood shifts for trippy effect
+    // Set up periodic mood shifts for trippy effect (longer interval on balanced mode)
+    const interval = mobilePerformanceOptimizer.isMobile ? 20000 : 10000
     this.extractionInterval = setInterval(() => {
       this._shiftMood()
-    }, 10000) // Shift mood every 10 seconds
+    }, interval)
   }
 
   /**
@@ -273,7 +285,6 @@ class VideoColorExtractor {
       this.extractionInterval = null
     }
   }
-
   /**
    * Shift the color mood for continuous trippy effect
    */

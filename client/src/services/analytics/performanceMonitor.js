@@ -1,7 +1,10 @@
 /**
  * Performance Monitor - Tracks performance metrics for low-end device testing
  * Non-intrusive, runs in background
+ * 📱 Mobile-aware: Reduces monitoring on mobile to save battery
  */
+
+import mobilePerformanceOptimizer from '../mobilePerformanceOptimizer'
 
 class PerformanceMonitor {
 	constructor() {
@@ -21,19 +24,26 @@ class PerformanceMonitor {
 		this.frameCount = 0
 		this.lastFrameTime = performance.now()
 		this.monitoringInterval = null
+		this.fpsAnimationId = null
+		
+		// Check if analytics should be enabled
+		const settings = mobilePerformanceOptimizer.getSettings()
+		this.analyticsEnabled = settings.enableAnalytics
 		
 		// Track load performance
 		this.trackLoadPerformance()
 		
-		// Monitor frame rate
-		this.startFrameRateMonitoring()
+		// Monitor frame rate (skip on mobile power saver)
+		if (this.analyticsEnabled) {
+			this.startFrameRateMonitoring()
+		}
 		
-		// Monitor memory (if available)
-		if (performance.memory) {
+		// Monitor memory (if available and analytics enabled)
+		if (performance.memory && this.analyticsEnabled) {
 			this.startMemoryMonitoring()
 		}
 		
-		// Track errors
+		// Track errors (always enabled - low overhead)
 		window.addEventListener('error', (e) => {
 			this.trackError('javascript_error', e.message, {
 				filename: e.filename,
@@ -45,6 +55,16 @@ class PerformanceMonitor {
 		// Track unhandled promise rejections
 		window.addEventListener('unhandledrejection', (e) => {
 			this.trackError('unhandled_promise_rejection', e.reason?.message || 'Unknown error')
+		})
+		
+		// Listen for performance mode changes
+		mobilePerformanceOptimizer.subscribe((newSettings) => {
+			if (newSettings.enableAnalytics !== this.analyticsEnabled) {
+				this.analyticsEnabled = newSettings.enableAnalytics
+				if (!this.analyticsEnabled) {
+					this.stopMonitoring()
+				}
+			}
 		})
 	}
 	
@@ -109,10 +129,10 @@ class PerformanceMonitor {
 				lastTime = currentTime
 			}
 			
-			requestAnimationFrame(measureFPS)
+			this.fpsAnimationId = requestAnimationFrame(measureFPS)
 		}
 		
-		requestAnimationFrame(measureFPS)
+		this.fpsAnimationId = requestAnimationFrame(measureFPS)
 	}
 	
 	/**
@@ -120,6 +140,9 @@ class PerformanceMonitor {
 	 */
 	startMemoryMonitoring() {
 		if (!performance.memory) return
+		
+		// Use longer interval on mobile to reduce CPU usage
+		const interval = mobilePerformanceOptimizer.isMobile ? 5000 : 1000
 		
 		this.monitoringInterval = setInterval(() => {
 			const memory = {
@@ -135,7 +158,22 @@ class PerformanceMonitor {
 			if (this.metrics.memoryUsage.length > 120) {
 				this.metrics.memoryUsage.shift()
 			}
-		}, 1000)
+		}, interval)
+	}
+	
+	/**
+	 * Stop all monitoring (called when entering power saver mode)
+	 */
+	stopMonitoring() {
+		if (this.monitoringInterval) {
+			clearInterval(this.monitoringInterval)
+			this.monitoringInterval = null
+		}
+		if (this.fpsAnimationId) {
+			cancelAnimationFrame(this.fpsAnimationId)
+			this.fpsAnimationId = null
+		}
+		console.log('[PerformanceMonitor] Monitoring stopped for power saving')
 	}
 	
 	/**
