@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Player } from '../player'
 import { StaticEffect, BufferingOverlay, EnhancedWhatsNextPreview, CRTInfoOverlay, PlaylistTransitionOverlay } from '../overlays'
-import { Galaxy, Liquid, Aurora } from '../backgrounds'
+import { BackgroundManager } from '../backgrounds'
 import { getUserTimezone } from '../../services/api/timezoneService'
 
 /**
@@ -270,43 +270,21 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			className="tv-frame-container"
 			ref={tvFrameRef}
 		>
-			{/* Background Effects - visible in fullscreen */}
-			{isFullscreen && galaxyProps && galaxyProps.variant === 'liquid' && (
-				<Liquid 
+			{/* Background Effects - Unified manager for fullscreen */}
+			{isFullscreen && galaxyProps && (
+				<BackgroundManager
+					variant={galaxyProps.variant}
+					enabled={true}
 					isActive={galaxyProps.isActive}
-					baseSpeed={galaxyProps.baseSpeed || 0.3}
-					density={galaxyProps.density || 400}
-					volume={galaxyProps.volume || 0.5}
 					isPlaying={galaxyProps.isPlaying}
 					isBuffering={galaxyProps.isBuffering}
+					volume={galaxyProps.volume || 0.5}
 					videoId={galaxyProps.videoId}
 					videoTitle={galaxyProps.videoTitle}
 					channelName={galaxyProps.channelName}
-					variant="classic"
 					tvFrameRect={tvFrameRect}
-				/>
-			)}
-			{isFullscreen && galaxyProps && galaxyProps.variant === 'aurora' && (
-				<Aurora 
-					isActive={galaxyProps.isActive}
 					baseSpeed={galaxyProps.baseSpeed || 0.3}
 					density={galaxyProps.density || 400}
-					volume={galaxyProps.volume || 0.5}
-					isPlaying={galaxyProps.isPlaying}
-					isBuffering={galaxyProps.isBuffering}
-					videoId={galaxyProps.videoId}
-				/>
-			)}
-			{isFullscreen && galaxyProps && (galaxyProps.variant === 'galaxy' || galaxyProps.variant === 'orbital') && (
-				<Galaxy 
-					isActive={galaxyProps.isActive}
-					baseSpeed={galaxyProps.baseSpeed || 0.3}
-					density={galaxyProps.density || 400}
-					volume={galaxyProps.volume || 0.5}
-					isPlaying={galaxyProps.isPlaying}
-					isBuffering={galaxyProps.isBuffering}
-					videoId={galaxyProps.videoId}
-					tvFrameRect={tvFrameRect}
 				/>
 			)}
 <div 

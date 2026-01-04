@@ -35,6 +35,16 @@ import './Galaxy.css'
 const PHI = (1 + Math.sqrt(5)) / 2  // Golden Ratio ≈ 1.618
 const TAU = 2 * Math.PI              // Full circle
 
+// Default warm tunnel color palette - amber/gold/copper vintage theme
+const DEFAULT_TUNNEL_COLORS = [
+  { r: 212, g: 165, b: 116 },  // Warm gold #d4a574
+  { r: 180, g: 120, b: 80 },   // Copper
+  { r: 255, g: 180, b: 100 },  // Amber glow
+  { r: 150, g: 100, b: 70 },   // Deep bronze
+  { r: 255, g: 200, b: 150 },  // Soft cream
+  { r: 200, g: 140, b: 90 },   // Vintage sepia
+]
+
 const GalaxyOrbital = ({ 
   isActive = true, 
   baseSpeed = 0.3, 
@@ -123,10 +133,10 @@ const GalaxyOrbital = ({
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════
-  // COLOR PALETTE - Received from parent Galaxy.jsx
+  // COLOR PALETTE - Warm tunnel colors (default or from parent)
   // Colors are extracted from video thumbnails and mood detection
   // ═══════════════════════════════════════════════════════════════════
-  const currentColorsRef = useRef([...colors])
+  const currentColorsRef = useRef(colors && colors.length >= 3 ? [...colors] : [...DEFAULT_TUNNEL_COLORS])
   const targetColorsRef = useRef(null)
   const colorTransitionRef = useRef(1) // 0-1, 1 = complete
   

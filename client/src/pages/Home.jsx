@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
-import { Galaxy, Liquid, Aurora } from '../components/backgrounds'
+import { BackgroundManager, getNextEffect, getEffect } from '../components/backgrounds'
 import { VJChat } from '../components/chat'
 import { ExternalVideoHint } from '../components/overlays'
 import { SessionManager } from '../services/storage'
@@ -969,43 +969,18 @@ export default function Home() {
 
 		return (
 		<>
-		{/* Background Effects - Shows when enabled and TV is powered on */}
-		{galaxyEnabled && galaxyVariant === 'liquid' && (
-			<Liquid 
-				isActive={tvState.power} 
-				baseSpeed={0.3} 
-				density={400} 
-				volume={tvState.volume} 
-				isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
-				isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
-				videoId={activeVideo?.youtubeId}
-				videoTitle={activeVideo?.title}
-				channelName={selectedCategory?.name}
-				variant="classic"
-			/>
-		)}
-		{galaxyEnabled && galaxyVariant === 'aurora' && (
-			<Aurora 
-				isActive={tvState.power} 
-				baseSpeed={0.3} 
-				density={400} 
-				volume={tvState.volume} 
-				isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
-				isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
-				videoId={activeVideo?.youtubeId}
-			/>
-		)}
-		{galaxyEnabled && (galaxyVariant === 'galaxy' || galaxyVariant === 'orbital') && (
-			<Galaxy 
-				isActive={tvState.power} 
-				baseSpeed={0.3} 
-				density={400} 
-				volume={tvState.volume} 
-				isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
-				isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
-				videoId={activeVideo?.youtubeId}
-			/>
-		)}
+		{/* Background Effects - Unified manager handles all variants */}
+		<BackgroundManager
+			variant={galaxyVariant}
+			enabled={galaxyEnabled}
+			isActive={tvState.power}
+			isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
+			isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
+			volume={tvState.volume}
+			videoId={activeVideo?.youtubeId}
+			videoTitle={activeVideo?.title}
+			channelName={selectedCategory?.name}
+		/>
 		
 		{/* Galaxy Toggle Button - Bottom Left Corner */}
 		<button
@@ -1017,33 +992,19 @@ export default function Home() {
 			<span className="galaxy-icon">{galaxyEnabled ? '🌌' : '✨'}</span>
 		</button>
 		
-		{/* Background Variant Toggle - Cycles through: galaxy → orbital → liquid → aurora */}
+		{/* Background Variant Toggle - Uses registry for cycling */}
 		{galaxyEnabled && (
 			<button
 				className={`galaxy-variant-btn ${galaxyVariant}`}
-				onClick={() => setGalaxyVariant(prev => {
-					if (prev === 'galaxy') return 'orbital'
-					if (prev === 'orbital') return 'liquid'
-					if (prev === 'liquid') return 'aurora'
-					return 'galaxy'
-				})}
-				title={
-					galaxyVariant === 'galaxy' ? 'Galaxy - Click for Tunnel' : 
-					galaxyVariant === 'orbital' ? 'Tunnel - Click for Liquid' : 
-					galaxyVariant === 'liquid' ? 'Liquid - Click for Aurora' :
-					'Aurora - Click for Galaxy'
-				}
+				onClick={() => setGalaxyVariant(prev => getNextEffect(prev))}
+				title={`${getEffect(galaxyVariant).name} - Click for ${getEffect(getNextEffect(galaxyVariant)).name}`}
 				aria-label="Cycle Background Effect"
 			>
 				<span className="variant-icon">
-					{galaxyVariant === 'galaxy' ? '🌌' : 
-					 galaxyVariant === 'orbital' ? '🌀' : 
-					 galaxyVariant === 'liquid' ? '💧' : '🌈'}
+					{getEffect(galaxyVariant).icon}
 				</span>
 				<span className="variant-label">
-					{galaxyVariant === 'galaxy' ? 'Galaxy' : 
-					 galaxyVariant === 'orbital' ? 'Tunnel' : 
-					 galaxyVariant === 'liquid' ? 'Liquid' : 'Aurora'}
+					{getEffect(galaxyVariant).name}
 				</span>
 			</button>
 		)}
