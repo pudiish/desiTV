@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
-import { Galaxy } from '../components/backgrounds'
+import { Galaxy, Liquid, Aurora } from '../components/backgrounds'
 import { VJChat } from '../components/chat'
 import { ExternalVideoHint } from '../components/overlays'
 import { SessionManager } from '../services/storage'
@@ -29,6 +29,7 @@ export default function Home() {
 	const [selectedCategory, setSelectedCategory] = useState(null) // Currently selected category/playlist
 	const [activeVideoIndex, setActiveVideoIndex] = useState(0) // Index of current video within category
 	const [galaxyEnabled, setGalaxyEnabled] = useState(false) // Galaxy background toggle
+	const [galaxyVariant, setGalaxyVariant] = useState('galaxy') // 'galaxy', 'orbital', or 'liquid'
 	const [sessionRestored, setSessionRestored] = useState(false) // Track if session was restored
 	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
 	const [crtVolume, setCrtVolume] = useState(null) // CRT overlay volume trigger (CRT-specific)
@@ -968,8 +969,33 @@ export default function Home() {
 
 		return (
 		<>
-		{/* Galaxy Background - Shows when enabled and TV is powered on */}
-		{galaxyEnabled && (
+		{/* Background Effects - Shows when enabled and TV is powered on */}
+		{galaxyEnabled && galaxyVariant === 'liquid' && (
+			<Liquid 
+				isActive={tvState.power} 
+				baseSpeed={0.3} 
+				density={400} 
+				volume={tvState.volume} 
+				isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
+				isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
+				videoId={activeVideo?.youtubeId}
+				videoTitle={activeVideo?.title}
+				channelName={selectedCategory?.name}
+				variant="classic"
+			/>
+		)}
+		{galaxyEnabled && galaxyVariant === 'aurora' && (
+			<Aurora 
+				isActive={tvState.power} 
+				baseSpeed={0.3} 
+				density={400} 
+				volume={tvState.volume} 
+				isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
+				isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
+				videoId={activeVideo?.youtubeId}
+			/>
+		)}
+		{galaxyEnabled && (galaxyVariant === 'galaxy' || galaxyVariant === 'orbital') && (
 			<Galaxy 
 				isActive={tvState.power} 
 				baseSpeed={0.3} 
@@ -988,8 +1014,39 @@ export default function Home() {
 			title={galaxyEnabled ? 'Disable Galaxy Effect' : 'Enable Galaxy Effect'}
 			aria-label="Toggle Galaxy Background"
 		>
-			<span className="galaxy-icon">✨</span>
+			<span className="galaxy-icon">{galaxyEnabled ? '🌌' : '✨'}</span>
 		</button>
+		
+		{/* Background Variant Toggle - Cycles through: galaxy → orbital → liquid → aurora */}
+		{galaxyEnabled && (
+			<button
+				className={`galaxy-variant-btn ${galaxyVariant}`}
+				onClick={() => setGalaxyVariant(prev => {
+					if (prev === 'galaxy') return 'orbital'
+					if (prev === 'orbital') return 'liquid'
+					if (prev === 'liquid') return 'aurora'
+					return 'galaxy'
+				})}
+				title={
+					galaxyVariant === 'galaxy' ? 'Galaxy - Click for Tunnel' : 
+					galaxyVariant === 'orbital' ? 'Tunnel - Click for Liquid' : 
+					galaxyVariant === 'liquid' ? 'Liquid - Click for Aurora' :
+					'Aurora - Click for Galaxy'
+				}
+				aria-label="Cycle Background Effect"
+			>
+				<span className="variant-icon">
+					{galaxyVariant === 'galaxy' ? '🌌' : 
+					 galaxyVariant === 'orbital' ? '🌀' : 
+					 galaxyVariant === 'liquid' ? '💧' : '🌈'}
+				</span>
+				<span className="variant-label">
+					{galaxyVariant === 'galaxy' ? 'Galaxy' : 
+					 galaxyVariant === 'orbital' ? 'Tunnel' : 
+					 galaxyVariant === 'liquid' ? 'Liquid' : 'Aurora'}
+				</span>
+			</button>
+		)}
 		
 		{/* VJ Chat Assistant - Bottom Right Corner */}
 		<VJChat 
@@ -1145,6 +1202,9 @@ export default function Home() {
 				isPlaying: tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering,
 				isBuffering: tvState.isLoading || playbackInfo?.isBuffering,
 				videoId: activeVideo?.youtubeId,
+				videoTitle: activeVideo?.title,
+				channelName: activeVideo?.channelName || activeVideo?.channel,
+				variant: 'orbital',
 			} : null}
 			remoteOverlayComponent={
 				<TVRemote

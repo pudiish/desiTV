@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Player } from '../player'
 import { StaticEffect, BufferingOverlay, EnhancedWhatsNextPreview, CRTInfoOverlay, PlaylistTransitionOverlay } from '../overlays'
-import { Galaxy } from '../backgrounds'
+import { Galaxy, Liquid, Aurora } from '../backgrounds'
 import { getUserTimezone } from '../../services/api/timezoneService'
 
 /**
@@ -12,10 +12,12 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  */
 const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false, galaxyProps = null, externalVideo = null, onExternalVideoEnd = null }) {
 	const tvFrameRef = useRef(null)
+	const tvFrameInnerRef = useRef(null) // Ref for the inner TV frame element
 	const [isFullscreen, setIsFullscreen] = useState(isFullscreenProp)
 	const [showPreview, setShowPreview] = useState(false)
 	const [timezone] = useState(() => getUserTimezone()) // Initialize timezone once
 	const [transitionInfo, setTransitionInfo] = useState(null)
+	const [tvFrameRect, setTvFrameRect] = useState(null) // TV frame position for Galaxy
 	const tapHandlerRef = useRef(null)
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
@@ -32,6 +34,35 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		)
 		return fullscreen
 	}
+
+	// Calculate TV frame position for Galaxy orbital effect
+	useEffect(() => {
+		const updateTvFrameRect = () => {
+			if (tvFrameInnerRef.current && isFullscreen) {
+				const rect = tvFrameInnerRef.current.getBoundingClientRect()
+				setTvFrameRect({
+					x: rect.left + rect.width / 2,  // Center X
+					y: rect.top + rect.height / 2,  // Center Y
+					width: rect.width,
+					height: rect.height
+				})
+			}
+		}
+		
+		// Update on fullscreen change
+		updateTvFrameRect()
+		
+		// Update on resize
+		window.addEventListener('resize', updateTvFrameRect)
+		
+		// Also update after a short delay for CSS transitions
+		const timeout = setTimeout(updateTvFrameRect, 100)
+		
+		return () => {
+			window.removeEventListener('resize', updateTvFrameRect)
+			clearTimeout(timeout)
+		}
+	}, [isFullscreen])
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -239,9 +270,24 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			className="tv-frame-container"
 			ref={tvFrameRef}
 		>
-			{/* Galaxy Background - visible in fullscreen */}
-			{isFullscreen && galaxyProps && (
-				<Galaxy 
+			{/* Background Effects - visible in fullscreen */}
+			{isFullscreen && galaxyProps && galaxyProps.variant === 'liquid' && (
+				<Liquid 
+					isActive={galaxyProps.isActive}
+					baseSpeed={galaxyProps.baseSpeed || 0.3}
+					density={galaxyProps.density || 400}
+					volume={galaxyProps.volume || 0.5}
+					isPlaying={galaxyProps.isPlaying}
+					isBuffering={galaxyProps.isBuffering}
+					videoId={galaxyProps.videoId}
+					videoTitle={galaxyProps.videoTitle}
+					channelName={galaxyProps.channelName}
+					variant="classic"
+					tvFrameRect={tvFrameRect}
+				/>
+			)}
+			{isFullscreen && galaxyProps && galaxyProps.variant === 'aurora' && (
+				<Aurora 
 					isActive={galaxyProps.isActive}
 					baseSpeed={galaxyProps.baseSpeed || 0.3}
 					density={galaxyProps.density || 400}
@@ -251,7 +297,20 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 					videoId={galaxyProps.videoId}
 				/>
 			)}
+			{isFullscreen && galaxyProps && (galaxyProps.variant === 'galaxy' || galaxyProps.variant === 'orbital') && (
+				<Galaxy 
+					isActive={galaxyProps.isActive}
+					baseSpeed={galaxyProps.baseSpeed || 0.3}
+					density={galaxyProps.density || 400}
+					volume={galaxyProps.volume || 0.5}
+					isPlaying={galaxyProps.isPlaying}
+					isBuffering={galaxyProps.isBuffering}
+					videoId={galaxyProps.videoId}
+					tvFrameRect={tvFrameRect}
+				/>
+			)}
 <div 
+			ref={tvFrameInnerRef} 
 			className={`tv-frame bpl-sanyo-style ${power ? 'tv-frame-power-on' : 'tv-frame-power-off'}`}
 			onMouseEnter={() => { setShowPreview(true); }}
 			onMouseLeave={() => { setShowPreview(false); }}

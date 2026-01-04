@@ -151,4 +151,139 @@
     height: 42px;
     font-size: 18px;
   }
+  
+  .galaxy-variant-btn {
+    bottom: 65px;
+    left: 62px;
+    min-width: auto;
+    padding: 0 10px;
+    height: 36px;
+    font-size: 12px;
+  }
+  
+  .galaxy-variant-btn .variant-label {
+    display: none;
+  }
+}
+
+/* ==========================================
+   GALAXY VARIANT TOGGLE BUTTON
+   Two modes: Nebula (classic) & Cosmos (orbital)
+   ========================================== */
+
+.galaxy-variant-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 72px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 12px;
+  border-radius: 20px;
+  background: rgba(15, 15, 30, 0.85);
+  border: 2px solid rgba(100, 100, 150, 0.5);
+  color: rgba(200, 200, 255, 0.9);
+  font-size: 14px;
+  font-family: monospace;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  animation: variant-fade-in 0.3s ease;
+}
+
+@keyframes variant-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* NEBULA (Classic) variant style */
+.galaxy-variant-btn.classic {
+  background: linear-gradient(135deg, rgba(40, 30, 80, 0.9), rgba(60, 40, 100, 0.9));
+  border-color: rgba(150, 100, 200, 0.7);
+  box-shadow: 
+    0 0 15px rgba(120, 80, 180, 0.4),
+    inset 0 0 10px rgba(200, 150, 255, 0.1);
+}
+
+.galaxy-variant-btn.classic:hover {
+  background: linear-gradient(135deg, rgba(50, 40, 100, 0.95), rgba(70, 50, 120, 0.95));
+  border-color: rgba(180, 130, 255, 0.9);
+  box-shadow: 
+    0 0 20px rgba(150, 100, 220, 0.5),
+    inset 0 0 12px rgba(255, 200, 255, 0.15);
+  transform: scale(1.05);
+}
+
+/* COSMOS (Orbital) variant style */
+.galaxy-variant-btn.orbital {
+  background: linear-gradient(135deg, rgba(20, 50, 80, 0.9), rgba(40, 80, 120, 0.9));
+  border-color: rgba(100, 180, 220, 0.7);
+  box-shadow: 
+    0 0 15px rgba(80, 150, 200, 0.4),
+    inset 0 0 10px rgba(150, 220, 255, 0.1);
+}
+
+.galaxy-variant-btn.orbital:hover {
+  background: linear-gradient(135deg, rgba(30, 60, 100, 0.95), rgba(50, 100, 140, 0.95));
+  border-color: rgba(130, 200, 255, 0.9);
+  box-shadow: 
+    0 0 20px rgba(100, 180, 240, 0.5),
+    inset 0 0 12px rgba(200, 240, 255, 0.15);
+  transform: scale(1.05);
+}
+
+/* Variant icon */
+.galaxy-variant-btn .variant-icon {
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.4s ease;
+}
+
+.galaxy-variant-btn.classic .variant-icon {
+  animation: nebula-spin 8s linear infinite;
+}
+
+.galaxy-variant-btn.orbital .variant-icon {
+  animation: cosmos-orbit 4s ease-in-out infinite;
+}
+
+@keyframes nebula-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cosmos-orbit {
+  0%, 100% { transform: rotate(-15deg) scale(1); }
+  50% { transform: rotate(15deg) scale(1.1); }
+}
+
+/* Variant label */
+.galaxy-variant-btn .variant-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* Hide variant button in fullscreen */
+:fullscreen .galaxy-variant-btn,
+:-webkit-full-screen .galaxy-variant-btn,
+:-moz-full-screen .galaxy-variant-btn,
+:-ms-fullscreen .galaxy-variant-btn,
+.ios-fullscreen-active .galaxy-variant-btn,
+.tv-fullscreen-active .galaxy-variant-btn {
+  display: none;
 }

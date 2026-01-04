@@ -10,6 +10,7 @@ import { PLAYBACK } from '../../config/constants/playback'
 import { joinChannel, leaveChannel } from '../../services/api/viewerCountService'
 import { loadYouTubeAPI } from '../../utils/youtubeLoader'
 import apiClientV2 from '../../services/apiClientV2'
+import VideoBloomOverlay from './VideoBloomOverlay'
 
 /**
  * Enhanced Player Component with:
@@ -2386,6 +2387,14 @@ return (
 					<div className="error-message">PLAYBACK ERROR - RECOVERING...</div>
 				</div>
 			)}
+			{/* Video bloom effect - reacts to video brightness with subtle glow/flash */}
+			<VideoBloomOverlay 
+				isActive={power && !showStaticOverlay && !isBuffering && !isTransitioning}
+				intensity={0.7}
+				enableFlash={true}
+				enableGlow={true}
+				enableBlur={false}
+			/>
 		</div>
 	)
 }, (prevProps, nextProps) => {
