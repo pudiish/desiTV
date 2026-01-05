@@ -11,7 +11,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import mobilePerformanceOptimizer from '../../services/mobilePerformanceOptimizer'
 import moodColorService from '../../services/moodColorService'
-import GalaxyOrbital from './GalaxyOrbital'
+import GalaxyOrbitalThree from './GalaxyOrbitalThree'
 import './Galaxy.css'
 
 // Default color palette - warm vintage tones matching DesiTV theme
@@ -472,7 +472,7 @@ const Liquid = ({
   // Render orbital variant if selected - uses state-based colors for reactivity
   if (variant === 'orbital') {
     return (
-      <GalaxyOrbital
+      <GalaxyOrbitalThree
         isActive={isActive}
         baseSpeed={baseSpeed}
         density={density}

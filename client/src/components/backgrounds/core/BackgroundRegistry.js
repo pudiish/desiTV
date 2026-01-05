@@ -16,7 +16,7 @@
 
 // Import all background effect components
 import Galaxy from '../Galaxy'
-import GalaxyOrbital from '../GalaxyOrbital'
+import GalaxyOrbitalThree from '../GalaxyOrbitalThree'
 import Liquid from '../Liquid'
 import Aurora from '../Aurora'
 
@@ -39,10 +39,10 @@ export const BACKGROUND_EFFECTS = {
   
   orbital: {
     id: 'orbital',
-    name: 'Tunnel',
+    name: 'Tunnel (Three.js)',
     icon: '🌀',
-    description: 'Hypnotic tunnel emanating from TV frame',
-    Component: GalaxyOrbital,
+    description: 'High-performance 3D tunnel with GPU acceleration',
+    Component: GalaxyOrbitalThree,
     order: 2,
     defaultProps: {
       baseSpeed: 0.3,
