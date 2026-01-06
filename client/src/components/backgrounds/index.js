@@ -3,10 +3,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * Individual Effects:
- * - Galaxy: Original video-color-reactive particle effect
- * - GalaxyOrbital: Hypnotic tunnel emanating from TV frame
- * - Liquid: Refined mood-aware AI color detection with liquid flow
- * - Aurora: Northern Lights effect with bass-reactive boom
+ * - Galaxy: Original video-color-reactive particle effect (Dhara)
+ * - Liquid: Refined mood-aware AI color detection with liquid flow (Jazbaat)
+ * - Aurora: Northern Lights effect with bass-reactive boom (Dhamaka)
+ * - Sitaare: Milky Way starfield (refactored with modular architecture)
  * 
  * Core System:
  * - BackgroundManager: Unified manager component (recommended)
@@ -23,7 +23,6 @@
 
 // Individual effect components (for direct use)
 export { default as Galaxy } from './Galaxy'
-export { default as GalaxyOrbital } from './GalaxyOrbital'
 export { default as Liquid } from './Liquid'
 export { default as Aurora } from './Aurora'
 
