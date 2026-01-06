@@ -6,7 +6,7 @@
  * Each effect has:
  * - Component: The React component to render
  * - id: Unique identifier
- * - name: Display name
+ * - name: Display name (2000s desiTV vibes)
  * - icon: Emoji icon for UI
  * - description: Short description
  * - defaultProps: Default props for the effect
@@ -16,19 +16,19 @@
 
 // Import all background effect components
 import Galaxy from '../Galaxy'
-import GalaxyOrbitalThree from '../GalaxyOrbitalThree'
+import GalaxyOrbitalThree from '../GalaxyOrbitalThreeRefactored'
 import Liquid from '../Liquid'
 import Aurora from '../Aurora'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// EFFECT REGISTRY - Add new effects here
+// EFFECT REGISTRY - Named by their visual behavior (2000s DesiTV vibes)
 // ═══════════════════════════════════════════════════════════════════════════════
 export const BACKGROUND_EFFECTS = {
   galaxy: {
     id: 'galaxy',
-    name: 'Galaxy',
-    icon: '🌌',
-    description: 'Flowing particles with video-reactive colors',
+    name: 'Dhara',        // "Flow/Stream" - flowing particles from video colors
+    icon: '〰️',
+    description: 'Flowing particles synced to video colors',
     Component: Galaxy,
     order: 1,
     defaultProps: {
@@ -39,9 +39,9 @@ export const BACKGROUND_EFFECTS = {
   
   orbital: {
     id: 'orbital',
-    name: 'Tunnel (Three.js)',
-    icon: '🌀',
-    description: 'High-performance 3D tunnel with GPU acceleration',
+    name: 'Sitaare',      // "Stars" - Milky Way starfield flying towards you
+    icon: '✦',
+    description: 'Starfield journey through the cosmos',
     Component: GalaxyOrbitalThree,
     order: 2,
     defaultProps: {
@@ -52,9 +52,9 @@ export const BACKGROUND_EFFECTS = {
   
   liquid: {
     id: 'liquid',
-    name: 'Liquid',
-    icon: '💧',
-    description: 'AI mood-aware flowing liquid effect',
+    name: 'Jazbaat',      // "Emotions/Feelings" - mood-aware AI color detection
+    icon: '💫',
+    description: 'Mood-aware colors that feel the music',
     Component: Liquid,
     order: 3,
     defaultProps: {
@@ -66,9 +66,9 @@ export const BACKGROUND_EFFECTS = {
   
   aurora: {
     id: 'aurora',
-    name: 'Aurora',
-    icon: '🌈',
-    description: 'Northern lights with bass-reactive boom',
+    name: 'Dhamaka',      // "Explosion/Boom" - bass-reactive shake and pulse
+    icon: '💥',
+    description: 'Bass-reactive lights that shake and pulse',
     Component: Aurora,
     order: 4,
     defaultProps: {

@@ -482,6 +482,7 @@ const Liquid = ({
         colors={colors}
         intensityBoost={intensityBoost}
         tvFrameRect={tvFrameRect}
+        videoId={videoId}
       />
     )
   }
