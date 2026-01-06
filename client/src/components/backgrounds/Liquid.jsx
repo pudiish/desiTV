@@ -11,7 +11,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import mobilePerformanceOptimizer from '../../services/mobilePerformanceOptimizer'
 import moodColorService from '../../services/moodColorService'
-import GalaxyOrbitalThree from './GalaxyOrbitalThree'
+import GalaxyOrbitalThree from './GalaxyOrbitalThreeRefactored'
 import './Galaxy.css'
 
 // Default color palette - warm vintage tones matching DesiTV theme
