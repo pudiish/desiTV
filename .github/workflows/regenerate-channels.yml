@@ -26,9 +26,16 @@ jobs:
         run: npm ci
         working-directory: server
       
+      - name: Check MONGO_URI secret
+        run: |
+          if [ -z "${{ secrets.MONGO_URI }}" ]; then
+            echo "::error::MONGO_URI secret is not set. Go to Settings > Secrets > Actions and add it."
+            exit 1
+          fi
+      
       - name: Generate channels.json from MongoDB
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
         run: node scripts/generate-channels-json.js
         working-directory: server
       

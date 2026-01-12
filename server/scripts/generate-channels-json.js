@@ -10,11 +10,12 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
-const MONGODB_URI = process.env.MONGODB_URI;
+// Support both MONGO_URI and MONGODB_URI
+const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 const JSON_OUTPUT_PATH = path.resolve(__dirname, '../../client/public/data/channels.json');
 
 if (!MONGODB_URI) {
-  console.error('MONGODB_URI environment variable is required');
+  console.error('MONGO_URI or MONGODB_URI environment variable is required');
   process.exit(1);
 }
 
