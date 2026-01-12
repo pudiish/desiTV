@@ -245,15 +245,35 @@ export class APIClient {
 
       // Use dedupeFetch for GET requests to prevent duplicates
       const startTime = performance.now()
-      const fetchFn = finalConfig.method?.toUpperCase() === 'GET' 
-        ? (await import('../utils/requestDeduplication')).dedupeFetch
-        : fetch
-      const response = await fetchFn(url, {
-        ...finalConfig,
-        headers,
-        credentials: 'include', // Include cookies for CSRF
-        signal: controller.signal,
-      })
+      let response
+      try {
+        const fetchFn = finalConfig.method?.toUpperCase() === 'GET' 
+          ? (await import('../utils/requestDeduplication')).dedupeFetch
+          : fetch
+        response = await fetchFn(url, {
+          ...finalConfig,
+          headers,
+          credentials: 'include', // Include cookies for CSRF
+          signal: controller.signal,
+        })
+
+        // Clear timeout on successful fetch
+        clearTimeout(timeoutId)
+      } catch (fetchError) {
+        // Clear timeout on error
+        clearTimeout(timeoutId)
+        
+        // Handle abort errors (timeout or manual abort)
+        if (fetchError.name === 'AbortError' || fetchError.name === 'TimeoutError') {
+          const timeoutError = new Error('Request timeout - the server took too long to respond. This may be due to cold start on Render/Vercel.')
+          timeoutError.name = 'TimeoutError'
+          timeoutError.isTimeout = true
+          throw timeoutError
+        }
+        
+        // Re-throw other errors
+        throw fetchError
+      }
 
       // Update CSRF token from response header (if refreshed)
       const newToken = response.headers.get('X-CSRF-Token')
@@ -261,7 +281,6 @@ export class APIClient {
         this.csrfToken = newToken
       }
 
-      clearTimeout(timeoutId)
       const duration = performance.now() - startTime
 
       // Log request

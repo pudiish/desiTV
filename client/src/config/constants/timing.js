@@ -30,7 +30,7 @@ export const TIMING = {
   // - Critical state: 3s (3+ failures detected)
   // This drastically reduces API costs while maintaining visibility into issues
   HEALTH_CHECK_INTERVAL: isProduction ? 30000 : 10000, // LEGACY - now handled by HealthMonitor.checkIntervals
-  API_HEALTH_TIMEOUT: isProduction ? 10000 : 5000, // milliseconds - API call timeout (longer for cold starts)
+  API_HEALTH_TIMEOUT: isProduction ? 30000 : 10000, // milliseconds - API call timeout (30s for Render/Vercel cold starts, 10s for local dev)
 
   // UI feedback
   STATUS_MESSAGE_DURATION: 5000, // milliseconds - status message duration
