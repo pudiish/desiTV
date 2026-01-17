@@ -131,7 +131,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 16px; /* Increased from 14px 16px for better spacing */
+  min-height: 56px; /* Ensure consistent height */
   border-bottom: 1px solid var(--vj-border);
   background: rgba(0, 0, 0, 0.3);
 }
@@ -139,7 +140,7 @@
 .vj-header-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px; /* Increased from 10px for better spacing */
 }
 
 .vj-header-text {
@@ -176,7 +177,9 @@
   color: var(--vj-text-muted);
   font-size: 18px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 8px; /* Increased for better touch target */
+  min-width: 44px; /* iOS touch target minimum */
+  min-height: 44px;
   transition: color 0.2s;
   display: flex;
   align-items: center;
@@ -268,6 +271,7 @@
   line-height: 1.5;
   word-break: break-word;
   overflow-wrap: break-word;
+  hyphens: auto; /* Better word breaking for long words */
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -302,8 +306,11 @@
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: break-word;
+  hyphens: auto; /* Better word breaking */
   max-width: 100%;
   overflow: hidden;
+  /* Allow text to wrap naturally, but limit very long messages */
+  display: block;
 }
 
 /* ============================================================================
@@ -470,6 +477,8 @@
   align-items: center;
   gap: 4px;
   text-align: center;
+  min-height: 48px; /* Better touch target for mobile */
+  min-width: 44px; /* iOS minimum */
 }
 
 .vj-quick-action-btn:hover {
@@ -500,6 +509,7 @@
 
 .vj-chat-input {
   display: flex;
+  align-items: center; /* Ensure vertical alignment */
   gap: 10px;
   padding: 12px 14px;
   background: rgba(0, 0, 0, 0.4);
@@ -517,6 +527,9 @@
   outline: none;
   transition: all 0.2s;
   font-family: inherit;
+  min-height: 40px; /* Ensure consistent height */
+  line-height: 1.5; /* Better text alignment */
+  box-sizing: border-box;
 }
 
 .vj-chat-input input:focus {
@@ -540,6 +553,8 @@
   color: var(--vj-bg-dark);
   width: 40px;
   height: 40px;
+  min-width: 40px; /* Ensure consistent size */
+  min-height: 40px;
   border-radius: 10px;
   cursor: pointer;
   font-size: 16px;
@@ -549,6 +564,7 @@
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .vj-send-btn:hover:not(:disabled) {
@@ -852,21 +868,37 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .vj-chat-container {
-    bottom: 65px; /* Above footer status bar - aligned with Galaxy button */
-    right: 12px;
+    /* Safe area support for notched devices */
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px));
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px));
   }
 
   .vj-toggle-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px; /* Increased from 42px for better touch target */
+    height: 44px; /* iOS minimum touch target */
+    min-width: 44px;
+    min-height: 44px;
     font-size: 18px;
   }
 
   .vj-chat-window {
-    width: calc(100vw - 24px);
+    width: calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
     right: -6px;
-    height: 380px;
+    /* Dynamic height with safe area support */
+    height: min(380px, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 120px));
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 120px);
     bottom: 55px;
+  }
+  
+  /* Increase text size for better readability on mobile */
+  .vj-msg-content {
+    font-size: 14px; /* Increased from 13px */
+    line-height: 1.6; /* Better line spacing */
+  }
+  
+  .vj-title {
+    font-size: 14px; /* Slightly larger on mobile */
   }
 }
 
