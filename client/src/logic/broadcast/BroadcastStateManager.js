@@ -21,6 +21,10 @@ class BroadcastStateManager {
 		this.globalEpochKey = 'desitv-global-epoch'
 		this.gradualResetIntervals = {} // Track gradual reset intervals per channel
 		
+		// PERFORMANCE: Memoized channel data for O(log n) binary search
+		// Maps channelId -> { videoDurations, cumulativeStarts, totalDuration, itemsHash }
+		this.channelDataCache = new Map()
+		
 		// Configuration from thresholds
 		this.config = {
 			saveInterval: BROADCAST_THRESHOLDS.AUTO_SAVE_INTERVAL,
@@ -201,7 +205,49 @@ class BroadcastStateManager {
 	}
 
 	/**
+	 * PERFORMANCE: Pre-compute cumulative positions for O(log n) binary search
+	 * Called once per channel initialization, cached for all future lookups
+	 */
+	_precomputeChannelData(channel) {
+		if (!channel || !channel.items || channel.items.length === 0) {
+			return null
+		}
+
+		// Calculate video durations (memoized)
+		const videoDurations = channel.items.map((v) => 
+			(typeof v.duration === 'number' && v.duration > 0) 
+				? v.duration 
+				: this.config.defaultVideoDuration
+		)
+		
+		const totalDuration = videoDurations.reduce((sum, d) => sum + d, 0)
+		
+		// Pre-compute cumulative start positions (like server does)
+		// This enables O(log n) binary search instead of O(n) linear search
+		const cumulativeStarts = []
+		let cumulative = 0
+		for (let i = 0; i < videoDurations.length; i++) {
+			cumulativeStarts.push(cumulative)
+			cumulative += videoDurations[i]
+		}
+
+		// Create hash of items to detect changes (simple hash based on count + first/last video IDs)
+		const itemsHash = channel.items.length > 0
+			? `${channel.items.length}:${channel.items[0]?.youtubeId || channel.items[0]?.videoId || ''}:${channel.items[channel.items.length - 1]?.youtubeId || channel.items[channel.items.length - 1]?.videoId || ''}`
+			: 'empty'
+
+		return {
+			videoDurations,
+			cumulativeStarts,
+			totalDuration,
+			itemsHash,
+			itemCount: channel.items.length
+		}
+	}
+
+	/**
 	 * Initialize channel state
+	 * PERFORMANCE: Pre-computes cumulative positions for binary search optimization
 	 */
 	initializeChannel(channel) {
 		if (!channel || !channel._id) return null
@@ -222,12 +268,18 @@ class BroadcastStateManager {
 		const now = new Date()
 		const savedState = this.state[channelId]
 
+		// PERFORMANCE: Pre-compute and cache channel data for binary search
+		const channelData = this._precomputeChannelData(channel)
+		if (channelData) {
+			this.channelDataCache.set(channelId, channelData)
+		}
+
 		if (savedState) {
 			this.state[channelId] = {
 				...savedState,
 				channelName: channel.name,
-				playlistTotalDuration: this.calculateTotalDuration(channel.items),
-				videoDurations: channel.items.map((v) => 
+				playlistTotalDuration: channelData?.totalDuration || this.calculateTotalDuration(channel.items),
+				videoDurations: channelData?.videoDurations || channel.items.map((v) => 
 					(typeof v.duration === 'number' && v.duration > 0) ? v.duration : this.config.defaultVideoDuration
 				),
 				lastAccessTime: now,
@@ -242,8 +294,8 @@ class BroadcastStateManager {
 				channelId,
 				channelName: channel.name,
 				lastAccessTime: now,
-				playlistTotalDuration: this.calculateTotalDuration(channel.items),
-				videoDurations: channel.items.map((v) => 
+				playlistTotalDuration: channelData?.totalDuration || this.calculateTotalDuration(channel.items),
+				videoDurations: channelData?.videoDurations || channel.items.map((v) => 
 					(typeof v.duration === 'number' && v.duration > 0) ? v.duration : this.config.defaultVideoDuration
 				),
 				channelOffset: 0, // Per-channel offset for manual seeking (doesn't affect global epoch)
@@ -279,6 +331,11 @@ class BroadcastStateManager {
 	/**
 	 * Calculate current position in broadcast timeline
 	 * Uses immutable global epoch + per-channel offset (for manual seeking)
+	 * 
+	 * PERFORMANCE: Optimized with binary search (O(log n)) instead of linear search (O(n))
+	 * - Pre-computed cumulative positions cached per channel
+	 * - Memoized video durations to avoid recalculation
+	 * - Matches server's optimized approach in liveStateService.js
 	 */
 	calculateCurrentPosition(channel) {
 		if (!channel || !channel.items || channel.items.length === 0) {
@@ -371,15 +428,50 @@ class BroadcastStateManager {
 		const channelOffset = savedState.channelOffset || 0
 		const adjustedElapsedSec = totalElapsedSec + channelOffset
 
-		const videoDurations = channel.items.map((v) => {
-			const duration = v.duration
-			if (typeof duration === 'number' && duration > 0) {
-				return duration
+		// PERFORMANCE: Use cached pre-computed data if available, otherwise compute on-the-fly
+		let channelData = this.channelDataCache.get(channelId)
+		if (!channelData) {
+			// Cache miss - compute and cache for future calls
+			channelData = this._precomputeChannelData(channel)
+			if (channelData) {
+				this.channelDataCache.set(channelId, channelData)
 			}
-			return this.config.defaultVideoDuration
-		})
-		
-		const totalDurationSec = videoDurations.reduce((sum, d) => sum + d, 0)
+		}
+
+		// If still no channel data, fall back to old method (shouldn't happen)
+		if (!channelData) {
+			logger.warn('[BroadcastState] Channel data not available, using fallback calculation')
+			const videoDurations = channel.items.map((v) => {
+				const duration = v.duration
+				if (typeof duration === 'number' && duration > 0) {
+					return duration
+				}
+				return this.config.defaultVideoDuration
+			})
+			const totalDurationSec = videoDurations.reduce((sum, d) => sum + d, 0)
+			if (totalDurationSec === 0) {
+				return {
+					videoIndex: 0,
+					offset: 0,
+					debugInfo: 'Zero total duration',
+				}
+			}
+			channelData = {
+				videoDurations,
+				cumulativeStarts: [],
+				totalDuration: totalDurationSec,
+				itemsHash: '',
+				itemCount: channel.items.length
+			}
+			// Build cumulative starts for fallback
+			let cumulative = 0
+			for (let i = 0; i < videoDurations.length; i++) {
+				channelData.cumulativeStarts.push(cumulative)
+				cumulative += videoDurations[i]
+			}
+		}
+
+		const { videoDurations, cumulativeStarts, totalDuration: totalDurationSec } = channelData
 		
 		if (totalDurationSec === 0) {
 			return {
@@ -394,7 +486,7 @@ class BroadcastStateManager {
 		let cyclePosition = 0
 		let cycleCount = 0
 
-		// Single video case
+		// Single video case (optimized)
 		if (channel.items.length === 1) {
 			const singleVideoDuration = videoDurations[0]
 			if (singleVideoDuration <= 0) {
@@ -414,7 +506,7 @@ class BroadcastStateManager {
 			videoIndex = 0
 			cycleCount = Math.floor(effectiveElapsed / singleVideoDuration)
 		}
-		// Multiple videos case
+		// Multiple videos case - PERFORMANCE: Use binary search O(log n) instead of O(n) linear search
 		else {
 			// Handle negative adjustedElapsedSec
 			const effectiveElapsed = adjustedElapsedSec >= 0
@@ -425,26 +517,41 @@ class BroadcastStateManager {
 			if (cyclePosition < 0) cyclePosition += totalDurationSec
 			cycleCount = Math.floor(effectiveElapsed / totalDurationSec)
 
-			let accumulatedTime = 0
+			// PERFORMANCE: Binary search for video at position (O(log n) instead of O(n))
+			// This matches the server's optimized approach in liveStateService.js
+			let left = 0
+			let right = cumulativeStarts.length - 1
 			let found = false
-			
-			for (let i = 0; i < videoDurations.length; i++) {
-				const videoDuration = videoDurations[i]
-				const videoEndTime = accumulatedTime + videoDuration
-				
-				if (cyclePosition >= accumulatedTime && cyclePosition < videoEndTime) {
-					videoIndex = i
-					offsetInVideo = cyclePosition - accumulatedTime
+
+			while (left < right) {
+				const mid = Math.floor((left + right + 1) / 2)
+				const videoStart = cumulativeStarts[mid]
+				const videoEnd = videoStart + videoDurations[mid]
+
+				if (cyclePosition >= videoStart && cyclePosition < videoEnd) {
+					videoIndex = mid
+					offsetInVideo = cyclePosition - videoStart
 					found = true
 					break
+				} else if (cumulativeStarts[mid] <= cyclePosition) {
+					left = mid
+				} else {
+					right = mid - 1
 				}
-				
-				accumulatedTime = videoEndTime
 			}
-			
+
+			// If not found in binary search, check the final left position
 			if (!found) {
-				videoIndex = 0
-				offsetInVideo = 0
+				const videoStart = cumulativeStarts[left]
+				const videoEnd = videoStart + videoDurations[left]
+				if (cyclePosition >= videoStart && cyclePosition < videoEnd) {
+					videoIndex = left
+					offsetInVideo = cyclePosition - videoStart
+				} else {
+					// Fallback to first video if calculation is off
+					videoIndex = 0
+					offsetInVideo = 0
+				}
 			}
 		}
 
