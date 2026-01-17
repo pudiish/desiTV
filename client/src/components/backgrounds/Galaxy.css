@@ -73,7 +73,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  z-index: 100;
+  z-index: 999; /* Just below chat button (1000) but above other elements */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -145,20 +145,26 @@
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .galaxy-toggle-btn {
-    bottom: 65px; /* Above footer status bar */
-    left: 12px;
-    width: 42px;
-    height: 42px;
+    /* Safe area support - ensure it's visible and not hidden */
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px)); /* Above footer status bar */
+    left: calc(12px + env(safe-area-inset-left, 0px)); /* Safe area support */
+    width: 44px; /* Increased from 42px for better touch target */
+    height: 44px; /* iOS minimum touch target */
+    min-width: 44px;
+    min-height: 44px;
     font-size: 18px;
+    z-index: 999; /* Ensure it's visible above other elements */
   }
   
   .galaxy-variant-btn {
-    bottom: 65px;
-    left: 62px;
-    min-width: auto;
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px)); /* Safe area support */
+    left: calc(62px + env(safe-area-inset-left, 0px)); /* Positioned next to toggle button */
+    min-width: 40px; /* Minimum touch target */
+    min-height: 40px; /* iOS minimum */
     padding: 0 10px;
-    height: 36px;
+    height: 40px; /* Increased from 36px for better touch target */
     font-size: 12px;
+    z-index: 999; /* Ensure visibility */
   }
   
   .galaxy-variant-btn .variant-label {
@@ -190,7 +196,7 @@
   justify-content: center;
   gap: 6px;
   transition: all 0.3s ease;
-  z-index: 100;
+  z-index: 999; /* Just below chat button (1000) but above other elements */
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
