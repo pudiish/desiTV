@@ -173,8 +173,8 @@
 }
 
 .remote-btn.power-btn:focus:not(:disabled) {
-	outline: 2px solid color-mix(in srgb, var(--color-error) 60%, transparent);
-	outline-offset: 2px;
+	outline: none;
+	/* No persistent focus glow */
 }
 
 .remote-btn.power-btn.on {
@@ -259,9 +259,18 @@
 /* Mobile touch improvements */
 .remote-btn {
 	touch-action: manipulation;
-	-webkit-tap-highlight-color: rgba(74, 158, 255, 0.3);
+	-webkit-tap-highlight-color: transparent;
 	user-select: none;
 	-webkit-user-select: none;
+	outline: none !important;
+}
+
+/* Remove persistent focus effects - only show active/press state */
+.remote-btn:focus,
+.remote-btn:focus-visible,
+.remote-btn:focus:not(:active) {
+	outline: none !important;
+	box-shadow: none !important;
 }
 
 .remote-btn.num-btn {
@@ -303,9 +312,8 @@
 }
 
 .remote-btn.num-btn:focus:not(:disabled) {
-	outline: 2px solid var(--color-primary);
-	outline-offset: 2px;
-	box-shadow: 0 0 8px var(--color-primary-glow);
+	outline: none;
+	/* No persistent focus glow */
 }
 
 .remote-btn.num-btn:disabled {
@@ -407,9 +415,8 @@
 }
 
 .remote-btn.dpad-btn:focus:not(:disabled) {
-	outline: 2px solid var(--color-primary);
-	box-shadow: 0 0 8px var(--color-primary-glow);
-	outline-offset: 2px;
+	outline: none;
+	/* No persistent focus glow */
 }
 
 .remote-btn.dpad-btn:disabled {
@@ -460,9 +467,8 @@
 }
 
 .remote-btn.category-btn:focus:not(:disabled) {
-	outline: 2px solid var(--color-primary);
-	box-shadow: 0 0 8px var(--color-primary-glow);
-	outline-offset: 2px;
+	outline: none;
+	/* No persistent focus glow */
 }
 
 .remote-btn.category-btn:disabled {
@@ -515,9 +521,8 @@
 }
 
 .remote-btn.mute-btn:focus:not(:disabled) {
-	outline: 2px solid var(--color-primary);
-	box-shadow: 0 0 8px var(--color-primary-glow);
-	outline-offset: 2px;
+	outline: none;
+	/* No persistent focus glow */
 }
 
 .remote-btn.mute-btn:disabled {

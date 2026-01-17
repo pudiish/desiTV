@@ -199,9 +199,8 @@ button,
 }
 
 .remote-btn:focus:not(:disabled) {
-	outline: 2px solid var(--color-primary);
-	box-shadow: 0 0 8px var(--color-primary-glow);
-	outline-offset: 2px;
+	outline: none;
+	/* No persistent focus glow - only active/press state */
 }
 
 .remote-btn:disabled {
@@ -233,8 +232,8 @@ button,
 }
 
 .remote-btn.power-btn:focus:not(:disabled) {
-	outline: 2px solid rgba(255, 0, 0, 0.6);
-	outline-offset: 2px;
+	outline: none;
+	/* No persistent focus glow - only active/press state */
 }
 
 .remote-btn.power-btn.on {

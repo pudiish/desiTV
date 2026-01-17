@@ -343,8 +343,8 @@
 }
 
 .tv-btn:focus {
-	outline: 1px solid var(--shadow-white-brightest);
-	outline-offset: 1px;
+	outline: none;
+	/* No persistent focus glow - only active/press state */
 }
 
 /* Button highlight */
@@ -568,6 +568,12 @@
 		flex-shrink: 0 !important;
 		-webkit-tap-highlight-color: transparent !important;
 		touch-action: manipulation !important;
+		outline: none !important;
+	}
+	
+	.tv-btn:focus,
+	.tv-btn:active {
+		outline: none !important;
 	}
 	
 	.tv-btn:active {

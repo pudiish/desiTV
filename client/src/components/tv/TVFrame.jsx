@@ -97,6 +97,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 			}
 			e.stopPropagation()
 			handler && handler()
+			// Remove focus to prevent persistent highlight
+			e.currentTarget.blur()
 		},
 		onTouchStart: (e) => {
 			e.stopPropagation()
@@ -108,6 +110,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		onTouchEnd: (e) => {
 			e.preventDefault()
 			e.stopPropagation()
+			// Remove focus to prevent persistent highlight
+			e.currentTarget.blur()
 		}
 	}), [])
 
