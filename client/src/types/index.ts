@@ -199,5 +199,4 @@ export interface UseBroadcastPositionReturn {
   error: Error | null;
 }
 
-// ===== Export all types =====
-export type { Video, Channel, BroadcastPosition, PlayerProps, APIResponse, ChatResponse };
+// Types are already exported above, no need to re-export

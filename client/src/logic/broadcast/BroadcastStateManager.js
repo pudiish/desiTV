@@ -7,7 +7,7 @@
 
 import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
 import { fetchGlobalEpoch, getCachedEpoch } from '../../services/api/globalEpochService.js'
-import logger from '../../utils/logger.js'
+import logger from '../../utils/logger'
 
 class BroadcastStateManager {
 	constructor() {

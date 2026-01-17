@@ -8,7 +8,7 @@
  * - Optional: Sentry/Analytics integration
  */
 
-import logger from '../utils/logger'
+import logger from '../utils/logger';
 
 export const ErrorCodes = {
   // Network errors
@@ -27,15 +27,35 @@ export const ErrorCodes = {
   
   // Generic errors
   UNKNOWN: 'E_999_UNKNOWN'
-};
+} as const;
 
-const ErrorMessages = {
+export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
+
+interface ErrorMessage {
+  user: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+interface ErrorHandlerResult {
+  success: false;
+  errorCode: ErrorCode;
+  userMessage: string;
+  severity: 'error' | 'warning' | 'info';
+  devMessage: string;
+  timestamp: string;
+}
+
+const ErrorMessages: Record<ErrorCode, ErrorMessage> = {
   [ErrorCodes.NETWORK_TIMEOUT]: {
     user: 'Network slow! Try again in a moment 🌐',
     severity: 'warning'
   },
   [ErrorCodes.NETWORK_FAILURE]: {
     user: 'No internet connection. Check your WiFi! 📡',
+    severity: 'error'
+  },
+  [ErrorCodes.API_ERROR]: {
+    user: 'Server error. Try again in a moment! 🔧',
     severity: 'error'
   },
   [ErrorCodes.YOUTUBE_NOT_FOUND]: {
@@ -46,8 +66,16 @@ const ErrorMessages = {
     user: 'YouTube quota exceeded. Try again later! 📺',
     severity: 'error'
   },
+  [ErrorCodes.YOUTUBE_INVALID]: {
+    user: 'Invalid video ID. Please try again! 🎬',
+    severity: 'warning'
+  },
   [ErrorCodes.CHAT_TIMEOUT]: {
     user: 'DJ Desi is thinking... took too long! ⏱️',
+    severity: 'warning'
+  },
+  [ErrorCodes.CHAT_INVALID_INPUT]: {
+    user: 'Invalid input. Please try again! 💬',
     severity: 'warning'
   },
   [ErrorCodes.UNKNOWN]: {
@@ -56,44 +84,59 @@ const ErrorMessages = {
   }
 };
 
+interface WindowWithErrorTracker extends Window {
+  errorTracker?: {
+    captureException: (error: Error, context: {
+      tags: Record<string, string>;
+      extra: Record<string, string>;
+    }) => void;
+  };
+}
+
 class ErrorHandler {
+  private isDev: boolean;
+
   constructor() {
-    this.isDev = process.env.NODE_ENV === 'development';
+    this.isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
   }
 
   /**
    * Handle and format error
-   * @param {Error} error - The error object
-   * @param {string} context - Where the error occurred (e.g., 'VJChat', 'Player')
-   * @param {string} errorCode - Custom error code from ErrorCodes
-   * @returns {object} Formatted error with user message and dev logs
    */
-  handle(error, context = 'Unknown', errorCode = ErrorCodes.UNKNOWN) {
+  handle(
+    error: Error | unknown,
+    context: string = 'Unknown',
+    errorCode: ErrorCode = ErrorCodes.UNKNOWN
+  ): ErrorHandlerResult {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
     const userMessage = ErrorMessages[errorCode]?.user || ErrorMessages[ErrorCodes.UNKNOWN].user;
     const severity = ErrorMessages[errorCode]?.severity || 'error';
 
     // Dev logs (only in development or when user opens dev tools)
     if (this.isDev) {
       logger.error(`[${context}] ${errorCode}`, {
-        message: error.message,
-        stack: error.stack,
-        error: error,
+        message: errorObj.message,
+        stack: errorObj.stack,
+        error: errorObj,
         timestamp: new Date().toISOString()
       });
     } else {
       // Production: minimal logging
-      logger.error(`[${context}] ${errorCode}: ${error.message}`);
+      logger.error(`[${context}] ${errorCode}: ${errorObj.message}`);
     }
 
     // Send to analytics/error tracking in production
-    if (!this.isDev && window.errorTracker) {
-      window.errorTracker.captureException(error, {
-        tags: { context, errorCode, severity },
-        extra: { 
-          userAgent: navigator.userAgent,
-          url: window.location.href 
-        }
-      });
+    if (!this.isDev && typeof window !== 'undefined') {
+      const win = window as WindowWithErrorTracker;
+      if (win.errorTracker) {
+        win.errorTracker.captureException(errorObj, {
+          tags: { context, errorCode, severity },
+          extra: { 
+            userAgent: navigator.userAgent,
+            url: window.location.href 
+          }
+        });
+      }
     }
 
     return {
@@ -101,7 +144,7 @@ class ErrorHandler {
       errorCode,
       userMessage,
       severity,
-      devMessage: error.message,
+      devMessage: errorObj.message,
       timestamp: new Date().toISOString()
     };
   }
@@ -109,14 +152,17 @@ class ErrorHandler {
   /**
    * Transform network errors to our error codes
    */
-  classifyNetworkError(error) {
-    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+  classifyNetworkError(error: Error | { code?: string; message?: string; status?: number }): ErrorCode {
+    if ('code' in error && error.code === 'ECONNABORTED') {
       return ErrorCodes.NETWORK_TIMEOUT;
     }
-    if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+    if (error.message?.includes('timeout')) {
+      return ErrorCodes.NETWORK_TIMEOUT;
+    }
+    if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
       return ErrorCodes.NETWORK_FAILURE;
     }
-    if (error.status >= 500) {
+    if ('status' in error && error.status && error.status >= 500) {
       return ErrorCodes.API_ERROR;
     }
     return ErrorCodes.UNKNOWN;
@@ -125,14 +171,17 @@ class ErrorHandler {
   /**
    * Handle YouTube-specific errors
    */
-  classifyYouTubeError(error, response) {
-    if (response?.status === 404 || error.message.includes('not found')) {
+  classifyYouTubeError(
+    error: Error | { message?: string },
+    response?: { status?: number }
+  ): ErrorCode {
+    if (response?.status === 404 || error.message?.includes('not found')) {
       return ErrorCodes.YOUTUBE_NOT_FOUND;
     }
-    if (error.message.includes('quota')) {
+    if (error.message?.includes('quota')) {
       return ErrorCodes.YOUTUBE_QUOTA;
     }
-    if (error.message.includes('invalid')) {
+    if (error.message?.includes('invalid')) {
       return ErrorCodes.YOUTUBE_INVALID;
     }
     return ErrorCodes.UNKNOWN;

@@ -11,7 +11,6 @@
  * - Convenience methods (get, post, put, delete)
  */
 
-import React from 'react';
 import { errorHandler, ErrorCodes } from './errorHandler';
 import { getToken } from './authService';
 

@@ -13,7 +13,7 @@ import apiClientV2 from '../../services/apiClientV2'
 import VideoBloomOverlay from './VideoBloomOverlay'
 import PlayerVideoContainer from './PlayerVideoContainer'
 import PlayerLoadingStates from './PlayerLoadingStates'
-import logger from '../../utils/logger.js'
+import logger from '../../utils/logger'
 
 /**
  * Enhanced Player Component with:
