@@ -4,6 +4,7 @@ import Galaxy from '../Galaxy'
 import GalaxyOrbitalThree from '../GalaxyOrbitalThreeRefactored'
 import Liquid from '../Liquid'
 import Aurora from '../Aurora'
+import Jugnu from '../Jugnu'
 
 export const BACKGROUND_EFFECTS = {
   galaxy: {
@@ -41,6 +42,15 @@ export const BACKGROUND_EFFECTS = {
     Component: Aurora,
     order: 4,
     defaultProps: { baseSpeed: 0.3, density: 200 },
+  },
+  jugnu: {
+    id: 'jugnu',
+    name: 'Jugnu',
+    icon: '✨',
+    description: 'Bioluminescent fireflies in a summer night',
+    Component: Jugnu,
+    order: 5,
+    defaultProps: { baseSpeed: 0.3, density: 60 },
   },
 }
 
