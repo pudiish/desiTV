@@ -311,9 +311,9 @@ onBufferingChange = null,
 				if (player && powerRef.current) {
 					const state = player.getPlayerState?.()
 					if (state === STATE_PLAYING) {
-						// Playback started! Now unmute if user has interacted (power ON)
-						if (userInteracted) {
-							console.log('[Player] Playback started - unmuting (user interacted via power ON)')
+						// Playback started! Automatically unmute (power ON = user interacted via touch)
+						if (isMutedAutoplay) {
+							console.log('[Player] Playback started - automatically unmuting (power ON)')
 							player.unMute()
 							player.setVolume(volume * 100)
 							setIsMutedAutoplay(false)
@@ -332,9 +332,9 @@ onBufferingChange = null,
 				if (player && powerRef.current) {
 					const state = player.getPlayerState?.()
 					if (state === STATE_PLAYING) {
-						// Unmute if user has interacted
-						if (userInteracted && isMutedAutoplay) {
-							console.log('[Player] Late unmute after power ON interaction')
+						// Automatically unmute (power ON = user interacted via touch)
+						if (isMutedAutoplay) {
+							console.log('[Player] Late unmute - automatically unmuting (power ON)')
 							player.unMute()
 							player.setVolume(volume * 100)
 							setIsMutedAutoplay(false)
@@ -1250,11 +1250,13 @@ onBufferingChange = null,
 		powerRef.current = power
 		shouldPlayRef.current = power
 		
-		// If power just turned ON, treat it as user interaction (they clicked the power button)
+		// If power just turned ON, treat it as user interaction (they touched the power button)
+		// Keep isMutedAutoplay as true initially - it will be set to false when we automatically unmute
 		if (power && wasPoweredOff) {
-			console.log('[Player] Power turned ON - treating as user interaction')
+			console.log('[Player] Power turned ON - treating as user interaction (touch gesture)')
 			setUserInteracted(true)
-			setIsMutedAutoplay(false)
+			// Don't set isMutedAutoplay to false here - let attemptAutoplay set it to true
+			// It will be automatically unmuted when STATE_PLAYING is reached
 			setNeedsUserInteraction(false)
 		}
 	}, [power])
@@ -1347,8 +1349,8 @@ onBufferingChange = null,
 							mediaSessionManager.setPlaybackState('playing')
 							unifiedPlaybackManager.reset()
 						} else if (state === STATE_PLAYING) {
-							// Already playing - unmute if user interacted
-							if (userInteracted && isMutedAutoplay) {
+							// Already playing - automatically unmute (power ON = user interacted via touch)
+							if (isMutedAutoplay) {
 								playerRef.current.unMute()
 								playerRef.current.setVolume(volume * 100)
 								setIsMutedAutoplay(false)
@@ -1402,8 +1404,8 @@ onBufferingChange = null,
 					mediaSessionManager.setPlaybackState('playing')
 					unifiedPlaybackManager.reset()
 				} else if (state === STATE_PLAYING) {
-					// Already playing - unmute if user interacted
-					if (userInteracted && isMutedAutoplay) {
+					// Already playing - automatically unmute (power ON = user interacted via touch)
+					if (isMutedAutoplay) {
 						playerRef.current.unMute()
 						playerRef.current.setVolume(volume * 100)
 						setIsMutedAutoplay(false)
@@ -1840,9 +1842,10 @@ onBufferingChange = null,
 				lastPlayTimeRef.current = Date.now()
 				shouldPlayRef.current = true
 				
-				// MOBILE FIX: Unmute now that playback has started (if user interacted via power ON)
-				if (userInteracted && isMutedAutoplay && player) {
-					console.log('[Player] Playback started - unmuting (user interacted)')
+				// MOBILE FIX: Automatically unmute when playback starts (power ON = user interacted via touch)
+				// No manual interaction required - power button touch is enough
+				if (isMutedAutoplay && player && powerRef.current) {
+					console.log('[Player] Playback started - automatically unmuting (power ON)')
 					try {
 						player.unMute()
 						player.setVolume(volume * 100)
