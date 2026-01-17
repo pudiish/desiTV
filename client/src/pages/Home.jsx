@@ -4,7 +4,7 @@ import { BackgroundManager, getNextEffect, getEffect } from '../components/backg
 import { VJChat } from '../components/chat'
 import { ExternalVideoHint } from '../components/overlays'
 import { SessionManager } from '../services/storage'
-import { analytics, performanceMonitor } from '../services/analytics'
+// Analytics removed - not needed for core functionality
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
@@ -308,30 +308,21 @@ export default function Home() {
 		currentCategoryIndexRef.current = categoryIndex
 		console.log(`[Home] Setting category: ${categoryName} at index ${categoryIndex} (total: ${categories.length})`)
 		
-		// Initialize channel state FIRST, then disable manual mode
-		try {
-			broadcastStateManager.initializeChannel(category)
-			broadcastStateManager.setManualMode(category._id, false)
-			
-			// Clear manual mode for old category if different
-			if (selectedCategory && selectedCategory._id !== category._id) {
-				broadcastStateManager.setManualMode(selectedCategory._id, false)
-			}
-			
-			// Only sync epoch if not in manual mode (manual mode should stay independent)
-			// Category change already disabled manual mode above, so safe to sync
-			broadcastStateManager.initializeGlobalEpoch(true).catch(err => {
-				console.warn('[Home] ⚠️ Global epoch refresh failed:', err)
-			})
-			// Trigger sync only after manual mode is disabled (now in LIVE mode)
-			checksumSyncService.triggerFastSync()
-		} catch (err) {
-			console.error('[Home] Error initializing category state:', err)
+		// Initialize channel state (non-blocking, async)
+		broadcastStateManager.initializeChannel(category)
+		broadcastStateManager.setManualMode(category._id, false)
+		
+		// Clear manual mode for old category if different
+		if (selectedCategory && selectedCategory._id !== category._id) {
+			broadcastStateManager.setManualMode(selectedCategory._id, false)
 		}
+		
+		// Epoch is client-side only, no server call needed
+		broadcastStateManager.initializeGlobalEpoch(false).catch(() => {})
 		
 		setSelectedCategory(category)
 		
-		// Calculate and jump to live timeline position
+		// Calculate position (synchronous, fast)
 		try {
 			const position = broadcastStateManager.calculateCurrentPosition(category)
 			if (position && position.videoIndex >= 0) {
@@ -368,33 +359,29 @@ export default function Home() {
 				localStorage.removeItem('desitv-global-epoch-cached')
 				localStorage.removeItem('desitv-broadcast-state')
 				
-				// CRITICAL: Always fetch global epoch from server FIRST (for true sync)
-				// Don't load from localStorage - server is the source of truth
-				// This ensures mobile and desktop are perfectly synchronized
-				await broadcastStateManager.initializeGlobalEpoch(true) // Force refresh - always fetch fresh
+				// Initialize global epoch (client-side from JSON or fixed default)
+				await broadcastStateManager.initializeGlobalEpoch(false) // Client-side only, no server call
 				const epoch = broadcastStateManager.getGlobalEpoch()
 				if (!epoch) {
 					throw new Error('Failed to initialize global epoch')
 				}
-				console.log('[Home] ✅ Global epoch from server:', epoch.toISOString())
+				console.log('[Home] ✅ Global epoch initialized (client-side):', epoch.toISOString())
 				
-				// Start periodic epoch refresh to maintain sync (every 5 seconds for perfect sync)
-				broadcastStateManager.startEpochRefresh()
+				// Epoch refresh removed - epoch is client-side only (no server sync needed)
 				
-				// ULTRA-FAST VALIDATION: Start checksum sync service (max 2s latency)
-				// - Checks every 2 seconds (meets max latency requirement)
-				// - Fast sync on critical moments (100ms debounce)
-				// - Immediate validation on startup (500ms)
+				// Start version sync service (checks channels.json version periodically)
+				// - Checks JSON version every 60 seconds (non-blocking)
+				// - Uses localStorage cache to avoid unnecessary reloads
 				checksumSyncService.start()
 				
-				// ULTRA-FAST: Force immediate sync after initial load (1s delay)
+				// Force initial version check after load
 				setTimeout(() => {
 					checksumSyncService.forceSync().catch(err => {
-						console.warn('[Home] Initial checksum sync failed:', err)
+						console.warn('[Home] Initial version sync failed:', err)
 					})
-				}, 1000) // After 1 second for faster initial sync
+				}, 1000)
 				
-				// Load channel states (but NOT epoch - epoch comes from server only)
+				// Load channel states from localStorage
 				broadcastStateManager.loadFromStorage()
 				
 				// Initialize session manager (loads from localStorage)
@@ -612,10 +599,7 @@ export default function Home() {
 			console.error('[Home] ❌ Error in switchVideo pipeline:', err)
 		})
 		
-		// Track analytics
-		const switchTime = performanceMonitor.trackChannelSwitch(startTime)
-		analytics.trackChannelChange('up', fromChannel, nextIndex, selectedCategory.name)
-		analytics.trackPerformance('channel_switch_time', switchTime)
+		// Analytics tracking removed - not needed for core functionality
 	}
 
 	function handleChannelDown() {
@@ -674,7 +658,7 @@ export default function Home() {
 		actions.setVolume(Math.max(0, tvState.volume - 0.1))
 		setCrtVolume(Math.max(0, tvState.volume - 0.1))
 		actions.setStatusMessage(`🔊 AWAAZ: ${Math.round(Math.max(0, tvState.volume - 0.1) * 100)}%`)
-		analytics.trackVolumeChange(Math.max(0, tvState.volume - 0.1), 'down')
+		// Analytics tracking removed
 	}
 
 	function handleMute() {
@@ -682,7 +666,7 @@ export default function Home() {
 			actions.setVolume(0)
 			setCrtVolume(0)
 			actions.setStatusMessage('🔇 AWAAZ BAND')
-			analytics.trackVolumeChange(0, 'mute')
+			// Analytics tracking removed
 		} else {
 			const prevVol = tvState.isMuted ? (tvState.prevVolume || 0.5) : (tvState.volume || 0.5)
 			actions.setVolume(prevVol)
@@ -787,15 +771,13 @@ export default function Home() {
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = nextIndex
 		
-		// Debounce the actual category change
-		categoryChangeTimeoutRef.current = setTimeout(() => {
-			setCategory(nextCategory.name)
-			actions.setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
-			// Reset flag after state update completes
-			setTimeout(() => {
-				isChangingCategoryRef.current = false
-			}, 300)
-		}, 50) // Small delay to batch rapid clicks
+		// Immediate category change (removed debounce for faster switching)
+		setCategory(nextCategory.name)
+		actions.setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
+		// Reset flag after state update
+		setTimeout(() => {
+			isChangingCategoryRef.current = false
+		}, 100) // Reduced from 300ms
 	}
 
 	function handleCategoryDown() {
@@ -858,15 +840,13 @@ export default function Home() {
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = prevIndex
 		
-		// Debounce the actual category change
-		categoryChangeTimeoutRef.current = setTimeout(() => {
-			setCategory(prevCategory.name)
-			actions.setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
-			// Reset flag after state update completes
-			setTimeout(() => {
-				isChangingCategoryRef.current = false
-			}, 300)
-		}, 50) // Small delay to batch rapid clicks
+		// Immediate category change (removed debounce for faster switching)
+		setCategory(prevCategory.name)
+		actions.setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
+		// Reset flag after state update
+		setTimeout(() => {
+			isChangingCategoryRef.current = false
+		}, 100) // Reduced from 300ms
 	}
 
 	function handleMenuToggle() {
@@ -874,18 +854,11 @@ export default function Home() {
 		const isOpening = !tvState.menuOpen
 		actions.setMenuOpen(isOpening)
 		
-		if (isOpening) {
-			analytics.trackMenuOpen()
-		} else {
-			analytics.trackMenuClose()
-		}
+		// Analytics tracking removed
 		
 		// Track menu open performance
 		if (isOpening) {
-			setTimeout(() => {
-				const openTime = performanceMonitor.trackMenuOpen(startTime)
-				analytics.trackPerformance('menu_open_time', openTime)
-			}, 100)
+			// Analytics tracking removed
 		}
 	}
 
@@ -1009,7 +982,7 @@ export default function Home() {
 			</button>
 		)}
 		
-		{/* VJ Chat Assistant - Bottom Right Corner */}
+		{/* DesiAgent Chat Assistant - Bottom Right Corner */}
 		<VJChat 
 			// Current playback state - REAL-TIME context
 			currentChannel={selectedCategory?.name}
@@ -1031,7 +1004,7 @@ export default function Home() {
 			
 			// Action handlers
 			onChangeChannel={(channel) => {
-				// Handle channel change from VJ chat
+				// Handle channel change from DesiAgent chat
 				if (channel) {
 					const targetCategory = categories.find(
 						c => c._id === channel._id || c.name === channel.name
@@ -1047,7 +1020,7 @@ export default function Home() {
 				}
 			}}
 			onPlayVideo={({ channelId, channelName, videoIndex }) => {
-				// Handle video play from VJ chat
+				// Handle video play from DesiAgent chat
 				const targetCategory = categories.find(
 					c => c._id === channelId || c.name === channelName
 				);
@@ -1070,7 +1043,7 @@ export default function Home() {
 				}
 			}}
 			onPlayExternal={({ videoId, videoTitle, thumbnail }) => {
-				// Handle YouTube external video play from VJ chat - play on TV screen
+				// Handle YouTube external video play from DesiAgent chat - play on TV screen
 				console.log('[VJChat] Playing external YouTube video on TV:', videoId, videoTitle);
 				actions.playExternal({
 					videoId,

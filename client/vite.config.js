@@ -13,7 +13,16 @@ export default defineConfig(({ mode }) => {
   const serverPort = parseInt(env.PORT) || parseInt(env.VITE_SERVER_PORT) || 5000
   const clientPort = parseInt(env.VITE_CLIENT_PORT) || 5173
   
+  // Auto-map GOOGLE_AI_KEY to VITE_GOOGLE_AI_KEY if not explicitly set
+  // This allows using GOOGLE_AI_KEY in .env without duplication
+  const googleAiKey = env.VITE_GOOGLE_AI_KEY || env.GOOGLE_AI_KEY || ''
+  
   console.log(`[Vite] Server port: ${serverPort}, Client port: ${clientPort}`)
+  if (googleAiKey) {
+    console.log(`[Vite] Google AI Key loaded: ${googleAiKey.substring(0, 10)}...`)
+  } else {
+    console.warn(`[Vite] ⚠️  GOOGLE_AI_KEY not found in .env - chat will not work`)
+  }
   
   return {
     plugins: [
@@ -33,6 +42,7 @@ export default defineConfig(({ mode }) => {
     // Make env vars available to client code
     define: {
       'import.meta.env.VITE_SERVER_PORT': JSON.stringify(serverPort.toString()),
+      'import.meta.env.VITE_GOOGLE_AI_KEY': JSON.stringify(googleAiKey),
     },
     
     // Development server config

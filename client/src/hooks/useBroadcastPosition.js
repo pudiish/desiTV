@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { broadcastStateManager } from '../logic/broadcast'
+import logger from '../utils/logger.js'
 
 /**
  * useBroadcastPosition - Single source of truth for broadcast position
@@ -29,7 +30,7 @@ export function useBroadcastPosition(channel) {
 		: null
 
 	return useMemo(() => {
-		console.log(`[useBroadcastPosition] Recalculating position:`, {
+		logger.debug(`[useBroadcastPosition] Recalculating position:`, {
 			channelId: channel?._id,
 			itemsCount: channel?.items?.length,
 			stateTimestamp,
@@ -98,7 +99,7 @@ export function useBroadcastPosition(channel) {
 				isValid: true
 			}
 			
-			console.log(`[useBroadcastPosition] Calculated position:`, {
+			logger.debug(`[useBroadcastPosition] Calculated position:`, {
 				videoIndex: result.videoIndex,
 				offset: result.offset,
 				videoTitle: currentVideo?.title || 'no title',
@@ -107,7 +108,7 @@ export function useBroadcastPosition(channel) {
 
 			return result
 		} catch (err) {
-			console.error('[useBroadcastPosition] Error calculating position:', err)
+			logger.error('[useBroadcastPosition] Error calculating position:', err)
 			return {
 				videoIndex: 0,
 				video: channel.items?.[0] || null,

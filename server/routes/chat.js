@@ -1,7 +1,7 @@
 /**
  * Chat Routes
  * 
- * API endpoints for DesiTV VJ Assistant
+ * API endpoints for DesiTV DesiAgent
  */
 
 const express = require('express');

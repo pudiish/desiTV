@@ -8,6 +8,8 @@
  * - Optional: Sentry/Analytics integration
  */
 
+import logger from '../utils/logger.js'
+
 export const ErrorCodes = {
   // Network errors
   NETWORK_TIMEOUT: 'E_001_TIMEOUT',
@@ -72,12 +74,15 @@ class ErrorHandler {
 
     // Dev logs (only in development or when user opens dev tools)
     if (this.isDev) {
-      console.group(`❌ [${context}] ${errorCode}`);
-      console.error('Error Object:', error);
-      console.error('Message:', error.message);
-      console.error('Stack:', error.stack);
-      console.error('Timestamp:', new Date().toISOString());
-      console.groupEnd();
+      logger.error(`[${context}] ${errorCode}`, {
+        message: error.message,
+        stack: error.stack,
+        error: error,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      // Production: minimal logging
+      logger.error(`[${context}] ${errorCode}: ${error.message}`);
     }
 
     // Send to analytics/error tracking in production

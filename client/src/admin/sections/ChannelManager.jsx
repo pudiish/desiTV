@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { HybridStateManager } from '../../logic/state'
-import { apiClient } from '../../services/apiClient'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
@@ -82,14 +80,9 @@ function ChannelManagerContent() {
 	}
 
 	useEffect(() => {
-		// ROAST: "Fetching channels on mount and subscribing to cache updates
-		// We're managing state in two places now. What could be more maintainable than that?"
+		// Fetch channels on mount
+		// apiClientV2 handles caching automatically
 		fetchChannels()
-		
-		// Subscribe to cache updates from other components (yes, really)
-		const unsubscribe = HybridStateManager.subscribe('channels', setChannels)
-		
-		return () => unsubscribe()
 	}, [])
 
 	const deleteChannel = async (id) => {
@@ -161,7 +154,7 @@ function ChannelManagerContent() {
 		setDeletingVideo(videoId)
 		try {
 			// Use apiClient which handles CSRF tokens automatically
-			await apiClient.delete(`/api/channels/${channelId}/videos/${videoId}`)
+			await apiClientV2.delete(`/api/channels/${channelId}/videos/${videoId}`)
 			
 			// Update selected channel
 			setSelectedChannel(prev => ({

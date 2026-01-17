@@ -7,10 +7,13 @@ import { checksumSyncService } from '../../services/checksumSync'
 import { PLAYBACK_THRESHOLDS } from '../../config/thresholds'
 import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../../config/constants/youtube'
 import { PLAYBACK } from '../../config/constants/playback'
-import { joinChannel, leaveChannel } from '../../services/api/viewerCountService'
+// Viewer count service removed - not needed for core functionality
 import { loadYouTubeAPI } from '../../utils/youtubeLoader'
 import apiClientV2 from '../../services/apiClientV2'
 import VideoBloomOverlay from './VideoBloomOverlay'
+import PlayerVideoContainer from './PlayerVideoContainer'
+import PlayerLoadingStates from './PlayerLoadingStates'
+import logger from '../../utils/logger.js'
 
 /**
  * Enhanced Player Component with:
@@ -95,9 +98,9 @@ onBufferingChange = null,
 			return { valid: false, reason: `Invalid video ID: ${typeof videoId}` };
 		}
 		
-		// Check cache first (valid for 5 minutes)
+		// Check cache first (valid for configured duration)
 		const cacheEntry = videoValidationCacheRef.current.get(videoId)
-		const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+		const CACHE_DURATION = PLAYBACK_THRESHOLDS.VIDEO_VALIDATION_CACHE_DURATION
 		if (cacheEntry && (Date.now() - cacheEntry.timestamp) < CACHE_DURATION) {
 			return cacheEntry.result
 		}
@@ -173,7 +176,7 @@ onBufferingChange = null,
 		const offsetChanged = Math.abs(prev.offset - newOffset) > 0.1
 		
 		if (indexChanged || offsetChanged) {
-			console.log(`[Player] 📺 Broadcast position changed:`, {
+			logger.debug(`[Player] 📺 Broadcast position changed:`, {
 				from: { index: prev.videoIndex, offset: prev.offset.toFixed(1) },
 				to: { index: newIndex, offset: newOffset.toFixed(1) },
 				videoTitle: current?.title || 'no title',
@@ -184,11 +187,11 @@ onBufferingChange = null,
 		}
 	}, [broadcastPosition, currIndex, offset, current])
 
-	// Only change key on channel change, NOT on video change
-	// Changing on video change causes YouTube component to remount instead of using loadVideoById
+	// Stable key - only change on channel, not on video (prevents unnecessary remounts)
+	// Removed channelChangeCounter to avoid iframe remounts (use loadVideoById instead)
 	const playerKey = useMemo(() => {
 		if (!channel?._id) return 'no-channel'
-		return `${channel._id}-${channelChangeCounterRef.current}`
+		return channel._id // Simple key - no counter needed
 	}, [channel?._id])
 
 	// Initialize video source manager for current video
@@ -206,7 +209,7 @@ onBufferingChange = null,
 	
 	// Debug: Log if videoId is missing but we have a current video
 	if (!videoId && current && items.length > 0) {
-		console.warn('[Player] VideoId missing for current video:', {
+		logger.warn('[Player] VideoId missing for current video:', {
 			videoTitle: current.title || 'no title',
 			hasYoutubeId: !!current.youtubeId,
 			hasVideoId: !!current.videoId,
@@ -238,7 +241,7 @@ onBufferingChange = null,
 			// Calculate backoff delay
 			const delay = RETRY_BACKOFF_BASE * Math.pow(2, retryCount)
 			
-			await new Promise(resolve => setTimeout(resolve, Math.min(delay, 5000)))
+			await new Promise(resolve => setTimeout(resolve, Math.min(delay, PLAYBACK_THRESHOLDS.RETRY_BACKOFF_MAX)))
 
 			// Try to reload the video
 			if (playerRef.current) {
@@ -504,7 +507,7 @@ onBufferingChange = null,
 
 	// Effect: Smart video loading with caching (only load when video actually changes)
 	useEffect(() => {
-		console.log(`[Player] 🎬 Video loading effect triggered:`, {
+		logger.debug(`[Player] 🎬 Video loading effect triggered:`, {
 			videoId,
 			currIndex,
 			channelId: channel?._id,
@@ -552,7 +555,7 @@ onBufferingChange = null,
 			loaded.channelId !== channel._id ||
 			Math.abs(loaded.offset - startSeconds) > VIDEO_BUFFER_WINDOW
 
-		console.log(`[Player] 🔄 Video reload check:`, {
+		logger.debug(`[Player] 🔄 Video reload check:`, {
 			needsReload,
 			loaded: loaded ? `${loaded.videoId} (index: ${loaded.currIndex ?? '?'}) at ${loaded.offset}s` : 'none',
 			current: `${videoId} (index: ${currIndex}) at ${startSeconds}s`,
@@ -579,81 +582,48 @@ onBufferingChange = null,
 			return
 		}
 
-		// Pre-validate video before loading (prevents restricted videos from playing)
-		const loadVideoWithValidation = async () => {
+		// Load video immediately (validation happens in background, non-blocking)
+		const loadVideoImmediately = () => {
 			if (!ytPlayerRef.current || !videoId || !channel?._id) return
 
-			// Validate video before loading (with timeout to avoid blocking)
-			try {
-				// Skip validation for now if it's causing 404 loops, or handle 404 gracefully
-				// The APIClientV2 error handler is logging the 404, which is expected if a video is deleted
-				const validation = await Promise.race([
-					validateVideoBeforeLoad(videoId),
-					new Promise((resolve) => setTimeout(() => resolve({ valid: true }), 2000)) // 2s timeout - allow loading if validation takes too long
-				])
-				
-				if (!validation.valid) {
-					console.log(`[Player] Video ${videoId} failed validation: ${validation.reason}, skipping to next...`)
-					// Immediately skip to next video without loading
-					if (switchToNextVideoRef.current) {
-						switchToNextVideoRef.current()
-					}
-					return
-				}
-			} catch (err) {
-				// If validation fails (e.g. network error), log but try to play anyway
-				console.warn('[Player] Validation error, allowing video to load:', err)
-				// On validation error, allow video to load (might be network issue)
+			// Check if already loaded (skip redundant loads)
+			if (loadedVideoRef.current?.videoId === videoId && loadedVideoRef.current?.channelId === channel._id) {
+				logger.debug(`[Player] Video ${videoId} already loaded, skipping...`)
+				return
 			}
 
 			// Ensure player is fully initialized
 			if (typeof ytPlayerRef.current.loadVideoById !== 'function') {
-				setTimeout(() => {
-					if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
-						// Load video
-						try {
-							ytPlayerRef.current.loadVideoById({
-								videoId: videoId,
-								startSeconds: 0
-							})
-							e7Ref.current = true
-							clipSeekTimeRef.current = startSeconds
-							loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
-							console.log(`[Player] Loading video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
-						} catch (err) {
-							console.error('[Player] Error loading video:', err)
-						}
-					}
-				}, 100)
+				setTimeout(() => loadVideoImmediately(), PLAYBACK_THRESHOLDS.VIDEO_LOAD_RETRY_DELAY)
 				return
 			}
 
-			console.log(`[Player] Loading validated video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
-			
-			// PROACTIVE: Trigger sync before loading video (critical moment)
-			checksumSyncService.triggerFastSync()
+			logger.info(`[Player] Loading video: ${videoId} at ${startSeconds}s (channel: ${channel._id})`)
 			
 			e7Ref.current = true
 			clipSeekTimeRef.current = startSeconds
 			
 			try {
-				// Load video starting at 0, then seek after ready
+				// Load video immediately - let YouTube handle errors
 				ytPlayerRef.current.loadVideoById({
 					videoId: videoId,
 					startSeconds: 0
 				})
 				
-			// Update cache (include currIndex to track which video is loaded)
-			loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
+				// Update cache
+				loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
 			} catch (err) {
-				console.error('[Player] Error loading video:', err)
+				logger.error('[Player] Error loading video:', err)
 			}
+
+			// Validate in background (non-blocking) - for future reference only
+			validateVideoBeforeLoad(videoId).catch(() => {})
 		}
 
-		// Debounce video loading to avoid rapid reloads
+		// Minimal debounce
 		loadVideoTimeoutRef.current = setTimeout(() => {
-			loadVideoWithValidation()
-		}, 100) // Small debounce to batch rapid changes
+			loadVideoImmediately()
+		}, PLAYBACK_THRESHOLDS.VIDEO_LOAD_DEBOUNCE)
 
 		return () => {
 			if (loadVideoTimeoutRef.current) {
@@ -677,27 +647,16 @@ onBufferingChange = null,
 			const wasChannelChange = channelIdRef.current !== null
 			const previousChannelId = channelIdRef.current
 			
-			// Leave previous channel (viewer count) - completely silent, non-blocking
-			if (previousChannelId) {
-				leaveChannel(previousChannelId).catch(() => {
-					// Silently fail - viewer count is non-critical
-				})
-			}
+			// Viewer count removed - not needed for core functionality
 			
-			channelIdRef.current = channel?._id
-			channelChangeCounterRef.current += 1 // This forces iframe reload via playerKey
-			
-			// Join new channel (viewer count) - completely silent, non-blocking
-			if (channel?._id && channel?.name) {
-				joinChannel(channel._id, channel.name).catch(() => {
-					// Silently fail - viewer count is non-critical
-				})
-			}
-			
-			// Reset initialization flags for new channel
-			hasInitializedRef.current = false
-			videoLoadedRef.current = false
-			autoplayAttemptedRef.current = false
+		channelIdRef.current = channel?._id
+		// Don't force iframe reload - use loadVideoById instead (much faster)
+		// channelChangeCounterRef.current += 1 // REMOVED: Causes slow iframe remount
+		
+		// Reset initialization flags for new channel
+		hasInitializedRef.current = false
+		videoLoadedRef.current = false
+		autoplayAttemptedRef.current = false
 			// Keep userInteracted across channel changes (SPA pattern)
 			// Only reset if it's a fresh page load
 			if (!wasChannelChange) {
@@ -726,9 +685,10 @@ onBufferingChange = null,
 			failedVideosRef.current.clear()
 			skipAttemptsRef.current = 0
 			setRetryCount(0)
-			setPlaybackHealth('healthy')
-			setShowStaticOverlay(true) // Show static when changing channels (intentional transition)
-			staticShownRef.current = true
+		setPlaybackHealth('healthy')
+		// Don't show static overlay - load video immediately for faster transition
+		// setShowStaticOverlay(true) // REMOVED: Causes delay
+		staticShownRef.current = false
 			e7Ref.current = false
 			clipSeekTimeRef.current = 0
 			// Clear loaded video cache on channel change
@@ -849,16 +809,16 @@ onBufferingChange = null,
 				if (!tryInit()) {
 					// Retry with interval until container exists
 					let attempts = 0
-					const maxAttempts = 50 // 5 seconds max wait
+					const maxAttempts = PLAYBACK_THRESHOLDS.YOUTUBE_PLAYER_INIT_MAX_ATTEMPTS
 					const timer = setInterval(() => {
 						attempts++
 						if (tryInit() || attempts >= maxAttempts) {
 							clearInterval(timer)
 							if (attempts >= maxAttempts) {
-								console.error('[Player] Failed to find player container after 5 seconds')
+								console.error(`[Player] Failed to find player container after ${PLAYBACK_THRESHOLDS.YOUTUBE_PLAYER_INIT_TIMEOUT_MS / 1000} seconds`)
 							}
 						}
-					}, 100)
+					}, PLAYBACK_THRESHOLDS.YOUTUBE_PLAYER_INIT_POLL_INTERVAL)
 					return () => clearInterval(timer)
 				}
 			}
@@ -874,9 +834,9 @@ onBufferingChange = null,
 						clearInterval(waitForContainer)
 						initYouTubePlayer()
 					}
-				}, 100)
-				// Timeout after 5 seconds
-				setTimeout(() => clearInterval(waitForContainer), 5000)
+				}, PLAYBACK_THRESHOLDS.YOUTUBE_PLAYER_INIT_POLL_INTERVAL)
+				// Timeout after configured duration
+				setTimeout(() => clearInterval(waitForContainer), PLAYBACK_THRESHOLDS.YOUTUBE_PLAYER_INIT_TIMEOUT_MS)
 			}
 		}
 
@@ -1236,7 +1196,7 @@ onBufferingChange = null,
 			}
 		}
 
-		const interval = setInterval(updatePositionState, 10000) // Update every 10 seconds
+		const interval = setInterval(updatePositionState, PLAYBACK_THRESHOLDS.MEDIASESSION_POSITION_INTERVAL)
 		return () => clearInterval(interval)
 	}, [current?.youtubeId, power])
 
@@ -1320,7 +1280,7 @@ onBufferingChange = null,
 				},
 			})
 			
-			// Mobile startup watchdog: Check if playback started within 3 seconds
+			// Mobile startup watchdog: Check if playback started within configured time
 			// MOBILE FIX: Always try muted first - unmute happens in STATE_PLAYING
 			const mobileWatchdog = setTimeout(() => {
 				if (playerRef.current && powerRef.current) {
@@ -1335,9 +1295,9 @@ onBufferingChange = null,
 						setIsMutedAutoplay(true)
 					}
 				}
-			}, 3000)
+			}, PLAYBACK_THRESHOLDS.AUTOPLAY_MOBILE_WATCHDOG_1)
 			
-			// Second watchdog at 6 seconds for very stubborn cases
+			// Second watchdog for very stubborn cases
 			const mobileWatchdog2 = setTimeout(() => {
 				if (playerRef.current && powerRef.current) {
 					const state = playerRef.current.getPlayerState?.()
@@ -1347,7 +1307,7 @@ onBufferingChange = null,
 						playerRef.current.playVideo()
 					}
 				}
-			}, 6000)
+			}, PLAYBACK_THRESHOLDS.AUTOPLAY_MOBILE_WATCHDOG_2)
 			
 			return () => {
 				clearTimeout(mobileWatchdog)
@@ -2100,7 +2060,7 @@ onBufferingChange = null,
 					attemptAutoplay(playerRef.current)
 					videoLoadedRef.current = true
 				}
-			}, 50)
+			}, PLAYBACK_THRESHOLDS.PLAYER_READY_DELAY)
 			
 			YouTubeUIRemover.init()
 			
@@ -2222,69 +2182,18 @@ onBufferingChange = null,
 
 	// ===== RENDER =====
 
-	if (!channel) {
-		return (
-			<div className="player-wrapper player-loading">
-				<div className="tv-off-message">CHANNEL SELECT KARO</div>
-			</div>
-		)
+	// Check loading states first - render component and check if it returned a loading state
+	if (!channel || items.length === 0 || !current) {
+		return <PlayerLoadingStates channel={channel} items={items} current={current} />
 	}
 
-	if (items.length === 0) {
-		return (
-			<div className="player-wrapper player-loading">
-				<div className="tv-off-message">IS CHANNEL MEIN VIDEO NAHI</div>
-			</div>
-		)
-	}
-
-	if (!current) {
-		return (
-			<div className="player-wrapper player-loading">
-				<div className="tv-off-message">VIDEO AA RAHA HAI...</div>
-			</div>
-		)
-}
-
-return (
+	return (
 		<div className="player-wrapper">
-			{/* Static video for loading/buffering - plays on top to cover YouTube loading */}
-			<video
-				ref={staticVideoRef}
-				src="/sounds/alb_tvn0411_1080p.mp4"
-				preload="auto"
-				loop
-				muted
-				playsInline
-				onError={(e) => {
-					// Silently handle missing video file - black background will show instead
-					console.warn('[Player] Static video not available (non-critical):', e.target.error?.message || 'Unknown error')
-				}}
-				style={{
-					position: 'absolute',
-					top: 0,
-					left: 0,
-					width: '100%',
-					height: '100%',
-					objectFit: 'cover',
-					zIndex: (showStaticOverlay || isBuffering || isTransitioning) ? 10 : -1,
-					opacity: (showStaticOverlay || isBuffering || isTransitioning) ? 1 : 0,
-					transition: 'opacity 0.3s ease-out',
-					pointerEvents: 'none',
-				}}
-			/>
-			<div className="crt-scanlines" style={{ zIndex: 20, pointerEvents: 'none' }}></div>
-			{/* Direct YouTube IFrame API - iPhone compatible */}
-			<div
-				id="desitv-player-iframe"
-				className="youtube-player-container"
-				style={{
-					width: '100%',
-					height: '100%',
-					position: 'absolute',
-					top: 0,
-					left: 0
-				}}
+			<PlayerVideoContainer
+				staticVideoRef={staticVideoRef}
+				showStaticOverlay={showStaticOverlay}
+				isBuffering={isBuffering}
+				isTransitioning={isTransitioning}
 			/>
 			{/* Glass overlay - blocks all iframe interactions (RetroTV pattern) */}
 			<div

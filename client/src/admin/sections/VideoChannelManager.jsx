@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { apiClient } from '../../services/apiClient'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
@@ -86,7 +85,7 @@ export default function VideoChannelManager() {
     setLoading(true)
     try {
       // Use apiClient which handles CSRF tokens automatically
-      await apiClient.post(`/api/channels/${selectedChannel}/add-video`, {
+      await apiClientV2.post(`/api/channels/${selectedChannel}/add-video`, {
         title: title.trim(),
         youtubeId: videoId
       })

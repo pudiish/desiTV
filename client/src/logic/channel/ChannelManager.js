@@ -10,8 +10,10 @@
  */
 
 import { envConfig } from '../../config/environment'
-import { dedupeFetch } from '../../utils/requestDeduplication'
-import { validateAndRefreshChannels } from '../../utils/checksumValidator'
+// Checksum validation removed - using JSON version check instead (simpler, faster)
+
+const CHANNELS_CACHE_KEY = 'desitv-channels-cache'
+const CHANNELS_CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours (channels don't change often)
 
 class ChannelManager {
 	constructor() {
@@ -19,14 +21,55 @@ class ChannelManager {
 		this.categories = [] // Restructured: categories as playlists
 		this.loaded = false
 		this.loadError = null
+		this.cachedVersion = null
 	}
 
 	/**
-	 * Load channels from API (or fallback to static JSON) and restructure into categories
+	 * Get cached channels from localStorage
+	 */
+	getCachedChannels() {
+		try {
+			const cached = localStorage.getItem(CHANNELS_CACHE_KEY)
+			if (!cached) return null
+			
+			const data = JSON.parse(cached)
+			const age = Date.now() - data.timestamp
+			
+			// Return cached if still valid
+			if (age < CHANNELS_CACHE_TTL && data.channels && data.channels.length > 0) {
+				return {
+					channels: data.channels,
+					version: data.version
+				}
+			}
+		} catch {
+			// Ignore cache errors
+		}
+		return null
+	}
+
+	/**
+	 * Cache channels in localStorage
+	 */
+	setCachedChannels(channels, version) {
+		try {
+			localStorage.setItem(CHANNELS_CACHE_KEY, JSON.stringify({
+				channels,
+				version,
+				timestamp: Date.now()
+			}))
+		} catch {
+			// Ignore localStorage errors (private browsing, quota exceeded)
+		}
+	}
+
+	/**
+	 * Load channels - Smart caching with localStorage + JSON
+	 * Source of Truth: channels.json (with localStorage cache for instant load)
 	 * Categories become playlists, videos become channels
 	 */
 	async loadChannels() {
-		// Only return cached if we have valid categories
+		// Return in-memory cache if valid
 		if (this.loaded && this.categories.length > 0) {
 			return this.categories
 		}
@@ -38,107 +81,63 @@ class ChannelManager {
 		}
 
 		try {
-			// Try API first (always up-to-date from MongoDB)
 			let rawChannels = []
-			let useAPI = true
+			let currentVersion = null
 
-			try {
-				// Use environment config to get correct API base URL
-				const apiUrl = envConfig.getApiUrl(`/api/channels?t=${Date.now()}`)
-				
-				// Create a timeout promise (2 seconds - shorter timeout for faster fallback)
-				const timeoutPromise = new Promise((_, reject) => 
-					setTimeout(() => reject(new Error('API request timeout - server not responding')), 2000)
-				)
-				
-				// Create abort controller for fetch cancellation
-				const controller = new AbortController()
-				const timeoutId = setTimeout(() => controller.abort(), 2000)
-				
-				// Race between fetch and timeout
-				let apiResponse
-				try {
-					apiResponse = await Promise.race([
-						fetch(apiUrl, { signal: controller.signal }),
-						timeoutPromise
-					])
-					clearTimeout(timeoutId)
-				} catch (raceErr) {
-					clearTimeout(timeoutId)
-					throw raceErr
-				}
-				
-				if (apiResponse && apiResponse.ok) {
-					// API returns data with checksum
-					const responseData = await apiResponse.json()
-					
-					// Extract channels and checksum (support both formats)
-					const channelsData = responseData.data || responseData
-					const serverChecksum = responseData.checksum
-					
-					if (Array.isArray(channelsData) && channelsData.length > 0) {
-						// VALIDATION: Check checksum if we have cached channels
-						if (serverChecksum && this.rawChannels && this.rawChannels.length > 0) {
-							const needsRefresh = await validateAndRefreshChannels(
-								this.rawChannels,
-								serverChecksum,
-								async () => {
-									// Silent refresh - already fetched, just update
-									rawChannels = channelsData
-								}
-							)
-							if (needsRefresh) {
-								console.log('[ChannelManager] ✅ Silently synced channels (checksum mismatch fixed)')
-							}
-						}
-						
-						rawChannels = channelsData
-						console.log('[ChannelManager] ✓ Loaded channels from API:', rawChannels.length, 'channels')
-					} else {
-						console.warn('[ChannelManager] API returned empty array, trying static file fallback')
-						useAPI = false
-					}
-				} else {
-					console.warn('[ChannelManager] API returned non-OK status, trying static file fallback')
-					useAPI = false
-				}
-			} catch (apiErr) {
-				// Network error, timeout, abort, or other API error
-				console.warn('[ChannelManager] API error (server not responding), using static file fallback:', apiErr.message)
-				useAPI = false
+			// Step 1: Try localStorage cache first (instant, works offline)
+			const cached = this.getCachedChannels()
+			if (cached) {
+				rawChannels = cached.channels
+				this.cachedVersion = cached.version
+				console.log('[ChannelManager] ✓ Loaded from localStorage cache:', rawChannels.length, 'channels')
 			}
 
-			// Fallback to static JSON file if API fails or returns empty
-			if (!useAPI || !Array.isArray(rawChannels) || rawChannels.length === 0) {
-				try {
-					console.log('[ChannelManager] Loading channels from channels.json...')
-					const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
-			
-					if (!staticResponse.ok) {
-						throw new Error(`Failed to load channels.json: ${staticResponse.status} ${staticResponse.statusText}`)
-					}
-
+			// Step 2: Load from JSON (primary source)
+			try {
+				const staticResponse = await fetch('/data/channels.json?t=' + Date.now(), {
+					cache: 'no-cache' // Always check fresh version
+				})
+		
+				if (staticResponse.ok) {
 					const staticData = await staticResponse.json()
+					currentVersion = staticData.version || staticData.generatedAt
 					
-					// Handle different JSON structures
-					if (Array.isArray(staticData)) {
-						// If JSON is directly an array
-						rawChannels = staticData
-					} else if (staticData.channels && Array.isArray(staticData.channels)) {
-						// If JSON has channels property
-						rawChannels = staticData.channels
+					// If version changed or no cache, load fresh data
+					if (!cached || (currentVersion && currentVersion !== this.cachedVersion)) {
+						// Handle different JSON structures
+						if (Array.isArray(staticData)) {
+							rawChannels = staticData
+						} else if (staticData.channels && Array.isArray(staticData.channels)) {
+							rawChannels = staticData.channels
+						} else {
+							throw new Error('Invalid channels.json structure')
+						}
+						
+						if (rawChannels.length > 0) {
+							console.log('[ChannelManager] ✓ Loaded fresh channels from JSON:', rawChannels.length, 'channels')
+							// Update cache
+							this.setCachedChannels(rawChannels, currentVersion)
+							this.cachedVersion = currentVersion
+						} else {
+							throw new Error('channels.json is empty')
+						}
 					} else {
-						throw new Error('Invalid channels.json structure')
+						// Version matches cache - use cached data (already loaded above)
+						console.log('[ChannelManager] ✓ Using cached channels (version unchanged)')
 					}
-					
-					if (rawChannels.length === 0) {
-						throw new Error('channels.json is empty')
-					}
-					
-					console.log('[ChannelManager] ✓ Loaded channels from static file:', rawChannels.length, 'channels')
-				} catch (staticErr) {
-					console.error('[ChannelManager] ✗ Static file failed:', staticErr)
-					throw new Error(`Failed to load channels: ${staticErr.message}`)
+				} else {
+					throw new Error(`Failed to load channels.json: ${staticResponse.status}`)
+				}
+			} catch (jsonError) {
+				// JSON failed - use cached data if available (graceful degradation, no race conditions)
+				if (cached && cached.channels && cached.channels.length > 0) {
+					console.warn('[ChannelManager] JSON load failed, using cached data (app continues working):', jsonError.message)
+					rawChannels = cached.channels
+					// App continues with cached data - smooth experience, no server needed
+				} else {
+					// No cache and JSON failed - clear error (no complex fallbacks)
+					console.error('[ChannelManager] ✗ Failed to load channels:', jsonError.message)
+					throw new Error(`Failed to load channels from JSON: ${jsonError.message}. Ensure /data/channels.json exists.`)
 				}
 			}
 			
@@ -152,6 +151,9 @@ class ChannelManager {
 			}
 			
 			this.rawChannels = rawChannels
+			if (currentVersion) {
+				this.cachedVersion = currentVersion
+			}
 			
 			// Restructure: Group videos by category
 			// If category is null, use channel name as category
@@ -276,10 +278,16 @@ class ChannelManager {
 	}
 
 	/**
-	 * Reload channels (force refresh)
+	 * Reload channels (force refresh, clears cache for fresh load)
 	 */
 	async reload() {
 		this.loaded = false
+		// Clear localStorage cache to force fresh load
+		try {
+			localStorage.removeItem(CHANNELS_CACHE_KEY)
+		} catch {
+			// Ignore localStorage errors
+		}
 		return this.loadChannels()
 	}
 }

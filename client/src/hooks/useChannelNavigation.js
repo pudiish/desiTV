@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { broadcastStateManager } from '../logic/broadcast';
-import { analytics, performanceMonitor } from '../services/analytics';
+// Analytics removed - not needed for core functionality
 
 export function useChannelNavigation(selectedCategory, videosInCategory = []) {
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -55,10 +55,7 @@ export function useChannelNavigation(selectedCategory, videosInCategory = []) {
       console.error('[useChannelNavigation] ❌ Error jumping to video:', error);
     }
 
-    // Track analytics
-    const switchTime = performanceMonitor.trackChannelSwitch(startTime);
-    analytics.trackChannelChange('up', fromChannel, nextIndex, selectedCategory.name);
-    analytics.trackPerformance('channel_switch_time', switchTime);
+    // Analytics tracking removed - not needed for core functionality
 
     if (onSwitchComplete) {
       onSwitchComplete(nextIndex);

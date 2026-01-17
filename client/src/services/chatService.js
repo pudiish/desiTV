@@ -1,84 +1,73 @@
 /**
- * Chat Service
+ * Chat Service - Client-Side DesiAgent
  * 
- * Client-side service for DesiTV VJ Assistant
- * Uses Unified Socket Bus for real-time communication
+ * Fully client-side AI assistant - no server needed!
+ * Uses Gemini API directly from browser
  */
 
-import { getSocket } from './socket';
+import { desiAgentCore } from './desiAgent/desiAgentCore';
+import { getUserProfile } from './desiAgent/userMemory';
 
 let sessionId = null;
 
 /**
- * Send a message to VJ Assistant via Socket
+ * Send a message to DesiAgent (client-side)
  * @param {string} message - User's message
  * @param {Object} context - Current context (channel, etc.)
  * @returns {Promise<Object>} Response with AI message
  */
 export async function sendMessage(message, context = {}) {
-  const socket = getSocket();
-  
-  return new Promise((resolve, reject) => {
-    // Ensure socket is connected
-    if (!socket.connected) {
-      // Attempt to connect if not connected, but usually getSocket() handles this.
-      // If it's still connecting, we might want to wait for 'connect' event.
-      // For simplicity, we'll proceed and let socket.io buffer or fail.
+  try {
+    // Generate session ID if not exists
+    if (!sessionId) {
+      sessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    // Emit with acknowledgement callback
-    socket.emit('chat:message', {
-      message,
-      sessionId,
-      context
-    }, (response) => {
-      if (response && response.success) {
-        const data = response.data;
-        
-        // Update session ID if provided
-        if (data.sessionId) {
-          sessionId = data.sessionId;
-        }
-        
-        resolve({
-          response: data.response,
-          toolUsed: data.toolUsed,
-          action: data.action || null
-        });
-      } else {
-        reject(new Error(response?.error || 'Chat request failed'));
-      }
-    });
+    // Get user profile for context
+    const userProfile = getUserProfile(sessionId);
+    
+    // Build enriched context
+    const enrichedContext = {
+      ...context,
+      userProfile,
+      currentChannel: context.currentChannel,
+      currentVideo: context.currentVideo,
+      mode: context.mode || 'live'
+    };
 
-    // Timeout fallback (10 seconds)
-    setTimeout(() => {
-      reject(new Error('Chat request timed out'));
-    }, 10000);
-  });
+    // Process message client-side
+    const result = await desiAgentCore.processMessage(message, sessionId, enrichedContext);
+    
+    return {
+      response: result.response || 'No response',
+      toolUsed: null,
+      action: result.action || null
+    };
+  } catch (error) {
+    const errorMessage = error.message || error.toString() || 'Chat request failed';
+    console.error('[ChatService] Error:', errorMessage, error);
+    
+    // Check if it's API key error
+    if (errorMessage.includes('VITE_GOOGLE_AI_KEY')) {
+      throw new Error('AI service not configured. Please set VITE_GOOGLE_AI_KEY in your environment.');
+    }
+    
+    throw new Error(errorMessage);
+  }
 }
 
 /**
- * Get chat suggestions via Socket
+ * Get chat suggestions (client-side)
  * @returns {Promise<string[]>} Array of suggestion strings
  */
 export async function getSuggestions() {
-  const socket = getSocket();
-  
-  return new Promise((resolve) => {
-    // Emit with acknowledgement callback
-    socket.emit('chat:suggestions', (response) => {
-      if (response && response.success) {
-        resolve(response.data || []);
-      } else {
-        resolve(getDefaultSuggestions());
-      }
-    });
-    
-    // Timeout fallback (2 seconds)
-    setTimeout(() => {
-      resolve(getDefaultSuggestions());
-    }, 2000);
-  });
+  try {
+    const { getPersonalizedSuggestions } = await import('./desiAgent/userMemory');
+    const sessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return getPersonalizedSuggestions(sessionId);
+  } catch (error) {
+    return getDefaultSuggestions();
+  }
 }
 
 function getDefaultSuggestions() {

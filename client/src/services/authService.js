@@ -5,7 +5,6 @@
  */
 
 import { STORAGE } from '../config/constants';
-import { apiClient } from './apiClient';
 import apiClientV2 from './apiClientV2';
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 

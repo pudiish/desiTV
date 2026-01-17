@@ -2,114 +2,57 @@
  * API Service - High-level API calls wrapper
  * Provides clean interface to backend APIs with error handling
  * All API calls should go through this service
+ * 
+ * Now uses apiClientV2 (unified, cached, reliable)
  */
 
-import { apiClient } from './apiClient'
+import apiClientV2 from './apiClientV2'
 import { API_ENDPOINTS } from '../config/constants'
+import logger from '../utils/logger.js'
 
 export class APIService {
-  constructor(client = apiClient) {
+  constructor(client = apiClientV2) {
     this.client = client
   }
 
-  // ===== BROADCAST STATE =====
-
-  /**
-   * Get broadcast state for a channel
-   */
-  async getBroadcastState(channelId) {
-    try {
-      return await this.client.get(`${API_ENDPOINTS.BROADCAST_STATE}/${channelId}`)
-    } catch (error) {
-      console.error(`[APIService] Error fetching broadcast state for ${channelId}:`, error)
-      throw error
-    }
-  }
-
-  /**
-   * Get all broadcast states
-   */
-  async getAllBroadcastStates() {
-    try {
-      return await this.client.get(API_ENDPOINTS.BROADCAST_STATE_ALL)
-    } catch (error) {
-      console.error('[APIService] Error fetching all broadcast states:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Save broadcast state for a channel
-   */
-  async saveBroadcastState(channelId, state) {
-    try {
-      return await this.client.post(`${API_ENDPOINTS.BROADCAST_STATE}/${channelId}`, state)
-    } catch (error) {
-      console.error(`[APIService] Error saving broadcast state for ${channelId}:`, error)
-      throw error
-    }
-  }
-
-  // ===== SESSION =====
-
-  /**
-   * Get session state
-   */
-  async getSession(sessionId) {
-    try {
-      return await this.client.get(`${API_ENDPOINTS.SESSION}/${sessionId}`)
-    } catch (error) {
-      console.error(`[APIService] Error fetching session ${sessionId}:`, error)
-      throw error
-    }
-  }
-
-  /**
-   * Save session state
-   */
-  async saveSession(sessionId, state) {
-    try {
-      return await this.client.post(`${API_ENDPOINTS.SESSION}/${sessionId}`, state)
-    } catch (error) {
-      console.error(`[APIService] Error saving session ${sessionId}:`, error)
-      throw error
-    }
-  }
+  // ===== BROADCAST STATE & SESSION =====
+  // REMOVED: These are now handled client-side via BroadcastStateManager and SessionManager
+  // No server API calls needed
 
   // ===== CHANNELS =====
 
   /**
    * Get all channels
-   * Falls back to channels.json if server is not responding
+   * Prefers channels.json (fast, no server), falls back to API if JSON fails
    */
   async getChannels() {
+    // Try JSON first (fast, no server dependency, works offline)
     try {
-      return await this.client.get(API_ENDPOINTS.CHANNELS)
-    } catch (error) {
-      console.warn('[APIService] Server not responding, falling back to channels.json:', error.message)
+      const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
       
-      // Fallback to static channels.json
-      try {
-        const staticResponse = await fetch('/data/channels.json?t=' + Date.now())
-        
-        if (!staticResponse.ok) {
-          throw new Error(`Failed to load channels.json: ${staticResponse.status}`)
-        }
-        
+      if (staticResponse.ok) {
         const staticData = await staticResponse.json()
         const channels = staticData.channels || staticData || []
         
         // If the JSON is directly an array, use it
         if (Array.isArray(staticData) && !staticData.channels) {
+          logger.info('[APIService] ✓ Loaded channels from JSON:', staticData.length, 'channels')
           return staticData
         }
         
-        console.log('[APIService] ✓ Loaded channels from static file (fallback):', channels.length, 'channels')
+        logger.info('[APIService] ✓ Loaded channels from JSON:', channels.length, 'channels')
         return channels
-      } catch (fallbackError) {
-        console.error('[APIService] Both API and static file failed:', fallbackError)
-        throw new Error(`Failed to load channels: ${error.message} (fallback also failed: ${fallbackError.message})`)
       }
+    } catch (jsonError) {
+      logger.warn('[APIService] JSON load failed, trying API fallback:', jsonError.message)
+    }
+    
+    // Fallback to API if JSON fails (for backward compatibility)
+    try {
+      return await this.client.get(API_ENDPOINTS.CHANNELS)
+    } catch (error) {
+      logger.error('[APIService] ✗ Both JSON and API failed:', error)
+      throw new Error(`Failed to load channels: ${error.message}`)
     }
   }
 
@@ -122,7 +65,7 @@ export class APIService {
         API_ENDPOINTS.CHANNEL.replace(':id', channelId)
       )
     } catch (error) {
-      console.error(`[APIService] Error fetching channel ${channelId}:`, error)
+      logger.error(`[APIService] Error fetching channel ${channelId}:`, error)
       throw error
     }
   }
@@ -134,7 +77,7 @@ export class APIService {
     try {
       return await this.client.post(API_ENDPOINTS.CHANNELS, data)
     } catch (error) {
-      console.error('[APIService] Error creating channel:', error)
+      logger.error('[APIService] Error creating channel:', error)
       throw error
     }
   }
@@ -149,7 +92,7 @@ export class APIService {
         data
       )
     } catch (error) {
-      console.error(`[APIService] Error updating channel ${channelId}:`, error)
+      logger.error(`[APIService] Error updating channel ${channelId}:`, error)
       throw error
     }
   }
@@ -163,7 +106,7 @@ export class APIService {
         API_ENDPOINTS.CHANNEL.replace(':id', channelId)
       )
     } catch (error) {
-      console.error(`[APIService] Error deleting channel ${channelId}:`, error)
+      logger.error(`[APIService] Error deleting channel ${channelId}:`, error)
       throw error
     }
   }
@@ -171,15 +114,13 @@ export class APIService {
   // ===== CATEGORIES =====
 
   /**
-   * Get all categories
+   * Get all categories - REMOVED
+   * Categories are derived client-side from channels in ChannelManager
+   * Use ChannelManager.getAllCategories() instead
    */
   async getCategories() {
-    try {
-      return await this.client.get(API_ENDPOINTS.CATEGORIES)
-    } catch (error) {
-      console.error('[APIService] Error fetching categories:', error)
-      throw error
-    }
+    logger.warn('[APIService] getCategories() is deprecated - use ChannelManager.getAllCategories() instead')
+    return []
   }
 
   // ===== AUTH =====
@@ -191,7 +132,7 @@ export class APIService {
     try {
       return await this.client.post(API_ENDPOINTS.AUTH_LOGIN, { username, password })
     } catch (error) {
-      console.error('[APIService] Error during login:', error)
+      logger.error('[APIService] Error during login:', error)
       throw error
     }
   }
@@ -203,7 +144,7 @@ export class APIService {
     try {
       return await this.client.post(API_ENDPOINTS.AUTH_REGISTER, { username, password })
     } catch (error) {
-      console.error('[APIService] Error during registration:', error)
+      logger.error('[APIService] Error during registration:', error)
       throw error
     }
   }
@@ -215,7 +156,7 @@ export class APIService {
     try {
       return await this.client.post(API_ENDPOINTS.AUTH_LOGOUT)
     } catch (error) {
-      console.error('[APIService] Error during logout:', error)
+      logger.error('[APIService] Error during logout:', error)
       throw error
     }
   }
@@ -229,7 +170,7 @@ export class APIService {
     try {
       return await this.client.get(API_ENDPOINTS.HEALTH)
     } catch (error) {
-      console.error('[APIService] Error checking health:', error)
+      logger.error('[APIService] Error checking health:', error)
       throw error
     }
   }
@@ -247,7 +188,7 @@ export class APIService {
       })
       return await this.client.get(`${API_ENDPOINTS.YOUTUBE_SEARCH}?${params}`)
     } catch (error) {
-      console.error('[APIService] Error searching YouTube:', error)
+      logger.error('[APIService] Error searching YouTube:', error)
       throw error
     }
   }
@@ -255,17 +196,19 @@ export class APIService {
   // ===== MONITORING =====
 
   /**
-   * Get API request logs
+   * Get cache stats (for debugging) - Replaces request logs
    */
-  getRequestLogs() {
-    return this.client.getRequestLogs()
+  getCacheStats() {
+    return this.client.getCacheStats ? this.client.getCacheStats() : null
   }
 
   /**
-   * Clear API request logs
+   * Clear cache
    */
-  clearRequestLogs() {
-    this.client.clearRequestLogs()
+  clearCache() {
+    if (this.client.clearCache) {
+      this.client.clearCache()
+    }
   }
 
   /**
@@ -288,66 +231,11 @@ export class APIService {
     }
   }
 
-  /**
-   * Monitoring API Methods
-   */
-
-  async getMonitoringHealth() {
-    try {
-      return await this.client.get(API_ENDPOINTS.MONITORING_HEALTH)
-    } catch (error) {
-      console.error('[APIService] Error fetching monitoring health:', error)
-      throw error
-    }
-  }
-
-  async getMonitoringEndpoints() {
-    try {
-      return await this.client.get(API_ENDPOINTS.MONITORING_ENDPOINTS)
-    } catch (error) {
-      console.error('[APIService] Error fetching monitoring endpoints:', error)
-      throw error
-    }
-  }
-
-  async getMonitoringServices() {
-    try {
-      return await this.client.get(API_ENDPOINTS.MONITORING_SERVICES)
-    } catch (error) {
-      console.error('[APIService] Error fetching monitoring services:', error)
-      throw error
-    }
-  }
-
-  async getMonitoringMetrics() {
-    try {
-      return await this.client.get(API_ENDPOINTS.MONITORING_METRICS)
-    } catch (error) {
-      console.error('[APIService] Error fetching monitoring metrics:', error)
-      throw error
-    }
-  }
-
-  async getMonitoringStatus() {
-    try {
-      return await this.client.get(API_ENDPOINTS.MONITORING_STATUS)
-    } catch (error) {
-      console.error('[APIService] Error fetching monitoring status:', error)
-      throw error
-    }
-  }
-
-  async resetMonitoring() {
-    try {
-      return await this.client.post(API_ENDPOINTS.MONITORING_RESET, {})
-    } catch (error) {
-      console.error('[APIService] Error resetting monitoring:', error)
-      throw error
-    }
-  }
+  // ===== MONITORING =====
+  // REMOVED: Monitoring is server-side only, client doesn't need these endpoints
 }
 
-// Create singleton instance
-export const apiService = new APIService(apiClient)
+// Create singleton instance (using apiClientV2)
+export const apiService = new APIService(apiClientV2)
 
 export default APIService

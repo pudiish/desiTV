@@ -14,7 +14,7 @@ import { sendMessage } from '../../services/chatService';
 import './VJChat.css';
 
 // DesiAgent - AI Assistant for DesiTV
-const VJ = { name: 'DesiAgent', avatar: '🤖', color: '#d4a574' };
+const DesiAgent = { name: 'DesiAgent', avatar: '🤖', color: '#d4a574' };
 
 // High-confidence actions for instant response
 const QUICK_ACTIONS = [
@@ -63,8 +63,8 @@ const VJChat = ({
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcomeMsg = currentVideo?.title 
-        ? `${VJ.avatar} Hey! I'm ${VJ.name}. You're watching "${currentVideo.title}". Ask me anything!`
-        : `${VJ.avatar} Yo! I'm ${VJ.name}, your AI sidekick on DesiTV! Try the buttons below or drop a command!`;
+        ? `${DesiAgent.avatar} Hey! I'm ${DesiAgent.name}. You're watching "${currentVideo.title}". Ask me anything!`
+        : `${DesiAgent.avatar} Yo! I'm ${DesiAgent.name}, your AI sidekick on DesiTV! Try the buttons below or drop a command!`;
       setMessages([{ role: 'assistant', content: welcomeMsg }]);
     }
   }, [isOpen, messages.length, currentVideo?.title]);
@@ -430,9 +430,9 @@ const VJChat = ({
           {/* Header */}
           <div className="vj-chat-header">
             <div className="vj-header-info">
-              <span className="vj-avatar">{VJ.avatar}</span>
+              <span className="vj-avatar">{DesiAgent.avatar}</span>
               <div className="vj-header-text">
-                <span className="vj-title">{VJ.name}</span>
+                <span className="vj-title">{DesiAgent.name}</span>
                 <span className="vj-status">● LIVE</span>
               </div>
             </div>
@@ -450,7 +450,7 @@ const VJChat = ({
             {messages.map((msg, idx) => (
               <div key={idx} className={`vj-message ${msg.role}`}>
                 {msg.role === 'assistant' && (
-                  <span className="vj-msg-avatar">{VJ.avatar}</span>
+                  <span className="vj-msg-avatar">{DesiAgent.avatar}</span>
                 )}
                 <div className="vj-msg-content">
                   {renderMessageContent(msg.content)}
@@ -459,7 +459,7 @@ const VJChat = ({
             ))}
             {isLoading && (
               <div className="vj-message assistant">
-                <span className="vj-msg-avatar">{VJ.avatar}</span>
+                <span className="vj-msg-avatar">{DesiAgent.avatar}</span>
                 <div className="vj-msg-content vj-typing">
                   <span></span><span></span><span></span>
                 </div>
@@ -513,9 +513,9 @@ const VJChat = ({
         className={`vj-toggle-btn ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="Ask DesiAgent"
-        aria-label="Toggle VJ Chat"
+        aria-label="Toggle DesiAgent Chat"
       >
-        <span className="vj-btn-icon">{VJ.avatar}</span>
+        <span className="vj-btn-icon">{DesiAgent.avatar}</span>
         {!isOpen && <span className="vj-btn-pulse"></span>}
       </button>
     </div>

@@ -8,11 +8,9 @@
 // Global epoch management
 export * from './globalEpochService'
 
-// Live state (server-authoritative LIVE sync)
-export * from './liveStateService'
+// Live state sync removed - clients calculate position locally using BroadcastStateManager
 
 // Timezone handling
 export * from './timezoneService'
 
-// Viewer count tracking
-export * from './viewerCountService'
+// Viewer count tracking - REMOVED (not needed for core functionality)

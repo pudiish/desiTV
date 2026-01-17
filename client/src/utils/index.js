@@ -9,12 +9,7 @@ export { loadYouTubeAPI } from './youtubeLoader'
 // Request utilities
 export { dedupeFetch, clearRequestCache } from './requestDeduplication'
 
-// Checksum utilities
-export { 
-  validateAndRefreshChannels, 
-  validateAndRefreshEpoch,
-  generateChecksum 
-} from './checksumValidator'
+// Checksum utilities removed - no longer used (replaced with simple version check)
 
 // Playlist utilities
 export { getTransitionState, getTransitionMessage } from './playlistTransition'

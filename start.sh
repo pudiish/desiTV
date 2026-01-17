@@ -18,7 +18,7 @@ BOLD='\033[1m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Function to check and install npm packages
+# Function to check and install npm packages~~
 check_and_install_npm() {
   local dir=$1
   local name=$2
@@ -201,7 +201,20 @@ fi
 
   echo "📁 Loading .env from project root"
   set -a
-  source .env
+  # Try to load .env, fallback to .env.local if .env is not accessible
+  if [ -r .env ]; then
+    source .env 2>/dev/null || {
+      echo "⚠️  Could not load .env, trying .env.local..."
+      if [ -r .env.local ]; then
+        source .env.local 2>/dev/null || echo "⚠️  Could not load .env.local either"
+      fi
+    }
+  elif [ -r .env.local ]; then
+    echo "📁 Loading .env.local (fallback)"
+    source .env.local 2>/dev/null || echo "⚠️  Could not load .env.local"
+  else
+    echo "⚠️  No .env or .env.local file found or accessible"
+  fi
   set +a
 
 # Set defaults if not provided

@@ -7,7 +7,7 @@
 
 // Playback & Sync
 export { useBroadcastPosition } from './useBroadcastPosition'
-export { useLiveSync } from './useLiveSync'
+// useLiveSync removed - clients calculate position locally using BroadcastStateManager
 export { useBufferingState } from './useBufferingState'
 export { useYouTubePlayer } from './useYouTubePlayer'
 

@@ -1,168 +1,55 @@
 /**
- * globalEpochService.js
+ * globalEpochService.js - Client-Side Epoch (Simple, No Server Dependency)
  * 
- * Service for fetching and managing the global epoch from server
- * This ensures all users are synchronized to the same timeline
- * 
- * CRITICAL: Also tracks server-client clock offset for accurate sync
+ * Uses fixed epoch from channels.json or default fixed value
+ * Simple, straightforward, no race conditions, no server calls
  */
 
-import { getUserTimezone } from './timezoneService'
-import { dedupeFetch } from '../../utils/requestDeduplication'
-import { validateAndRefreshEpoch } from '../../utils/checksumValidator'
+import logger from '../../utils/logger.js'
 
 const EPOCH_CACHE_KEY = 'desitv-global-epoch-cached'
-const EPOCH_CACHE_TTL = 10 * 1000 // 10 seconds - increased to reduce request frequency
+const DEFAULT_EPOCH = new Date('2020-01-01T00:00:00.000Z') // Fixed epoch matching channels
 
 let cachedEpoch = null
-let cacheTimestamp = null
-let serverClockOffset = 0 // Client time - Server time (in ms)
 
 /**
- * Fetch global epoch from server
- * CRITICAL: Always fetches fresh from server to ensure sync across devices
- * @param {boolean} forceRefresh - Force refresh even if cache is valid
+ * Get global epoch - Client-side only (no server dependency)
+ * Tries to get from channels.json first, falls back to fixed default
+ * @param {boolean} forceRefresh - Ignored (kept for compatibility)
  * @returns {Promise<Date>} Global epoch date
  */
 export async function fetchGlobalEpoch(forceRefresh = false) {
-	// Only use cache if not forcing refresh and cache is still valid
-	if (!forceRefresh && cachedEpoch && cacheTimestamp) {
-		const age = Date.now() - cacheTimestamp
-		if (age < EPOCH_CACHE_TTL) {
-			return cachedEpoch
-		}
+	// Return cached if available (simple, no TTL needed - epoch is fixed)
+	if (cachedEpoch) {
+		return cachedEpoch
 	}
 	
 	try {
-		// Always fetch from server (no-cache to prevent browser caching)
-		// PERFORMANCE: Use dedupeFetch to prevent duplicate requests
-		// OPTIMIZED: Enhanced cache-busting headers for faster sync
-		let response
-		const requestTime = Date.now() // Track request time for clock offset calculation
-		try {
-			// Try using dedupeFetch if available
-			if (typeof dedupeFetch === 'function') {
-				response = await dedupeFetch('/api/global-epoch', {
-					cache: 'no-store',
-					headers: {
-						'Cache-Control': 'no-cache, no-store, must-revalidate',
-						'Pragma': 'no-cache',
-						'Expires': '0',
-					}
-				})
-			} else {
-				// Fallback to regular fetch
-				response = await fetch('/api/global-epoch', {
-					cache: 'no-store',
-					headers: {
-						'Cache-Control': 'no-cache, no-store, must-revalidate',
-						'Pragma': 'no-cache',
-						'Expires': '0',
-					}
-				})
-			}
-		} catch (fetchErr) {
-			// If dedupeFetch fails, try regular fetch
-			response = await fetch('/api/global-epoch', {
-				cache: 'no-store',
-				headers: {
-					'Cache-Control': 'no-cache, no-store, must-revalidate',
-					'Pragma': 'no-cache',
-					'Expires': '0',
-				}
-			})
-		}
+		// Try to get epoch from channels.json (if it has one)
+		const response = await fetch('/data/channels.json?t=' + Date.now(), {
+			cache: 'no-cache'
+		})
 		
-		if (!response.ok) {
-			throw new Error(`Failed to fetch global epoch: ${response.statusText}`)
-		}
-		
-		const responseTime = Date.now()
-		const data = await response.json()
-		const epoch = new Date(data.epoch)
-		
-		// CRITICAL: Calculate clock offset between client and server
-		// Server sends its current time in serverTimeMs
-		if (data.serverTimeMs) {
-			// Account for network latency (assume half the round trip)
-			const estimatedLatency = (responseTime - requestTime) / 2
-			const serverNow = data.serverTimeMs + estimatedLatency
-			serverClockOffset = responseTime - serverNow
-			console.log(`[GlobalEpoch] Clock offset: ${Math.round(serverClockOffset)}ms (client ${serverClockOffset > 0 ? 'ahead' : 'behind'})`)
-		}
-		
-		// Validate epoch is valid
-		if (isNaN(epoch.getTime())) {
-			throw new Error('Invalid epoch date received from server')
-		}
-		
-		// VALIDATION: Check checksum if provided (silent background sync)
-		if (data.checksum && cachedEpoch) {
-			const needsRefresh = await validateAndRefreshEpoch(
-				cachedEpoch,
-				data.checksum,
-				async () => {
-					// Silent refresh - already fetched, just update cache
+		if (response.ok) {
+			const data = await response.json()
+			// Try to get epoch from first channel's playlistStartEpoch
+			if (data.channels && data.channels.length > 0 && data.channels[0].playlistStartEpoch) {
+				const epoch = new Date(data.channels[0].playlistStartEpoch)
+				if (!isNaN(epoch.getTime())) {
 					cachedEpoch = epoch
-					cacheTimestamp = Date.now()
-				}
-			)
-			if (needsRefresh) {
-				console.log('[GlobalEpoch] ✅ Silently synced epoch (checksum mismatch fixed)')
-			}
-		}
-		
-		// Check if epoch changed (shouldn't happen, but log if it does)
-		if (cachedEpoch && cachedEpoch.getTime() !== epoch.getTime()) {
-			console.warn(`[GlobalEpoch] ⚠️ Epoch changed! Old: ${cachedEpoch.toISOString()}, New: ${epoch.toISOString()}`)
-		}
-		
-		// Update cache
-		cachedEpoch = epoch
-		cacheTimestamp = Date.now()
-		
-		// Also cache in localStorage as backup (but server is source of truth)
-		try {
-			localStorage.setItem(EPOCH_CACHE_KEY, JSON.stringify({
-				epoch: epoch.toISOString(),
-				timestamp: cacheTimestamp,
-			}))
-		} catch (err) {
-			console.warn('[GlobalEpoch] Failed to cache in localStorage:', err)
-		}
-		
-		console.log('[GlobalEpoch] ✅ Fetched from server:', epoch.toISOString())
-		return epoch
-	} catch (err) {
-		console.error('[GlobalEpoch] ❌ Error fetching from server:', err)
-		
-		// Only use localStorage cache if server is completely unavailable
-		// This prevents desync - we'd rather wait for server than use stale data
-		try {
-			const cached = localStorage.getItem(EPOCH_CACHE_KEY)
-			if (cached) {
-				const parsed = JSON.parse(cached)
-				const epoch = new Date(parsed.epoch)
-				const age = Date.now() - parsed.timestamp
-				
-				// Only use cached if less than 10 minutes old (very short window)
-				if (age < 10 * 60 * 1000 && !isNaN(epoch.getTime())) {
-					console.warn('[GlobalEpoch] ⚠️ Using cached epoch (server unavailable):', epoch.toISOString())
-					cachedEpoch = epoch
-					cacheTimestamp = parsed.timestamp
+					logger.info('[GlobalEpoch] ✅ Using epoch from channels.json:', epoch.toISOString())
 					return epoch
-				} else {
-					console.warn('[GlobalEpoch] ⚠️ Cached epoch too old, waiting for server')
 				}
 			}
-		} catch (localErr) {
-			console.warn('[GlobalEpoch] Failed to read from localStorage:', localErr)
 		}
-		
-		// Don't use fallback - throw error instead
-		// This forces retry and prevents desync
-		throw new Error('Failed to fetch global epoch from server and no valid cache available')
+	} catch (err) {
+		logger.warn('[GlobalEpoch] Could not load from channels.json, using default:', err.message)
 	}
+	
+	// Use fixed default epoch (matches channel playlistStartEpoch)
+	cachedEpoch = DEFAULT_EPOCH
+	logger.info('[GlobalEpoch] ✅ Using fixed default epoch:', cachedEpoch.toISOString())
+	return cachedEpoch
 }
 
 /**
@@ -170,11 +57,10 @@ export async function fetchGlobalEpoch(forceRefresh = false) {
  */
 export function clearEpochCache() {
 	cachedEpoch = null
-	cacheTimestamp = null
 	try {
 		localStorage.removeItem(EPOCH_CACHE_KEY)
 	} catch (err) {
-		console.warn('[GlobalEpoch] Failed to clear localStorage cache:', err)
+		logger.warn('[GlobalEpoch] Failed to clear localStorage cache:', err)
 	}
 }
 
@@ -183,31 +69,23 @@ export function clearEpochCache() {
  * @returns {Date|null} Cached epoch or null
  */
 export function getCachedEpoch() {
-	if (cachedEpoch && cacheTimestamp) {
-		const age = Date.now() - cacheTimestamp
-		if (age < EPOCH_CACHE_TTL) {
-			return cachedEpoch
-		}
-	}
-	return null
+	return cachedEpoch
 }
 
 /**
- * Get the current server-client clock offset
- * Positive = client is ahead of server
- * Negative = client is behind server
- * @returns {number} Clock offset in milliseconds
+ * Get the current server-client clock offset (deprecated - no longer used)
+ * @returns {number} Always returns 0 (no server sync needed)
  */
 export function getClockOffset() {
-	return serverClockOffset
+	return 0 // No server sync - always 0
 }
 
 /**
- * Get corrected current time (adjusted for server-client clock difference)
- * Use this instead of Date.now() when calculating broadcast position
- * @returns {number} Current time in milliseconds, adjusted to match server time
+ * Get corrected current time (deprecated - no longer needed)
+ * Use Date.now() directly - no server sync needed
+ * @returns {number} Current time in milliseconds
  */
 export function getCorrectedTime() {
-	return Date.now() - serverClockOffset
+	return Date.now() // No correction needed - client-side only
 }
 

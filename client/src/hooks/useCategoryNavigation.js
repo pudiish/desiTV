@@ -58,13 +58,12 @@ export function useCategoryNavigation(categories = []) {
         broadcastStateManager.setManualMode(previousCategory._id, false);
       }
 
-      // Only sync epoch if not in manual mode (manual mode should stay independent)
-      // Category change already disabled manual mode above, so safe to sync
-      broadcastStateManager.initializeGlobalEpoch(true).catch((error) => {
-        console.warn('[useCategoryNavigation] ⚠️ Global epoch refresh failed:', error);
+      // Epoch is client-side only (no server sync needed)
+      // Ensure epoch is initialized (client-side from JSON or fixed default)
+      broadcastStateManager.initializeGlobalEpoch(false).catch((error) => {
+        console.warn('[useCategoryNavigation] ⚠️ Global epoch initialization failed:', error);
       });
-      // Trigger sync only after manual mode is disabled (now in LIVE mode)
-      checksumSyncService.triggerFastSync();
+      // Version sync runs automatically in background (non-blocking)
     } catch (error) {
       console.error('[useCategoryNavigation] Error initializing category state:', error);
     }

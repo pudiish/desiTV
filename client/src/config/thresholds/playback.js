@@ -58,6 +58,36 @@ export const PLAYBACK_THRESHOLDS = {
 	// YouTube API
 	YOUTUBE_API_LOAD_DELAY: 2, // milliseconds - delay for YouTube API loading
 	YOUTUBE_PLAYER_INIT_TIMEOUT: 100, // milliseconds - timeout for player initialization polling
+	YOUTUBE_PLAYER_INIT_POLL_INTERVAL: 100, // milliseconds - polling interval for player container
+	YOUTUBE_PLAYER_INIT_MAX_ATTEMPTS: 50, // max attempts to find player container (5 seconds)
+	YOUTUBE_PLAYER_INIT_TIMEOUT_MS: 5000, // milliseconds - timeout for player initialization
+
+	// Video validation
+	VIDEO_VALIDATION_CACHE_DURATION: 5 * 60 * 1000, // milliseconds - 5 minutes
+
+	// Player initialization delays
+	PLAYER_READY_DELAY: 50, // milliseconds - delay after player ready before autoplay
+	VIDEO_LOAD_RETRY_DELAY: 50, // milliseconds - delay before retrying video load
+	VIDEO_LOAD_DEBOUNCE: 50, // milliseconds - debounce for video loading
+
+	// MediaSession updates
+	MEDIASESSION_UPDATE_DELAY: 1000, // milliseconds - delay to ensure video is loaded
+	MEDIASESSION_UPDATE_DEBOUNCE: 500, // milliseconds - debounce MediaSession updates
+	MEDIASESSION_POSITION_INTERVAL: 10000, // milliseconds - update position every 10 seconds
+
+	// Autoplay retry delays
+	AUTOPLAY_RETRY_DELAY_1: 1000, // milliseconds - first retry delay
+	AUTOPLAY_RETRY_DELAY_2: 2500, // milliseconds - second retry delay
+	AUTOPLAY_RETRY_DELAY_3: 500, // milliseconds - third retry delay
+	AUTOPLAY_RETRY_DELAY_4: 2000, // milliseconds - fourth retry delay
+	AUTOPLAY_MOBILE_WATCHDOG_1: 3000, // milliseconds - first mobile watchdog
+	AUTOPLAY_MOBILE_WATCHDOG_2: 6000, // milliseconds - second mobile watchdog
+
+	// Playback resume
+	PLAYBACK_RESUME_DELAY: 200, // milliseconds - delay for faster resume
+
+	// Video switch verification
+	VIDEO_SWITCH_VERIFY_DELAY: 1000, // milliseconds - delay to verify playback started
 }
 
 export default PLAYBACK_THRESHOLDS

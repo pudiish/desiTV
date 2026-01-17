@@ -140,8 +140,8 @@ const monitoringRoutes = require('./routes/monitoring');
 const analyticsRoutes = require('./routes/analytics');
 const globalEpochRoutes = require('./routes/globalEpoch');
 const viewerCountRoutes = require('./routes/viewerCount');
-const liveStateRoutes = require('./routes/liveState'); // 🌟 NEW: Server-authoritative LIVE state
-const chatRoutes = require('./routes/chat'); // 🤖 VJ Assistant chatbot
+const liveStateRoutes = require('./routes/liveState'); // Admin/debugging only - clients calculate locally
+const chatRoutes = require('./routes/chat'); // 🤖 DesiAgent chatbot
 
 // CSRF protection
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
@@ -153,7 +153,7 @@ app.use('/api', csrfRefresh);
 
 // Mount routes
 app.use('/api/global-epoch', globalEpochRoutes);
-app.use('/api/live-state', liveStateRoutes); // 🌟 NEW: The source of LIVE truth
+app.use('/api/live-state', liveStateRoutes); // Admin/debugging only - clients use BroadcastStateManager
 app.use('/api/viewer-count', viewerCountRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/auth', authRoutes);
@@ -163,7 +163,7 @@ app.use('/api/broadcast-state', broadcastStateRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/chat', chatRoutes); // 🤖 VJ Assistant chatbot
+app.use('/api/chat', chatRoutes); // 🤖 DesiAgent chatbot
 
 // health check with security stats
 app.get('/health', (req, res) => res.json({ 
@@ -204,15 +204,31 @@ app.use(errorHandler);
 
 app.get('/', (req, res) => res.send('DesiTV™ API running'));
 
-// Route to manually trigger JSON regeneration (useful for client fallback)
+// Route to manually trigger JSON regeneration (pipeline mode - on-demand)
+// This is the primary way to update channels.json after MongoDB changes
 app.post('/api/regenerate-json', async (req, res) => {
 	try {
-		const { ensureChannelsJSON } = require('./utils/generateJSON');
-		const result = await ensureChannelsJSON();
+		const dbConnectionManager = require('./utils/dbConnection');
+		
+		// Ensure MongoDB is connected (lazy connection)
+		if (!dbConnectionManager.isReady()) {
+			console.log('[Server] Connecting to MongoDB for JSON regeneration...');
+			await dbConnectionManager.connect(process.env.MONGO_URI, {
+				maxPoolSize: 3,
+				minPoolSize: 1,
+				serverSelectionTimeoutMS: 5000,
+			});
+		}
+		
+		const { regenerateChannelsJSON } = require('./utils/generateJSON');
+		const result = await regenerateChannelsJSON();
+		
 		res.json({ 
 			success: true, 
 			message: `JSON regenerated with ${result.channels.length} channels`,
-			channelsCount: result.channels.length 
+			channelsCount: result.channels.length,
+			version: result.version,
+			generatedAt: result.generatedAt
 		});
 	} catch (error) {
 		console.error('[Server] Error regenerating JSON:', error);
@@ -226,59 +242,31 @@ app.post('/api/regenerate-json', async (req, res) => {
 // Database connection and server start
 const dbConnectionManager = require('./utils/dbConnection');
 
+// Pipeline-only mode: MongoDB connection is lazy (only when needed)
+// Server starts without requiring MongoDB, reducing cold start time
 dbConnectionManager.onConnection(async () => {
 	console.log(`[DesiTV] MongoDB connected (${isProduction ? 'production' : 'development'})`);
 	
-	// Initialize global epoch immediately on server start
-	// This sets the epoch to current time if it doesn't exist, so stream is "on" from server startup
+	// Pipeline-only: Only generate JSON if it doesn't exist (first-time setup)
+	// Otherwise, JSON is generated on-demand via /api/regenerate-json
 	try {
-		const GlobalEpoch = require('./models/GlobalEpoch');
-		const cache = require('./utils/cache');
+		const { isJSONEmptyOrInvalid, ensureChannelsJSON } = require('./utils/generateJSON');
+		const needsJSON = await isJSONEmptyOrInvalid();
 		
-		// Get or create epoch (will use current server time if creating for first time)
-		const globalEpoch = await GlobalEpoch.getOrCreate();
-		
-		// Pre-cache the epoch for instant access
-		const cacheKey = 'ge';
-		const cacheData = {
-			e: globalEpoch.epoch.toISOString(),
-			tz: globalEpoch.timezone || 'Asia/Kolkata',
-			epoch: globalEpoch.epoch.toISOString(),
-			timezone: globalEpoch.timezone || 'Asia/Kolkata',
-			createdAt: globalEpoch.createdAt || globalEpoch.epoch,
-		};
-		await cache.set(cacheKey, cacheData, 7200); // Cache for 2 hours
-		
-		console.log(`[DesiTV] ✅ Global epoch initialized: ${globalEpoch.epoch.toISOString()}`);
-		console.log(`[DesiTV] 📺 Stream is now ON - all channels calculating from this epoch`);
-	} catch (epochErr) {
-		console.warn('[DesiTV] Failed to initialize global epoch:', epochErr.message);
-	}
-	
-	try {
-		const { ensureChannelsJSON } = require('./utils/generateJSON');
-		const jsonData = await ensureChannelsJSON();
-		console.log(`[DesiTV] channels.json ready with ${jsonData.channels.length} channels`);
+		if (needsJSON) {
+			console.log('[DesiTV] channels.json missing or invalid, generating from MongoDB...');
+			const jsonData = await ensureChannelsJSON();
+			console.log(`[DesiTV] ✅ channels.json generated with ${jsonData.channels.length} channels`);
+		} else {
+			console.log('[DesiTV] ✅ channels.json exists - pipeline mode (no auto-generation)');
+		}
 	} catch (jsonErr) {
-		console.warn('[DesiTV] Failed to ensure channels.json:', jsonErr.message);
+		console.warn('[DesiTV] JSON check failed (non-critical):', jsonErr.message);
 	}
 	
-	try {
-		console.log('[DesiTV] Pre-warming cache...');
-		await warmChannelsList();
-		console.log('[DesiTV] Cache pre-warmed successfully');
-		startPeriodicWarming(5);
-	} catch (cacheErr) {
-		console.warn('[DesiTV] Cache pre-warming failed (non-critical):', cacheErr.message);
-	}
-	
-	// Warm LiveState cache (pre-compute channel data)
-	try {
-		const liveStateService = require('./services/liveStateService');
-		await liveStateService.warmCache();
-	} catch (lsErr) {
-		console.warn('[DesiTV] LiveState cache warming failed:', lsErr.message);
-	}
+	// Removed automatic warmups - server stays cold until needed
+	// Cache warming happens on-demand when admin operations occur
+	console.log('[DesiTV] Server in pipeline-only mode - MongoDB connected but server stays cold');
 });
 
 dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
@@ -289,18 +277,19 @@ dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
 		const http = require('http');
 		const server = http.createServer(app);
 		
-		// Initialize Socket.io
+		// Initialize Socket.io (chat only - sync removed)
 		const { initializeSocket, getSocketStats } = require('./socket');
 		initializeSocket(server, corsOptions);
 		
-		// Socket stats endpoint
+		// Socket stats endpoint (chat connections only)
 		app.get('/api/socket-stats', (req, res) => {
 			res.json(getSocketStats());
 		});
 		
 		server.listen(PORT, HOST, () => {
 			console.log(`[DesiTV] Server listening on ${HOST}:${PORT}`);
-			console.log(`[DesiTV] WebSocket enabled`);
+			console.log(`[DesiTV] WebSocket enabled (chat only)`);
+			console.log(`[DesiTV] Sync: Pure client-side calculation`);
 			if (!isProduction) {
 				const localIP = getLocalIP();
 				console.log(`[DesiTV] Local:   http://localhost:${PORT}`);

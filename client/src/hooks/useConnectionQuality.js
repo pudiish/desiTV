@@ -1,20 +1,17 @@
 /**
- * useConnectionQuality - Graceful Degradation UI Hook
+ * useConnectionQuality - Simplified Connection Quality Hook
  * 
- * Shows users their connection quality so they know what to expect.
+ * Shows users their connection quality.
  * 
- * Quality Levels:
- * - EXCELLENT: WebSocket connected, <100ms RTT
- * - GOOD: WebSocket/SSE connected, <300ms RTT
- * - FAIR: Predictive engine only, some drift
- * - POOR: HTTP polling fallback
+ * Quality Levels (Simplified):
+ * - GOOD: HTTP polling working
+ * - FAIR: HTTP polling with some latency
+ * - POOR: HTTP polling slow/unreliable
  * - OFFLINE: No connection
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { predictiveEngine } from '../services/sync/PredictiveEngine';
-import socketService from '../services/socket';
-import { sseClient } from '../services/sync/SSEClient';
+// Socket/SSE removed - using HTTP polling only
 
 // Quality levels
 export const ConnectionQuality = {
@@ -69,65 +66,51 @@ export function useConnectionQuality() {
   const [drift, setDrift] = useState(0);
   const [details, setDetails] = useState({});
 
-  // Calculate quality from metrics
-  const calculateQuality = useCallback(() => {
-    const stats = predictiveEngine.getStats();
-    const socketConnected = socketService.isConnected();
-    const sseConnected = sseClient.isConnected;
-    
-    // Determine active strategy
-    let activeStrategy = 'offline';
-    if (socketConnected) {
-      activeStrategy = 'websocket';
-    } else if (sseConnected) {
-      activeStrategy = 'sse';
-    } else if (stats.initialized) {
-      activeStrategy = 'predictive';
-    }
-    setStrategy(activeStrategy);
-
-    // Get RTT
-    const avgRtt = stats.avgRtt || null;
-    setRtt(avgRtt);
-
-    // Get drift
-    const recentDrifts = stats.recentDrifts || [];
-    const avgDrift = recentDrifts.length > 0
-      ? Math.abs(recentDrifts.reduce((a, b) => a + b, 0) / recentDrifts.length)
-      : 0;
-    setDrift(avgDrift);
-
-    // Calculate quality level
+  // Calculate quality from HTTP polling (simplified)
+  const calculateQuality = useCallback(async () => {
+    // Simple HTTP health check
+    const startTime = Date.now();
+    let rttValue = null;
     let newQuality = ConnectionQuality.OFFLINE;
+    let activeStrategy = 'http';
 
-    if (socketConnected) {
-      if (avgRtt !== null && avgRtt < 100 && avgDrift < 200) {
-        newQuality = ConnectionQuality.EXCELLENT;
-      } else if (avgRtt !== null && avgRtt < 300 && avgDrift < 500) {
-        newQuality = ConnectionQuality.GOOD;
-      } else {
-        newQuality = ConnectionQuality.FAIR;
-      }
-    } else if (sseConnected) {
-      if (avgRtt !== null && avgRtt < 200 && avgDrift < 300) {
-        newQuality = ConnectionQuality.GOOD;
-      } else {
-        newQuality = ConnectionQuality.FAIR;
-      }
-    } else if (stats.initialized) {
-      if (stats.confidence > 0.8 && avgDrift < 500) {
-        newQuality = ConnectionQuality.FAIR;
+    try {
+      // Quick health check
+      const response = await fetch('/api/health', { 
+        method: 'GET',
+        cache: 'no-cache',
+        signal: AbortSignal.timeout(2000)
+      });
+      
+      const endTime = Date.now();
+      rttValue = endTime - startTime;
+      
+      if (response.ok) {
+        // Determine quality based on RTT
+        if (rttValue < 200) {
+          newQuality = ConnectionQuality.GOOD;
+        } else if (rttValue < 500) {
+          newQuality = ConnectionQuality.FAIR;
+        } else {
+          newQuality = ConnectionQuality.POOR;
+        }
       } else {
         newQuality = ConnectionQuality.POOR;
       }
+    } catch (error) {
+      // Network error or timeout
+      newQuality = ConnectionQuality.OFFLINE;
+      rttValue = null;
     }
 
     setQuality(newQuality);
+    setStrategy(activeStrategy);
+    setRtt(rttValue);
+    setDrift(0); // No drift tracking in simplified version
     setDetails({
-      ...stats,
-      socketConnected,
-      sseConnected,
-      avgDrift,
+      rtt: rttValue,
+      strategy: activeStrategy,
+      online: newQuality !== ConnectionQuality.OFFLINE,
     });
 
     return newQuality;
@@ -136,22 +119,8 @@ export function useConnectionQuality() {
   // Update quality periodically
   useEffect(() => {
     calculateQuality();
-    const interval = setInterval(calculateQuality, 2000);
+    const interval = setInterval(calculateQuality, 5000); // Check every 5 seconds
     return () => clearInterval(interval);
-  }, [calculateQuality]);
-
-  // Listen for connection changes
-  useEffect(() => {
-    const handleSocketConnect = () => calculateQuality();
-    const handleSocketDisconnect = () => calculateQuality();
-    
-    const unsubConnect = socketService.addListener('connected', handleSocketConnect);
-    const unsubDisconnect = socketService.addListener('disconnected', handleSocketDisconnect);
-
-    return () => {
-      unsubConnect();
-      unsubDisconnect();
-    };
   }, [calculateQuality]);
 
   return {

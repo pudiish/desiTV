@@ -7,13 +7,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { getPseudoLiveItem } from '../../logic/broadcast'
-import { getViewerCount, formatViewerCount } from '../../services/api/viewerCountService'
+// Viewer count service removed - not needed for core functionality
 import { getTimeSlotName, getTimeBasedGreeting } from '../../utils/timeBasedProgramming'
 import { getUserTimezone } from '../../services/api/timezoneService'
 
 export default function EnhancedWhatsNextPreview({ channel, isVisible, playbackInfo = null }) {
 	const [refreshKey, setRefreshKey] = useState(0)
-	const [viewerCount, setViewerCount] = useState(0)
+	// Viewer count removed - not needed for core functionality
 	const [timeSlot, setTimeSlot] = useState('')
 
 	// Update every second to trigger re-render for schedule recalculation
@@ -23,20 +23,7 @@ export default function EnhancedWhatsNextPreview({ channel, isVisible, playbackI
 		return () => clearInterval(interval)
 	}, [isVisible])
 
-	// Fetch viewer count when channel changes
-	useEffect(() => {
-		if (!channel?._id || !isVisible) return
-		
-		const fetchViewerCount = async () => {
-			const count = await getViewerCount(channel._id)
-			setViewerCount(count)
-		}
-		
-		fetchViewerCount()
-		const interval = setInterval(fetchViewerCount, 30000) // Update every 30 seconds
-		
-		return () => clearInterval(interval)
-	}, [channel?._id, isVisible])
+	// Viewer count removed - not needed for core functionality
 
 	// Update time slot display (timezone-aware)
 	useEffect(() => {
@@ -101,11 +88,7 @@ export default function EnhancedWhatsNextPreview({ channel, isVisible, playbackI
 				{timeSlot && (
 					<div className="time-slot-badge">{timeSlot}</div>
 				)}
-				{viewerCount > 0 && (
-					<div className="viewer-count">
-						👥 {formatViewerCount(viewerCount)}
-					</div>
-				)}
+				{/* Viewer count removed - not needed for core functionality */}
 			</div>
 
 			{/* Greeting */}

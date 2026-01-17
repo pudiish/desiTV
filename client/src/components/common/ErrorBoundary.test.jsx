@@ -10,13 +10,8 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 
-// Mock errorTracking - correct path is in services/analytics
-jest.mock('../../services/analytics/errorTracking', () => ({
-  __esModule: true,
-  default: {
-    captureException: jest.fn()
-  }
-}))
+// Error tracking removed - not needed for core functionality
+// Mock removed since errorTracking service was deleted
 
 // Skip all tests - ErrorBoundary uses import.meta.env which Jest doesn't support
 // TODO: Migrate to Vitest for Vite projects

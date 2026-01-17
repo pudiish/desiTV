@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { analytics } from '../services/analytics';
+// Analytics removed - not needed for core functionality
 
 export function useTVControls(initialVolume = 0.5) {
   const [power, setPower] = useState(false);
@@ -50,7 +50,7 @@ export function useTVControls(initialVolume = 0.5) {
       const newVolume = Math.max(0, previousVolume - 0.1);
       setCrtVolume(newVolume);
       setCrtIsMuted(false);
-      analytics.trackVolumeChange(newVolume, 'down');
+      // Analytics tracking removed
       return newVolume;
     });
   }, []);
@@ -61,7 +61,7 @@ export function useTVControls(initialVolume = 0.5) {
       setVolume(0);
       setCrtVolume(0);
       setCrtIsMuted(true);
-      analytics.trackVolumeChange(0, 'mute');
+      // Analytics tracking removed
     } else {
       const restoredVolume = prevVolume || 0.5;
       setVolume(restoredVolume);

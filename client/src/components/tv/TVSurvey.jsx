@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { analytics } from '../../services/analytics'
+// Analytics removed - not needed for core functionality
 
 /**
  * TVSurvey - Simple, TV-like survey component
@@ -94,10 +94,9 @@ export default function TVSurvey({ isOpen, onClose, ageGroup = null }) {
 		...(ageGroup && ageSpecificQuestions[ageGroup] ? ageSpecificQuestions[ageGroup] : [])
 	]
 	
+	// Analytics tracking removed - not needed for core functionality
 	useEffect(() => {
-		if (isOpen && ageGroup) {
-			analytics.trackAgeGroup(ageGroup)
-		}
+		// Age group tracking removed
 	}, [isOpen, ageGroup])
 	
 	const handleAnswer = (questionId, answer) => {
@@ -119,12 +118,7 @@ export default function TVSurvey({ isOpen, onClose, ageGroup = null }) {
 	const handleSubmit = async () => {
 		setIsSubmitting(true)
 		
-		// Track survey completion
-		analytics.trackEvent('survey_completed', {
-			ageGroup,
-			answers,
-			timestamp: Date.now()
-		})
+		// Analytics tracking removed - not needed for core functionality
 		
 		// Send to backend (if endpoint exists)
 		try {
@@ -153,10 +147,7 @@ export default function TVSurvey({ isOpen, onClose, ageGroup = null }) {
 	}
 	
 	const handleSkip = () => {
-		analytics.trackEvent('survey_skipped', {
-			ageGroup,
-			timestamp: Date.now()
-		})
+		// Analytics tracking removed - not needed for core functionality
 		onClose()
 	}
 	

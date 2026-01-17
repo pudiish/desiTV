@@ -6,7 +6,8 @@
  */
 
 import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
-import { fetchGlobalEpoch, getCachedEpoch, getCorrectedTime, getClockOffset } from '../../services/api/globalEpochService.js'
+import { fetchGlobalEpoch, getCachedEpoch } from '../../services/api/globalEpochService.js'
+import logger from '../../utils/logger.js'
 
 class BroadcastStateManager {
 	constructor() {
@@ -51,11 +52,11 @@ class BroadcastStateManager {
 			if (stored) {
 				const data = JSON.parse(stored)
 				this.state = data || {}
-				console.log(`[BroadcastState] Loaded ${Object.keys(this.state).length} channel states`)
+				logger.info(`[BroadcastState] Loaded ${Object.keys(this.state).length} channel states`)
 				return true
 			}
 		} catch (err) {
-			console.error('[BroadcastState] Error loading from storage:', err)
+			logger.error('[BroadcastState] Error loading from storage:', err)
 		}
 		return false
 	}
@@ -74,7 +75,7 @@ class BroadcastStateManager {
 			localStorage.setItem(this.storageKey, JSON.stringify(this.state))
 			return true
 		} catch (err) {
-			console.error('[BroadcastState] Error saving to storage:', err)
+			logger.error('[BroadcastState] Error saving to storage:', err)
 			if (err.name === 'QuotaExceededError') {
 				this.cleanupOldStates()
 				try {
@@ -84,7 +85,7 @@ class BroadcastStateManager {
 					localStorage.setItem(this.storageKey, JSON.stringify(this.state))
 					return true
 				} catch (retryErr) {
-					console.error('[BroadcastState] Retry save failed:', retryErr)
+					logger.error('[BroadcastState] Retry save failed:', retryErr)
 				}
 			}
 			return false
@@ -104,7 +105,7 @@ class BroadcastStateManager {
 			})
 			
 			this.state = Object.fromEntries(entries.slice(0, this.config.maxChannelStates))
-			console.log(`[BroadcastState] Cleaned up old states, kept ${this.config.maxChannelStates} most recent`)
+			logger.info(`[BroadcastState] Cleaned up old states, kept ${this.config.maxChannelStates} most recent`)
 		}
 	}
 
@@ -146,22 +147,22 @@ class BroadcastStateManager {
 				// Check if we had a different epoch in localStorage
 				const oldEpoch = this.globalEpoch
 				if (oldEpoch && oldEpoch.getTime() !== serverEpoch.getTime()) {
-					console.warn(`[BroadcastState] ⚠️ Epoch mismatch! Local: ${oldEpoch.toISOString()}, Server: ${serverEpoch.toISOString()}`)
-					console.warn(`[BroadcastState] Replacing local epoch with server epoch for synchronization`)
+					logger.warn(`[BroadcastState] ⚠️ Epoch mismatch! Local: ${oldEpoch.toISOString()}, Server: ${serverEpoch.toISOString()}`)
+					logger.warn(`[BroadcastState] Replacing local epoch with server epoch for synchronization`)
 				}
 				
 				this.globalEpoch = serverEpoch
 				this.globalEpochLocked = true
-				console.log(`[BroadcastState] ✅ Global epoch from server: ${this.globalEpoch.toISOString()}`)
+				logger.info(`[BroadcastState] ✅ Global epoch from server: ${this.globalEpoch.toISOString()}`)
 				this.saveToStorage()
 				return this.globalEpoch
 			}
 		} catch (err) {
-			console.error('[BroadcastState] ❌ Failed to fetch server epoch:', err)
+			logger.error('[BroadcastState] ❌ Failed to fetch server epoch:', err)
 			// CRITICAL: Don't use localStorage epoch - it causes desync between devices
 			// Instead, retry server fetch with exponential backoff
 			if (!this.globalEpoch) {
-				console.warn('[BroadcastState] ⚠️ No epoch available - retrying server fetch...')
+				logger.warn('[BroadcastState] ⚠️ No epoch available - retrying server fetch...')
 				// Retry with exponential backoff (max 3 retries)
 				let retryCount = 0
 				const maxRetries = 3
@@ -172,17 +173,17 @@ class BroadcastStateManager {
 						if (serverEpoch) {
 							this.globalEpoch = serverEpoch
 							this.globalEpochLocked = true
-							console.log(`[BroadcastState] ✅ Global epoch fetched on retry ${retryCount}: ${this.globalEpoch.toISOString()}`)
+							logger.info(`[BroadcastState] ✅ Global epoch fetched on retry ${retryCount}: ${this.globalEpoch.toISOString()}`)
 							this.saveToStorage()
 							clearInterval(retryInterval)
 							return
 						}
 					} catch (retryErr) {
-						console.warn(`[BroadcastState] Retry ${retryCount} failed:`, retryErr.message)
+						logger.warn(`[BroadcastState] Retry ${retryCount} failed:`, retryErr.message)
 						if (retryCount >= maxRetries) {
 							clearInterval(retryInterval)
 							// Last resort: use fixed epoch (ensures app works, but may cause desync)
-							console.error('[BroadcastState] ❌ All retries failed - using fixed epoch (may cause desync)')
+							logger.error('[BroadcastState] ❌ All retries failed - using fixed epoch (may cause desync)')
 							this.globalEpoch = new Date('2020-01-01T00:00:00.000Z')
 							this.globalEpochLocked = true
 							this.saveToStorage()
@@ -194,7 +195,7 @@ class BroadcastStateManager {
 
 		// Lock the epoch - it should never change after initialization
 		this.globalEpochLocked = true
-		console.log(`[BroadcastState] Global epoch locked: ${this.globalEpoch.toISOString()}`)
+		logger.info(`[BroadcastState] Global epoch locked: ${this.globalEpoch.toISOString()}`)
 
 		return this.globalEpoch
 	}
@@ -209,7 +210,7 @@ class BroadcastStateManager {
 			// Initialize synchronously for backward compatibility
 			// Will be properly initialized async when needed
 			this.initializeGlobalEpoch().catch(err => {
-				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+				logger.warn('[BroadcastState] Failed to initialize epoch:', err)
 			})
 		}
 
@@ -271,7 +272,7 @@ class BroadcastStateManager {
 			}
 		})
 
-		console.log(`[BroadcastState] Initialized ${channels.length} channels`)
+		logger.info(`[BroadcastState] Initialized ${channels.length} channels`)
 		this.saveToStorage()
 	}
 
@@ -291,10 +292,10 @@ class BroadcastStateManager {
 		// CRITICAL SYNC FIX: Always ensure epoch is initialized before calculating
 		// Don't calculate with stale epoch - throw error if epoch not available
 		if (!this.globalEpoch) {
-			console.error('[BroadcastState] ❌ Cannot calculate position - epoch not initialized!')
+			logger.error('[BroadcastState] ❌ Cannot calculate position - epoch not initialized!')
 			// Try to initialize synchronously (fire and forget - won't block)
 			this.initializeGlobalEpoch().catch(err => {
-				console.error('[BroadcastState] Failed to initialize epoch:', err)
+				logger.error('[BroadcastState] Failed to initialize epoch:', err)
 			})
 			// Return safe default but log error
 			return {
@@ -340,7 +341,7 @@ class BroadcastStateManager {
 				const totalDuration = videoDurations.reduce((sum, d) => sum + d, 0)
 				const cyclePosition = totalDuration > 0 ? cumulativeTime % totalDuration : 0
 				
-				console.log(`[BroadcastState] Manual mode active - returning video ${manualIndex} at ${clampedOffset.toFixed(1)}s`)
+				logger.debug(`[BroadcastState] Manual mode active - returning video ${manualIndex} at ${clampedOffset.toFixed(1)}s`)
 				
 				return {
 					videoIndex: manualIndex,
@@ -355,26 +356,16 @@ class BroadcastStateManager {
 					isSingleVideo: channel.items.length === 1,
 				}
 			} else {
-				console.warn(`[BroadcastState] Invalid manual video index ${manualIndex}, resetting manual mode`)
+				logger.warn(`[BroadcastState] Invalid manual video index ${manualIndex}, resetting manual mode`)
 				// Reset manual mode if index is invalid
 				this.setManualMode(channelId, false)
 			}
 		}
 
-		const now = new Date()
-		// CRITICAL: Use corrected time to account for client-server clock difference
-		// This ensures all devices show the same content at the same time
-		const correctedNowMs = getCorrectedTime()
-		const clockOffset = getClockOffset()
-		
-		// Calculate elapsed time from immutable global epoch using CORRECTED time
-		const totalElapsedMs = correctedNowMs - this.globalEpoch.getTime()
+		// Calculate elapsed time from immutable global epoch (client-side only, no clock sync needed)
+		const nowMs = Date.now()
+		const totalElapsedMs = nowMs - this.globalEpoch.getTime()
 		const totalElapsedSec = totalElapsedMs / 1000
-		
-		// Debug log if significant clock offset
-		if (Math.abs(clockOffset) > 1000) {
-			console.log(`[BroadcastState] Clock offset: ${Math.round(clockOffset)}ms, elapsed: ${totalElapsedSec.toFixed(1)}s`)
-		}
 
 		// Apply per-channel offset (for manual seeking - doesn't affect global epoch)
 		const channelOffset = savedState.channelOffset || 0
@@ -526,27 +517,17 @@ class BroadcastStateManager {
 	}
 
 	/**
-	 * Start periodic epoch refresh (ensures sync across devices)
-	 * SKIPS refresh when manual mode is active (to preserve user's manual selection)
+	 * Start periodic epoch refresh - DEPRECATED
+	 * Epoch is now client-side only (from JSON or fixed), no server refresh needed
+	 * @deprecated Epoch is client-side only, no refresh needed
 	 */
 	startEpochRefresh() {
+		// No-op: Epoch is client-side only, no server refresh needed
 		if (this.epochRefreshInterval) {
 			clearInterval(this.epochRefreshInterval)
+			this.epochRefreshInterval = null
 		}
-
-		// Refresh epoch every 15 seconds (reduced frequency to prevent rate limiting)
-		// CRITICAL: Skip refresh if any channel is in manual mode (don't override manual position)
-		this.epochRefreshInterval = setInterval(() => {
-			if (this.hasAnyManualMode()) {
-				// Manual mode active - skip epoch refresh to preserve manual position
-				return
-			}
-			this.initializeGlobalEpoch(true).catch(err => {
-				console.warn('[BroadcastState] Periodic epoch refresh failed:', err)
-			})
-		}, 15 * 1000) // 15 seconds - sufficient since epoch never changes
-
-		console.log('[BroadcastState] Started periodic epoch refresh (every 15 seconds, skips in manual mode)')
+		logger.info('[BroadcastState] Epoch refresh disabled - using client-side epoch only')
 	}
 
 	/**
@@ -581,7 +562,7 @@ class BroadcastStateManager {
 			// Initialize synchronously for backward compatibility
 			// Will be properly initialized async when needed
 			this.initializeGlobalEpoch().catch(err => {
-				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+				logger.warn('[BroadcastState] Failed to initialize epoch:', err)
 			})
 		}
 		return this.globalEpoch
@@ -592,7 +573,7 @@ class BroadcastStateManager {
 	 */
 	updateChannelState(channelId, updateData) {
 		if (!this.state[channelId]) {
-			console.warn(`[BroadcastState] Cannot update - no state for channel ${channelId}`)
+			logger.warn(`[BroadcastState] Cannot update - no state for channel ${channelId}`)
 			return false
 		}
 
@@ -613,7 +594,7 @@ class BroadcastStateManager {
 	jumpToVideo(channelId, targetVideoIndex, targetOffset = 0, items) {
 		const state = this.state[channelId]
 		if (!state || !items || items.length === 0) {
-			console.warn(`[BroadcastState] Cannot jump - no state for channel ${channelId}`)
+			logger.warn(`[BroadcastState] Cannot jump - no state for channel ${channelId}`)
 			return false
 		}
 
@@ -622,7 +603,7 @@ class BroadcastStateManager {
 			// Initialize synchronously for backward compatibility
 			// Will be properly initialized async when needed
 			this.initializeGlobalEpoch().catch(err => {
-				console.warn('[BroadcastState] Failed to initialize epoch:', err)
+				logger.warn('[BroadcastState] Failed to initialize epoch:', err)
 			})
 		}
 
@@ -670,7 +651,7 @@ class BroadcastStateManager {
 		}
 
 		this.saveToStorage()
-		console.log(`[BroadcastState] Jumped to video ${targetVideoIndex} at ${targetOffset}s (channel offset: ${normalizedOffset.toFixed(1)}s, manual position stored, lastAccessTime updated)`)
+		logger.info(`[BroadcastState] Jumped to video ${targetVideoIndex} at ${targetOffset}s (channel offset: ${normalizedOffset.toFixed(1)}s, manual position stored, lastAccessTime updated)`)
 		return true
 	}
 
@@ -700,7 +681,7 @@ class BroadcastStateManager {
 		}
 
 		this.saveToStorage()
-		console.log(`[BroadcastState] Reset channel offset for ${channelId}`)
+		logger.info(`[BroadcastState] Reset channel offset for ${channelId}`)
 		return true
 	}
 
@@ -715,7 +696,7 @@ class BroadcastStateManager {
 		// Initialize channel state if it doesn't exist (defensive programming)
 		const state = this.state[channelId]
 		if (!state) {
-			console.warn(`[BroadcastState] Cannot set manual mode - no state for channel ${channelId}, this should be initialized first`)
+			logger.warn(`[BroadcastState] Cannot set manual mode - no state for channel ${channelId}, this should be initialized first`)
 			return false
 		}
 
@@ -738,21 +719,21 @@ class BroadcastStateManager {
 			// When disabling manual mode, clear stored position
 			updates.manualVideoIndex = undefined
 			updates.manualOffset = undefined
-			console.log(`[BroadcastState] Manual mode disabled for ${channelId} - clearing manual position`)
+			logger.info(`[BroadcastState] Manual mode disabled for ${channelId} - clearing manual position`)
 		} else {
 			// When enabling, keep the stored manual position from jumpToVideo
 			// jumpToVideo should have already stored manualVideoIndex and manualOffset
 			if (state.manualVideoIndex !== undefined && state.manualVideoIndex !== null) {
-				console.log(`[BroadcastState] Manual mode enabled for ${channelId} - using stored position: video ${state.manualVideoIndex} at ${(state.manualOffset || 0).toFixed(1)}s`)
+				logger.info(`[BroadcastState] Manual mode enabled for ${channelId} - using stored position: video ${state.manualVideoIndex} at ${(state.manualOffset || 0).toFixed(1)}s`)
 			} else {
-				console.warn(`[BroadcastState] ⚠️ Enabling manual mode but no stored manual position found for ${channelId}. Call jumpToVideo first!`)
+				logger.warn(`[BroadcastState] ⚠️ Enabling manual mode but no stored manual position found for ${channelId}. Call jumpToVideo first!`)
 			}
 		}
 		
 		this.state[channelId] = updates
 
 		this.saveToStorage()
-		console.log(`[BroadcastState] Manual mode ${isManual ? 'enabled' : 'disabled'} for ${channelId} (persists until category change)`)
+		logger.info(`[BroadcastState] Manual mode ${isManual ? 'enabled' : 'disabled'} for ${channelId} (persists until category change)`)
 		return true
 	}
 
@@ -815,7 +796,7 @@ class BroadcastStateManager {
 
 		let stepCount = 0
 
-		console.log(`[BroadcastState] Starting gradual offset reset for ${channelId} (${currentOffset.toFixed(1)}s → 0s over ${this.config.manualModeGradualResetDuration/1000}s)`)
+		logger.info(`[BroadcastState] Starting gradual offset reset for ${channelId} (${currentOffset.toFixed(1)}s → 0s over ${this.config.manualModeGradualResetDuration/1000}s)`)
 
 		this.gradualResetIntervals[channelId] = setInterval(() => {
 			stepCount++
@@ -833,7 +814,7 @@ class BroadcastStateManager {
 				clearInterval(this.gradualResetIntervals[channelId])
 				delete this.gradualResetIntervals[channelId]
 				this.saveToStorage()
-				console.log(`[BroadcastState] Gradual reset complete for ${channelId}, returned to timeline mode`)
+				logger.info(`[BroadcastState] Gradual reset complete for ${channelId}, returned to timeline mode`)
 			} else {
 				// Update offset gradually
 				this.state[channelId] = {
@@ -871,7 +852,7 @@ class BroadcastStateManager {
 		this.stopAutoSave()
 		this.stopEpochRefresh() // Stop refresh before clearing
 		this.listeners = []
-		console.log('[BroadcastState] ✅ All state cleared for fresh sync')
+		logger.info('[BroadcastState] ✅ All state cleared for fresh sync')
 	}
 }
 

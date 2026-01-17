@@ -1,5 +1,5 @@
 import React from 'react';
-import { errorTracking } from '../../services/analytics';
+// Error tracking removed - not needed for core functionality
 
 /**
  * ErrorBoundary - Catches React component errors and prevents white screen of death
@@ -33,13 +33,7 @@ class ErrorBoundary extends React.Component {
       errorInfo
     });
 
-    // Send to error tracking service
-    errorTracking.captureException(error, {
-      component: 'ErrorBoundary',
-      type: 'reactError',
-      componentStack: errorInfo.componentStack,
-      errorBoundary: true
-    });
+    // Error tracking removed - not needed for core functionality
   }
 
   handleReset = () => {

@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { apiClient } from '../../services/apiClient'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
@@ -72,7 +71,7 @@ export default function VideoFetcher() {
 			)
 
 			// Use apiClient which handles CSRF tokens automatically
-			await apiClient.post(`/api/channels/${channelId}/add-videos`, {
+			await apiClientV2.post(`/api/channels/${channelId}/add-videos`, {
 				videos: videoDetails.filter(Boolean)
 			})
 

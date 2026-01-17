@@ -34,16 +34,15 @@ export function useAppInitialization(onInitialized) {
         localStorage.removeItem('desitv-global-epoch-cached');
         localStorage.removeItem('desitv-broadcast-state');
 
-        // CRITICAL: Always fetch global epoch from server FIRST (for true sync)
-        await broadcastStateManager.initializeGlobalEpoch(true);
+        // Initialize global epoch (client-side from JSON or fixed default)
+        await broadcastStateManager.initializeGlobalEpoch(false); // Client-side only, no server call
         const epoch = broadcastStateManager.getGlobalEpoch();
         if (!epoch) {
           throw new Error('Failed to initialize global epoch');
         }
-        console.log('[useAppInitialization] ✅ Global epoch from server:', epoch.toISOString());
+        console.log('[useAppInitialization] ✅ Global epoch initialized (client-side):', epoch.toISOString());
 
-        // Start periodic epoch refresh to maintain sync
-        broadcastStateManager.startEpochRefresh();
+        // Epoch refresh removed - epoch is client-side only (no server sync needed)
 
         // Start checksum sync service
         checksumSyncService.start();

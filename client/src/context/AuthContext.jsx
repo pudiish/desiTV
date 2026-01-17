@@ -6,7 +6,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { apiClient } from '../services/apiClient';
+import apiClientV2 from '../services/apiClientV2';
 
 const TOKEN_KEY = 'desiTV_admin_token';
 const ADMIN_KEY = 'desiTV_admin_info';
@@ -89,8 +89,8 @@ export function AuthProvider({ children }) {
    */
   const login = useCallback(async (username, password) => {
     try {
-      // Use apiClient which handles CSRF tokens automatically
-      const data = await apiClient.post('/api/auth/login', {
+      // Use apiClientV2 which handles CSRF tokens automatically
+      const data = await apiClientV2.post('/api/auth/login', {
         username,
         password,
       });

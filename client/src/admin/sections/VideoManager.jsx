@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { apiClient } from '../../services/apiClient'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
@@ -119,7 +118,7 @@ export default function VideoManager() {
 		setAddingChannel(true)
 		try {
 			// Use apiClient which handles auth headers
-			const data = await apiClient.post('/api/channels', { name: newChannelName.trim() })
+			const data = await apiClientV2.post('/api/channels', { name: newChannelName.trim() })
 			const newChannels = Array.isArray(channels) ? [...channels, data] : [data]
 			setChannels(newChannels)
 			setSelectedChannel(data._id)
@@ -245,7 +244,7 @@ export default function VideoManager() {
 			if (videoData.tags) payload.tags = videoData.tags.split(',').map(t => t.trim()).filter(t => t)
 
 			// Use apiClient which handles CSRF tokens automatically
-			await apiClient.post(`/api/channels/${selectedChannel}/videos`, payload)
+			await apiClientV2.post(`/api/channels/${selectedChannel}/videos`, payload)
 			
 			setMessage({ type: 'success', text: '✅ Video added successfully!' })
 			
