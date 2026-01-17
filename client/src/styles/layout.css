@@ -43,6 +43,17 @@
 	}
 }
 
+/* Layout viewport: centers the fixed reference layout (TV + remote) and clips when scaled */
+.layout-viewport {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
 /* Content Wrapper */
 .content-wrapper {
 	display: flex;
@@ -58,6 +69,185 @@
 	min-height: 0;
 	position: relative;
 	flex-wrap: nowrap;
+}
+
+/* Desktop/tablet: fixed reference layout (MacBook Air M3 alignment) – same TV + remote size across all screens */
+@media (min-width: 768px) {
+	.content-wrapper {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: 1000px;
+		height: 620px;
+		margin-left: -500px;
+		margin-top: -310px;
+		transform: scale(var(--layout-scale, 1));
+		transform-origin: center center;
+		gap: 40px;
+		padding: 0;
+		max-width: none;
+		flex: none;
+	}
+	
+	.tv-frame-container {
+		flex: 0 0 800px;
+		width: 800px;
+		max-width: 800px;
+		min-width: 800px;
+		height: 600px;
+	}
+	
+	.right-panel {
+		flex: 0 0 160px;
+		width: 160px;
+		max-height: 600px;
+	}
+	
+	/* Same remote layout for normal (.right-panel) and fullscreen (.remote-overlay) */
+	.right-panel .remote-body,
+	.remote-overlay .remote-body {
+		width: 160px;
+		min-width: 160px;
+		max-width: 160px;
+		max-height: 600px;
+		padding: 8px 10px 10px;
+		display: flex;
+		flex-direction: column;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+	.right-panel .remote-brand,
+	.remote-overlay .remote-brand {
+		margin-bottom: 4px;
+		font-size: 9px;
+	}
+	.right-panel .power-section,
+	.remote-overlay .power-section {
+		margin-bottom: 6px;
+		gap: 8px;
+	}
+	.right-panel .remote-btn.power-btn,
+	.remote-overlay .remote-btn.power-btn {
+		width: 34px;
+		height: 34px;
+	}
+	.right-panel .power-icon,
+	.remote-overlay .power-icon {
+		font-size: 14px;
+	}
+	.right-panel .channel-display,
+	.remote-overlay .channel-display {
+		margin: 4px auto 6px;
+		padding: 2px 30px;
+	}
+	.right-panel .channel-number,
+	.remote-overlay .channel-number {
+		font-size: 14px;
+	}
+	.right-panel .channel-label,
+	.remote-overlay .channel-label {
+		font-size: 7px;
+	}
+	.right-panel .number-pad,
+	.remote-overlay .number-pad {
+		gap: 3px;
+		margin-bottom: 6px;
+	}
+	.right-panel .remote-btn.num-btn,
+	.remote-overlay .remote-btn.num-btn {
+		min-height: 24px;
+		padding: 4px;
+		font-size: 9px;
+	}
+	.right-panel .dpad-section,
+	.remote-overlay .dpad-section {
+		margin: 6px 0;
+	}
+	.right-panel .dpad,
+	.remote-overlay .dpad {
+		gap: 2px;
+	}
+	.right-panel .dpad-top-row,
+	.right-panel .dpad-middle,
+	.remote-overlay .dpad-top-row,
+	.remote-overlay .dpad-middle {
+		gap: 2px;
+	}
+	.right-panel .remote-btn.dpad-btn,
+	.right-panel .remote-btn.category-btn,
+	.remote-overlay .remote-btn.dpad-btn,
+	.remote-overlay .remote-btn.category-btn {
+		min-height: 24px;
+		padding: 4px 6px;
+		font-size: 7px;
+	}
+	.right-panel .remote-btn.dpad-btn.up,
+	.right-panel .remote-btn.dpad-btn.down,
+	.right-panel .remote-btn.category-btn.left,
+	.right-panel .remote-btn.category-btn.right,
+	.remote-overlay .remote-btn.dpad-btn.up,
+	.remote-overlay .remote-btn.dpad-btn.down,
+	.remote-overlay .remote-btn.category-btn.left,
+	.remote-overlay .remote-btn.category-btn.right {
+		min-width: 44px;
+	}
+	.right-panel .remote-btn.dpad-btn.left,
+	.right-panel .remote-btn.dpad-btn.right,
+	.remote-overlay .remote-btn.dpad-btn.left,
+	.remote-overlay .remote-btn.dpad-btn.right {
+		min-width: 34px;
+	}
+	.right-panel .remote-btn.dpad-btn.center,
+	.remote-overlay .remote-btn.dpad-btn.center {
+		min-width: 38px;
+	}
+	.right-panel .mute-section,
+	.remote-overlay .mute-section {
+		margin: 5px 0;
+	}
+	.right-panel .remote-btn.mute-btn,
+	.remote-overlay .remote-btn.mute-btn {
+		min-height: 22px;
+		padding: 4px 8px;
+		font-size: 7px;
+	}
+	.right-panel .desitv-brand-section,
+	.remote-overlay .desitv-brand-section {
+		margin-top: 5px;
+		padding-top: 5px;
+	}
+	.right-panel .brand-label,
+	.remote-overlay .brand-label {
+		font-size: 8px;
+		margin-bottom: 2px;
+	}
+	.right-panel .brand-tagline,
+	.remote-overlay .brand-tagline {
+		font-size: 6px;
+	}
+	.right-panel .volume-bar-section,
+	.remote-overlay .volume-bar-section {
+		margin-top: 5px;
+		padding: 5px;
+	}
+	.right-panel .volume-label,
+	.remote-overlay .volume-label {
+		font-size: 7px;
+		margin-bottom: 3px;
+	}
+	.right-panel .volume-bar,
+	.remote-overlay .volume-bar {
+		height: 6px;
+	}
+	.right-panel .volume-percent,
+	.remote-overlay .volume-percent {
+		font-size: 8px;
+		margin-top: 2px;
+	}
+	.right-panel .keyboard-hints,
+	.remote-overlay .keyboard-hints {
+		display: none;
+	}
 }
 
 /* Left Side - TV Frame Container */

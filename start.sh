@@ -18,7 +18,7 @@ BOLD='\033[1m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Function to check and install npm packages~~
+# Function to check and install npm packages
 check_and_install_npm() {
   local dir=$1
   local name=$2
@@ -35,218 +35,128 @@ check_and_install_npm() {
   fi
 }
 
-# Function to check and install Python packages
-check_and_install_python() {
-  if [ -f "scripts/requirements.txt" ]; then
-    if ! python3 -c "import pymongo" 2>/dev/null || ! python3 -c "import dotenv" 2>/dev/null; then
-      echo "📦 Installing Python dependencies..."
-      if command -v pip3 &> /dev/null; then
-        pip3 install -r scripts/requirements.txt
-        echo "✅ Python dependencies installed"
-      elif command -v pip &> /dev/null; then
-        pip install -r scripts/requirements.txt
-        echo "✅ Python dependencies installed"
-      else
-        echo "⚠️  Warning: pip not found. Skipping Python dependencies."
-      fi
-    else
-      echo "✅ Python dependencies already installed"
-    fi
-  fi
-}
-
-# Function to check and install Redis
-check_and_install_redis() {
-  if command -v redis-server &> /dev/null; then
-    echo "✅ Redis is already installed"
-    return 0
-  fi
-  
-  echo "📦 Redis not found. Installing Redis..."
-  
-  # Check if we're on macOS
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Check if Homebrew is installed
-    if command -v brew &> /dev/null; then
-      echo "🍎 Installing Redis via Homebrew..."
-      brew install redis
-      echo "✅ Redis installed successfully"
-      return 0
-    else
-      echo "⚠️  Homebrew not found. Please install Redis manually:"
-      echo "   1. Install Homebrew: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-      echo "   2. Install Redis: brew install redis"
-      return 1
-    fi
-  # Check if we're on Linux
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    echo "🐧 Installing Redis via package manager..."
-    if command -v apt-get &> /dev/null; then
-      sudo apt-get update
-      sudo apt-get install -y redis-server
-      echo "✅ Redis installed successfully"
-      return 0
-    elif command -v yum &> /dev/null; then
-      sudo yum install -y redis
-      echo "✅ Redis installed successfully"
-      return 0
-    else
-      echo "⚠️  Could not detect package manager. Please install Redis manually."
-      return 1
-    fi
-  else
-    echo "⚠️  Unsupported OS. Please install Redis manually."
-    return 1
-  fi
-}
-
-# Function to start Redis
+# Function to start Redis (optional: app uses in-memory cache if Redis unavailable)
 start_redis() {
-  # Check if Redis is already running
-  if redis-cli ping &> /dev/null; then
+  if redis-cli ping &>/dev/null; then
     echo "✅ Redis is already running"
     return 0
   fi
-  
-  echo "🚀 Starting Redis server..."
-  
-  # Check if we're on macOS
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    if command -v brew &> /dev/null; then
-      brew services start redis
-      sleep 1
-      if redis-cli ping &> /dev/null; then
-        echo "✅ Redis started successfully"
-        return 0
-      else
-        echo "⚠️  Failed to start Redis via Homebrew. Trying direct command..."
-        redis-server --daemonize yes
-        sleep 1
-        if redis-cli ping &> /dev/null; then
-          echo "✅ Redis started successfully"
-          return 0
-        fi
-      fi
+
+  if ! command -v redis-server &> /dev/null; then
+    echo "ℹ️  Redis not installed (optional – in-memory cache will be used)"
+    return 0
+  fi
+
+  # Only try to start if REDIS_URL suggests local Redis
+  local url="${REDIS_URL:-}"
+  if [[ -n "$url" && "$url" == *"localhost"* ]] || [[ -z "$url" ]]; then
+    echo "🚀 Starting Redis server..."
+    if [[ "$OSTYPE" == "darwin"* ]] && command -v brew &> /dev/null; then
+      brew services start redis 2>/dev/null || redis-server --daemonize yes 2>/dev/null
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+      ( command -v systemctl &> /dev/null && sudo systemctl start redis-server 2>/dev/null ) || redis-server --daemonize yes 2>/dev/null
     else
-      redis-server --daemonize yes
-      sleep 1
-      if redis-cli ping &> /dev/null; then
-        echo "✅ Redis started successfully"
-        return 0
-      fi
+      redis-server --daemonize yes 2>/dev/null
     fi
-  # Check if we're on Linux
-  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    sudo systemctl start redis-server
     sleep 1
     if redis-cli ping &> /dev/null; then
-      echo "✅ Redis started successfully"
+      echo "✅ Redis started"
       return 0
     fi
   fi
-  
-  echo "⚠️  Could not start Redis. Please start it manually."
-  return 1
+
+  echo "ℹ️  Redis not running (optional – in-memory cache will be used)"
+  return 0
 }
 
 # Check and install all dependencies
 echo "🔍 Checking dependencies..."
 echo ""
 
-# Check root dependencies
-echo "[1/5] Checking root dependencies..."
+# Check root dependencies (concurrently for npm run dev)
+echo "[1/3] Root (concurrently)..."
 check_and_install_npm "." "root"
 
-# Check client dependencies
-echo "[2/5] Checking client dependencies..."
+# Check client dependencies (Vite, React)
+echo "[2/3] Client (Vite, React)..."
 check_and_install_npm "client" "client"
 
-# Check server dependencies
-echo "[3/5] Checking server dependencies..."
+# Check server dependencies (Express, Mongoose, etc.)
+echo "[3/3] Server (Express, Mongoose)..."
 check_and_install_npm "server" "server"
 
-# Check Python dependencies
-echo "[4/5] Checking Python dependencies..."
-check_and_install_python
-
-# Check and install Redis
-echo "[5/5] Checking Redis..."
-check_and_install_redis
+# Redis: optional (server uses in-memory cache if unavailable)
+if command -v redis-server &>/dev/null; then
+  echo "ℹ️  Redis: found (will try to start if REDIS_URL points to localhost)"
+else
+  echo "ℹ️  Redis: not installed (optional – in-memory cache will be used)"
+fi
 
 echo ""
-echo "✅ All dependencies checked and installed"
+echo "✅ Dependencies ready"
 echo ""
 
 # Load or create .env file
 if [ ! -f .env ]; then
-  echo "📝 Creating .env file with default values..."
+  echo "📝 Creating .env from template..."
   cat > .env << 'EOF'
-# DesiTV Environment Configuration
-# Server Configuration
+# DesiTV Environment
+# Required
+MONGO_URI=mongodb://localhost:27017/desitv
+JWT_SECRET=dev-secret-change-in-production
+
+# Server
 PORT=5000
 VITE_CLIENT_PORT=5173
 
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
+# Optional: Redis (in-memory cache used if unset)
+# REDIS_URL=redis://localhost:6379
 
-# Database (add your MongoDB URI)
-# MONGO_URI=mongodb://localhost:27017/desitv
+# Optional: YouTube (metadata, thumbnails)
+# YOUTUBE_API_KEY=
 
-# Other environment variables can be added here
+# Optional: Google AI / Gemini (DesiAgent chat)
+# GOOGLE_AI_KEY=
+
+# Optional: Admin (for seed.js)
+# ADMIN_USERNAME=admin
+# ADMIN_PASSWORD=
 EOF
-  echo "✅ .env file created with default values"
-  echo "⚠️  Please update MONGO_URI and other variables as needed"
+  echo "✅ .env created. Edit MONGO_URI and JWT_SECRET if needed."
   echo ""
 fi
 
-  echo "📁 Loading .env from project root"
-  set -a
-  # Try to load .env, fallback to .env.local if .env is not accessible
-  if [ -r .env ]; then
-    source .env 2>/dev/null || {
-      echo "⚠️  Could not load .env, trying .env.local..."
-      if [ -r .env.local ]; then
-        source .env.local 2>/dev/null || echo "⚠️  Could not load .env.local either"
-      fi
-    }
-  elif [ -r .env.local ]; then
-    echo "📁 Loading .env.local (fallback)"
-    source .env.local 2>/dev/null || echo "⚠️  Could not load .env.local"
-  else
-    echo "⚠️  No .env or .env.local file found or accessible"
-  fi
-  set +a
+echo "📁 Loading .env from project root"
+set -a
+if [ -r .env ]; then
+  source .env 2>/dev/null || {
+    if [ -r .env.local ]; then
+      source .env.local 2>/dev/null || true
+    fi
+  }
+elif [ -r .env.local ]; then
+  source .env.local 2>/dev/null || true
+fi
+set +a
 
-# Set defaults if not provided
+# Defaults for ports only
 PORT="${PORT:-5000}"
 VITE_CLIENT_PORT="${VITE_CLIENT_PORT:-5173}"
-REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
 
-# Export critical environment variables for child processes
-export MONGO_URI
-export JWT_SECRET
-export ADMIN_USERNAME
-export ADMIN_PASSWORD
-export YOUTUBE_API_KEY
-export VITE_CLIENT_PORT
-export PORT
-export REDIS_URL
-export REDIS_FALLBACK_ENABLED
-export GOOGLE_AI_KEY
-export NODE_ENV="${NODE_ENV:-development}"
+# Export for child processes (server uses dotenv; exports for concurrent dev)
+export PORT VITE_CLIENT_PORT NODE_ENV="${NODE_ENV:-development}"
+export MONGO_URI JWT_SECRET YOUTUBE_API_KEY GOOGLE_AI_KEY
+export REDIS_URL REDIS_FALLBACK_ENABLED ADMIN_USERNAME ADMIN_PASSWORD
 
-# Update .env if values were missing
-if ! grep -q "^PORT=" .env 2>/dev/null; then
-  echo "PORT=$PORT" >> .env
-fi
-if ! grep -q "^VITE_CLIENT_PORT=" .env 2>/dev/null; then
-  echo "VITE_CLIENT_PORT=$VITE_CLIENT_PORT" >> .env
-fi
-if ! grep -q "^REDIS_URL=" .env 2>/dev/null; then
-  echo "REDIS_URL=$REDIS_URL" >> .env
+# Bootstrap .env: add PORT/VITE_CLIENT_PORT only if missing
+if [ -f .env ]; then
+  grep -q "^PORT=" .env 2>/dev/null || echo "PORT=$PORT" >> .env
+  grep -q "^VITE_CLIENT_PORT=" .env 2>/dev/null || echo "VITE_CLIENT_PORT=$VITE_CLIENT_PORT" >> .env
 fi
 
-echo "✅ Environment variables loaded (PORT=$PORT, VITE_CLIENT_PORT=$VITE_CLIENT_PORT, REDIS_URL=$REDIS_URL)"
+REDIS_INFO="${REDIS_URL:+Redis: yes}"
+REDIS_INFO="${REDIS_INFO:-Redis: no (in-memory)}"
+echo "✅ Env loaded — PORT=$PORT, VITE_CLIENT_PORT=$VITE_CLIENT_PORT, $REDIS_INFO"
 
 # Get local network IP
 get_local_ip() {
@@ -486,34 +396,23 @@ CLIENT_PORT=$VITE_CLIENT_PORT
 echo "✅ Using ports: Server=$SERVER_PORT, Client=$CLIENT_PORT"
 echo ""
 
-# Verify all critical environment variables are set
+# Verify required environment variables (only MONGO_URI and JWT_SECRET)
 echo "🔍 Verifying environment variables..."
-MISSING_VARS=()
+MISSING=()
+[ -z "${MONGO_URI:-}" ] && MISSING+=("MONGO_URI")
+[ -z "${JWT_SECRET:-}" ] && MISSING+=("JWT_SECRET")
 
-# Use safe parameter expansion to avoid "unbound variable" errors
-if [ -z "${MONGO_URI:-}" ]; then MISSING_VARS+=("MONGO_URI"); fi
-if [ -z "${GOOGLE_AI_KEY:-}" ]; then MISSING_VARS+=("GOOGLE_AI_KEY"); fi
-if [ -z "${YOUTUBE_API_KEY:-}" ]; then MISSING_VARS+=("YOUTUBE_API_KEY"); fi
-if [ -z "${JWT_SECRET:-}" ]; then MISSING_VARS+=("JWT_SECRET"); fi
-if [ -z "${ADMIN_USERNAME:-}" ]; then MISSING_VARS+=("ADMIN_USERNAME"); fi
-if [ -z "${ADMIN_PASSWORD:-}" ]; then MISSING_VARS+=("ADMIN_PASSWORD"); fi
-if [ -z "${REDIS_URL:-}" ]; then MISSING_VARS+=("REDIS_URL"); fi
-
-if [ ${#MISSING_VARS[@]} -gt 0 ]; then
-  echo "❌ ERROR: Missing environment variables:"
-  printf '   - %s\n' "${MISSING_VARS[@]}"
-  echo ""
-  echo "💡 Tip: Update your .env file with the missing variables"
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "❌ Missing required variables: ${MISSING[*]}"
+  echo "   Add them to .env. Example: MONGO_URI=mongodb://localhost:27017/desitv  JWT_SECRET=your-secret"
   exit 1
-else
-  echo "✅ All critical environment variables are loaded:"
-  echo "   ✓ MONGO_URI=$(echo ${MONGO_URI:-} | cut -c1-40)..."
-  echo "   ✓ GOOGLE_AI_KEY=$(echo ${GOOGLE_AI_KEY:-} | cut -c1-20)..."
-  echo "   ✓ YOUTUBE_API_KEY=$(echo ${YOUTUBE_API_KEY:-} | cut -c1-20)..."
-  echo "   ✓ JWT_SECRET=$(echo ${JWT_SECRET:-} | cut -c1-20)..."
-  echo "   ✓ ADMIN_USERNAME=${ADMIN_USERNAME:-}"
-  echo "   ✓ REDIS_URL=${REDIS_URL:-}"
 fi
+
+echo "✅ Required: MONGO_URI, JWT_SECRET"
+# Optional: warn if missing (features degraded)
+[ -z "${YOUTUBE_API_KEY:-}" ] && echo "   ⚠️  YOUTUBE_API_KEY not set — metadata/thumbnails may be limited"
+[ -z "${GOOGLE_AI_KEY:-}" ]   && echo "   ⚠️  GOOGLE_AI_KEY not set — DesiAgent chat will not work"
+[ -z "${ADMIN_USERNAME:-}" ]  && echo "   ℹ️  ADMIN_USERNAME not set — required only for seed.js"
 echo ""
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════╗"
@@ -528,7 +427,7 @@ echo "║  🖥️  Backend (Express):                                        �
 printf "║     Local:   http://localhost:%-6s                         ║\n" "$SERVER_PORT"
 printf "║     Network: http://%-15s:%-6s                  ║\n" "$LOCAL_IP" "$SERVER_PORT"
 echo "║                                                               ║"
-echo "║  �� To access from mobile:                                    ║"
+echo "║  📱 To access from mobile:                                    ║"
 printf "║     Open http://%-15s:%-6s on your phone         ║\n" "$LOCAL_IP" "$CLIENT_PORT"
 echo "║                                                               ║"
 # Beautiful startup banner

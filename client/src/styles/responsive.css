@@ -4,107 +4,11 @@
  * These match the values defined in tokens.css for consistency
  */
 
-/* Large Desktop (1400px+) - TV and remote side by side */
-@media (min-width: 1400px) {
-	.tv-frame {
-		/* Fixed size - no change */
-	}
-	
-	.right-panel {
-		width: clamp(180px, 16vw, 220px);
-	}
-	
-	.remote-body {
-		width: clamp(180px, 16vw, 220px);
-		padding: clamp(12px, 1.5vh, 16px) clamp(12px, 1.3vw, 16px) clamp(16px, 2vh, 20px);
-	}
-}
+/* Desktop/Tablet (768px+): TV and remote use fixed reference layout (MacBook Air M3 alignment)
+   Sizes and scaling are in layout.css @media (min-width: 768px) and --layout-scale. */
 
-/* Standard Desktop (1024px - 1399px) */
-@media (min-width: 1024px) and (max-width: 1399px) {
-	.tv-frame {
-		/* Fixed size - no change */
-	}
-	
-	.right-panel {
-		width: clamp(170px, 15vw, 210px);
-	}
-	
-	.remote-body {
-		width: clamp(170px, 15vw, 210px);
-		padding: clamp(11px, 1.3vh, 13px) clamp(11px, 1.1vw, 13px) clamp(13px, 1.7vh, 17px);
-	}
-}
-
-/* Tablet Landscape (768px - 1023px) - Side by side but smaller */
+/* Tablet (768px - 1023px): only non-size tweaks */
 @media (min-width: 768px) and (max-width: 1023px) {
-	.content-wrapper {
-		gap: 20px;
-		padding: 12px 18px;
-	}
-	
-	.tv-frame {
-		/* Responsive on tablet - maintains aspect ratio */
-		width: 100% !important;
-		max-width: 800px !important;
-		height: auto !important;
-		aspect-ratio: 4/3 !important;
-		min-width: 0 !important;
-		min-height: 0 !important;
-	}
-	
-	.right-panel {
-		width: clamp(160px, 14vw, 190px);
-	}
-	
-	.remote-body {
-		width: clamp(160px, 14vw, 190px);
-		padding: clamp(10px, 1.2vh, 12px) clamp(9px, 1vw, 11px) clamp(12px, 1.6vh, 16px);
-	}
-	
-	.remote-brand {
-		font-size: 9px;
-		margin-bottom: 8px;
-	}
-	
-	.remote-btn.power-btn {
-		width: 36px;
-		height: 36px;
-	}
-	
-	.power-icon {
-		font-size: 14px;
-	}
-	
-	.channel-display {
-		padding: 5px 10px;
-		margin: 6px auto 10px;
-	}
-	
-	.channel-number {
-		font-size: 18px;
-	}
-	
-	.remote-btn.num-btn {
-		padding: 8px;
-		font-size: 11px;
-	}
-	
-	.remote-btn.dpad-btn {
-		padding: 6px 8px;
-		font-size: 7px;
-	}
-	
-	.remote-btn.vcr-btn {
-		width: 30px;
-		height: 26px;
-		font-size: 10px;
-	}
-	
-	.volume-bar-section {
-		padding: 6px;
-	}
-	
 	.keyboard-hints {
 		display: none;
 	}

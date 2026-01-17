@@ -635,16 +635,60 @@ body.ios-fullscreen-active .content-wrapper > *:not(.tv-frame-container) {
 }
 
 /* ===========================================
-   REMOTE OVERLAY IN FULLSCREEN
+   REMOTE OVERLAY IN FULLSCREEN – Right-side pop-out, exact same remote, stays while hovering
    =========================================== */
 
 @media (min-width: 769px) {
+	/* Overlay: 280px = 160 (remote) + 120 (hover zone over sensor); right-aligned, vertically centered; smooth slide */
 	.tv-frame-container:fullscreen .remote-overlay,
 	.tv-frame-container:-webkit-full-screen .remote-overlay,
 	.tv-frame-container.ios-fullscreen-active .remote-overlay {
 		z-index: 1000 !important;
 		position: fixed !important;
+		right: 0 !important;
+		top: 50% !important;
+		bottom: auto !important;
+		width: 280px !important;
+		max-width: 280px !important;
+		min-height: 0;
+		transform: translate(100%, -50%) !important;
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
+		opacity: 0 !important;
+		display: flex !important;
+		flex-direction: row !important;
+		justify-content: flex-start !important;
+		align-items: stretch !important;
+		pointer-events: none !important;
+	}
+	.tv-frame-container:fullscreen .remote-overlay.visible,
+	.tv-frame-container:-webkit-full-screen .remote-overlay.visible,
+	.tv-frame-container.ios-fullscreen-active .remote-overlay.visible {
+		transform: translate(0, -50%) !important;
+		opacity: 1 !important;
 		pointer-events: auto !important;
+	}
+	/* Hide backdrop – panel only, no dim */
+	.tv-frame-container:fullscreen .remote-overlay .remote-overlay-backdrop,
+	.tv-frame-container:-webkit-full-screen .remote-overlay .remote-overlay-backdrop,
+	.tv-frame-container.ios-fullscreen-active .remote-overlay .remote-overlay-backdrop {
+		display: none !important;
+	}
+	/* Content: 160px (same as normal view); right 120px of overlay is hover zone. Remote uses layout.css .remote-overlay rules. */
+	.tv-frame-container:fullscreen .remote-overlay .remote-overlay-content,
+	.tv-frame-container:-webkit-full-screen .remote-overlay .remote-overlay-content,
+	.tv-frame-container.ios-fullscreen-active .remote-overlay .remote-overlay-content {
+		width: 160px !important;
+		min-width: 160px !important;
+		max-width: 160px !important;
+		flex-shrink: 0 !important;
+		display: flex !important;
+		flex-direction: column !important;
+		align-items: center !important;
+		justify-content: center !important;
+		padding: 0 !important;
+		background: transparent !important;
+		box-shadow: none !important;
+		border-radius: 0 !important;
 	}
 
 	.tv-frame-container:fullscreen .remote-trigger-sensor,

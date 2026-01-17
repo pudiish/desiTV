@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
 import { BackgroundManager, getNextEffect, getEffect } from '../components/backgrounds'
 import { VJChat } from '../components/chat'
@@ -78,6 +78,20 @@ export default function Home() {
 		}
 	}, [tvState.externalVideo])
 
+	// Fixed reference layout (MacBook Air M3 alignment): scale TV+remote to fit viewport, same proportions on all screens
+	useLayoutEffect(() => {
+		const REF_W = 1000, REF_H = 620, FOOTER_H = 60
+		const setScale = () => {
+			const w = window.innerWidth
+			const h = Math.max(200, window.innerHeight - FOOTER_H)
+			const s = Math.min(w / REF_W, h / REF_H, 1.2)
+			document.documentElement.style.setProperty('--layout-scale', String(s))
+		}
+		setScale()
+		window.addEventListener('resize', setScale)
+		return () => window.removeEventListener('resize', setScale)
+	}, [])
+
 	// Callback to show/hide remote overlay (triggered from TVFrame sensor or mobile toggle)
 	const handleRemoteEdgeHover = useCallback(() => {
 		// Check if fullscreen (including iOS CSS fullscreen)
@@ -92,56 +106,34 @@ export default function Home() {
 			tvState.isFullscreen
 		)
 		
-		console.log('[Remote] handleRemoteEdgeHover called, fullscreen:', isCurrentlyFullscreen, 'isFullscreen:', tvState.isFullscreen)
-		
 		if (!isCurrentlyFullscreen) {
 			// If not fullscreen, hide remote
 			actions.setRemoteOverlayVisible(false)
 			return
 		}
 		
-		// Only work on desktop
-		const isMobile = window.innerWidth <= 768
-		if (isMobile) {
-			console.log('[Remote] Mobile device, skipping')
-			return
-		}
+		if (window.innerWidth <= 768) return
 		
-		// Show remote and reset auto-hide timer (original behavior: show on hover, auto-hide after 2.5 sec)
-		actions.setRemoteOverlayVisible(tvState.remoteOverlayVisible ? tvState.remoteOverlayVisible : true)
-		
-		// Clear and reset auto-hide timer
+		// Clear any pending hide – stays open while hovering overlay or sensor
 		if (remoteHideTimeoutRef.current) {
 			clearTimeout(remoteHideTimeoutRef.current)
-		}
-		remoteHideTimeoutRef.current = setTimeout(() => {
-			console.log('[Remote] Auto-hiding after 5 seconds')
-			actions.setRemoteOverlayVisible(false)
 			remoteHideTimeoutRef.current = null
-		}, 5000)
+		}
+		actions.setRemoteOverlayVisible(true)
 	}, [tvState.isFullscreen, actions])
 	
-	// Handle mouse leave from remote overlay area
+	// Hide only after leaving the remote frame; short delay to avoid flicker
 	const handleRemoteMouseLeave = useCallback(() => {
-		console.log('[Remote] Mouse left remote area, starting 2.5 second timer')
-		// Clear existing timeout
 		if (remoteHideTimeoutRef.current) {
 			clearTimeout(remoteHideTimeoutRef.current)
 			remoteHideTimeoutRef.current = null
 		}
-		// Set new timeout to hide after 2.5 seconds
 		remoteHideTimeoutRef.current = setTimeout(() => {
-			console.log('[Remote] Auto-hiding after 5 seconds (mouse left)')
 			actions.setRemoteOverlayVisible(false)
 			remoteHideTimeoutRef.current = null
-		}, 5000)
+		}, 250)
 	}, [actions])
 
-	// Debug: Log remote visibility changes
-	useEffect(() => {
-		console.log('[Remote] Visibility changed:', tvState.remoteOverlayVisible, 'Fullscreen:', tvState.isFullscreen)
-	}, [tvState.remoteOverlayVisible, tvState.isFullscreen])
-	
 	// Handle swipe down to dismiss (mobile only)
 	const handleRemoteSwipeDismiss = useCallback(() => {
 		actions.setRemoteOverlayVisible(false)
@@ -1073,6 +1065,7 @@ export default function Home() {
 		<div className="main-container">
 			{/* Global glass overlay covering window while keeping remote above */}
 			<div className="glass-full-overlay" aria-hidden="true" />
+			<div className="layout-viewport">
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
 		<TVFrame 
@@ -1138,7 +1131,7 @@ export default function Home() {
 				videoId: activeVideo?.youtubeId,
 				videoTitle: activeVideo?.title,
 				channelName: activeVideo?.channelName || activeVideo?.channel,
-				variant: 'orbital',
+				variant: galaxyVariant,
 			} : null}
 			remoteOverlayComponent={
 				<TVRemote
@@ -1249,6 +1242,7 @@ export default function Home() {
 					/>
 				</div>
 			)}
+			</div>
 			</div>
 
 			{/* Footer / Status Text */}
