@@ -19,7 +19,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	const [transitionInfo, setTransitionInfo] = useState(null)
 	const [tvFrameRect, setTvFrameRect] = useState(null) // TV frame position for Galaxy
 	const tapHandlerRef = useRef(null)
-	const powerButtonTouchHandledRef = useRef(false) // Track if power button touch was handled
+	// Track touch events to prevent double-firing on mobile
+	const touchHandledRef = useRef({ power: false, mute: false, volUp: false, volDown: false, chUp: false, chDown: false, catUp: false, catDown: false })
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
@@ -85,6 +86,30 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
 	}
+
+	// Mobile-friendly touch handler - prevents double-firing on touch devices
+	const createTouchHandler = useCallback((key, handler) => ({
+		onClick: (e) => {
+			if (touchHandledRef.current[key]) {
+				e.preventDefault()
+				e.stopPropagation()
+				return
+			}
+			e.stopPropagation()
+			handler && handler()
+		},
+		onTouchStart: (e) => {
+			e.stopPropagation()
+			touchHandledRef.current[key] = true
+			handler && handler()
+			// Reset after delay
+			setTimeout(() => { touchHandledRef.current[key] = false }, 300)
+		},
+		onTouchEnd: (e) => {
+			e.preventDefault()
+			e.stopPropagation()
+		}
+	}), [])
 
 	const toggleFullscreen = useCallback(() => {
 		// NO FULLSCREEN ON MOBILE - return early
@@ -439,8 +464,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				<div className="tv-control-buttons">
 						<button 
 							className="tv-btn small channel-down" 
-							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
+							{...createTouchHandler('chDown', onChannelDown)}
 							title="Channel Down"
 							aria-label="Channel Down"
 						>
@@ -451,8 +475,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small channel-up" 
-							onClick={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
+							{...createTouchHandler('chUp', onChannelUp)}
 							title="Channel Up"
 							aria-label="Channel Up"
 						>
@@ -463,8 +486,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small category-down" 
-							onClick={(e) => { e.stopPropagation(); onCategoryDown && onCategoryDown(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onCategoryDown && onCategoryDown(); }}
+							{...createTouchHandler('catDown', onCategoryDown)}
 							title="Previous Category"
 							aria-label="Previous Category"
 						>
@@ -480,8 +502,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small category-up" 
-							onClick={(e) => { e.stopPropagation(); onCategoryUp && onCategoryUp(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onCategoryUp && onCategoryUp(); }}
+							{...createTouchHandler('catUp', onCategoryUp)}
 							title="Next Category"
 							aria-label="Next Category"
 						>
@@ -497,8 +518,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small volume-down" 
-							onClick={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
+							{...createTouchHandler('volDown', onVolumeDown)}
 							title="Volume Down"
 							aria-label="Volume Down"
 						>
@@ -511,8 +531,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small volume-up" 
-							onClick={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
+							{...createTouchHandler('volUp', onVolumeUp)}
 							title="Volume Up"
 							aria-label="Volume Up"
 						>
@@ -524,8 +543,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small mute" 
-							onClick={(e) => { e.stopPropagation(); onMute && onMute(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onMute && onMute(); }}
+							{...createTouchHandler('mute', onMute)}
 							title="Mute"
 							aria-label="Mute"
 						>
@@ -550,29 +568,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn power" 
-							onClick={(e) => { 
-								if (powerButtonTouchHandledRef.current) {
-									e.preventDefault();
-									e.stopPropagation();
-									powerButtonTouchHandledRef.current = false;
-									return;
-								}
-								e.stopPropagation(); 
-								onPowerToggle && onPowerToggle(); 
-							}}
-							onTouchStart={(e) => {
-								e.stopPropagation();
-								powerButtonTouchHandledRef.current = true;
-								onPowerToggle && onPowerToggle();
-								// Reset after a delay to allow click if needed
-								setTimeout(() => {
-									powerButtonTouchHandledRef.current = false;
-								}, 300);
-							}}
-							onTouchEnd={(e) => { 
-								e.preventDefault();
-								e.stopPropagation();
-							}}
+							{...createTouchHandler('power', onPowerToggle)}
 							title="Power"
 							aria-label="Power"
 						>

@@ -892,13 +892,15 @@ onBufferingChange = null,
 		}
 	}, [channel?._id])
 
-	// Effect: Sync volume with player
+	// Effect: Sync volume with player - also handles mute button
 	useEffect(() => {
 		if (playerRef.current) {
 			try {
 				playerRef.current.setVolume(volume * 100)
 				if (volume > 0) {
 					playerRef.current.unMute()
+					// User unmuted via volume control - clear muted autoplay state
+					setIsMutedAutoplay(false)
 				} else {
 					playerRef.current.mute()
 				}
