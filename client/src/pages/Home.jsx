@@ -842,16 +842,11 @@ export default function Home() {
 	}
 
 	function handleMenuToggle() {
-		const startTime = performance.now()
+		// Guard: Don't open menu if TV is off
+		if (!tvState.power) return
+		
 		const isOpening = !tvState.menuOpen
 		actions.setMenuOpen(isOpening)
-		
-		// Analytics tracking removed
-		
-		// Track menu open performance
-		if (isOpening) {
-			// Analytics tracking removed
-		}
 	}
 
 	// Close menu on orientation change (but allow it in fullscreen)

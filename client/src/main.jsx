@@ -5,9 +5,18 @@ import './styles.css'
 
 // Error tracking removed - not needed for core functionality
 
-// Suppress browser extension errors (harmless but annoying)
+// Suppress all console logs in production
 if (typeof window !== 'undefined') {
-	// Suppress runtime.lastError from browser extensions
+	const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production'
+	
+	// In production, suppress all console.log, console.info, console.debug
+	if (isProduction) {
+		console.log = () => {}
+		console.info = () => {}
+		console.debug = () => {}
+	}
+	
+	// Suppress runtime.lastError from browser extensions (both dev and prod)
 	const originalError = console.error
 	console.error = (...args) => {
 		const message = args.join(' ')
