@@ -534,6 +534,7 @@
 		gap: clamp(6px, 1.5vw, 10px) !important;
 		position: relative !important;
 		z-index: 10 !important;
+		pointer-events: auto !important;
 	}
 	
 	.tv-control-bar::before { display: none !important; }
@@ -547,6 +548,7 @@
 		justify-content: flex-end !important;
 		flex: 1 1 auto !important;
 		margin-left: auto !important;
+		pointer-events: auto !important;
 	}
 	
 	/* Mobile control buttons - touch-friendly size */
@@ -591,6 +593,8 @@
 		min-width: clamp(32px, 8vw, 40px) !important;
 		min-height: clamp(32px, 8vw, 40px) !important;
 		background: linear-gradient(145deg, #442828 0%, #322020 50%, #221414 100%) !important;
+		pointer-events: auto !important;
+		cursor: pointer !important;
 	}
 	
 	.tv-btn.power:active {

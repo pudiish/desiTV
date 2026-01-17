@@ -19,6 +19,7 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	const [transitionInfo, setTransitionInfo] = useState(null)
 	const [tvFrameRect, setTvFrameRect] = useState(null) // TV frame position for Galaxy
 	const tapHandlerRef = useRef(null)
+	const powerButtonTouchHandledRef = useRef(false) // Track if power button touch was handled
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
@@ -549,8 +550,29 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn power" 
-							onClick={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
-							onTouchEnd={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
+							onClick={(e) => { 
+								if (powerButtonTouchHandledRef.current) {
+									e.preventDefault();
+									e.stopPropagation();
+									powerButtonTouchHandledRef.current = false;
+									return;
+								}
+								e.stopPropagation(); 
+								onPowerToggle && onPowerToggle(); 
+							}}
+							onTouchStart={(e) => {
+								e.stopPropagation();
+								powerButtonTouchHandledRef.current = true;
+								onPowerToggle && onPowerToggle();
+								// Reset after a delay to allow click if needed
+								setTimeout(() => {
+									powerButtonTouchHandledRef.current = false;
+								}, 300);
+							}}
+							onTouchEnd={(e) => { 
+								e.preventDefault();
+								e.stopPropagation();
+							}}
 							title="Power"
 							aria-label="Power"
 						>
