@@ -96,8 +96,8 @@ const corsOptions = {
     ? [
       process.env.CLIENT_URL,
       process.env.CORS_ORIGIN,
-      /^https:\/\/desitv[^.]*\.vercel\.app$/,
-      /^https:\/\/desitv[^.]*\.onrender\.com$/,
+      /^https:\/\/(desi-?tv|desitv)[^.]*\.vercel\.app$/,
+      /^https:\/\/(desi-?tv|desitv)[^.]*\.onrender\.com$/,
     ].filter(Boolean)
     : [
       `http://localhost:${CLIENT_PORT}`, 
