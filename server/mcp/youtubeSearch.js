@@ -1,10 +1,13 @@
 /**
- * YouTube Search Service
+ * YouTube Search Service - AI-Enhanced
  * 
  * For songs/videos NOT in our database, search YouTube directly
- * and validate it's appropriate content (music/video songs only).
+ * Uses AI (Gemini) to:
+ * - Refine search queries for better results
+ * - Validate and score results for authenticity
+ * - Pick the most accurate and genuine match
  * 
- * Uses YouTube Data API v3 (with fallback to manual mode)
+ * Uses YouTube Data API v3
  */
 
 const fetch = require('node-fetch');
@@ -12,8 +15,14 @@ const fetch = require('node-fetch');
 // YouTube API Key - load from environment variable
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-// Manual fallback mode - when API key is not available
-const MANUAL_MODE = !YOUTUBE_API_KEY;
+// Gemini API for AI-powered search refinement
+let geminiChat = null;
+try {
+  const gemini = require('./gemini');
+  geminiChat = gemini.chat;
+} catch (err) {
+  console.warn('[YouTubeSearch] Gemini not available:', err.message);
+}
 
 // Content validation patterns
 const MUSIC_INDICATORS = [
@@ -169,77 +178,50 @@ async function searchYouTube(query, options = {}) {
   const hasSpecialRequest = preferences.wantsCover || preferences.wantsKaraoke || 
                             preferences.wantsFanmade || preferences.wantsRemix;
   
-  // Manual mode: Use popular Bollywood/Desi songs as fallback
-  if (MANUAL_MODE) {
-    console.log('[YouTubeSearch] MANUAL MODE: Providing fallback song for manual playback');
-    
-    // Fallback list of popular songs with real YouTube IDs
-    const fallbackSongs = {
-      'tum se hi': { id: 'VvzAMpLYvw0', title: 'Tum Se Hi - Jab We Met', channel: 'T-Series' },
-      'baarish': { id: '5ycBbMnxg5g', title: 'Barish Ban Jaana - Kiara Advani', channel: 'T-Series' },
-      'shayad': { id: 'OPf0yXFdHkU', title: 'Shayad - Love Aaj Kal', channel: 'T-Series' },
-      'raabta': { id: 'eJM_0-yiFsU', title: 'Raabta - Agent Vinod', channel: 'T-Series' },
-      'ae dil hai mushkil': { id: 'BOqhXjL93Zk', title: 'Ae Dil Hai Mushkil - ADHM', channel: 'T-Series' },
-    };
-    
-    // Check if query matches any fallback song
-    const queryLower = query.toLowerCase();
-    for (const [key, value] of Object.entries(fallbackSongs)) {
-      if (queryLower.includes(key)) {
-        return {
-          success: true,
-          found: true,
-          query: query,
-          count: 1,
-          videos: [{
-            youtubeId: value.id,
-            title: value.title,
-            description: 'Manual mode - Playing from fallback catalog',
-            thumbnail: `https://img.youtube.com/vi/${value.id}/hqdefault.jpg`,
-            channel: value.channel,
-            publishedAt: new Date().toISOString(),
-            duration: 240,
-            officialScore: 100
-          }],
-          bestMatch: {
-            youtubeId: value.id,
-            title: value.title,
-            channel: value.channel,
-            thumbnail: `https://img.youtube.com/vi/${value.id}/hqdefault.jpg`,
-          },
-          manual: true
-        };
-      }
+  // AI-powered query refinement using Gemini
+  let refinedQuery = query;
+  if (geminiChat) {
+    try {
+      console.log('[YouTubeSearch] Using AI to refine search query:', query);
+      const aiPrompt = `You are a music search expert. The user wants to search for: "${query}"
+      
+      Help refine this search query to find the EXACT song on YouTube. Consider:
+      1. If it's a Bollywood song, add the movie name if you know it
+      2. If artist name is missing, add it
+      3. Add "official music video" or "official song" to prioritize official uploads
+      4. Remove redundant words
+      
+      Return ONLY the refined search query (no explanation, just the query).`;
+      
+      const refinedResponse = await geminiChat(aiPrompt, [], {});
+      refinedQuery = refinedResponse.trim();
+      console.log('[YouTubeSearch] AI refined query:', refinedQuery);
+    } catch (err) {
+      console.warn('[YouTubeSearch] AI refinement failed, using original query:', err.message);
     }
-    
-    // If song not in fallback list, return error with suggestion
-    return {
-      success: false,
-      found: false,
-      error: 'Song not in fallback catalog',
-      message: `📝 Manual mode: Try these songs:\n• Tum Se Hi\n• Baarish\n• Shayad\n• Raabta\n• Ae Dil Hai Mushkil`,
-      query: query
-    };
   }
   
   try {
-    // Build search query based on user preferences
-    let searchQuery = query;
+    // Use AI-refined query for better search results
+    let searchQuery = refinedQuery || query;
     if (musicOnly && !hasSpecialRequest) {
       // Only add "official music video" if user didn't ask for cover/karaoke/etc
-      if (!query.toLowerCase().includes('official')) {
-        searchQuery = `${query} official music video`;
+      if (!searchQuery.toLowerCase().includes('official')) {
+        searchQuery = `${searchQuery} official music video`;
       }
     }
+    
+    console.log('[YouTubeSearch] Searching YouTube with query:', searchQuery);
     
     const params = new URLSearchParams({
       part: 'snippet',
       q: searchQuery,
       type,
-      maxResults: Math.min(maxResults * 2, 15).toString(), // Fetch more to filter
+      maxResults: Math.min(maxResults * 3, 20).toString(), // Fetch more for AI filtering
       key: YOUTUBE_API_KEY,
       videoCategoryId: '10', // Music category
-      regionCode: 'IN' // India for Bollywood/Desi content
+      regionCode: 'IN', // India for Bollywood/Desi content
+      relevanceLanguage: 'hi' // Hindi preference
     });
     
     const url = `https://www.googleapis.com/youtube/v3/search?${params}`;
@@ -282,8 +264,8 @@ async function searchYouTube(query, options = {}) {
       });
     }
     
-    // Process and validate results - FILTER OUT SHORTS (< 60 seconds)
-    const videos = data.items
+    // Process initial results
+    const processedVideos = data.items
       .map(item => ({
         youtubeId: item.id.videoId,
         title: item.snippet.title,
@@ -296,9 +278,46 @@ async function searchYouTube(query, options = {}) {
         officialScore: getOfficialScore(item.snippet.channelTitle, item.snippet.title, preferences)
       }))
       .filter(video => isAppropriateContent(video))
-      .filter(video => !isYouTubeShort(video)) // Filter out Shorts
-      .sort((a, b) => b.officialScore - a.officialScore) // Sort by official score
-      .slice(0, maxResults); // Take only requested number
+      .filter(video => !isYouTubeShort(video)); // Filter out Shorts
+    
+    // AI-powered validation: Pick the most accurate result
+    let videos = processedVideos;
+    if (geminiChat && processedVideos.length > 0) {
+      try {
+        console.log('[YouTubeSearch] Using AI to validate and pick best result');
+        const resultsStr = processedVideos.slice(0, 5)
+          .map((v, i) => `${i + 1}. "${v.title}" by ${v.channel} (${v.duration}s)`)
+          .join('\n');
+        
+        const validationPrompt = `User searched for: "${query}"
+        
+Top YouTube results:
+${resultsStr}
+
+Which ONE result is the MOST AUTHENTIC and ACCURATE match? 
+Return ONLY the number (1-5) of the best result.`;
+        
+        const aiPick = await geminiChat(validationPrompt, [], {});
+        const pickIndex = parseInt(aiPick.trim()) - 1;
+        
+        if (pickIndex >= 0 && pickIndex < processedVideos.length) {
+          console.log('[YouTubeSearch] AI selected result #', pickIndex + 1);
+          // Boost the AI-selected video to top
+          const selected = processedVideos[pickIndex];
+          videos = [selected, ...processedVideos.filter((_, i) => i !== pickIndex)];
+        }
+      } catch (err) {
+        console.warn('[YouTubeSearch] AI validation failed:', err.message);
+        // Fall back to score-based sorting
+        videos = processedVideos.sort((a, b) => b.officialScore - a.officialScore);
+      }
+    } else {
+      // No AI: sort by official score
+      videos = processedVideos.sort((a, b) => b.officialScore - a.officialScore);
+    }
+    
+    // Take only requested number
+    videos = videos.slice(0, maxResults);
     
     if (videos.length === 0) {
       return {
