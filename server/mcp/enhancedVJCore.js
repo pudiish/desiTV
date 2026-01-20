@@ -11,6 +11,7 @@ const { getAllSongs, findChannels } = require('../utils/channelJSONReader');
 const { searchYouTube } = require('./youtubeSearch');
 const ContextManager = require('./contextManager');
 const gemini = require('./gemini');
+const tools = require('./tools');
 
 class EnhancedVJCore {
   constructor(userMemoryModule, broadcastStateService) {
@@ -322,24 +323,23 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
         };
       }
 
-      // Strategy 2: YouTube search
-      const youtubeSearchResult = await searchYouTube(cleanQuery);
-      if (youtubeSearchResult && youtubeSearchResult.videos && youtubeSearchResult.videos.length > 0) {
-        const videos = youtubeSearchResult.videos;
-        const topResult = videos[0];
+      // Strategy 2: YouTube search using tools for proper formatting
+      console.log('[EnhancedVJCore] Searching YouTube for:', cleanQuery);
+      const toolResult = await tools.searchYouTubeForSong({ query: cleanQuery });
+      
+      if (toolResult.success && toolResult.action) {
+        console.log('[EnhancedVJCore] YouTube search found video:', toolResult.video.title);
         return {
-          response: `🎵 Found on YouTube! **${topResult.title}**\n💡 Showing ${Math.min(videos.length, 5)} results`,
+          response: toolResult.message,
           action: {
-            type: 'SHOW_OPTIONS',
-            suggestions: videos.slice(0, 5).map(r => ({
-              id: r.youtubeId,
-              title: r.title,
-              thumbnail: r.thumbnail
-            })),
-            autoPlay: false
+            type: 'PLAY_EXTERNAL',
+            videoId: toolResult.video.youtubeId,
+            videoTitle: toolResult.video.title,
+            thumbnail: toolResult.video.thumbnail,
+            options: toolResult.options // Pass all options for UI rendering
           },
           intent: 'search_song',
-          suggestions: videos.slice(0, 5)
+          suggestions: toolResult.options || []
         };
       }
 
