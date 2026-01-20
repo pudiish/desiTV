@@ -5,7 +5,8 @@
  * Handles video CRUD, bulk operations, and metadata fetching.
  */
 
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { readChannelsJSON, writeChannelsJSON } = require('../utils/updateChannelsJSON');
 const channelService = require('./channelService');
 
 class VideoService {
@@ -265,7 +266,9 @@ class VideoService {
    * @throws {Error} If channel not found or video already exists
    */
   async addVideoToChannel(channelId, videoData) {
-    const channel = await Channel.findById(channelId);
+    // Read from JSON (source of truth)
+    const jsonData = readChannelsJSON();
+    const channel = jsonData.channels.find(ch => ch._id === channelId);
     if (!channel) {
       throw new Error('Channel not found');
     }
@@ -293,9 +296,9 @@ class VideoService {
       category: enrichedVideo.category
     });
 
-    await channel.save();
+    // Write updated JSON
+    writeChannelsJSON(jsonData);
     await channelService.invalidateCache(channelId);
-    await channelService.regenerateStaticJSON();
 
     return channel;
   }
@@ -307,7 +310,9 @@ class VideoService {
    * @returns {Promise<Object>} Result with counts and errors
    */
   async bulkAddVideos(channelId, fileContent) {
-    const channel = await Channel.findById(channelId);
+    // Read from JSON (source of truth)
+    const jsonData = readChannelsJSON();
+    const channel = jsonData.channels.find(ch => ch._id === channelId);
     if (!channel) {
       throw new Error('Channel not found');
     }
@@ -351,9 +356,9 @@ class VideoService {
     }
 
     if (addedCount > 0) {
-      await channel.save();
+      // Write updated JSON
+      writeChannelsJSON(jsonData);
       await channelService.invalidateCache(channelId);
-      await channelService.regenerateStaticJSON();
     }
 
     return {
@@ -373,7 +378,9 @@ class VideoService {
    * @throws {Error} If channel or video not found
    */
   async removeVideoFromChannel(channelId, videoId) {
-    const channel = await Channel.findById(channelId);
+    // Read from JSON (source of truth)
+    const jsonData = readChannelsJSON();
+    const channel = jsonData.channels.find(ch => ch._id === channelId);
     if (!channel) {
       throw new Error('Channel not found');
     }
@@ -381,29 +388,26 @@ class VideoService {
     const originalItemCount = channel.items.length;
 
     // Try to remove by _id first
-    let updatedChannel = await Channel.findByIdAndUpdate(
-      channelId,
-      { $pull: { items: { _id: videoId } } },
-      { new: true }
-    );
-
-    // If not found, try by youtubeId
-    if (!updatedChannel || updatedChannel.items.length === originalItemCount) {
-      updatedChannel = await Channel.findByIdAndUpdate(
-        channelId,
-        { $pull: { items: { youtubeId: videoId } } },
-        { new: true }
-      );
+    const itemIndexById = channel.items.findIndex(item => item._id === videoId);
+    if (itemIndexById >= 0) {
+      channel.items.splice(itemIndexById, 1);
+    } else {
+      // If not found, try by youtubeId
+      const itemIndexByYoutubeId = channel.items.findIndex(item => item.youtubeId === videoId);
+      if (itemIndexByYoutubeId >= 0) {
+        channel.items.splice(itemIndexByYoutubeId, 1);
+      }
     }
 
-    if (!updatedChannel || updatedChannel.items.length === originalItemCount) {
+    if (channel.items.length === originalItemCount) {
       throw new Error('Video not found');
     }
 
+    // Write updated JSON
+    writeChannelsJSON(jsonData);
     await channelService.invalidateCache(channelId);
-    await channelService.regenerateStaticJSON();
 
-    return updatedChannel;
+    return channel;
   }
 }
 

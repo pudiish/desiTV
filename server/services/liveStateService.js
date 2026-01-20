@@ -5,8 +5,9 @@
  * Optimized for minimal client computation
  */
 
-const GlobalEpoch = require('../models/GlobalEpoch');
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { getOrCreate: getGlobalEpoch } = require('../utils/globalEpochJSON');
+const { findChannelById, findOneChannel } = require('../utils/channelJSONReader');
 const cache = require('../utils/cache');
 
 // Pre-computed data cache
@@ -27,7 +28,7 @@ class LiveStateService {
   async _getEpochMs() {
     const now = Date.now();
     if (!epochMs || now - lastEpochCheck > EPOCH_REFRESH_MS) {
-      const globalEpoch = await GlobalEpoch.getOrCreate();
+      const globalEpoch = await getGlobalEpoch();
       epochMs = new Date(globalEpoch.epoch).getTime();
       lastEpochCheck = now;
     }
@@ -54,12 +55,10 @@ class LiveStateService {
       return redisCached;
     }
 
-    // Fetch from DB and pre-compute
-    let channel = null;
-    try {
-      channel = await Channel.findById(categoryId).lean();
-    } catch (e) {
-      channel = await Channel.findOne({ name: categoryId }).lean();
+    // Fetch from JSON and pre-compute
+    let channel = await findChannelById(categoryId);
+    if (!channel) {
+      channel = await findOneChannel({ name: categoryId });
     }
 
     if (!channel) return null;
@@ -240,7 +239,9 @@ class LiveStateService {
    * Useful for admin or multi-channel view
    */
   async getAllLiveStates() {
-    const channels = await Channel.find({}).select('_id name').lean();
+    const { findChannels } = require('../utils/channelJSONReader');
+    const allChannels = await findChannels({}, { _id: 1, name: 1 });
+    const channels = allChannels.map(ch => ({ _id: ch._id, name: ch.name }));
     const serverTimeMs = Date.now();
 
     const states = await Promise.all(
@@ -273,7 +274,9 @@ class LiveStateService {
    */
   async warmCache() {
     console.log('[LiveState] 🔥 Warming cache...');
-    const channels = await Channel.find({}).select('_id').lean();
+    const { findChannels } = require('../utils/channelJSONReader');
+    const allChannels = await findChannels({}, { _id: 1 });
+    const channels = allChannels.map(ch => ({ _id: ch._id }));
     
     await Promise.all(channels.map(ch => this._getChannelData(ch._id.toString())));
     

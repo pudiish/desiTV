@@ -5,8 +5,7 @@
 
 const express = require('express')
 const router = express.Router()
-const mongoose = require('mongoose')
-const dbConnectionManager = require('../utils/dbConnection')
+// MongoDB removed - monitoring works without database
 
 // Track server metrics
 let serverMetrics = {
@@ -22,19 +21,17 @@ let serverMetrics = {
  */
 router.get('/health', (req, res) => {
   const uptime = Date.now() - serverMetrics.startTime
-  const dbConnected = mongoose.connection.readyState === 1
-  const dbState = dbConnectionManager.getState()
-
   res.json({
-    status: dbConnected ? 'healthy' : 'unhealthy',
+    status: 'healthy', // Server is healthy without database
     timestamp: new Date().toISOString(),
     uptime: uptime,
     uptime_ms: uptime,
     database: {
-      connected: dbConnected,
-      state: mongoose.connection.readyState,
-      connectionState: dbState.state,
-      retryCount: dbState.retryCount,
+      connected: false,
+      state: 'not_required',
+      connectionState: 'json_based',
+      retryCount: 0,
+      note: 'Using JSON file as data source - no database required',
     },
     server: {
       requests: serverMetrics.requestCount,
@@ -73,7 +70,7 @@ router.get('/endpoints', (req, res) => {
  * Check status of backend services
  */
 router.get('/services', (req, res) => {
-  const dbConnected = mongoose.connection.readyState === 1
+  const dbConnected = false // JSON-based, no database needed
   const dbState = dbConnectionManager.getState()
   const dbStatus = dbConnected ? 'operational' : (dbState.state === 'connecting' ? 'connecting' : 'down')
   const dbDetails = dbConnected 
@@ -158,7 +155,7 @@ router.get('/metrics', (req, res) => {
  * Quick status check for all systems
  */
 router.get('/status', (req, res) => {
-  const dbConnected = mongoose.connection.readyState === 1
+  const dbConnected = false // JSON-based, no database needed
   const uptime = Date.now() - serverMetrics.startTime
 
   const overallHealth = dbConnected ? 100 : 50

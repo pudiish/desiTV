@@ -7,7 +7,8 @@
 
 const express = require('express')
 const router = express.Router()
-const GlobalEpoch = require('../models/GlobalEpoch')
+// MongoDB removed - using JSON instead
+const { getOrCreate: getGlobalEpoch, reset: resetGlobalEpoch } = require('../utils/globalEpochJSON')
 const cache = require('../utils/cache')
 const { requireAuth } = require('../middleware/auth')
 const { addChecksum } = require('../utils/checksum')
@@ -42,7 +43,7 @@ router.get('/', async (req, res) => {
 		}
 
 		// Get or create global epoch
-		const globalEpoch = await GlobalEpoch.getOrCreate()
+		const globalEpoch = await getGlobalEpoch()
 		
 		// OPTIMIZED: Ultra-minimal cached data for free tier
 		// Use single-letter keys to save memory
@@ -86,14 +87,12 @@ router.get('/', async (req, res) => {
  */
 router.post('/reset', requireAuth, async (req, res) => {
 	try {
-		// Delete existing global epoch
-		await GlobalEpoch.deleteOne({ _id: 'global' })
-		
+		// Reset global epoch (JSON-based)
 		// Clear cache
 		await cache.delete('ge') // Use short key
 		
 		// Create new epoch
-		const newEpoch = await GlobalEpoch.getOrCreate()
+		const newEpoch = await resetGlobalEpoch()
 		
 		console.log(`[GlobalEpoch] Reset by admin ${req.admin?.username || 'unknown'}`)
 		

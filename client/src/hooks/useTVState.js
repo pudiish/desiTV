@@ -5,7 +5,7 @@
  * Single source of truth for all TV state
  */
 
-import React from 'react'
+import { useReducer, useMemo } from 'react'
 
 export const initialTVState = {
   // Power & Volume
@@ -183,10 +183,10 @@ export function tvReducer(state, action) {
  * Helper hook to use TV state + dispatch with less boilerplate
  */
 export function useTVState() {
-  const [state, dispatch] = React.useReducer(tvReducer, initialTVState);
+  const [state, dispatch] = useReducer(tvReducer, initialTVState);
   
   // Memoize actions to keep stable references across renders
-  const actions = React.useMemo(() => ({
+  const actions = useMemo(() => ({
     setPower: (power) => dispatch({ type: TVActions.SET_POWER, payload: power }),
     setVolume: (vol) => dispatch({ type: TVActions.SET_VOLUME, payload: vol }),
     toggleMute: () => dispatch({ type: TVActions.TOGGLE_MUTE }),

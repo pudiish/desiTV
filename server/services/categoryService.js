@@ -5,7 +5,8 @@
  * Categories are derived from channel items (no dedicated collection).
  */
 
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { readChannelsJSON } = require('../utils/updateChannelsJSON');
 
 class CategoryService {
   /**
@@ -14,14 +15,29 @@ class CategoryService {
    * @returns {Promise<Array>} Array of categories with counts
    */
   async getAllCategories() {
-    const categories = await Channel.aggregate([
-      { $unwind: { path: '$items', preserveNullAndEmptyArrays: false } },
-      { $match: { 'items.category': { $ne: null } } },
-      { $group: { _id: '$items.category', count: { $sum: 1 } } },
-      { $project: { name: '$_id', count: 1, _id: 0 } },
-      { $sort: { name: 1 } }
-    ]);
-
+    // Read from JSON (source of truth) and aggregate categories
+    const jsonData = readChannelsJSON();
+    const channels = jsonData.channels || [];
+    
+    const categoryMap = new Map();
+    
+    // Aggregate categories from all channel items
+    channels.forEach(channel => {
+      if (channel.items && Array.isArray(channel.items)) {
+        channel.items.forEach(item => {
+          if (item.category) {
+            const count = categoryMap.get(item.category) || 0;
+            categoryMap.set(item.category, count + 1);
+          }
+        });
+      }
+    });
+    
+    // Convert to array format
+    const categories = Array.from(categoryMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    
     return categories;
   }
 
@@ -51,15 +67,25 @@ class CategoryService {
       throw new Error('Category name is required');
     }
 
-    // Remove category field from any video item that matches
-    await Channel.updateMany(
-      { 'items.category': categoryName },
-      { $set: { 'items.$[elem].category': null } },
-      { 
-        arrayFilters: [{ 'elem.category': categoryName }],
-        multi: true
+    // Remove category field from any video item that matches (JSON-based)
+    const { readChannelsJSON, writeChannelsJSON } = require('../utils/updateChannelsJSON');
+    const jsonData = readChannelsJSON();
+    let updated = false;
+    
+    jsonData.channels.forEach(channel => {
+      if (channel.items && Array.isArray(channel.items)) {
+        channel.items.forEach(item => {
+          if (item.category === categoryName) {
+            item.category = null;
+            updated = true;
+          }
+        });
       }
-    );
+    });
+    
+    if (updated) {
+      writeChannelsJSON(jsonData);
+    }
 
     return { removed: categoryName };
   }

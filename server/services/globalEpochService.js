@@ -5,7 +5,8 @@
  * Handles epoch retrieval, caching, and reset operations.
  */
 
-const GlobalEpoch = require('../models/GlobalEpoch');
+// MongoDB removed - using JSON instead
+const { getOrCreate: getGlobalEpoch, reset: resetGlobalEpoch } = require('../utils/globalEpochJSON');
 const cache = require('../utils/cache');
 const { addChecksum } = require('../utils/checksum');
 
@@ -36,8 +37,8 @@ class GlobalEpochService {
       };
     }
 
-    // Get or create global epoch from database
-    const globalEpoch = await GlobalEpoch.getOrCreate();
+    // Get or create global epoch from JSON
+    const globalEpoch = await getGlobalEpoch();
     
     // Prepare minimal cached data for free tier optimization
     // Use single-letter keys to save memory
@@ -71,14 +72,12 @@ class GlobalEpochService {
    * @returns {Promise<Object>} New epoch with warning message
    */
   async resetGlobalEpoch() {
-    // Delete existing global epoch
-    await GlobalEpoch.deleteOne({ _id: 'global' });
-    
+    // Reset global epoch (JSON-based)
     // Clear cache
     await cache.delete(CACHE_KEY);
     
     // Create new epoch
-    const newEpoch = await GlobalEpoch.getOrCreate();
+    const newEpoch = await resetGlobalEpoch();
     
     return {
       success: true,

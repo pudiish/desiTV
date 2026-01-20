@@ -1,7 +1,7 @@
 /**
  * DesiTV™ Admin Login Page
  * 
- * Clean, simple login page using AuthContext
+ * Firebase Auth - Clean, secure login
  */
 
 import React, { useState, useEffect } from 'react';
@@ -11,20 +11,17 @@ import { useAuth } from '../context/AuthContext';
 export default function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, setupAdmin, isAuthenticated, loading: authLoading, initialized } = useAuth();
+  const { login, isAuthenticated, loading: authLoading, initialized } = useAuth();
 
-  const [mode, setMode] = useState('login'); // 'login' or 'setup'
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
 
   // Get the redirect path
   const from = location.state?.from?.pathname || '/admin/dashboard';
 
-  // Redirect if already authenticated (after context is initialized)
+  // Redirect if already authenticated
   useEffect(() => {
     if (initialized && isAuthenticated) {
       navigate(from, { replace: true });
@@ -35,58 +32,20 @@ export default function AdminLogin() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password');
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
       return;
     }
 
     setLoading(true);
 
-    const result = await login(username.trim(), password);
+    const result = await login(email.trim(), password);
 
     if (result.success) {
       navigate(from, { replace: true });
     } else {
       setError(result.error || 'Login failed');
-    }
-
-    setLoading(false);
-  };
-
-  // Handle setup
-  const handleSetup = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!username.trim() || !password.trim() || !confirmPassword.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
-    setLoading(true);
-
-    const result = await setupAdmin(username.trim(), password);
-
-    if (result.success) {
-      setSuccess('Admin account created! You can now login.');
-      setMode('login');
-      setPassword('');
-      setConfirmPassword('');
-    } else {
-      setError(result.error || 'Setup failed');
     }
 
     setLoading(false);
@@ -115,14 +74,7 @@ export default function AdminLogin() {
         </div>
 
         {/* Form */}
-        <form onSubmit={mode === 'login' ? handleLogin : handleSetup} style={styles.form}>
-          {/* Success Message */}
-          {success && (
-            <div style={styles.successBox}>
-              ✅ {success}
-            </div>
-          )}
-
+        <form onSubmit={handleLogin} style={styles.form}>
           {/* Error Message */}
           {error && (
             <div style={styles.errorBox}>
@@ -130,17 +82,17 @@ export default function AdminLogin() {
             </div>
           )}
 
-          {/* Username */}
+          {/* Email */}
           <div style={styles.field}>
-            <label style={styles.label}>Username</label>
+            <label style={styles.label}>Email</label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
-              placeholder="Enter username"
+              placeholder="admin@example.com"
               disabled={loading}
-              autoComplete="username"
+              autoComplete="email"
               autoFocus
             />
           </div>
@@ -155,25 +107,9 @@ export default function AdminLogin() {
               style={styles.input}
               placeholder="Enter password"
               disabled={loading}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              autoComplete="current-password"
             />
           </div>
-
-          {/* Confirm Password (setup mode only) */}
-          {mode === 'setup' && (
-            <div style={styles.field}>
-              <label style={styles.label}>Confirm Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                style={styles.input}
-                placeholder="Confirm password"
-                disabled={loading}
-                autoComplete="new-password"
-              />
-            </div>
-          )}
 
           {/* Submit Button */}
           <button
@@ -185,33 +121,9 @@ export default function AdminLogin() {
             }}
             disabled={loading}
           >
-            {loading ? (
-              '⏳ Please wait...'
-            ) : mode === 'login' ? (
-              '🔐 Login'
-            ) : (
-              '✨ Create Account'
-            )}
+            {loading ? '⏳ Signing in...' : '🔐 Login'}
           </button>
         </form>
-
-        {/* Mode Toggle */}
-        <div style={styles.toggleSection}>
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === 'login' ? 'setup' : 'login');
-              setError('');
-              setSuccess('');
-              setPassword('');
-              setConfirmPassword('');
-            }}
-            style={styles.toggleBtn}
-            disabled={loading}
-          >
-            {mode === 'login' ? '🆕 First time? Create account' : '← Back to login'}
-          </button>
-        </div>
 
         {/* Back to Home */}
         <div style={styles.backSection}>
@@ -226,7 +138,7 @@ export default function AdminLogin() {
 
         {/* Footer */}
         <p style={styles.footer}>
-          🔒 Secured with JWT Authentication
+          🔒 Secured with Firebase Authentication
         </p>
       </div>
     </div>
@@ -312,15 +224,6 @@ const styles = {
     outline: 'none',
     transition: 'border-color 0.3s, box-shadow 0.3s',
   },
-  successBox: {
-    padding: '12px 16px',
-    background: 'rgba(0, 200, 100, 0.1)',
-    border: '1px solid rgba(0, 200, 100, 0.3)',
-    borderRadius: '8px',
-    color: '#00c864',
-    fontSize: '14px',
-    textAlign: 'center',
-  },
   errorBox: {
     padding: '12px 16px',
     background: 'rgba(255, 80, 80, 0.1)',
@@ -342,21 +245,8 @@ const styles = {
     transition: 'transform 0.2s, box-shadow 0.2s',
     marginTop: '10px',
   },
-  toggleSection: {
-    marginTop: '20px',
-    textAlign: 'center',
-  },
-  toggleBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#00d4ff',
-    fontSize: '14px',
-    cursor: 'pointer',
-    textDecoration: 'underline',
-    opacity: 0.8,
-  },
   backSection: {
-    marginTop: '15px',
+    marginTop: '25px',
     textAlign: 'center',
   },
   backBtn: {

@@ -1,4 +1,5 @@
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { findChannels, getAllSongs } = require('../utils/channelJSONReader');
 const { searchYouTube } = require('./youtubeSearch');
 
 class ResponseCache {
@@ -246,13 +247,16 @@ class SuggestionEngine {
 
   async getSuggestions(query, userProfile = {}, topK = 3) {
     try {
-      const dbResults = await Channel.find({
-        $or: [
-          { title: { $regex: query, $options: 'i' } },
-          { artist: { $regex: query, $options: 'i' } },
-          { genre: { $regex: query, $options: 'i' } }
-        ]
-      }).limit(10).lean();
+      // Search all songs for matching title, artist, or genre
+      const allSongs = await getAllSongs();
+      const dbResults = allSongs.filter(song => {
+        const queryLower = query.toLowerCase();
+        return (
+          song.title?.toLowerCase().includes(queryLower) ||
+          song.artist?.toLowerCase().includes(queryLower) ||
+          song.genre?.toLowerCase().includes(queryLower)
+        );
+      }).slice(0, 10);
 
       let candidates = [...dbResults];
 

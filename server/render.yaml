@@ -48,4 +48,8 @@ services:
         generateValue: true  # Auto-generate secure value
       - key: CORS_ORIGIN
         sync: false  # Set to your Vercel/client URL (e.g., https://your-app.vercel.app)
+      - key: CLIENT_URL
+        sync: false  # Set to your Vercel URL (e.g., https://desitv.vercel.app)
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false  # Paste the entire Firebase service account JSON (minified)
     autoDeploy: true  # Deploy on push to main branch

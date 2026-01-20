@@ -6,7 +6,8 @@ const {
   INTENT_PATTERNS
 } = require('./advancedVJCore');
 
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { getAllSongs, findChannels } = require('../utils/channelJSONReader');
 const { searchYouTube } = require('./youtubeSearch');
 const ContextManager = require('./contextManager');
 const gemini = require('./gemini');
@@ -27,7 +28,7 @@ class EnhancedVJCore {
 
   async initializeSemanticSearch() {
     try {
-      const songs = await Channel.find({}).lean();
+      const songs = await getAllSongs();
       this.semanticSearcher.indexSongs(songs);
     } catch (err) {
       console.error('[EnhancedVJCore] Semantic search init error:', err.message);
@@ -187,13 +188,13 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
         }
       }
 
-      // Strategy 1: Search database first (faster results)
-      const songs = await Channel.find({
-        $or: [
-          { title: { $regex: cleanQuery, $options: 'i' } },
-          { artist: { $regex: cleanQuery, $options: 'i' } }
-        ]
-      }).limit(3).lean();
+      // Strategy 1: Search JSON first (faster results)
+      const allSongs = await getAllSongs();
+      const songs = allSongs.filter(song => {
+        const titleMatch = song.title && song.title.toLowerCase().includes(cleanQuery.toLowerCase());
+        const artistMatch = song.artist && song.artist.toLowerCase().includes(cleanQuery.toLowerCase());
+        return titleMatch || artistMatch;
+      }).slice(0, 3);
 
       if (songs.length > 0) {
         const song = songs[0];
@@ -263,7 +264,7 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
       }
 
       // Strategy 4: Get random song from library as last resort
-      const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
+      const channels = await findChannels({ items: { $exists: true, $ne: [] } });
       if (channels.length > 0) {
         const randomChannel = channels[Math.floor(Math.random() * channels.length)];
         if (randomChannel.items && randomChannel.items.length > 0) {
@@ -386,7 +387,7 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
     }
 
     // Get all channels and pick a random one with songs
-    const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
+    const channels = await findChannels({ items: { $exists: true, $ne: [] } });
 
     if (channels.length === 0) {
       return { response: `🎵 No songs available for ${mood} mood`, action: null };
@@ -410,13 +411,11 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
 
   async handleArtistSearch(artist, context) {
     try {
-      // Search for songs by this artist in database
-      const songs = await Channel.find({
-        $or: [
-          { artist: { $regex: artist, $options: 'i' } },
-          { items: { $elemMatch: { artist: { $regex: artist, $options: 'i' } } } }
-        ]
-      }).limit(5).lean();
+      // Search for songs by this artist in JSON
+      const allSongs = await getAllSongs();
+      const songs = allSongs.filter(song => {
+        return song.artist && song.artist.toLowerCase().includes(artist.toLowerCase());
+      }).slice(0, 5); // Limit to 5 results
 
       if (songs.length > 0) {
         const song = songs[0];
@@ -449,7 +448,7 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
       }
 
       // Final fallback
-      const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
+      const channels = await findChannels({ items: { $exists: true, $ne: [] } });
       if (channels.length > 0) {
         const randomChannel = channels[Math.floor(Math.random() * channels.length)];
         const randomVideo = randomChannel.items[Math.floor(Math.random() * randomChannel.items.length)];
@@ -474,7 +473,7 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
 
   async handleGenreSearch(genre, context) {
     // Fallback: Get random songs from any channel
-    const channels = await Channel.find({ items: { $exists: true, $ne: [] } }).lean();
+    const channels = await findChannels({ items: { $exists: true, $ne: [] } });
     
     if (channels.length === 0) {
       return { response: `❌ No songs in **${genre}** genre`, action: null };
@@ -499,7 +498,7 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
   async handleChannelsList(context) {
     try {
       // Fetch all channels from database
-      const channels = await Channel.find({}, { name: 1, description: 1, _id: 1 }).lean();
+      const channels = await findChannels({}, { name: 1, description: 1, _id: 1 });
       
       if (!channels || channels.length === 0) {
         return {

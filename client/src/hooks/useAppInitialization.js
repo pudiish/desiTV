@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { channelManager } from '../logic/channel';
 import { broadcastStateManager } from '../logic/broadcast';
 import { SessionManager } from '../services/storage';
-import { checksumSyncService } from '../services/checksumSync';
+import { startChannelSync, stopChannelSync } from '../services/channelSync';
 import { clearEpochCache } from '../services/api/globalEpochService';
 import { getTimeSuggestion } from '../utils/timeBasedProgramming';
 
@@ -44,15 +44,8 @@ export function useAppInitialization(onInitialized) {
 
         // Epoch refresh removed - epoch is client-side only (no server sync needed)
 
-        // Start checksum sync service
-        checksumSyncService.start();
-
-        // Force immediate sync after initial load (1s delay)
-        setTimeout(() => {
-          checksumSyncService.forceSync().catch((error) => {
-            console.warn('[useAppInitialization] Initial checksum sync failed:', error);
-          });
-        }, 1000);
+        // Start channel sync
+        startChannelSync();
 
         // Load channel states (but NOT epoch - epoch comes from server only)
         broadcastStateManager.loadFromStorage();
@@ -185,7 +178,7 @@ export function useAppInitialization(onInitialized) {
 
     // Cleanup on unmount
     return () => {
-      checksumSyncService.stop();
+        stopChannelSync();
     };
   }, []); // Run only once on mount
 

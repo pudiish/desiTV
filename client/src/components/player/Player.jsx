@@ -3,7 +3,7 @@ import { useBroadcastPosition } from '../../hooks/useBroadcastPosition'
 import { YouTubeUIRemover, VideoSourceManager, mediaSessionManager } from '../../services/media'
 import { unifiedPlaybackManager } from '../../logic/playback'
 import { broadcastStateManager } from '../../logic/broadcast'
-import { checksumSyncService } from '../../services/checksumSync'
+// Channel sync removed - handled by Home component
 import { PLAYBACK_THRESHOLDS } from '../../config/thresholds'
 import { YOUTUBE_STATES, YOUTUBE_ERROR_CODES, YOUTUBE_PERMANENT_ERRORS } from '../../config/constants/youtube'
 import { PLAYBACK } from '../../config/constants/playback'
@@ -1829,6 +1829,13 @@ onBufferingChange = null,
 					
 				case STATE_ENDED:
 					// RetroTV: Video ended - trigger transition
+					// Clear playback state when video ends (will be set again when next video plays)
+					try {
+						localStorage.removeItem('desitv-playback-active')
+					} catch (err) {
+						// Ignore localStorage errors
+					}
+					
 					if (!isTransitioningRef.current) {
 						switchToNextVideo()
 					}
@@ -1843,6 +1850,13 @@ onBufferingChange = null,
 				staticShownRef.current = false // Reset static shown flag
 				lastPlayTimeRef.current = Date.now()
 				shouldPlayRef.current = true
+				
+				// Track playback state for version sync service (prevents disruptive reloads)
+				try {
+					localStorage.setItem('desitv-playback-active', 'true')
+				} catch (err) {
+					// Ignore localStorage errors
+				}
 				
 				// MOBILE FIX: Automatically unmute when playback starts (power ON = user interacted via touch)
 				// No manual interaction required - power button touch is enough
@@ -1907,9 +1921,16 @@ onBufferingChange = null,
 				// If power is on and we should be playing, fast recovery will handle it
 				if (!powerRef.current || !shouldPlayRef.current) {
 					mediaSessionManager.setPlaybackState('paused')
+					// Clear playback state when truly paused (power off or user paused)
+					try {
+						localStorage.removeItem('desitv-playback-active')
+					} catch (err) {
+						// Ignore localStorage errors
+					}
 				} else {
 					// Power is on but paused - fast recovery will detect and fix this quickly
 					// No manual intervention needed to avoid conflicts
+					// Keep playback state active since power is on
 				}
 				break
 				

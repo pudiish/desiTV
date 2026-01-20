@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
@@ -7,8 +6,8 @@ import '../AdminDashboard.css'
 const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/
 const YOUTUBE_URL_REGEX = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/
 
-export default function VideoChannelManager() {
-  const { getAuthHeaders } = useAuth()
+export default function VideoChannelManager({ getAuthHeaders }) {
+  // getAuthHeaders passed as prop from AdminDashboard
   const navigate = useNavigate()
   const [selectedChannel, setSelectedChannel] = useState(null)
   const [youtubeInput, setYoutubeInput] = useState('')

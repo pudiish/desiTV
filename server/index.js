@@ -1,5 +1,5 @@
 const express = require('express');
-const mongoose = require('mongoose');
+// MongoDB removed - JSON is now the source of truth
 const createCors = require('./middleware/cors');
 const dotenv = require('dotenv');
 const fs = require('fs');
@@ -88,9 +88,12 @@ const getLocalIP = () => {
 const corsOptions = {
 	origin: isProduction 
 		? [
-			/\.vercel\.app$/,  // Allow all Vercel deployments
-			/\.onrender\.com$/, // Allow Render deployments
-			process.env.CLIENT_URL, // Custom client URL if set
+			// SECURITY: Add your specific production domains here
+			process.env.CLIENT_URL, // e.g., https://desitv.vercel.app
+			process.env.CORS_ORIGIN, // Alternative env var
+			// Fallback patterns (remove in strict production)
+			/^https:\/\/desitv[^.]*\.vercel\.app$/,  // Only your Vercel deployments
+			/^https:\/\/desitv[^.]*\.onrender\.com$/, // Only your Render deployments
 		].filter(Boolean)
 		: [
 			`http://localhost:${CLIENT_PORT}`, 
@@ -102,7 +105,7 @@ const corsOptions = {
 		],
 	credentials: true,
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-	allowedHeaders: ['Content-Type', 'Authorization'],
+	allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 };
 app.use(createCors(corsOptions));
 
@@ -117,17 +120,8 @@ if (!isProduction || process.env.DEBUG) {
 	});
 }
 
-// MongoDB connection options (useNewUrlParser/useUnifiedTopology removed - deprecated in Mongoose 7+)
-const mongoOptions = {
-	maxPoolSize: isProduction ? 5 : 3,
-	minPoolSize: 1,
-	serverSelectionTimeoutMS: 5000,
-	socketTimeoutMS: 30000,
-	retryWrites: true,
-	retryReads: true,
-	maxIdleTimeMS: 30000,
-	connectTimeoutMS: 10000,
-};
+// MongoDB removed - JSON is now the source of truth
+// Server runs without database dependency
 
 // Routes
 const channelRoutes = require('./routes/channels');
@@ -239,114 +233,66 @@ app.post('/api/regenerate-json', async (req, res) => {
 	}
 });
 
-// Database connection and server start
-const dbConnectionManager = require('./utils/dbConnection');
-
-// Pipeline-only mode: MongoDB connection is lazy (only when needed)
-// Server starts without requiring MongoDB, reducing cold start time
-dbConnectionManager.onConnection(async () => {
-	console.log(`[DesiTV] MongoDB connected (${isProduction ? 'production' : 'development'})`);
+// Server start - No MongoDB dependency
+// JSON is the source of truth, server runs without database
+(async () => {
+	const HOST = process.env.HOST || '0.0.0.0';
 	
-	// Pipeline-only: Only generate JSON if it doesn't exist (first-time setup)
-	// Otherwise, JSON is generated on-demand via /api/regenerate-json
-	try {
-		const { isJSONEmptyOrInvalid, ensureChannelsJSON } = require('./utils/generateJSON');
-		const needsJSON = await isJSONEmptyOrInvalid();
-		
-		if (needsJSON) {
-			console.log('[DesiTV] channels.json missing or invalid, generating from MongoDB...');
-			const jsonData = await ensureChannelsJSON();
-			console.log(`[DesiTV] ✅ channels.json generated with ${jsonData.channels.length} channels`);
-		} else {
-			console.log('[DesiTV] ✅ channels.json exists - pipeline mode (no auto-generation)');
-		}
-	} catch (jsonErr) {
-		console.warn('[DesiTV] JSON check failed (non-critical):', jsonErr.message);
-	}
+	// Create HTTP server
+	const http = require('http');
+	const server = http.createServer(app);
 	
-	// Removed automatic warmups - server stays cold until needed
-	// Cache warming happens on-demand when admin operations occur
-	console.log('[DesiTV] Server in pipeline-only mode - MongoDB connected but server stays cold');
-});
-
-dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
-	.then(async () => {
-		const HOST = process.env.HOST || '0.0.0.0';
-		
-		// Create HTTP server
-		const http = require('http');
-		const server = http.createServer(app);
-		
-		// Initialize Socket.io (chat only - sync removed)
-		const { initializeSocket, getSocketStats } = require('./socket');
-		initializeSocket(server, corsOptions);
-		
-		// Socket stats endpoint (chat connections only)
-		app.get('/api/socket-stats', (req, res) => {
-			res.json(getSocketStats());
-		});
-		
-		server.listen(PORT, HOST, () => {
-			console.log(`[DesiTV] Server listening on ${HOST}:${PORT}`);
-			console.log(`[DesiTV] WebSocket enabled (chat only)`);
-			console.log(`[DesiTV] Sync: Pure client-side calculation`);
-			if (!isProduction) {
-				const localIP = getLocalIP();
-				console.log(`[DesiTV] Local:   http://localhost:${PORT}`);
-				console.log(`[DesiTV] Network: http://${localIP}:${PORT}`);
-			}
-		});
-
-		server.on('error', (err) => {
-			if (err && err.code === 'EADDRINUSE') {
-				console.error(`Port ${PORT} is already in use. Make sure no other process is listening on this port.`);
-				process.exit(1);
-			}
-			console.error('Server error:', err);
-		});
-
-		const shutdown = async (signal, exitCode = 0) => {
-			console.log('Received', signal, 'shutting down server...');
-			try {
-				server.close(() => {
-					console.log('Server closed');
-					
-					if (signal === 'SIGUSR2') {
-						setTimeout(() => process.exit(0), 100);
-					} else {
-						dbConnectionManager.disconnect().then(() => {
-							process.exit(exitCode);
-						}).catch((e) => {
-							console.error('Error disconnecting DB:', e);
-							process.exit(1);
-						});
-					}
-				});
-				
-				setTimeout(() => {
-					console.error('Forced shutdown after timeout');
-					if (signal !== 'SIGUSR2') {
-						dbConnectionManager.disconnect().finally(() => {
-							process.exit(1);
-						});
-					} else {
-						process.exit(0);
-					}
-				}, 10000);
-			} catch (e) {
-				console.error('Error during shutdown', e);
-				process.exit(1);
-			}
-		};
-
-		process.on('SIGINT', () => shutdown('SIGINT'));
-		process.on('SIGTERM', () => shutdown('SIGTERM'));
-		process.once('SIGUSR2', () => {
-			shutdown('SIGUSR2');
-		});
-	})
-	.catch(err => {
-		console.error('[DesiTV] Failed to start server:', err.message);
-		console.error('[DesiTV] Database connection will retry automatically...');
+	// Initialize Socket.io (chat only - sync removed)
+	const { initializeSocket, getSocketStats } = require('./socket');
+	initializeSocket(server, corsOptions);
+	
+	// Socket stats endpoint (chat connections only)
+	app.get('/api/socket-stats', (req, res) => {
+		res.json(getSocketStats());
 	});
+	
+	server.listen(PORT, HOST, () => {
+		console.log(`[DesiTV] Server listening on ${HOST}:${PORT}`);
+		console.log(`[DesiTV] WebSocket enabled (chat only)`);
+		console.log(`[DesiTV] Sync: Pure client-side calculation`);
+		console.log(`[DesiTV] Data: JSON-based (no MongoDB required)`);
+		if (!isProduction) {
+			const localIP = getLocalIP();
+			console.log(`[DesiTV] Local:   http://localhost:${PORT}`);
+			console.log(`[DesiTV] Network: http://${localIP}:${PORT}`);
+		}
+	});
+
+	server.on('error', (err) => {
+		if (err && err.code === 'EADDRINUSE') {
+			console.error(`Port ${PORT} is already in use. Make sure no other process is listening on this port.`);
+			process.exit(1);
+		}
+		console.error('Server error:', err);
+	});
+
+	const shutdown = async (signal, exitCode = 0) => {
+		console.log('Received', signal, 'shutting down server...');
+		try {
+			server.close(() => {
+				console.log('Server closed');
+				process.exit(exitCode);
+			});
+			
+			setTimeout(() => {
+				console.error('Forced shutdown after timeout');
+				process.exit(1);
+			}, 10000);
+		} catch (e) {
+			console.error('Error during shutdown', e);
+			process.exit(1);
+		}
+	};
+
+	process.on('SIGINT', () => shutdown('SIGINT'));
+	process.on('SIGTERM', () => shutdown('SIGTERM'));
+	process.once('SIGUSR2', () => {
+		shutdown('SIGUSR2');
+	});
+})();
 

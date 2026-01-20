@@ -197,6 +197,32 @@ credentials.json
 serviceAccount.json
 *-credentials.json
 *.secret
+server/data/admins.json
+firebase-key.json
+*-firebase-*.json
+
+# ───────────────────────────────────────────────────────────────────
+# Documentation - Exclude all docs EXCEPT README files
+# (Internal working docs and temporary notes should not be committed)
+# ───────────────────────────────────────────────────────────────────
+docs/*.md
+!docs/README*.md
+!docs/*.md.example
+_archive/docs-old/
+
+# ───────────────────────────────────────────────────────────────────
+# Sensitive Data Files
+# ───────────────────────────────────────────────────────────────────
+# No raw API keys or secrets in files
+*.json.bak
+*.env.bak
+config-*.json
+*-secrets.json
+*-keys.json
+.env.backup
+# Data files should be excluded too
+server/data/*.json
+!server/data/admins.json.template
 
 # ───────────────────────────────────────────────────────────────────
 # Docker (if used later)

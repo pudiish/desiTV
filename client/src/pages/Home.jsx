@@ -10,7 +10,7 @@ import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
 import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgramming'
 import { useEasterEggs } from '../hooks/useEasterEggs'
-import { checksumSyncService } from '../services/checksumSync'
+import { startChannelSync, stopChannelSync } from '../services/channelSync'
 import { clearEpochCache } from '../services/api/globalEpochService'
 import { useTVState } from '../hooks/useTVState'
 import CONSTANTS from '../config/appConstants'
@@ -218,8 +218,8 @@ export default function Home() {
 				clearTimeout(remoteHideTimeoutRef.current)
 				remoteHideTimeoutRef.current = null
 			}
-			// Stop checksum sync on unmount
-			checksumSyncService.stop()
+			// Stop channel sync on unmount
+			stopChannelSync()
 		}
 	}, [])
 
@@ -361,17 +361,8 @@ export default function Home() {
 				
 				// Epoch refresh removed - epoch is client-side only (no server sync needed)
 				
-				// Start version sync service (checks channels.json version periodically)
-				// - Checks JSON version every 60 seconds (non-blocking)
-				// - Uses localStorage cache to avoid unnecessary reloads
-				checksumSyncService.start()
-				
-				// Force initial version check after load
-				setTimeout(() => {
-					checksumSyncService.forceSync().catch(err => {
-						console.warn('[Home] Initial version sync failed:', err)
-					})
-				}, 1000)
+				// Start simple channel sync (polls every 10 seconds)
+				startChannelSync()
 				
 				// Load channel states from localStorage
 				broadcastStateManager.loadFromStorage()
@@ -482,6 +473,33 @@ export default function Home() {
 
 		initializeApp()
 	}, [])
+
+	// Listen for channels updated event and refresh UI
+	useEffect(() => {
+		const handleChannelsUpdated = async () => {
+			try {
+				const updatedCategories = await channelManager.reload()
+				if (updatedCategories?.length > 0) {
+					setCategories(updatedCategories)
+					
+					// Update selected category if it still exists
+					if (selectedCategory) {
+						const stillExists = updatedCategories.find(cat => cat._id === selectedCategory._id)
+						if (stillExists) {
+							setSelectedCategory(stillExists)
+						} else if (updatedCategories.length > 0) {
+							setSelectedCategory(updatedCategories[0])
+						}
+					}
+				}
+			} catch (err) {
+				console.error('[Home] Error refreshing channels:', err)
+			}
+		}
+
+		window.addEventListener('channelsUpdated', handleChannelsUpdated)
+		return () => window.removeEventListener('channelsUpdated', handleChannelsUpdated)
+	}, [selectedCategory])
 
 	// Active video - current video in selected category
 	// This is what gets passed to Player as the "channel"

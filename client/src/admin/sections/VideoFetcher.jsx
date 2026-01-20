@@ -1,10 +1,9 @@
 import React, { useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
-export default function VideoFetcher() {
-	const { getAuthHeaders, isAuthenticated } = useAuth()
+export default function VideoFetcher({ getAuthHeaders, isAuthenticated }) {
+	// Props passed from AdminDashboard to avoid useAuth timing issues
 	const [searchQuery, setSearchQuery] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [results, setResults] = useState([])

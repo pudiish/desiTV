@@ -7,7 +7,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { broadcastStateManager } from '../logic/broadcast';
-import { checksumSyncService } from '../services/checksumSync';
+// Channel sync removed - handled by Home component
 
 export function useCategoryNavigation(categories = []) {
   const [selectedCategory, setSelectedCategoryState] = useState(null);

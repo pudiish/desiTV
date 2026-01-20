@@ -3,7 +3,9 @@
  * Optimized for free tier with shorter TTLs
  */
 
-const Channel = require('../models/Channel')
+// MongoDB removed - using JSON instead
+const { readChannelsJSON } = require('./updateChannelsJSON')
+const { findChannelById, findChannels } = require('./channelJSONReader')
 const cache = require('./cache')
 
 const CACHE_TTL = {
@@ -42,9 +44,9 @@ async function warmChannelsList() {
 	try {
 		console.log('[CacheWarmer] 🔥 Pre-warming channels list cache...')
 		
-		const channels = await Channel.find()
-			.select('name playlistStartEpoch items._id items.youtubeId items.title items.duration items.thumbnail')
-			.lean()
+		// Read from JSON (source of truth)
+		const jsonData = readChannelsJSON()
+		const channels = jsonData.channels || []
 		
 		const minimized = minimizeChannels(channels)
 		
@@ -66,7 +68,8 @@ async function warmChannel(channelId) {
 		const channelHash = channelId.toString().substring(18, 24)
 		const cacheKey = `ch:${channelHash}`
 		
-		const ch = await Channel.findById(channelId).lean()
+		// Read from JSON (source of truth)
+		const ch = await findChannelById(channelId)
 		if (!ch) {
 			console.warn(`[CacheWarmer] Channel not found: ${channelId}`)
 			return null
@@ -94,7 +97,9 @@ async function warmAllChannels() {
 		await warmChannelsList()
 		
 		// Then, warm individual channels
-		const channels = await Channel.find().select('_id').lean()
+		// Read from JSON (source of truth)
+		const allChannels = await findChannels({}, { _id: 1 })
+		const channels = allChannels.map(ch => ({ _id: ch._id }))
 		let warmed = 0
 		
 		for (const ch of channels) {

@@ -7,7 +7,7 @@
 
 const express = require('express')
 const router = express.Router()
-const mongoose = require('mongoose')
+// MongoDB removed - viewer count uses in-memory cache only
 const ViewerCount = require('../models/ViewerCount')
 const cache = require('../utils/cache')
 
@@ -29,18 +29,8 @@ router.post('/:channelId/join', async (req, res) => {
 			return res.status(400).json({ error: 'Channel ID required' })
 		}
 		
-		// Check MongoDB connection before attempting database operation
-		if (mongoose.connection.readyState !== 1) {
-			console.warn('[ViewerCount] MongoDB not connected, skipping viewer count update')
-			// Return success anyway - viewer count is non-critical
-			return res.json({
-				success: true,
-				channelId,
-				activeViewers: 0,
-				totalViews: 0,
-				skipped: true,
-			})
-		}
+		// Viewer count is optional - use in-memory cache if available
+		// MongoDB is not required for viewer counts
 		
 		let viewerCount = null
 		try {
@@ -96,7 +86,8 @@ router.post('/:channelId/leave', async (req, res) => {
 		}
 		
 		// Check MongoDB connection before attempting database operation
-		if (mongoose.connection.readyState !== 1) {
+		// MongoDB not required - viewer counts work without database
+		if (false) { // Always use in-memory cache
 			console.warn('[ViewerCount] MongoDB not connected, skipping viewer count update')
 			// Return success anyway - viewer count is non-critical
 			return res.json({

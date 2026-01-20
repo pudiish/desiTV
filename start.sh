@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # DesiTV Development Server Startup
 # Initializes dependencies, validates environment, and starts dev servers
-# Usage: ./start.sh
+# Usage: ./start.sh [--restart|-r]
+#   --restart, -r: Force kill existing processes before starting
 
 set -euo pipefail
 
@@ -277,6 +278,45 @@ kill_port() {
   fi
 }
 
+# Function to kill all node/npm processes related to this project
+kill_dev_processes() {
+  echo "🛑 Stopping any running dev servers..."
+  
+  # Kill processes on server port
+  local server_pids=$(lsof -ti:$SERVER_PORT 2>/dev/null || true)
+  if [ -n "$server_pids" ]; then
+    echo "   Killing processes on port $SERVER_PORT..."
+    echo "$server_pids" | xargs kill -9 2>/dev/null || true
+  fi
+  
+  # Kill processes on client port
+  local client_pids=$(lsof -ti:$CLIENT_PORT 2>/dev/null || true)
+  if [ -n "$client_pids" ]; then
+    echo "   Killing processes on port $CLIENT_PORT..."
+    echo "$client_pids" | xargs kill -9 2>/dev/null || true
+  fi
+  
+  # Kill any node processes related to this project
+  local node_pids=$(ps aux | grep -E "(node|npm|nodemon|vite)" | grep -E "(server|client|desiTV)" | grep -v grep | awk '{print $2}' || true)
+  if [ -n "$node_pids" ]; then
+    echo "   Killing related node processes..."
+    echo "$node_pids" | xargs kill -9 2>/dev/null || true
+  fi
+  
+  # Kill concurrently processes
+  pkill -f "concurrently" 2>/dev/null || true
+  pkill -f "npm run dev" 2>/dev/null || true
+  
+  sleep 2
+  echo "   ✅ Cleaned up processes"
+}
+
+# Check for restart flag
+if [ "${1:-}" = "--restart" ] || [ "${1:-}" = "-r" ]; then
+  kill_dev_processes
+  echo ""
+fi
+
 # Clean up and find available ports
 echo "🧹 Checking and cleaning up ports..."
 
@@ -316,7 +356,7 @@ if [ -n "$pids" ]; then
       echo "   Skipping system process PID $pid"
     fi
   done
-sleep 1
+  sleep 1
 else
   echo "   ✅ Port $CLIENT_PORT is free"
 fi

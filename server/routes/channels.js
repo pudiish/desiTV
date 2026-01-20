@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON directly
+const { readChannelsJSON } = require('../utils/updateChannelsJSON');
 const cache = require('../utils/cache');
 const { requireAuth } = require('../middleware/auth');
-const { regenerateChannelsJSON } = require('../utils/generateJSON');
+const { 
+  addChannelToJSON, 
+  addVideoToChannelJSON, 
+  deleteVideoFromChannelJSON,
+  deleteChannelFromJSON,
+  syncJSONToMongoDB 
+} = require('../utils/updateChannelsJSON');
 const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
 const { getCachedPosition } = require('../utils/positionCalculator');
 const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
@@ -42,7 +49,19 @@ router.get('/', async (req, res) => {
       return res.json(response);
     }
 
-    const channels = await Channel.find().select('name playlistStartEpoch items._id items.youtubeId items.title items.duration items.thumbnail').lean();
+    // Read from JSON file (source of truth)
+    const jsonData = readChannelsJSON();
+    if (!jsonData || !jsonData.channels) {
+      console.error('[Channels] Invalid JSON structure:', jsonData);
+      return res.status(500).json({ message: 'Invalid channels data structure' });
+    }
+
+    const channels = jsonData.channels || [];
+    if (!Array.isArray(channels)) {
+      console.error('[Channels] Channels is not an array:', typeof channels);
+      return res.status(500).json({ message: 'Channels data is not an array' });
+    }
+
     const minimizedChannels = minimizeChannels(channels);
     await cache.set(cacheKey, minimizedChannels, CACHE_TTL_CONFIG.CHANNELS_LIST);
     
@@ -50,7 +69,8 @@ router.get('/', async (req, res) => {
     res.json(response);
   } catch (err) {
     console.error('GET /api/channels error', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -64,7 +84,9 @@ router.get('/:id', async (req, res) => {
       return res.json(response);
     }
 
-    const ch = await Channel.findById(req.params.id).lean();
+    // Read from JSON file (source of truth)
+    const jsonData = readChannelsJSON();
+    const ch = jsonData.channels.find(c => c._id === req.params.id);
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
     const minimizedChannel = minimizeChannel(ch);
@@ -80,7 +102,9 @@ router.get('/:id', async (req, res) => {
 
 router.get('/:id/current', async (req, res) => {
   try {
-    const ch = await Channel.findById(req.params.id).lean();
+    // Read from JSON file (source of truth)
+    const jsonData = readChannelsJSON();
+    const ch = jsonData.channels.find(c => c._id === req.params.id);
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
     const position = await getCachedPosition(ch, null, req);
@@ -98,7 +122,9 @@ router.get('/:id/current', async (req, res) => {
 
 router.get('/:id/position', async (req, res) => {
   try {
-    const ch = await Channel.findById(req.params.id).lean();
+    // Read from JSON file (source of truth)
+    const jsonData = readChannelsJSON();
+    const ch = jsonData.channels.find(c => c._id === req.params.id);
     if (!ch) return res.status(404).json({ message: 'Channel not found' });
     
     const position = await getCachedPosition(ch, null, req);
@@ -129,8 +155,9 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
       });
     }
 
-    // Find the channel
-    const channel = await Channel.findById(channelId);
+    // Read channel from JSON (source of truth)
+    const jsonData = readChannelsJSON();
+    const channel = jsonData.channels.find(c => c._id === channelId);
     if (!channel) {
       return res.status(404).json({ message: 'Channel not found' });
     }
@@ -366,17 +393,14 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
     }
 
     if (addedCount > 0) {
-      await channel.save();
+      // Update JSON file directly (source of truth)
+      const { writeChannelsJSON } = require('../utils/updateChannelsJSON');
+      writeChannelsJSON(jsonData);
+      
+      // Invalidate cache
       await cache.delete('ch:all');
       const channelHash = channelId.toString().substring(18, 24);
       await cache.deletePattern(`ch:${channelHash}`);
-
-      // Regenerate channels.json
-      try {
-        await regenerateChannelsJSON();
-      } catch (jsonErr) {
-        console.error('[Channels] Failed to regenerate JSON:', jsonErr);
-      }
     }
 
     res.json({ 
@@ -396,26 +420,34 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const { name, playlistStartEpoch } = req.body;
     if (!name) return res.status(400).json({ message: 'Missing name' });
-    const exists = await Channel.findOne({ name });
-    if (exists) return res.status(400).json({ message: 'Channel already exists' });
-    const ch = await Channel.create({ name, playlistStartEpoch });
     
-    const minimized = minimizeChannel(ch);
+    // Update JSON directly (source of truth)
+    let ch;
+    try {
+      ch = addChannelToJSON(name, playlistStartEpoch);
+    } catch (jsonErr) {
+      if (jsonErr.message === 'Channel already exists') {
+        return res.status(400).json({ message: 'Channel already exists' });
+      }
+      throw jsonErr;
+    }
+    
+    // Invalidate cache
     const channelHash = ch._id.toString().substring(18, 24);
-    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    await cache.delete(`ch:${channelHash}`);
     await cache.delete('ch:all');
     
-    // Regenerate channels.json
+    // Optionally sync to MongoDB (for backup)
     try {
-      await regenerateChannelsJSON();
-    } catch (jsonErr) {
-      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+      await syncJSONToMongoDB();
+    } catch (mongoErr) {
+      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
     }
     
     res.json(ch);
   } catch (err) {
     console.error('POST /api/channels error', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 });
 
@@ -424,27 +456,44 @@ router.post('/:channelId/videos', requireAuth, async (req, res) => {
     const { channelId } = req.params;
     const { title, youtubeId, duration, year, tags, category } = req.body;
     if (!youtubeId || !title) return res.status(400).json({ message: 'Missing youtubeId or title' });
-    const ch = await Channel.findById(channelId);
-    if (!ch) return res.status(404).json({ message: 'Channel not found' });
-    ch.items.push({ title, youtubeId, duration: Number(duration) || 30, year, tags: tags || [], category });
-    await ch.save();
     
-    const minimized = minimizeChannel(ch);
+    // Update JSON directly (source of truth)
+    let ch;
+    try {
+      ch = addVideoToChannelJSON(channelId, {
+        title,
+        youtubeId,
+        duration,
+        year,
+        tags,
+        category
+      });
+    } catch (jsonErr) {
+      if (jsonErr.message === 'Channel not found') {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      if (jsonErr.message === 'Video already exists in this channel') {
+        return res.status(400).json({ message: jsonErr.message });
+      }
+      throw jsonErr;
+    }
+    
+    // Invalidate cache
     const channelHash = channelId.toString().substring(18, 24);
-    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    await cache.delete(`ch:${channelHash}`);
     await cache.delete('ch:all');
     
-    // Regenerate channels.json
+    // Optionally sync to MongoDB (for backup)
     try {
-      await regenerateChannelsJSON();
-    } catch (jsonErr) {
-      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+      await syncJSONToMongoDB();
+    } catch (mongoErr) {
+      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
     }
     
     res.json(ch);
   } catch (err) {
     console.error('POST /api/channels/:id/videos error', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 });
 
@@ -457,42 +506,30 @@ router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'Video ID is required' });
     }
     
-    const ch = await Channel.findById(channelId);
-    if (!ch) {
-      console.warn('Channel not found:', channelId);
-      return res.status(404).json({ message: 'Channel not found' });
+    // Update JSON directly (source of truth)
+    let updatedChannel;
+    try {
+      updatedChannel = deleteVideoFromChannelJSON(channelId, videoId);
+    } catch (jsonErr) {
+      if (jsonErr.message === 'Channel not found') {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      if (jsonErr.message === 'Video not found') {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      throw jsonErr;
     }
     
-    let updatedChannel = await Channel.findByIdAndUpdate(
-      channelId,
-      { $pull: { items: { _id: videoId } } },
-      { new: true }
-    );
-    
-    if (!updatedChannel || updatedChannel.items.length === ch.items.length) {
-      console.log('Video not found by _id, trying by youtubeId:', videoId);
-      updatedChannel = await Channel.findByIdAndUpdate(
-        channelId,
-        { $pull: { items: { youtubeId: videoId } } },
-        { new: true }
-      );
-    }
-    
-    if (!updatedChannel) {
-      console.warn('Failed to update channel:', channelId);
-      return res.status(404).json({ message: 'Channel not found' });
-    }
-    
-    const minimized = minimizeChannel(updatedChannel);
+    // Invalidate cache
     const channelHash = channelId.toString().substring(18, 24);
-    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    await cache.delete(`ch:${channelHash}`);
     await cache.delete('ch:all');
     
-    // Regenerate channels.json
+    // Optionally sync to MongoDB (for backup)
     try {
-      await regenerateChannelsJSON();
-    } catch (jsonErr) {
-      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+      await syncJSONToMongoDB();
+    } catch (mongoErr) {
+      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
     }
     
     res.json(updatedChannel);
@@ -506,24 +543,31 @@ router.delete('/:channelId', requireAuth, async (req, res) => {
   try {
     const { channelId } = req.params;
     console.log(`[Channels] Admin "${req.admin.username}" attempting to delete channel: ${channelId}`);
-    const ch = await Channel.findByIdAndDelete(channelId);
-    if (!ch) {
-      console.warn('Channel not found:', channelId);
-      return res.status(404).json({ message: 'Channel not found' });
+    
+    // Update JSON directly (source of truth)
+    let deletedChannel;
+    try {
+      deletedChannel = deleteChannelFromJSON(channelId);
+    } catch (jsonErr) {
+      if (jsonErr.message === 'Channel not found') {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      throw jsonErr;
     }
     
+    // Invalidate cache
     const channelHash = channelId.toString().substring(18, 24);
     await cache.delete(`ch:${channelHash}`);
     await cache.delete('ch:all');
     
-    // Regenerate channels.json
+    // Optionally sync to MongoDB (for backup)
     try {
-      await regenerateChannelsJSON();
-    } catch (jsonErr) {
-      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+      await syncJSONToMongoDB();
+    } catch (mongoErr) {
+      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
     }
     
-    res.json({ message: 'Channel deleted successfully', channel: ch });
+    res.json({ message: 'Channel deleted successfully', channel: deletedChannel });
   } catch (err) {
     console.error('DELETE /api/channels/:channelId error:', err.message, err);
     res.status(500).json({ message: err.message || 'Server error' });
@@ -536,7 +580,7 @@ router.get('/admin/cache-stats', requireAuth, async (req, res) => {
 
 router.post('/:id/add-video', requireAuth, async (req, res) => {
   try {
-    const { title, youtubeId } = req.body;
+    const { title, youtubeId, duration } = req.body;
     const channelId = req.params.id;
 
     if (!youtubeId || !title) {
@@ -545,38 +589,37 @@ router.post('/:id/add-video', requireAuth, async (req, res) => {
       });
     }
 
-    // Find the channel
-    const channel = await Channel.findById(channelId);
-    if (!channel) {
-      return res.status(404).json({ message: 'Channel not found' });
+    // Update JSON directly (source of truth)
+    let channel;
+    try {
+      channel = addVideoToChannelJSON(channelId, {
+        title,
+        youtubeId,
+        duration: duration || 30
+      });
+    } catch (jsonErr) {
+      if (jsonErr.message === 'Channel not found') {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      if (jsonErr.message === 'Video already exists in this channel') {
+        return res.status(400).json({ message: jsonErr.message });
+      }
+      throw jsonErr;
     }
 
-    // Check if video already exists
-    const exists = channel.items.some(item => item.youtubeId === youtubeId);
-    if (exists) {
-      return res.status(400).json({ message: 'Video already exists in this channel' });
-    }
+    // Get the newly added video
+    const newVideo = channel.items[channel.items.length - 1];
 
-    // Add video to channel's items array
-    const newVideo = {
-      title,
-      youtubeId,
-      duration: 30
-    };
-
-    channel.items.push(newVideo);
-    await channel.save();
-
-    const minimized = minimizeChannel(channel);
+    // Invalidate cache
     const channelHash = channelId.toString().substring(18, 24);
-    await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
+    await cache.delete(`ch:${channelHash}`);
     await cache.delete('ch:all');
 
-    // Regenerate channels.json
+    // Optionally sync to MongoDB (for backup)
     try {
-      await regenerateChannelsJSON();
-    } catch (jsonErr) {
-      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+      await syncJSONToMongoDB();
+    } catch (mongoErr) {
+      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
     }
     
     res.json({ 
@@ -604,6 +647,8 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
       });
     }
 
+    // Read JSON once at the start
+    const jsonData = readChannelsJSON();
     let addedCount = 0;
     let errors = [];
 
@@ -617,8 +662,8 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
           continue;
         }
 
-        // Find the channel
-        const channel = await Channel.findById(channelId);
+        // Find channel from JSON (source of truth)
+        const channel = jsonData.channels.find(c => c._id === channelId);
         if (!channel) {
           errors.push(`Skipped: Channel not found for video "${title}"`);
           continue;
@@ -641,11 +686,7 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
         };
 
         channel.items.push(newVideo);
-        await channel.save();
-
-        // Invalidate cache
-        const channelHash = channelId.toString().substring(18, 24)
-        cache.deletePattern(`ch:${channelHash}`);
+        // Note: JSON will be written at the end of the loop
         addedCount++;
 
       } catch (videoErr) {
@@ -653,15 +694,14 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
       }
     }
 
-    // Invalidate main channel list cache
-    cache.delete('ch:all');
-
-    // Regenerate channels.json
-    try {
-      await regenerateChannelsJSON();
-    } catch (jsonErr) {
-      console.error('[Channels] Failed to regenerate JSON:', jsonErr);
+    // Write updated JSON file (source of truth)
+    if (addedCount > 0) {
+      const { writeChannelsJSON } = require('../utils/updateChannelsJSON');
+      writeChannelsJSON(jsonData);
     }
+
+    // Invalidate main channel list cache
+    await cache.delete('ch:all');
 
     res.json({ 
       message: `Successfully added ${addedCount} video(s)`,

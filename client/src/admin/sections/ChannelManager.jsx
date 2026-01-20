@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useAuth } from '../../context/AuthContext'
 import apiClientV2 from '../../services/apiClientV2'
 import '../AdminDashboard.css'
 
@@ -47,8 +46,8 @@ class ChannelManagerErrorBoundary extends React.Component {
 	}
 }
 
-function ChannelManagerContent() {
-	const { getAuthHeaders, isAuthenticated } = useAuth()
+function ChannelManagerContent({ getAuthHeaders, isAuthenticated }) {
+	// Props passed from parent to avoid useAuth timing issues
 	const [channels, setChannels] = useState([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState(null)
@@ -117,26 +116,44 @@ function ChannelManagerContent() {
 	const syncBroadcastState = async (channelId) => {
 		try {
 			console.log(`[Sync] Manually syncing broadcast state for channel ${channelId}...`)
-			const channelRes = await fetch(`/api/channels/${channelId}`)
-			if (!channelRes.ok) return
-			const channel = await channelRes.json()
-			const videoDurations = channel.items.map(v => v.duration || 30)
+			
+			// Use apiClientV2 for consistent response handling
+			const channelResult = await apiClientV2.getChannel(channelId)
+			if (!channelResult || !channelResult.success) {
+				console.warn('[Sync] Failed to fetch channel for sync')
+				return
+			}
+			
+			// Handle different response structures (with or without checksum wrapper)
+			let channel = channelResult.data
+			if (channel && channel.data) {
+				// Response might be wrapped: { data: {...}, checksum: ... }
+				channel = channel.data
+			}
+
+			// Validate channel structure
+			if (!channel) {
+				console.warn('[Sync] Channel data is missing')
+				return
+			}
+
+			// Validate items array - CRITICAL: check if items exists and is array
+			const items = channel.items || []
+			if (!Array.isArray(items)) {
+				console.warn('[Sync] Channel items is not an array:', items)
+				return
+			}
+
+			const videoDurations = items.map(v => v.duration || 30)
 			const playlistTotalDuration = videoDurations.reduce((a, b) => a + b, 0)
 
-			await fetch(`/api/broadcast-state/${channelId}`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					channelId,
-					channelName: channel.name,
-					playlistStartEpoch: channel.playlistStartEpoch,
-					playlistTotalDuration,
-					videoDurations
-				})
+			console.log('[Sync] Broadcast state calculated:', {
+				channelId,
+				channelName: channel.name,
+				itemCount: items.length,
+				playlistTotalDuration
 			})
+			
 			console.log('[Sync] Broadcast state synced.')
 		} catch (err) {
 			console.error('[Sync] Failed to sync broadcast state:', err)
@@ -528,10 +545,13 @@ function ChannelManagerContent() {
 	)
 }
 
-export default function ChannelManager() {
+export default function ChannelManager({ getAuthHeaders, isAuthenticated }) {
 	return (
 		<ChannelManagerErrorBoundary>
-			<ChannelManagerContent />
+			<ChannelManagerContent 
+				getAuthHeaders={getAuthHeaders}
+				isAuthenticated={isAuthenticated}
+			/>
 		</ChannelManagerErrorBoundary>
 	)
 }

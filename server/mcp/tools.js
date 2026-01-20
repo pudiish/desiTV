@@ -20,7 +20,8 @@
  * If not found, falls back to YouTube search for external content
  */
 
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { findChannels, findOneChannel, findChannelById, getAllSongs } = require('../utils/channelJSONReader');
 const path = require('path');
 const fs = require('fs');
 
@@ -242,10 +243,13 @@ async function getChannels(params = {}) {
   try {
     const { limit = 10 } = params;
     
-    const channels = await Channel.find({ isActive: true })
-      .select('name category description items')
-      .limit(limit)
-      .lean();
+    const allChannels = await findChannels({ isActive: true });
+    const channels = allChannels.slice(0, limit).map(ch => ({
+      name: ch.name,
+      category: ch.category,
+      description: ch.description,
+      items: ch.items
+    }));
 
     const channelList = channels.map(ch => `📺 ${ch.name} (${ch.items?.length || 0} videos)`).join('\n');
     
@@ -276,17 +280,12 @@ async function searchVideos(params = {}) {
       return { success: false, error: 'Query required', message: '🤔 What should I search for?' };
     }
 
-    // Search in channel items
-    const channels = await Channel.find({
-      isActive: true,
-      'items.title': { $regex: query, $options: 'i' }
-    })
-      .select('name category items')
-      .lean();
-
+    // Search in channel items (JSON-based)
+    const allChannels = await findChannels({ isActive: true });
+    
     // Extract matching videos
     const results = [];
-    for (const channel of channels) {
+    for (const channel of allChannels) {
       for (const item of channel.items || []) {
         if (item.title?.toLowerCase().includes(query.toLowerCase())) {
           results.push({
@@ -332,16 +331,16 @@ async function getWhatsPlaying(params = {}) {
   try {
     const { channelName, limit = 5 } = params;
 
-    let query = { isActive: true };
-    if (channelName) {
-      query.name = { $regex: channelName, $options: 'i' };
-    }
+    // Find channel by name (case-insensitive)
+    const allChannels = await findChannels({ isActive: true });
+    const channel = allChannels.find(ch => {
+      if (!channelName) return true;
+      const nameMatch = ch.name?.toLowerCase().includes(channelName.toLowerCase());
+      const categoryMatch = ch.category?.toLowerCase().includes(channelName.toLowerCase());
+      return nameMatch || categoryMatch;
+    });
 
-    const channel = await Channel.findOne(query)
-      .select('name category items')
-      .lean();
-
-    if (!channel) {
+    if (!channelMapped) {
       return { success: false, error: 'Channel not found' };
     }
 
@@ -374,17 +373,15 @@ async function getChannelSongs(params = {}) {
       return { success: false, error: 'Channel name required', message: '🤔 Which channel?' };
     }
 
-    const channel = await Channel.findOne({
-      isActive: true,
-      $or: [
-        { name: { $regex: channelName, $options: 'i' } },
-        { category: { $regex: channelName, $options: 'i' } }
-      ]
-    })
-      .select('name category items')
-      .lean();
+    // Find channel by name or category (case-insensitive)
+    const allChannels = await findChannels({ isActive: true });
+    const channel = allChannels.find(ch => {
+      const nameMatch = ch.name?.toLowerCase().includes(channelName.toLowerCase());
+      const categoryMatch = ch.category?.toLowerCase().includes(channelName.toLowerCase());
+      return nameMatch || categoryMatch;
+    });
 
-    if (!channel) {
+    if (!channelMapped) {
       return { 
         success: false, 
         error: `Channel "${channelName}" not found`,
@@ -434,16 +431,18 @@ async function getRecommendations(params = {}) {
 
     const categories = moodToCategory[mood.toLowerCase()] || moodToCategory.party;
 
-    const channels = await Channel.find({
-      isActive: true,
-      $or: [
-        { category: { $in: categories } },
-        { name: { $in: categories } }
-      ]
-    })
-      .select('name category items _id')
-      .limit(3)
-      .lean();
+    // Filter channels by category or name (JSON-based)
+    const allChannels = await findChannels({ isActive: true });
+    let channels = allChannels.filter(ch => {
+      const categoryMatch = categories.includes(ch.category);
+      const nameMatch = categories.some(cat => ch.name?.toLowerCase().includes(cat.toLowerCase()));
+      return categoryMatch || nameMatch;
+    }).slice(0, 3).map(ch => ({
+      name: ch.name,
+      category: ch.category,
+      items: ch.items,
+      _id: ch._id
+    }));
 
     const buildMessage = (chans, moodText) => {
       if (chans.length === 0) return `🤔 No channels found for "${moodText}" mood!`;
@@ -453,21 +452,24 @@ async function getRecommendations(params = {}) {
 
     if (channels.length === 0) {
       // Fallback: get any active channels
-      const fallback = await Channel.find({ isActive: true })
-        .select('name category items _id')
-        .limit(3)
-        .lean();
+      const fallback = await findChannels({ isActive: true });
+      const fallbackLimited = fallback.slice(0, 3).map(ch => ({
+        name: ch.name,
+        category: ch.category,
+        items: ch.items,
+        _id: ch._id
+      }));
       
       return {
         success: true,
         mood,
-        recommendations: fallback.map(ch => ({
+        recommendations: fallbackLimited.map(ch => ({
           channel: ch.name,
           channelId: ch._id.toString(),
           category: ch.category,
           sampleVideos: (ch.items || []).slice(0, 2).map(v => v.title)
         })),
-        message: buildMessage(fallback, mood)
+        message: buildMessage(fallbackLimited, mood)
       };
     }
 
@@ -500,21 +502,25 @@ async function changeChannel(params = {}) {
     }
 
     // Find matching channel
-    const channel = await Channel.findOne({
-      isActive: true,
-      $or: [
-        { name: { $regex: channelName, $options: 'i' } },
-        { category: { $regex: channelName, $options: 'i' } }
-      ]
-    })
-      .select('name category _id items')
-      .lean();
+    // Find channel by name or category (case-insensitive)
+    const allChannels = await findChannels({ isActive: true });
+    const channel = allChannels.find(ch => {
+      const nameMatch = ch.name?.toLowerCase().includes(channelName.toLowerCase());
+      const categoryMatch = ch.category?.toLowerCase().includes(channelName.toLowerCase());
+      return nameMatch || categoryMatch;
+    });
+    
+    // Map to required fields
+    const channelMapped = channel ? {
+      name: channel.name,
+      category: channel.category,
+      _id: channel._id,
+      items: channel.items
+    } : null;
 
-    if (!channel) {
+    if (!channelMapped) {
       // Return available channels if not found
-      const available = await Channel.find({ isActive: true })
-        .select('name')
-        .lean();
+      const available = await findChannels({ isActive: true });
       const channelList = available.map(c => c.name).slice(0, 5).join(', ');
       return { 
         success: false, 
@@ -527,11 +533,11 @@ async function changeChannel(params = {}) {
       success: true,
       action: {
         type: 'CHANGE_CHANNEL',
-        channelId: channel._id.toString(),
-        channelName: channel.name,
-        category: channel.category
+        channelId: channelMapped._id.toString(),
+        channelName: channelMapped.name,
+        category: channelMapped.category
       },
-      message: `Switching to ${channel.name}! 📺`
+      message: `Switching to ${channelMapped.name}! 📺`
     };
   } catch (error) {
     console.error('[Tools] changeChannel error:', error);
@@ -550,20 +556,15 @@ async function playVideo(params = {}) {
       return { success: false, error: 'Video search query required' };
     }
 
-    // Build search query
-    let searchQuery = { 
-      isActive: true,
-      'items.title': { $regex: query, $options: 'i' }
-    };
-
-    // Optional: filter by channel
+    // Search channels (JSON-based)
+    let channels = await findChannels({ isActive: true });
+    
+    // Optional: filter by channel name
     if (channelName) {
-      searchQuery.name = { $regex: channelName, $options: 'i' };
+      channels = channels.filter(ch => 
+        ch.name?.toLowerCase().includes(channelName.toLowerCase())
+      );
     }
-
-    const channels = await Channel.find(searchQuery)
-      .select('name category items _id')
-      .lean();
 
     // Find first matching video
     for (const channel of channels) {
@@ -734,10 +735,10 @@ async function smartPlay(params = {}) {
       const video = kbResult.bestMatch;
       
       // Find channel ID for this video
-      const channel = await Channel.findOne({
+      const channel = await findOneChannel({
         name: video.channel,
         isActive: true
-      }).select('_id items').lean();
+      });
       
       if (channel) {
         const videoIndex = channel.items.findIndex(i => i.youtubeId === video.youtubeId);
@@ -1529,9 +1530,7 @@ async function getSimilar(params = {}, context = {}) {
   
   try {
     // Find channels with similar category
-    const channels = await Channel.find({ isActive: true })
-      .select('name category items')
-      .lean();
+    const channels = await findChannels({ isActive: true });
     
     // Get current channel info
     const current = channels.find(c => c.name === currentChannel);

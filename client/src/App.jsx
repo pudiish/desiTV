@@ -8,12 +8,15 @@ import { lazy, Suspense } from 'react';
 import { ErrorBoundary } from './components/common';
 import './App.css';
 
+// TV pages - can stay lazy (not admin)
 const Home = lazy(() => import('./pages/Home'));
 const Landing = lazy(() => import('./pages/Landing'));
 const RetroTVTest = lazy(() => import('./pages/dev/RetroTVTest'));
 const YouTubeAutoplayTest = lazy(() => import('./pages/dev/YouTubeAutoplayTest'));
-const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
-const AdminLogin = lazy(() => import('./pages/AdminLoginNew'));
+
+// Admin pages - NO lazy loading (synchronous imports)
+import AdminDashboard from './admin/AdminDashboard';
+import AdminLogin from './pages/AdminLoginNew';
 
 /**
  * Protected Route - requires authentication
@@ -42,10 +45,11 @@ function ProtectedRoute({ children }) {
 
 /**
  * Admin Dashboard with navigation buttons
+ * Suspense wraps lazy-loaded AdminDashboard to ensure context is available
  */
 function AdminView() {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, getAuthHeaders, isAuthenticated } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -54,9 +58,12 @@ function AdminView() {
 
   return (
     <div className="admin-view">
-      <Suspense fallback={<div>Loading Admin Dashboard...</div>}>
-        <AdminDashboard />
-      </Suspense>
+      <AdminDashboard 
+        user={user} 
+        onLogout={handleLogout}
+        getAuthHeaders={getAuthHeaders}
+        isAuthenticated={isAuthenticated}
+      />
       {/* Admin Navigation */}
       <div className="admin-nav-buttons">
         <div className="admin-user-info">
@@ -96,33 +103,30 @@ function TVView() {
 
 /**
  * Admin Routes Wrapper - Single AuthProvider for all admin routes
- * This ensures authentication state is shared across all admin routes
+ * No lazy loading - all admin components load synchronously
  */
 function AdminRoutesWrapper() {
   return (
     <AuthProvider>
-      <Suspense fallback={<div>Loading Admin...</div>}>
-        <Routes>
-          <Route path="login" element={<AdminLogin />} />
-          <Route
-            path=""
-            element={
-              <ProtectedRoute>
-                <AdminView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="dashboard"
-            element={
-              <ProtectedRoute>
-                <AdminView />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Suspense>
-
+      <Routes>
+        <Route path="login" element={<AdminLogin />} />
+        <Route
+          path=""
+          element={
+            <ProtectedRoute>
+              <AdminView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminView />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </AuthProvider>
   );
 }

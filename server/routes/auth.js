@@ -13,7 +13,8 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const Admin = require('../models/Admin');
+// Use JSON-based admin instead of MongoDB
+const Admin = require('../utils/adminJSON');
 const { requireAuth } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/security');
 

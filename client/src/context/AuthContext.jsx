@@ -1,44 +1,34 @@
 /**
- * DesiTV™ Auth Context
+ * DesiTV™ Auth Context - Firebase Edition
  * 
- * Centralized authentication state management using React Context.
- * This provides a single source of truth for auth state across the app.
+ * Uses Firebase Auth for secure authentication.
+ * No local password storage - Firebase handles everything.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import apiClientV2 from '../services/apiClientV2';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { auth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from '../config/firebase';
 
+// Token storage key (same as authService for compatibility)
 const TOKEN_KEY = 'desiTV_admin_token';
 const ADMIN_KEY = 'desiTV_admin_info';
 
-// Create context
-const AuthContext = createContext(null);
-
-/**
- * Parse JWT token payload
- */
-const parseToken = (token) => {
-  try {
-    if (!token) return null;
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    return JSON.parse(atob(parts[1]));
-  } catch (e) {
-    return null;
-  }
+// Default context value - ensures useAuth() never throws
+const DEFAULT_CONTEXT = {
+  user: null,
+  token: null,
+  loading: true,
+  initialized: false,
+  isAuthenticated: false,
+  login: async () => ({ success: false, error: 'Auth not initialized' }),
+  logout: async () => {},
+  getAuthHeaders: () => ({}),
 };
 
-/**
- * Check if token is expired
- */
-const isTokenExpired = (token) => {
-  const payload = parseToken(token);
-  if (!payload || !payload.exp) return true;
-  return Date.now() >= payload.exp * 1000;
-};
+// Create context with default value
+const AuthContext = createContext(DEFAULT_CONTEXT);
 
 /**
- * Auth Provider Component
+ * Auth Provider - Firebase Auth
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -46,124 +36,159 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
-  /**
-   * Clear auth state
-   */
-  const clearAuth = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(ADMIN_KEY);
-    setToken(null);
-    setUser(null);
+  // Listen to Firebase auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in - get fresh token
+        const idToken = await firebaseUser.getIdToken();
+        const userData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          username: firebaseUser.email?.split('@')[0] || 'Admin',
+          role: 'admin'
+        };
+        
+        // Store in localStorage for apiClientV2 compatibility
+        localStorage.setItem(TOKEN_KEY, idToken);
+        localStorage.setItem(ADMIN_KEY, JSON.stringify(userData));
+        
+        setUser(userData);
+        setToken(idToken);
+        console.log('[Auth] Firebase user signed in:', firebaseUser.email);
+      } else {
+        // User is signed out - clear localStorage
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(ADMIN_KEY);
+        setUser(null);
+        setToken(null);
+      }
+      setLoading(false);
+      setInitialized(true);
+    });
+
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
-  /**
-   * Initialize auth state from localStorage
-   */
+  // Refresh Firebase token every 50 minutes (tokens expire after 1 hour)
   useEffect(() => {
-    const initAuth = () => {
-      try {
-        const storedToken = localStorage.getItem(TOKEN_KEY);
-        const storedUser = localStorage.getItem(ADMIN_KEY);
+    if (!user) return;
 
-        if (storedToken && !isTokenExpired(storedToken)) {
-          setToken(storedToken);
-          setUser(storedUser ? JSON.parse(storedUser) : null);
-        } else if (storedToken) {
-          // Token exists but expired
-          clearAuth();
+    const refreshToken = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const newToken = await currentUser.getIdToken(true); // force refresh
+          localStorage.setItem(TOKEN_KEY, newToken);
+          setToken(newToken);
+          console.log('[Auth] Token refreshed');
+        } catch (error) {
+          console.error('[Auth] Token refresh failed:', error);
         }
-      } catch (e) {
-        console.error('[AuthContext] Init error:', e);
-        clearAuth();
-      } finally {
-        setLoading(false);
-        setInitialized(true);
       }
     };
 
-    initAuth();
-  }, [clearAuth]);
+    // Refresh every 50 minutes
+    const interval = setInterval(refreshToken, 50 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   /**
-   * Login function
+   * Login with email/password via Firebase
    */
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (email, password) => {
     try {
-      // Use apiClientV2 which handles CSRF tokens automatically
-      const data = await apiClientV2.post('/api/auth/login', {
-        username,
-        password,
-      });
-
-      // Store auth data
-      localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem(ADMIN_KEY, JSON.stringify(data.admin));
+      setLoading(true);
       
-      setToken(data.token);
-      setUser(data.admin);
-
-      return { success: true, user: data.admin };
+      // Firebase handles all the auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      const idToken = await firebaseUser.getIdToken();
+      
+      const userData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        username: firebaseUser.email?.split('@')[0] || 'Admin',
+        role: 'admin'
+      };
+      
+      // Store in localStorage for apiClientV2 compatibility
+      localStorage.setItem(TOKEN_KEY, idToken);
+      localStorage.setItem(ADMIN_KEY, JSON.stringify(userData));
+      
+      console.log('[Auth] Login successful:', firebaseUser.email);
+      
+      return { 
+        success: true, 
+        user: userData
+      };
     } catch (error) {
-      console.error('[AuthContext] Login error:', error);
-      return { success: false, error: error.message || 'Network error' };
+      console.error('[Auth] Firebase login error:', error.code, error.message);
+      
+      // Map Firebase error codes to user-friendly messages
+      let message = 'Login failed';
+      switch (error.code) {
+        case 'auth/invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'auth/user-disabled':
+          message = 'Account has been disabled';
+          break;
+        case 'auth/user-not-found':
+          message = 'No account found with this email';
+          break;
+        case 'auth/wrong-password':
+          message = 'Incorrect password';
+          break;
+        case 'auth/invalid-credential':
+          message = 'Invalid email or password';
+          break;
+        case 'auth/too-many-requests':
+          message = 'Too many attempts. Try again later.';
+          break;
+        default:
+          message = error.message || 'Login failed';
+      }
+      
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   /**
-   * Logout function
+   * Logout via Firebase
    */
   const logout = useCallback(async () => {
     try {
-      // Notify server (non-blocking)
-      if (token) {
-        fetch(`${API_BASE}/api/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }).catch(() => {});
-      }
-    } finally {
-      clearAuth();
-    }
-  }, [token, clearAuth]);
-
-  /**
-   * Setup admin account
-   */
-  const setupAdmin = useCallback(async (username, password) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/setup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { success: false, error: data.message || 'Setup failed' };
-      }
-
-      return { success: true, admin: data.admin };
+      // Clear localStorage first
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(ADMIN_KEY);
+      
+      await signOut(auth);
+      console.log('[Auth] Logged out');
     } catch (error) {
-      console.error('[AuthContext] Setup error:', error);
-      return { success: false, error: error.message || 'Network error' };
+      console.error('[Auth] Logout error:', error);
+      // Still clear local state even if Firebase logout fails
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(ADMIN_KEY);
     }
   }, []);
 
   /**
    * Get auth headers for API calls
+   * Firebase token is automatically refreshed
    */
   const getAuthHeaders = useCallback(() => {
     if (!token) return {};
     return { 'Authorization': `Bearer ${token}` };
   }, [token]);
 
-  // Computed auth state
-  const isAuthenticated = !!token && !isTokenExpired(token);
+  const isAuthenticated = !!user && !!token;
 
+  // Always provide value - never null or undefined
   const value = {
     user,
     token,
@@ -172,9 +197,7 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     login,
     logout,
-    setupAdmin,
     getAuthHeaders,
-    clearAuth,
   };
 
   return (
@@ -185,14 +208,10 @@ export function AuthProvider({ children }) {
 }
 
 /**
- * Hook to use auth context
+ * useAuth hook - Always returns a valid context
  */
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 }
 
 export default AuthContext;

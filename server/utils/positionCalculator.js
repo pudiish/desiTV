@@ -7,7 +7,8 @@
  */
 
 const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName, getSecondsUntilNextSlot } = require('./timeBasedPlaylist')
-const GlobalEpoch = require('../models/GlobalEpoch')
+// MongoDB removed - using JSON instead
+const { getCurrentEpoch } = require('./globalEpochJSON')
 const cache = require('./cache')
 
 // Cache TTL for position calculations (1 second - minimal caching for perfect sync)
@@ -170,7 +171,7 @@ async function getCachedPosition(channel, timezone = null, req = null) {
 	}
 
 	// Get global epoch
-	const globalEpoch = await GlobalEpoch.getCurrentEpoch()
+	const globalEpoch = await getCurrentEpoch()
 	
 	// Calculate position with timezone
 	const position = calculatePosition(channel, globalEpoch, userTimezone)
@@ -217,7 +218,7 @@ async function batchCalculatePositions(channels, timezone = 'Asia/Kolkata') {
 	}
 
 	// Get global epoch once (shared for all channels)
-	const globalEpoch = await GlobalEpoch.getCurrentEpoch()
+	const globalEpoch = await getCurrentEpoch()
 	
 	const positions = {}
 	

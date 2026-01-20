@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+// Removed useAuth import - using props instead to avoid lazy loading context issues
 import './AdminDashboard.css'
 import ChannelManager from './sections/ChannelManager'
 import VideoFetcher from './sections/VideoFetcher'
@@ -8,9 +8,9 @@ import VideoManager from './sections/VideoManager'
 import CacheManagerUI from './sections/CacheManagerUI'
 import SystemControls from './sections/SystemControls'
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ user, onLogout, getAuthHeaders, isAuthenticated }) {
 	const navigate = useNavigate()
-	const { logout, user } = useAuth()
+	// Use props instead of useAuth() to avoid context timing issues with lazy loading
 	const [activeSection, setActiveSection] = useState('videos-channels')
 	const [notifications, setNotifications] = useState([])
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -19,7 +19,9 @@ export default function AdminDashboard() {
 	const [currentTime, setCurrentTime] = useState(new Date())
 
 	const handleLogout = async () => {
-		await logout()
+		if (onLogout) {
+			await onLogout()
+		}
 		navigate('/admin/login', { replace: true })
 	}
 
@@ -35,7 +37,7 @@ export default function AdminDashboard() {
 			id: 'videos-channels',
 			label: 'Add Videos',
 			icon: '📹',
-			component: <VideoManager />,
+			component: VideoManager,
 			category: 'Content',
 			description: 'Add YouTube videos to categories'
 		},
@@ -43,7 +45,7 @@ export default function AdminDashboard() {
 			id: 'channels',
 			label: 'Categories',
 			icon: '📂',
-			component: <ChannelManager />,
+			component: ChannelManager,
 			category: 'Content',
 			description: 'Manage playlist categories'
 		},
@@ -52,7 +54,7 @@ export default function AdminDashboard() {
 			id: 'controls',
 			label: 'Controls',
 			icon: '🛠️',
-			component: <SystemControls />,
+			component: SystemControls,
 			category: 'Tools',
 			description: 'System controls'
 		},
@@ -60,7 +62,7 @@ export default function AdminDashboard() {
 			id: 'cache',
 			label: 'Cache',
 			icon: '💾',
-			component: <CacheManagerUI />,
+			component: CacheManagerUI,
 			category: 'Tools',
 			description: 'Cache management'
 		},
@@ -83,8 +85,8 @@ export default function AdminDashboard() {
 		window.adminNotify = addNotification
 	}, [])
 
-	const activeComponent = sections.find((s) => s.id === activeSection)?.component
 	const activeSectionData = sections.find((s) => s.id === activeSection)
+	const ActiveComponent = activeSectionData?.component
 	
 	// Group sections by category
 	const categories = ['Content', 'Tools']
@@ -237,7 +239,12 @@ export default function AdminDashboard() {
 
 					{/* Active Section */}
 					<div className="section-wrapper">
-						{activeComponent}
+						{ActiveComponent && (
+							<ActiveComponent 
+								getAuthHeaders={getAuthHeaders}
+								isAuthenticated={isAuthenticated}
+							/>
+						)}
 					</div>
 				</div>
 			</main>

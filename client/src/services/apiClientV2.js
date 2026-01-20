@@ -186,7 +186,21 @@ class APIClientV2 {
           this.clearCsrfToken();
         }
         
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to parse error message from JSON response
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+        } catch {
+          // Not JSON, use status text
+        }
+        
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        error.response = errorText;
+        throw error;
       }
 
       const data = await response.json();
@@ -218,11 +232,26 @@ class APIClientV2 {
   // ============= Convenience Methods =============
 
   /**
+   * Normalize endpoint URL - strip baseURL prefix if present
+   */
+  normalizeEndpoint(url) {
+    // If URL starts with baseURL, strip it
+    if (url.startsWith(this.baseURL)) {
+      return url.replace(this.baseURL, '');
+    }
+    // If URL starts with /api (common case), strip it since baseURL is /api
+    if (url.startsWith('/api')) {
+      return url.replace('/api', '');
+    }
+    // Otherwise return as-is (relative path)
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+
+  /**
    * GET request (convenience method)
    */
   async get(url, config = {}) {
-    // Handle both full URLs and endpoints
-    const endpoint = url.startsWith('/') ? url : url.startsWith(this.baseURL) ? url.replace(this.baseURL, '') : url;
+    const endpoint = this.normalizeEndpoint(url);
     const result = await this.request('GET', endpoint, { ...config, params: config.params });
     // Return data directly (like old apiClient) for compatibility
     return result.success ? result.data : (() => { throw new Error(result.error?.message || 'Request failed'); })();
@@ -232,7 +261,7 @@ class APIClientV2 {
    * POST request (convenience method)
    */
   async post(url, data = {}, config = {}) {
-    const endpoint = url.startsWith('/') ? url : url.startsWith(this.baseURL) ? url.replace(this.baseURL, '') : url;
+    const endpoint = this.normalizeEndpoint(url);
     const result = await this.request('POST', endpoint, { ...config, body: data });
     return result.success ? result.data : (() => { throw new Error(result.error?.message || 'Request failed'); })();
   }
@@ -241,7 +270,7 @@ class APIClientV2 {
    * PUT request (convenience method)
    */
   async put(url, data = {}, config = {}) {
-    const endpoint = url.startsWith('/') ? url : url.startsWith(this.baseURL) ? url.replace(this.baseURL, '') : url;
+    const endpoint = this.normalizeEndpoint(url);
     const result = await this.request('PUT', endpoint, { ...config, body: data });
     return result.success ? result.data : (() => { throw new Error(result.error?.message || 'Request failed'); })();
   }
@@ -250,7 +279,7 @@ class APIClientV2 {
    * DELETE request (convenience method)
    */
   async delete(url, config = {}) {
-    const endpoint = url.startsWith('/') ? url : url.startsWith(this.baseURL) ? url.replace(this.baseURL, '') : url;
+    const endpoint = this.normalizeEndpoint(url);
     const result = await this.request('DELETE', endpoint, config);
     return result.success ? result.data : (() => { throw new Error(result.error?.message || 'Request failed'); })();
   }

@@ -5,11 +5,12 @@
  * Handles channel CRUD, video management, and cache invalidation.
  */
 
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { readChannelsJSON, addChannelToJSON, deleteChannelFromJSON } = require('../utils/updateChannelsJSON');
+const { findChannelById, findOneChannel } = require('../utils/channelJSONReader');
 const cache = require('../utils/cache');
 const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
 const { addChecksum } = require('../utils/checksum');
-const { regenerateChannelsJSON } = require('../utils/generateJSON');
 const { getCachedPosition } = require('../utils/positionCalculator');
 
 const CACHE_TTL_CONFIG = CACHE_TTL || {
@@ -30,9 +31,9 @@ class ChannelService {
       return addChecksum(cached, 'channels');
     }
 
-    const channels = await Channel.find()
-      .select('name playlistStartEpoch items._id items.youtubeId items.title items.duration items.thumbnail')
-      .lean();
+    // Read from JSON (source of truth)
+    const jsonData = readChannelsJSON();
+    const channels = jsonData.channels || [];
     
     const minimizedChannels = minimizeChannels(channels);
     await cache.set(cacheKey, minimizedChannels, CACHE_TTL_CONFIG.CHANNELS_LIST);
@@ -55,7 +56,8 @@ class ChannelService {
       return addChecksum(cached, 'channels');
     }
 
-    const channel = await Channel.findById(channelId).lean();
+    // Read from JSON (source of truth)
+    const channel = await findChannelById(channelId);
     if (!channel) {
       throw new Error('Channel not found');
     }
@@ -74,7 +76,8 @@ class ChannelService {
    * @throws {Error} If channel not found
    */
   async getCurrentPosition(channelId, request) {
-    const channel = await Channel.findById(channelId).lean();
+    // Read from JSON (source of truth)
+    const channel = await findChannelById(channelId);
     if (!channel) {
       throw new Error('Channel not found');
     }
@@ -101,17 +104,7 @@ class ChannelService {
     await cache.delete('ch:all');
   }
 
-  /**
-   * Regenerate channels.json after channel mutations
-   */
-  async regenerateStaticJSON() {
-    try {
-      await regenerateChannelsJSON();
-    } catch (error) {
-      console.error('[ChannelService] Failed to regenerate JSON:', error);
-      // Don't throw - regeneration failure shouldn't break the operation
-    }
-  }
+  // regenerateStaticJSON removed - JSON is now the source of truth, no regeneration needed
 
   /**
    * Create a new channel
@@ -121,22 +114,19 @@ class ChannelService {
    * @throws {Error} If channel name already exists
    */
   async createChannel(name, playlistStartEpoch = null) {
-    const existingChannel = await Channel.findOne({ name });
+    // Check if channel already exists
+    const existingChannel = await findOneChannel({ name });
     if (existingChannel) {
       throw new Error('Channel already exists');
     }
 
-    const channel = await Channel.create({ 
-      name, 
-      playlistStartEpoch: playlistStartEpoch || new Date('2020-01-01T00:00:00Z')
-    });
+    // Create channel in JSON (source of truth)
+    const channel = addChannelToJSON(name, playlistStartEpoch);
 
     const minimized = minimizeChannel(channel);
     const channelHash = channel._id.toString().substring(18, 24);
     await cache.set(`ch:${channelHash}`, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
     await this.invalidateCache();
-
-    await this.regenerateStaticJSON();
 
     return channel;
   }
@@ -148,7 +138,8 @@ class ChannelService {
    * @throws {Error} If channel not found
    */
   async deleteChannel(channelId) {
-    const channel = await Channel.findByIdAndDelete(channelId);
+    // Delete channel from JSON (source of truth)
+    const channel = deleteChannelFromJSON(channelId);
     if (!channel) {
       throw new Error('Channel not found');
     }
@@ -156,8 +147,6 @@ class ChannelService {
     const channelHash = channelId.toString().substring(18, 24);
     await cache.delete(`ch:${channelHash}`);
     await this.invalidateCache();
-
-    await this.regenerateStaticJSON();
 
     return channel;
   }

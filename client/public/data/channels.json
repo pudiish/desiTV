@@ -1,6 +1,6 @@
 {
-  "version": 1768620202250,
-  "generatedAt": "2026-01-17T03:23:22.250Z",
+  "version": 1768856938112,
+  "generatedAt": "2026-01-19T21:08:58.112Z",
   "channels": [
     {
       "_id": "6952f1ffaa49c9ad4f12c295",
@@ -1032,6 +1032,24 @@
             "Kabhi"
           ],
           "category": "Retro Gold"
+        },
+        {
+          "_id": "696e897041f8761401c7ec9a",
+          "title": "LYRICAL: Badey Dilwala Song |  Tees Maar Khan | Katrina Kaif, Akshay Kumar",
+          "youtubeId": "uNWvoE6LBkE",
+          "duration": 311,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "30e9963e28a9c92e5c3ab9f9",
+          "title": "\"Zaraa Dil Ko Thaam Lo (Full Song) DON2\" | Shahrukh Khan | Lara Dutta | Shankar Ehsaan Loy",
+          "youtubeId": "Cm0bRl9L7iA",
+          "duration": 308,
+          "year": 2026,
+          "tags": [],
+          "category": null
         }
       ]
     },
@@ -1231,6 +1249,132 @@
           "category": null
         }
       ]
+    },
+    {
+      "_id": "696e8ad5129c888c32b3f20d",
+      "name": "bollywood chaska",
+      "playlistStartEpoch": "2020-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "_id": "696e8b17129c888c32b3f27e",
+          "title": "Sawan Mein Lag Gayi Aag - Ginny Weds Sunny | Yami, Vikrant | Mika, Neha & Badshah | Payal D, Mohsin",
+          "youtubeId": "7iAmXLrLizM",
+          "duration": 176,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "696e8b2e129c888c32b3f2ef",
+          "title": "Shararat | Dhurandhar | Ranveer, Aditya Dhar, Shashwat, Jasmine, Madhubanti, Ayesha, Krystle",
+          "youtubeId": "YyepU5ztLf4",
+          "duration": 229,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "696e8b37129c888c32b3f360",
+          "title": "OFFICIAL: 'Nonsense Ki Night' FULL VIDEO Song | Happy New Year | Shah Rukh Khan | Mika Singh",
+          "youtubeId": "llZasorsis8",
+          "duration": 157,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "36bc4c3d386613e220235771",
+          "title": "Mera Naam Mary Best Video - Brothers|Kareena Kapoor, Sidharth Malhotra|Chinmayi Sripada",
+          "youtubeId": "uUM87Kji6V4",
+          "duration": 139,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "4b734763a45eefbb81b57397",
+          "title": "Laung Da Lashkara (Patiala House) Full Song | Feat. Akshay Kumar, Anushka Sharma",
+          "youtubeId": "hArZnPWxb4A",
+          "duration": 171,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "175fbd8cf51dcfa0d92ab374",
+          "title": "Character Dheela (Full Song) | Ready I Salman Khan I Zarine Khan | Pritam | Neeraj Shridhar",
+          "youtubeId": "ruEQPQX90fI",
+          "duration": 218,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "85efb834f673476f1c21d769",
+          "title": "\"Anarkali Disco Chali Song Housefull 2\" | Malaika Arora Khan",
+          "youtubeId": "ZGlwjFJExPQ",
+          "duration": 139,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "bf7ab169e2b8f377d6ada190",
+          "title": "Tujhe Aksa Beach Ghuma Doon -Video Song | God Tussi Great Ho|Salman Khan,Priyanka Chopra,Sohail Khan",
+          "youtubeId": "gBbrchxR0GM",
+          "duration": 218,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        },
+        {
+          "_id": "666aef481696c3cd6dd85e0d",
+          "title": "Duniya Haseeno Ka Mela | Gupt (1997) | Udit Narayan, Sunita Rao | Bobby Deol, Manisha | 90s Hit Song",
+          "youtubeId": "bnmgfpZuD-I",
+          "duration": 366,
+          "year": 2026,
+          "tags": [],
+          "category": null
+        }
+      ],
+      "timeBasedPlaylists": {
+        "morning": [],
+        "lateMorning": [],
+        "afternoon": [],
+        "evening": [],
+        "primeTime": [],
+        "night": [],
+        "lateNight": []
+      },
+      "dayBasedPlaylists": {
+        "weekday": {
+          "morning": [],
+          "lateMorning": [],
+          "afternoon": [],
+          "evening": [],
+          "primeTime": [],
+          "night": [],
+          "lateNight": []
+        },
+        "saturday": {
+          "morning": [],
+          "lateMorning": [],
+          "afternoon": [],
+          "evening": [],
+          "primeTime": [],
+          "night": [],
+          "lateNight": []
+        },
+        "sunday": {
+          "morning": [],
+          "lateMorning": [],
+          "afternoon": [],
+          "evening": [],
+          "primeTime": [],
+          "night": [],
+          "lateNight": []
+        }
+      }
     }
   ]
 }

@@ -14,8 +14,9 @@
  * 4. Client computes position locally using epochMs
  */
 
-const GlobalEpoch = require('../models/GlobalEpoch');
-const Channel = require('../models/Channel');
+// MongoDB removed - using JSON instead
+const { getOrCreate: getGlobalEpoch } = require('./globalEpochJSON');
+const { findChannels } = require('./channelJSONReader');
 
 // 24 hours in milliseconds
 const MANIFEST_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -29,11 +30,11 @@ async function generateFullManifest() {
   const startTime = Date.now();
 
   // Get global epoch
-  const globalEpoch = await GlobalEpoch.getOrCreate();
+  const globalEpoch = await getGlobalEpoch();
   const epochMs = new Date(globalEpoch.epoch).getTime();
 
-  // Get all channels
-  const channels = await Channel.find({}).lean();
+  // Get all channels from JSON
+  const channels = await findChannels({});
 
   // Build manifest for each channel
   const categories = {};
@@ -117,9 +118,9 @@ async function generateFullManifest() {
  * Only essential data for position calculation
  */
 async function generateLightManifest() {
-  const globalEpoch = await GlobalEpoch.getOrCreate();
+  const globalEpoch = await getGlobalEpoch();
   const epochMs = new Date(globalEpoch.epoch).getTime();
-  const channels = await Channel.find({}).lean();
+  const channels = await findChannels({});
 
   const categories = {};
 
