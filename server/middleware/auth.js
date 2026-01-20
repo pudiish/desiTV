@@ -13,27 +13,36 @@ try {
   if (admin.apps.length === 0) {
     // Check for service account credentials
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      // Production: Use service account from environment variable (JSON string)
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: 'desitv-81d8d'
-      });
-      console.log('[Auth] Firebase Admin SDK ready (service account)');
+      try {
+        // Production: Use service account from environment variable (JSON string)
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: 'desitv-81d8d'
+        });
+        console.log('[Auth] ✅ Firebase Admin SDK ready (service account)');
+        console.log(`[Auth]    Project: ${serviceAccount.project_id}`);
+        console.log(`[Auth]    Email: ${serviceAccount.client_email}`);
+      } catch (parseErr) {
+        console.error('[Auth] ❌ Failed to parse FIREBASE_SERVICE_ACCOUNT:', parseErr.message);
+        throw parseErr;
+      }
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       // Alternative: Use GOOGLE_APPLICATION_CREDENTIALS file path
       admin.initializeApp({ projectId: 'desitv-81d8d' });
-      console.log('[Auth] Firebase Admin SDK ready (credentials file)');
+      console.log('[Auth] ✅ Firebase Admin SDK ready (credentials file)');
     } else {
       // Development: Initialize without credentials (limited functionality)
       admin.initializeApp({ projectId: 'desitv-81d8d' });
-      console.log('[Auth] Firebase Admin SDK ready (dev mode - limited)');
+      console.log('[Auth] ⚠️  Firebase Admin SDK ready (dev mode - limited)');
+      console.log('[Auth]    Set FIREBASE_SERVICE_ACCOUNT for full functionality');
     }
   }
   firebaseAuth = admin.auth();
 } catch (err) {
-  console.warn('[Auth] Firebase Admin SDK not available:', err.message);
-  console.log('[Auth] Falling back to JWT-only authentication');
+  console.warn('[Auth] ❌ Firebase Admin SDK not available:', err.message);
+  console.log('[Auth] ℹ️  Falling back to JWT-only authentication');
+  console.log('[Auth] ℹ️  To use Firebase, set FIREBASE_SERVICE_ACCOUNT environment variable');
 }
 
 /**
@@ -88,6 +97,9 @@ const requireAuth = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader) {
+      if (process.env.DEBUG_AUTH) {
+        console.log('[Auth] No authorization header provided');
+      }
       return res.status(401).json({ 
         error: 'Authentication required',
         message: 'No authorization header provided'
@@ -100,14 +112,26 @@ const requireAuth = async (req, res, next) => {
       : authHeader;
     
     if (!token) {
+      if (process.env.DEBUG_AUTH) {
+        console.log('[Auth] Authorization header present but no token');
+      }
       return res.status(401).json({ 
         error: 'Authentication required',
         message: 'No token provided'
       });
     }
     
+    if (process.env.DEBUG_AUTH) {
+      console.log('[Auth] Token received, length:', token.length);
+      console.log('[Auth] Firebase Auth available:', !!firebaseAuth);
+    }
+    
     // Try Firebase token first
     let admin = await verifyFirebaseToken(token);
+    
+    if (process.env.DEBUG_AUTH && !admin) {
+      console.log('[Auth] Firebase verification failed, trying JWT fallback');
+    }
     
     // Fall back to legacy JWT
     if (!admin) {
@@ -115,6 +139,9 @@ const requireAuth = async (req, res, next) => {
     }
     
     if (!admin) {
+      console.error('[Auth] Token verification failed - both Firebase and JWT failed');
+      console.error('[Auth] Firebase SDK:', firebaseAuth ? 'available' : 'NOT available');
+      console.error('[Auth] JWT_SECRET:', process.env.JWT_SECRET ? 'set' : 'NOT set');
       return res.status(401).json({ 
         error: 'Invalid token',
         message: 'Authentication failed'
@@ -125,13 +152,14 @@ const requireAuth = async (req, res, next) => {
     req.admin = admin;
     
     // Log admin action (for audit)
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[Auth] ${admin.provider === 'firebase' ? '🔥' : '🔑'} "${admin.username}" accessed ${req.method} ${req.path}`);
-    }
+    console.log(`[Auth] ${admin.provider === 'firebase' ? '🔥' : '🔑'} "${admin.username}" accessed ${req.method} ${req.path}`);
     
     next();
   } catch (err) {
     console.error('[Auth] Verification error:', err.message);
+    if (process.env.DEBUG_AUTH) {
+      console.error('[Auth] Full error:', err);
+    }
     return res.status(401).json({ 
       error: 'Authentication failed',
       message: 'Invalid or malformed token'
