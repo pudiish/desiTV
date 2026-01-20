@@ -36,7 +36,7 @@ class EnhancedVJCore {
     }
   }
 
-  async processMessage(message, userId = 'anonymous', channelId = null) {
+  async processMessage(message, userId = 'anonymous', channelId = null, clientContext = null) {
     const blockCheck = this.detectIfBlocked(message);
     if (blockCheck.blocked) {
       return {
@@ -47,7 +47,24 @@ class EnhancedVJCore {
     }
 
     try {
-      const context = await this.contextManager.buildContext(userId, channelId, message);
+      // Build server context (for user memory, etc)
+      const serverContext = await this.contextManager.buildContext(userId, channelId, message);
+      
+      // MERGE: Client context is SOURCE OF TRUTH for playback state
+      // Server context provides user memory and preferences
+      const context = {
+        ...serverContext,
+        // Client context overrides for playback info
+        clientContext: clientContext || {},
+        currentVideo: clientContext?.currentVideo || null,
+        currentChannel: clientContext?.currentChannel || null,
+        nextVideo: clientContext?.nextVideo || null,
+        currentVideoIndex: clientContext?.currentVideoIndex ?? 0,
+        totalVideos: clientContext?.totalVideos ?? 0,
+        mode: clientContext?.mode || 'live',
+        isPlaying: clientContext?.isPlaying ?? false
+      };
+      
       const detectedIntent = this.intentDetector.detect(message);
       
       if (!detectedIntent) {
@@ -535,19 +552,40 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
   }
 
   async handleGetNowPlaying(context) {
-    const song = context.playerContext?.currentSong;
+    // Use CLIENT CONTEXT as source of truth - it knows what's actually playing on user's screen
+    const video = context.currentVideo;
+    const channel = context.currentChannel;
+    const mode = context.mode || 'live';
+    const isPlaying = context.isPlaying;
+    const videoIndex = context.currentVideoIndex ?? 0;
+    const totalVideos = context.totalVideos ?? 0;
     
-    if (!song || song.title === 'Unknown') {
-      // Return a fun response instead of "nothing playing"
+    console.log('[EnhancedVJCore] Now playing context:', { video, channel, mode, isPlaying });
+    
+    if (!video || !video.title) {
       return { 
-        response: '🎵 Currently vibing to the sound of silence! 🔇 Try searching for a song or pick a channel first!', 
+        response: '🎵 Nothing is playing right now! Try saying "play party songs" or pick a channel first! 📺', 
         action: null 
       };
     }
 
+    // Build detailed response
+    const title = video.title || 'Unknown';
+    const channelName = channel || 'DesiTV';
+    const position = totalVideos > 0 ? `(${videoIndex + 1}/${totalVideos})` : '';
+    const modeIcon = mode === 'live' ? '● LIVE' : mode === 'manual' ? '⏸️ Manual' : '🎬 External';
+    const playingStatus = isPlaying ? '▶️' : '⏸️';
+
     return {
-      response: `🎵 Now playing: **${song.title}** by ${song.artist}`,
-      action: { type: 'NOW_PLAYING', song },
+      response: `${playingStatus} **Now Playing:** "${title}"\n📺 Channel: ${channelName} ${position}\n${modeIcon}`,
+      action: { 
+        type: 'NOW_PLAYING', 
+        video: {
+          title: video.title,
+          videoId: video.youtubeId || video.id,
+          duration: video.duration
+        }
+      },
       intent: 'current_playing'
     };
   }

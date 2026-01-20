@@ -10,12 +10,15 @@ async function handleMessage(req, res) {
     // Get IP address
     const userIp = req.ip || req.connection.remoteAddress;
 
+    // CRITICAL: Pass client context to chatLogic
+    // Client context is the SOURCE OF TRUTH for what's playing
     const result = await chatLogic.processMessage({
       message,
       sessionId,
       userId,
       channelId: actualChannelId,
-      userIp
+      userIp,
+      clientContext: context // Pass the full client context
     });
 
     if (result.blocked) {

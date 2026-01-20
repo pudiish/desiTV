@@ -44,9 +44,10 @@ function cleanupConversations() {
  * @param {string} [params.userId] - User ID (Socket ID)
  * @param {string} [params.userIp] - User IP Address (for persistent memory)
  * @param {string} [params.channelId] - Channel ID
+ * @param {Object} [params.clientContext] - Client context (SOURCE OF TRUTH)
  * @returns {Promise<Object>} Response object
  */
-async function processMessage({ message, sessionId, userId, channelId, userIp }) {
+async function processMessage({ message, sessionId, userId, channelId, userIp, clientContext }) {
   if (!message || typeof message !== 'string') {
     throw new Error('Message is required');
   }
@@ -62,9 +63,10 @@ async function processMessage({ message, sessionId, userId, channelId, userIp })
   // Use IP as the persistent ID for VJ Core (memory), fallback to userId/sessionId
   const persistentId = userIp || userId || convId;
 
-  console.log('[ChatLogic] Processing:', { message, persistentId, channelId });
+  console.log('[ChatLogic] Processing:', { message, persistentId, channelId, hasClientContext: !!clientContext });
 
-  const result = await vj.processMessage(message, persistentId, channelId);
+  // Pass clientContext to VJ Core - it's the SOURCE OF TRUTH
+  const result = await vj.processMessage(message, persistentId, channelId, clientContext);
 
   if (result.blocked) {
     return { 
