@@ -633,19 +633,33 @@ async function searchYouTubeForSong(params = {}) {
       };
     }
 
-    // Format multiple results as clickable options
-    const options = ytResult.videos.slice(0, 3); // Top 3 results
+    // Build options message with all results
+    const options = ytResult.options || ytResult.videos.slice(0, 5);
     
-    let messageLines = [`🎵 Found on YouTube! Pick a song:\n`];
-    const optionButtons = options.map((video, idx) => {
-      const duration = video.durationFormatted || 'Unknown';
-      const label = `${video.title} - ${video.channel}`;
-      return `[${label}](play:${video.youtubeId})`;
-    }).join('\n');
+    let messageLines = [];
+    if (ytResult.aiPicked) {
+      messageLines.push(`✨ AI picked the best match:\n`);
+      messageLines.push(`🎵 [1️⃣ ${options[0].title}](play:${options[0].youtubeId}) • ${options[0].channel} • ${options[0].duration}\n`);
+      
+      if (options.length > 1) {
+        messageLines.push(`\n📋 Other options:\n`);
+        const otherOptions = options.slice(1).map((opt, idx) => {
+          return `[${idx + 2}️⃣ ${opt.title}](play:${opt.youtubeId}) • ${opt.channel} • ${opt.duration}`;
+        }).join('\n');
+        messageLines.push(otherOptions);
+      }
+    } else {
+      messageLines.push(`🎵 Found multiple videos! Pick one:\n`);
+      const allOptions = options.map((opt, idx) => {
+        const badge = idx === 0 ? '⭐' : (idx + 1);
+        return `[${badge} ${opt.title}](play:${opt.youtubeId}) • ${opt.channel} • ${opt.duration}`;
+      }).join('\n');
+      messageLines.push(allOptions);
+    }
     
-    const message = messageLines.join('') + optionButtons;
+    const message = messageLines.join('');
     
-    // Return first match for automatic action, but show all options in message
+    // Return first match for automatic action
     const firstVideo = options[0];
     return {
       success: true,
@@ -655,10 +669,10 @@ async function searchYouTubeForSong(params = {}) {
         youtubeId: firstVideo.youtubeId,
         channel: firstVideo.channel,
         thumbnail: firstVideo.thumbnail,
-        duration: firstVideo.durationFormatted
+        duration: firstVideo.duration
       },
       message,
-      videos: options, // All options for reference
+      options: options, // All options for user to click
       action: {
         type: 'PLAY_EXTERNAL',
         videoId: firstVideo.youtubeId,

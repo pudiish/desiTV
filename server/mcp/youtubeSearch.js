@@ -76,6 +76,18 @@ const OFFICIAL_CHANNELS = [
 ];
 
 /**
+ * Format duration in seconds to MM:SS format
+ * @param {number} seconds - Duration in seconds
+ * @returns {string} Formatted duration
+ */
+function formatDuration(seconds) {
+  if (!seconds) return 'Unknown';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
  * Generate a fake but valid YouTube ID for manual mode
  * When API key is not configured, we create IDs that can be used for playback
  * @param {string} query - Song query
@@ -329,13 +341,30 @@ Return ONLY the number (1-5) of the best result.`;
       };
     }
     
+    // Format results with duration for display
+    const formattedVideos = videos.map((v, idx) => ({
+      ...v,
+      durationFormatted: formatDuration(v.duration),
+      isAIPick: idx === 0 // First result is AI-picked
+    }));
+    
     return {
       success: true,
       found: true,
       query: searchQuery,
-      count: videos.length,
-      videos,
-      bestMatch: videos[0]
+      count: formattedVideos.length,
+      videos: formattedVideos,
+      bestMatch: formattedVideos[0],
+      aiPicked: true,
+      // Return top 5 as options for user to choose from
+      options: formattedVideos.slice(0, 5).map((v, idx) => ({
+        id: idx + 1,
+        title: v.title,
+        youtubeId: v.youtubeId,
+        channel: v.channel,
+        duration: v.durationFormatted,
+        isAIPick: v.isAIPick
+      }))
     };
     
   } catch (error) {
