@@ -350,34 +350,73 @@ const VJChat = ({
     return parts.length > 0 ? parts : text;
   };
 
+  // Parse option label to extract title, channel, duration
+  const parseOptionLabel = (label) => {
+    // Remove emoji prefixes and clean up
+    const cleanLabel = label.replace(/^[🎵📺🎯⭐✨1️⃣2️⃣3️⃣4️⃣5️⃣]*\s*/g, '').trim();
+    
+    // Try to extract parts: "Title • Channel • Duration" or "Title - Artist"
+    const bulletParts = cleanLabel.split(' • ');
+    if (bulletParts.length >= 2) {
+      return {
+        title: bulletParts[0].trim(),
+        channel: bulletParts[1]?.trim() || '',
+        duration: bulletParts[2]?.trim() || ''
+      };
+    }
+    
+    // Fallback: just use the whole label as title
+    return { title: cleanLabel, channel: '', duration: '' };
+  };
+
   const renderMessageContent = (content) => {
     const parts = parseMessageContent(content);
     
-    // Check if this message contains only options
+    // Check if this message contains options
+    const options = parts.filter(p => p.type === 'option');
+    const hasOptions = options.length > 0;
     const hasOnlyOptions = parts.every(p => p.type === 'option' || (p.type === 'text' && !p.content.trim()));
     
-    if (hasOnlyOptions) {
-      // Render as a clean options list
+    if (hasOnlyOptions && options.length > 0) {
+      // Render as clean options list with badges
       return (
         <div className="vj-options-list">
-          {parts.filter(p => p.type === 'option').map((part, idx) => (
-            <button
-              key={idx}
-              className="vj-msg-option"
-              onClick={() => {
-                const videoAction = {
-                  type: 'PLAY_EXTERNAL',
-                  videoId: part.videoId,
-                  videoTitle: part.label.replace(/^[🎵📺🎯]*\s*/, '')
-                };
-                executeAction(videoAction);
-                setInputValue('');
-              }}
-              title={part.label}
-            >
-              {part.label}
-            </button>
-          ))}
+          {options.map((part, idx) => {
+            const parsed = parseOptionLabel(part.label);
+            const isFirst = idx === 0;
+            
+            return (
+              <button
+                key={idx}
+                className="vj-msg-option"
+                onClick={() => {
+                  const videoAction = {
+                    type: 'PLAY_EXTERNAL',
+                    videoId: part.videoId,
+                    videoTitle: parsed.title
+                  };
+                  executeAction(videoAction);
+                  setInputValue('');
+                  // Add confirmation message
+                  setMessages(prev => [...prev, { 
+                    role: 'assistant', 
+                    content: `▶️ Playing: **${parsed.title}**` 
+                  }]);
+                }}
+                title={`Play: ${parsed.title}`}
+              >
+                <div className="vj-option-info">
+                  <span className="vj-option-title">{parsed.title}</span>
+                  {(parsed.channel || parsed.duration) && (
+                    <span className="vj-option-meta">
+                      {parsed.channel}{parsed.channel && parsed.duration ? ' • ' : ''}{parsed.duration}
+                    </span>
+                  )}
+                </div>
+                {isFirst && <span className="vj-option-badge">Best</span>}
+              </button>
+            );
+          })}
         </div>
       );
     }
@@ -397,30 +436,43 @@ const VJChat = ({
           </div>
         );
       } else if (part.type === 'option') {
+        const parsed = parseOptionLabel(part.label);
+        
         return (
           <button
             key={idx}
             className="vj-msg-option"
             onClick={() => {
-              // Extract video data from label if it contains it
               const videoAction = {
                 type: 'PLAY_EXTERNAL',
                 videoId: part.videoId,
-                videoTitle: part.label.replace(/^[🎵📺🎯]*\s*/, '') // Remove emoji prefix
+                videoTitle: parsed.title
               };
               executeAction(videoAction);
               setInputValue('');
             }}
-            title={`Play: ${part.label}`}
+            title={`Play: ${parsed.title}`}
           >
-            {part.label}
+            <div className="vj-option-info">
+              <span className="vj-option-title">{parsed.title}</span>
+              {(parsed.channel || parsed.duration) && (
+                <span className="vj-option-meta">
+                  {parsed.channel}{parsed.channel && parsed.duration ? ' • ' : ''}{parsed.duration}
+                </span>
+              )}
+            </div>
           </button>
         );
       }
+      return null;
     });
   };
 
   if (!isVisible) return null;
+
+  // Get current video title for Now Playing banner
+  const nowPlayingTitle = currentVideo?.title || null;
+  const nowPlayingChannel = currentChannel || 'DesiTV';
 
   return (
     <div className={`vj-chat-container ${isOpen ? 'open' : ''}`}>
@@ -433,7 +485,7 @@ const VJChat = ({
               <span className="vj-avatar">{DesiAgent.avatar}</span>
               <div className="vj-header-text">
                 <span className="vj-title">{DesiAgent.name}</span>
-                <span className="vj-status">● LIVE</span>
+                <span className="vj-status">LIVE</span>
               </div>
             </div>
             <button 
@@ -444,6 +496,17 @@ const VJChat = ({
               ✕
             </button>
           </div>
+          
+          {/* Now Playing Banner */}
+          {nowPlayingTitle && (
+            <div className="vj-now-playing">
+              <span className="vj-now-playing-icon">🎵</span>
+              <div className="vj-now-playing-text">
+                <div className="vj-now-playing-label">Now Playing on {nowPlayingChannel}</div>
+                <div className="vj-now-playing-title">{nowPlayingTitle}</div>
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="vj-chat-messages">
