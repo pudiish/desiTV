@@ -169,30 +169,56 @@ async function searchYouTube(query, options = {}) {
   const hasSpecialRequest = preferences.wantsCover || preferences.wantsKaraoke || 
                             preferences.wantsFanmade || preferences.wantsRemix;
   
-  // Manual mode: Generate a valid YouTube ID for the song
+  // Manual mode: Use popular Bollywood/Desi songs as fallback
   if (MANUAL_MODE) {
-    console.log('[YouTubeSearch] MANUAL MODE: Generating YouTube ID for manual playback');
-    // Create a fake but valid YouTube ID from the query
-    const fakeYouTubeId = generateFakeYouTubeId(query);
-    const videos = [{
-      youtubeId: fakeYouTubeId,
-      title: query,
-      description: 'Manual playback mode - click to play',
-      thumbnail: 'https://img.youtube.com/vi/' + fakeYouTubeId + '/hqdefault.jpg',
-      channel: 'Manual Selection',
-      publishedAt: new Date().toISOString(),
-      duration: 240, // 4 minutes default
-      officialScore: 100
-    }];
+    console.log('[YouTubeSearch] MANUAL MODE: Providing fallback song for manual playback');
     
+    // Fallback list of popular songs with real YouTube IDs
+    const fallbackSongs = {
+      'tum se hi': { id: 'VvzAMpLYvw0', title: 'Tum Se Hi - Jab We Met', channel: 'T-Series' },
+      'baarish': { id: '5ycBbMnxg5g', title: 'Barish Ban Jaana - Kiara Advani', channel: 'T-Series' },
+      'shayad': { id: 'OPf0yXFdHkU', title: 'Shayad - Love Aaj Kal', channel: 'T-Series' },
+      'raabta': { id: 'eJM_0-yiFsU', title: 'Raabta - Agent Vinod', channel: 'T-Series' },
+      'ae dil hai mushkil': { id: 'BOqhXjL93Zk', title: 'Ae Dil Hai Mushkil - ADHM', channel: 'T-Series' },
+    };
+    
+    // Check if query matches any fallback song
+    const queryLower = query.toLowerCase();
+    for (const [key, value] of Object.entries(fallbackSongs)) {
+      if (queryLower.includes(key)) {
+        return {
+          success: true,
+          found: true,
+          query: query,
+          count: 1,
+          videos: [{
+            youtubeId: value.id,
+            title: value.title,
+            description: 'Manual mode - Playing from fallback catalog',
+            thumbnail: `https://img.youtube.com/vi/${value.id}/hqdefault.jpg`,
+            channel: value.channel,
+            publishedAt: new Date().toISOString(),
+            duration: 240,
+            officialScore: 100
+          }],
+          bestMatch: {
+            youtubeId: value.id,
+            title: value.title,
+            channel: value.channel,
+            thumbnail: `https://img.youtube.com/vi/${value.id}/hqdefault.jpg`,
+          },
+          manual: true
+        };
+      }
+    }
+    
+    // If song not in fallback list, return error with suggestion
     return {
-      success: true,
-      found: true,
-      query: query,
-      count: 1,
-      videos,
-      bestMatch: videos[0],
-      manual: true
+      success: false,
+      found: false,
+      error: 'Song not in fallback catalog',
+      message: `📝 Manual mode: Try these songs:\n• Tum Se Hi\n• Baarish\n• Shayad\n• Raabta\n• Ae Dil Hai Mushkil`,
+      query: query
     };
   }
   
