@@ -15,8 +15,6 @@
 const Channel = require('../models/Channel');
 const cache = require('../utils/cache');
 const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
-const { addChecksum } = require('../utils/checksum');
-const crypto = require('crypto');
 
 // Cache configuration
 const CACHE_TTL_CONFIG = CACHE_TTL || {
@@ -75,16 +73,17 @@ class ChannelDataService {
 
   /**
    * Get all channels - cached
-   * @returns {Promise<Object>} Channels with version and checksum
+   * @returns {Promise<Object>} Channels array with version metadata
    */
   async getAllChannels() {
     // L1: In-memory cache (fastest)
     if (channelsCache && Date.now() < cacheExpiry) {
-      return addChecksum({
+      // Return flat structure for backward compatibility
+      return {
         version: currentVersion,
         generatedAt: new Date(currentVersion).toISOString(),
         data: channelsCache
-      }, 'channels');
+      };
     }
 
     // L2: Redis/external cache
@@ -93,11 +92,11 @@ class ChannelDataService {
     if (cached) {
       channelsCache = cached;
       cacheExpiry = Date.now() + (CACHE_TTL_CONFIG.CHANNELS_LIST * 1000);
-      return addChecksum({
+      return {
         version: currentVersion,
         generatedAt: new Date(currentVersion).toISOString(),
         data: cached
-      }, 'channels');
+      };
     }
 
     // L3: MongoDB (source of truth)
@@ -112,17 +111,17 @@ class ChannelDataService {
     channelsCache = minimized;
     cacheExpiry = Date.now() + (CACHE_TTL_CONFIG.CHANNELS_LIST * 1000);
 
-    return addChecksum({
+    return {
       version: currentVersion,
       generatedAt: new Date(currentVersion).toISOString(),
       data: minimized
-    }, 'channels');
+    };
   }
 
   /**
    * Get single channel by ID - cached
    * @param {string} channelId - Channel ID
-   * @returns {Promise<Object>} Channel with checksum
+   * @returns {Promise<Object>} Channel data
    */
   async getChannelById(channelId) {
     const channelHash = channelId.toString().substring(18, 24);
@@ -131,7 +130,7 @@ class ChannelDataService {
     // Check cache first
     const cached = await cache.get(cacheKey);
     if (cached) {
-      return addChecksum(cached, 'channels');
+      return { data: cached };
     }
 
     // Fetch from MongoDB
@@ -143,7 +142,7 @@ class ChannelDataService {
     const minimized = minimizeChannel(channel);
     await cache.set(cacheKey, minimized, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
 
-    return addChecksum(minimized, 'channels');
+    return { data: minimized };
   }
 
   /**
