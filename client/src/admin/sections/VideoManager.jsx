@@ -142,10 +142,18 @@ export default function VideoManager({ getAuthHeaders }) {
 			setSelectedChannel(data._id)
 			setNewChannelName('')
 			setShowAddChannel(false)
-			setMessage({ type: 'success', text: '✅ Category created!' })
-			
-			// Sync the new (empty) channel state
-			syncBroadcastState(data._id)
+		setMessage({ type: 'success', text: '✅ Category created!' })
+		
+		// Sync the new (empty) channel state
+		syncBroadcastState(data._id)
+		
+		// Trigger TV client update to show new channel
+		setTimeout(() => {
+			if (typeof window !== 'undefined') {
+				console.log('[VideoManager] Triggering channelsUpdated event for new channel')
+				window.dispatchEvent(new CustomEvent('channelsUpdated'))
+			}
+		}, 500)
 		} catch (err) {
 			setMessage({ type: 'error', text: `❌ ${err.message}` })
 		} finally {

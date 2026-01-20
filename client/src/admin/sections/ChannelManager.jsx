@@ -231,15 +231,23 @@ function ChannelManagerContent({ getAuthHeaders, isAuthenticated }) {
 				body: JSON.stringify({ name: newChannelName.trim() })
 			})
 
-			const data = await response.json()
-			if (response.ok) {
-				setChannels([...channels, data])
-				setNewChannelName('')
-				setShowAddChannel(false)
-				setError(null)
-			} else {
-				setError(data.message || 'Failed to create category')
-			}
+		const data = await response.json()
+		if (response.ok) {
+			setChannels([...channels, data])
+			setNewChannelName('')
+			setShowAddChannel(false)
+			setError(null)
+			
+			// Trigger TV client update to show new channel
+			setTimeout(() => {
+				if (typeof window !== 'undefined') {
+					console.log('[ChannelManager] Triggering channelsUpdated event for new channel')
+					window.dispatchEvent(new CustomEvent('channelsUpdated'))
+				}
+			}, 500)
+		} else {
+			setError(data.message || 'Failed to create category')
+		}
 		} catch (err) {
 			setError(err.message)
 		} finally {
