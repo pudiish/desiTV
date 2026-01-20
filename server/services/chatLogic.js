@@ -1,17 +1,23 @@
-const EnhancedVJCore = require('../mcp/enhancedVJCore');
-const userMemory = require('../mcp/userMemory');
 const broadcastStateService = require('../services/broadcastStateService');
 
 const conversations = new Map();
 const CONVERSATION_TTL = 30 * 60 * 1000; // 30 minutes
 
-let vjCore = null;
+// Simple chat responses (VJ Core removed)
+const basicResponses = {
+  hello: "👋 Hey there! What's up?",
+  hi: "👋 Hey! How can I help?",
+  help: "📚 I can help with music info, channel details, and more!",
+  channels: "🎵 You can browse all the latest channels and playlists!",
+  default: "🎵 That's interesting! Tell me more about what you'd like to know."
+};
 
-async function initVJCore() {
-  if (!vjCore) {
-    vjCore = new EnhancedVJCore(userMemory, broadcastStateService);
+function getBasicResponse(message) {
+  const lower = message.toLowerCase();
+  for (const [key, response] of Object.entries(basicResponses)) {
+    if (lower.includes(key)) return response;
   }
-  return vjCore;
+  return basicResponses.default;
 }
 
 /**
@@ -55,27 +61,13 @@ async function processMessage({ message, sessionId, userId, channelId, userIp })
     throw new Error('Message too long');
   }
 
-  const vj = await initVJCore();
   const convId = sessionId || generateSessionId();
   let history = conversations.get(convId) || [];
 
-  // Use IP as the persistent ID for VJ Core (memory), fallback to userId/sessionId
-  const persistentId = userIp || userId || convId;
+  console.log('[ChatLogic] Processing:', { message, userId, channelId });
 
-  console.log('[ChatLogic] Processing:', { message, persistentId, channelId });
-
-  const result = await vj.processMessage(message, persistentId, channelId);
-
-  if (result.blocked) {
-    return { 
-      response: result.response, 
-      blocked: true,
-      sessionId: convId 
-    };
-  }
-
-  let response = result.response;
-  const action = result.action || null;
+  // Use basic response (VJ Core removed)
+  const response = getBasicResponse(message);
 
   history.push({ role: 'user', content: message });
   history.push({ role: 'assistant', content: response });
@@ -93,7 +85,7 @@ async function processMessage({ message, sessionId, userId, channelId, userIp })
   return {
     response,
     sessionId: convId,
-    action
+    action: null
   };
 }
 
