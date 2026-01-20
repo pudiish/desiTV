@@ -12,24 +12,41 @@ let pollInterval = null
 let lastVersion = null
 
 /**
- * Check if channels.json has been updated
+ * Check if channels have been updated
+ * In production, fetch from API instead of static file to avoid caching issues
  */
 async function checkForUpdates() {
   try {
-    const response = await fetch('/data/channels.json?t=' + Date.now(), {
-      cache: 'no-cache'
+    // Determine API base - use window location in production, fallback to localhost in dev
+    const apiBase = import.meta.env.VITE_API_BASE || (() => {
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        return `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`
+      }
+      return 'http://localhost:5000'
+    })()
+    
+    const response = await fetch(`${apiBase}/api/channels?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'pragma': 'no-cache' }
     })
     
-    if (!response.ok) return
+    if (!response.ok) {
+      console.debug('[ChannelSync] API call failed:', response.status)
+      return
+    }
     
     const data = await response.json()
-    const currentVersion = data.version || data.generatedAt
+    const responseData = data.data || data
+    const currentVersion = responseData.version || responseData.generatedAt
     
-    if (!currentVersion) return
+    if (!currentVersion) {
+      console.debug('[ChannelSync] No version info in response')
+      return
+    }
     
     // If version changed, reload channels
     if (lastVersion && lastVersion !== currentVersion) {
-      console.log('[ChannelSync] Channels updated, reloading...')
+      console.log('[ChannelSync] Channels updated (v' + currentVersion + '), reloading...')
       await channelManager.reload()
       lastVersion = currentVersion
       
@@ -40,9 +57,9 @@ async function checkForUpdates() {
     } else if (!lastVersion) {
       // First load - just store version
       lastVersion = currentVersion
+      console.log('[ChannelSync] Initial version:', currentVersion)
     }
   } catch (err) {
-    // Silent fail - don't spam console
     console.debug('[ChannelSync] Check failed:', err.message)
   }
 }

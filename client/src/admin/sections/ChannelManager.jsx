@@ -182,11 +182,24 @@ function ChannelManagerContent({ getAuthHeaders, isAuthenticated }) {
 			// Refresh channels list
 			fetchChannels()
 			
-			// ROAST: "Syncing manually because the backend is asleep at the wheel."
+		// Sync broadcast state and notify TV client
+		try {
 			await syncBroadcastState(channelId)
-			
-			// Clear error on success
-			setError(null)
+		} catch (syncErr) {
+			console.error('[ChannelManager] Failed to sync broadcast state:', syncErr)
+		}
+		
+		// Manually trigger channels update event for TV client
+		// This ensures the TV immediately sees the video removal
+		setTimeout(() => {
+			if (typeof window !== 'undefined') {
+				console.log('[ChannelManager] Triggering channelsUpdated event for TV client')
+				window.dispatchEvent(new CustomEvent('channelsUpdated'))
+			}
+		}, 500)
+		
+		// Clear error on success
+		setError(null)
 		} catch (err) {
 			// Log error but don't crash - admin errors should be isolated
 			console.error('[ChannelManager] Delete video error:', err)

@@ -264,12 +264,26 @@ export default function VideoManager({ getAuthHeaders }) {
 			// Use apiClient which handles CSRF tokens automatically
 			await apiClientV2.post(`/api/channels/${selectedChannel}/videos`, payload)
 			
-			setMessage({ type: 'success', text: '✅ Video added successfully!' })
-			
-			// ROAST: "Triggering the manual sync because the backend forgot to."
+		setMessage({ type: 'success', text: '✅ Video added successfully!' })
+		
+		// Trigger sync and notify TV client
+		try {
+			// Update broadcast state for admin portal
 			await syncBroadcastState(selectedChannel)
+		} catch (syncErr) {
+			console.error('[VideoManager] Failed to sync broadcast state:', syncErr)
+		}
+		
+		// Manually trigger channels update event for TV client
+		// This ensures the TV immediately sees the new video
+		setTimeout(() => {
+			if (typeof window !== 'undefined') {
+				console.log('[VideoManager] Triggering channelsUpdated event for TV client')
+				window.dispatchEvent(new CustomEvent('channelsUpdated'))
+			}
+		}, 500)
 
-			setTimeout(() => {
+		setTimeout(() => {
 				setYoutubeInput('')
 				setVideoId('')
 				setYtPreview(null)
