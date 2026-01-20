@@ -1,12 +1,10 @@
 /**
- * Socket.io Server Setup - Chat Only
- * 
- * NOTE: Live state sync removed - clients calculate position locally.
- * Socket.io is now used ONLY for chat functionality.
+ * Socket.io Server Setup - Chat + Real-Time Channel Updates
  * 
  * Features:
  * - Chat message handling
  * - Chat suggestions
+ * - Real-time channel updates (pushed on data changes)
  */
 
 const { Server } = require('socket.io');
@@ -34,7 +32,33 @@ function initializeSocket(httpServer, corsOptions) {
   io.on('connection', (socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
 
-    // --- Chat Events Only ---
+    // --- Channel Events ---
+    
+    // Client requests current data version
+    socket.on('channels:getVersion', (callback) => {
+      try {
+        const ChannelDataService = require('../services/ChannelDataService');
+        const version = ChannelDataService.getVersion();
+        if (callback) callback({ success: true, version });
+      } catch (error) {
+        if (callback) callback({ success: false, error: error.message });
+      }
+    });
+
+    // Client subscribes to channel updates
+    socket.on('channels:subscribe', (callback) => {
+      socket.join('channels');
+      console.log(`[Socket] Client ${socket.id} subscribed to channel updates`);
+      if (callback) callback({ success: true });
+    });
+
+    // Client unsubscribes from channel updates
+    socket.on('channels:unsubscribe', (callback) => {
+      socket.leave('channels');
+      if (callback) callback({ success: true });
+    });
+
+    // --- Chat Events ---
 
     // Handle chat message
     socket.on('chat:message', async (data, callback) => {
@@ -87,15 +111,27 @@ function initializeSocket(httpServer, corsOptions) {
     });
   });
 
-  // Expose io for external use (chat only)
+  // Expose io for external use (channel updates + chat)
   global.io = io;
 
-  console.log('[Socket] WebSocket server initialized (chat only)');
+  console.log('[Socket] WebSocket server initialized (chat + channel updates)');
   return io;
 }
 
 /**
- * Get socket stats (chat connections only)
+ * Broadcast channel update to all subscribed clients
+ * Called by ChannelDataService when data changes
+ */
+function broadcastChannelUpdate(eventType, data) {
+  if (!global.io) return;
+  
+  // Emit to all clients in 'channels' room + all connected clients
+  global.io.emit(eventType, data);
+  console.log(`[Socket] Broadcasted ${eventType} to all clients`);
+}
+
+/**
+ * Get socket stats
  */
 function getSocketStats() {
   if (!global.io) {
@@ -106,7 +142,8 @@ function getSocketStats() {
   const sockets = global.io.sockets.sockets;
   return {
     totalConnections: sockets.size,
-    message: 'Chat connections only (sync removed)',
+    channelSubscribers: global.io.sockets.adapter.rooms.get('channels')?.size || 0,
+    message: 'Chat + channel updates active',
   };
 }
 
@@ -122,6 +159,7 @@ function shutdown() {
 
 module.exports = {
   initializeSocket,
+  broadcastChannelUpdate,
   getSocketStats,
   shutdown,
 };

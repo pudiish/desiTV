@@ -8,6 +8,8 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node seed.js",
+    "migrate": "node scripts/migrateToMongoDB.js",
+    "migrate:force": "node scripts/migrateToMongoDB.js --force",
     "reorganize": "node reorganize-channels.js",
     "fetch-metadata": "node scripts/fetch-video-metadata.js",
     "test": "jest",

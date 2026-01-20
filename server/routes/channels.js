@@ -1,148 +1,256 @@
+/**
+ * Channel Routes - MongoDB + Cache + WebSocket Push
+ * 
+ * Architecture:
+ * - GET requests: Read from cache (fast) → MongoDB (cache miss)
+ * - POST/PUT/DELETE: Write to MongoDB → Invalidate cache → Push to clients
+ */
+
 const express = require('express');
 const router = express.Router();
-// MongoDB removed - using JSON directly
-const { readChannelsJSON } = require('../utils/updateChannelsJSON');
-const cache = require('../utils/cache');
 const { requireAuth } = require('../middleware/auth');
-const { 
-  addChannelToJSON, 
-  addVideoToChannelJSON, 
-  deleteVideoFromChannelJSON,
-  deleteChannelFromJSON,
-  syncJSONToMongoDB 
-} = require('../utils/updateChannelsJSON');
-const { selectPlaylistForTime, getCurrentTimeSlot, getTimeSlotName } = require('../utils/timeBasedPlaylist');
+const ChannelDataService = require('../services/ChannelDataService');
 const { getCachedPosition } = require('../utils/positionCalculator');
-const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
-const { addChecksum } = require('../utils/checksum');
 
-// Cache TTL constants (in seconds)
-const CACHE_TTL_CONFIG = CACHE_TTL || {
-  CHANNELS_LIST: 300,
-  CHANNEL_DETAIL: 600,
-  CURRENT_VIDEO: 5,
-};
+// ============================================
+// READ ENDPOINTS (Cached)
+// ============================================
 
-function computePseudoLive(items, startEpoch) {
-  if (!items || items.length === 0) return { item: null, offset: 0, index: -1 };
-  const durations = items.map(i => i.duration || 30);
-  const total = durations.reduce((a, b) => a + b, 0) || 1;
-  const start = new Date(startEpoch).getTime();
-  const now = Date.now();
-  const elapsedTotal = Math.floor((now - start) / 1000);
-  const elapsed = elapsedTotal % total;
-  let cum = 0;
-  for (let i = 0; i < items.length; i++) {
-    const d = items[i].duration || 30;
-    if (cum + d > elapsed) return { item: items[i], offset: elapsed - cum, index: i };
-    cum += d;
-  }
-  return { item: items[0], offset: 0, index: 0 };
-}
-
+/**
+ * GET /api/channels - Get all channels
+ * Served from cache, falls back to MongoDB
+ */
 router.get('/', async (req, res) => {
   try {
-    const cacheKey = 'ch:all';
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-      const response = addChecksum(cached, 'channels');
-      return res.json(response);
-    }
-
-    // Read from JSON file (source of truth)
-    const jsonData = readChannelsJSON();
-    if (!jsonData || !jsonData.channels) {
-      console.error('[Channels] Invalid JSON structure:', jsonData);
-      return res.status(500).json({ message: 'Invalid channels data structure' });
-    }
-
-    const channels = jsonData.channels || [];
-    if (!Array.isArray(channels)) {
-      console.error('[Channels] Channels is not an array:', typeof channels);
-      return res.status(500).json({ message: 'Channels data is not an array' });
-    }
-
-    const minimizedChannels = minimizeChannels(channels);
-    await cache.set(cacheKey, minimizedChannels, CACHE_TTL_CONFIG.CHANNELS_LIST);
-    
-    const response = addChecksum(minimizedChannels, 'channels');
-    res.json(response);
+    const result = await ChannelDataService.getAllChannels();
+    res.json(result);
   } catch (err) {
-    console.error('GET /api/channels error', err);
-    console.error('Error stack:', err.stack);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-router.get('/:id', async (req, res) => {
-  try {
-    const channelHash = req.params.id.toString().substring(18, 24);
-    const cacheKey = `ch:${channelHash}`;
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-      const response = addChecksum(cached, 'channels');
-      return res.json(response);
-    }
-
-    // Read from JSON file (source of truth)
-    const jsonData = readChannelsJSON();
-    const ch = jsonData.channels.find(c => c._id === req.params.id);
-    if (!ch) return res.status(404).json({ message: 'Channel not found' });
-    
-    const minimizedChannel = minimizeChannel(ch);
-    await cache.set(cacheKey, minimizedChannel, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
-    
-    const response = addChecksum(minimizedChannel, 'channels');
-    res.json(response);
-  } catch (err) {
-    console.error('GET /api/channels/:id error', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.get('/:id/current', async (req, res) => {
-  try {
-    // Read from JSON file (source of truth)
-    const jsonData = readChannelsJSON();
-    const ch = jsonData.channels.find(c => c._id === req.params.id);
-    if (!ch) return res.status(404).json({ message: 'Channel not found' });
-    
-    const position = await getCachedPosition(ch, null, req);
-    
-    res.json({
-      ...position,
-      channelId: ch._id,
-      channelName: ch.name,
-    });
-  } catch (err) {
-    console.error('GET /api/channels/:id/current error', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-router.get('/:id/position', async (req, res) => {
-  try {
-    // Read from JSON file (source of truth)
-    const jsonData = readChannelsJSON();
-    const ch = jsonData.channels.find(c => c._id === req.params.id);
-    if (!ch) return res.status(404).json({ message: 'Channel not found' });
-    
-    const position = await getCachedPosition(ch, null, req);
-    
-    res.json({
-      ...position,
-      channelId: ch._id,
-      channelName: ch.name,
-    });
-  } catch (err) {
-    console.error('GET /api/channels/:id/position error', err);
+    console.error('GET /api/channels error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 /**
- * Bulk upload videos from file content
- * Formats: JSON array, CSV (url,title), or TXT (newline-separated YouTube URLs/IDs)
+ * GET /api/channels/:id - Get single channel
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await ChannelDataService.getChannelById(req.params.id);
+    res.json(result);
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    console.error('GET /api/channels/:id error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * GET /api/channels/:id/current - Get current video position
+ */
+router.get('/:id/current', async (req, res) => {
+  try {
+    const result = await ChannelDataService.getChannelById(req.params.id);
+    const channel = result.data || result;
+    
+    const position = await getCachedPosition(channel, null, req);
+    
+    res.json({
+      ...position,
+      channelId: channel._id,
+      channelName: channel.name,
+    });
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    console.error('GET /api/channels/:id/current error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+/**
+ * GET /api/channels/:id/position - Alias for /current
+ */
+router.get('/:id/position', async (req, res) => {
+  try {
+    const result = await ChannelDataService.getChannelById(req.params.id);
+    const channel = result.data || result;
+    
+    const position = await getCachedPosition(channel, null, req);
+    
+    res.json({
+      ...position,
+      channelId: channel._id,
+      channelName: channel.name,
+    });
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    console.error('GET /api/channels/:id/position error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+/**
+ * GET /api/channels/admin/cache-stats - Get cache statistics
+ */
+router.get('/admin/cache-stats', requireAuth, async (req, res) => {
+  try {
+    const stats = await ChannelDataService.getStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ============================================
+// WRITE ENDPOINTS (MongoDB + Push)
+// ============================================
+
+/**
+ * POST /api/channels - Create new channel
+ */
+router.post('/', requireAuth, async (req, res) => {
+  try {
+    const { name, playlistStartEpoch } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: 'Missing name' });
+    }
+    
+    const channel = await ChannelDataService.createChannel(name, playlistStartEpoch);
+    res.json(channel);
+  } catch (err) {
+    if (err.message === 'Channel already exists') {
+      return res.status(400).json({ message: 'Channel already exists' });
+    }
+    console.error('POST /api/channels error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+/**
+ * POST /api/channels/:channelId/videos - Add video to channel
+ */
+router.post('/:channelId/videos', requireAuth, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const { title, youtubeId, duration, year, tags, category } = req.body;
+    
+    if (!youtubeId || !title) {
+      return res.status(400).json({ message: 'Missing youtubeId or title' });
+    }
+    
+    const channel = await ChannelDataService.addVideo(channelId, {
+      title,
+      youtubeId,
+      duration,
+      year,
+      tags,
+      category
+    });
+    
+    res.json(channel);
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    if (err.message === 'Video already exists in this channel') {
+      return res.status(400).json({ message: err.message });
+    }
+    console.error('POST /api/channels/:id/videos error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+/**
+ * POST /api/channels/:id/add-video - Alias for adding video
+ */
+router.post('/:id/add-video', requireAuth, async (req, res) => {
+  try {
+    const { title, youtubeId, duration } = req.body;
+    const channelId = req.params.id;
+
+    if (!youtubeId || !title) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: youtubeId, title' 
+      });
+    }
+
+    const channel = await ChannelDataService.addVideo(channelId, {
+      title,
+      youtubeId,
+      duration: duration || 30
+    });
+
+    const newVideo = channel.items[channel.items.length - 1];
+
+    res.json({ 
+      message: 'Video added successfully', 
+      video: newVideo,
+      channel 
+    });
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    if (err.message === 'Video already exists in this channel') {
+      return res.status(400).json({ message: err.message });
+    }
+    console.error('POST /api/channels/:id/add-video error:', err.message);
+    res.status(500).json({ message: err.message || 'Failed to add video' });
+  }
+});
+
+/**
+ * DELETE /api/channels/:channelId/videos/:videoId - Delete video
+ */
+router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
+  try {
+    const { channelId, videoId } = req.params;
+    console.log(`[Channels] Admin "${req.admin.username}" deleting video: ${videoId} from channel: ${channelId}`);
+    
+    if (!videoId) {
+      return res.status(400).json({ message: 'Video ID is required' });
+    }
+    
+    const channel = await ChannelDataService.deleteVideo(channelId, videoId);
+    res.json(channel);
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    if (err.message === 'Video not found') {
+      return res.status(404).json({ message: 'Video not found' });
+    }
+    console.error('DELETE /api/channels/:channelId/videos/:videoId error:', err.message);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+/**
+ * DELETE /api/channels/:channelId - Delete channel
+ */
+router.delete('/:channelId', requireAuth, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    console.log(`[Channels] Admin "${req.admin.username}" attempting to delete channel: ${channelId}`);
+    
+    const channel = await ChannelDataService.deleteChannel(channelId);
+    res.json({ message: 'Channel deleted successfully', channel });
+  } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    console.error('DELETE /api/channels/:channelId error:', err.message);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+});
+
+/**
+ * POST /api/channels/:channelId/bulk-upload - Bulk upload videos
  */
 router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
   try {
@@ -155,487 +263,45 @@ router.post('/:channelId/bulk-upload', requireAuth, async (req, res) => {
       });
     }
 
-    // Read channel from JSON (source of truth)
-    const jsonData = readChannelsJSON();
-    const channel = jsonData.channels.find(c => c._id === channelId);
-    if (!channel) {
-      return res.status(404).json({ message: 'Channel not found' });
-    }
-
-    // Helper function to extract YouTube video ID from any text
-    function extractVideoId(text) {
-      if (!text) return null;
-      text = text.trim();
-      
-      // If it's already an 11-character ID, return it
-      if (/^[a-zA-Z0-9_-]{11}$/.test(text)) {
-        return text;
-      }
-      
-      // Try to extract from URL patterns anywhere in the text
-      const patterns = [
-        /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-        /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-        /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-        /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-        /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
-      ];
-      
-      for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-          return match[1];
-        }
-      }
-      return null;
-    }
-
-    // Helper function to extract ALL YouTube IDs from a line (handles multiple URLs per line)
-    function extractAllVideoIds(text) {
-      if (!text) return [];
-      const ids = [];
-      
-      // Global pattern to find all YouTube URLs/IDs
-      const globalPattern = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/g;
-      let match;
-      while ((match = globalPattern.exec(text)) !== null) {
-        if (match[1] && !ids.includes(match[1])) {
-          ids.push(match[1]);
-        }
-      }
-      
-      return ids;
-    }
-
-    // Helper function to fetch YouTube metadata using oEmbed (no API key required)
-    async function fetchYouTubeMetadata(videoId) {
-      try {
-        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(oembedUrl, { 
-          signal: controller.signal,
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          return null;
-        }
-        
-        const data = await response.json();
-        return {
-          title: data.title || 'Untitled',
-          author: data.author_name
-        };
-      } catch (err) {
-        // oEmbed failed, return null
-        return null;
-      }
-    }
-
-    // Parse file content based on format
-    const videos = [];
-    const lines = fileContent.trim().split('\n').filter(line => line.trim());
-
-    // Try JSON format first
-    if (fileContent.trim().startsWith('[') || fileContent.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(fileContent);
-        const array = Array.isArray(parsed) ? parsed : [parsed];
-        for (const item of array) {
-          if (item.youtubeId || item.videoId || item.url) {
-            const videoId = item.youtubeId || item.videoId || extractVideoId(item.url);
-            if (videoId) {
-              videos.push({
-                youtubeId: videoId,
-                title: item.title || 'Untitled',
-                duration: item.duration || 30,
-                year: item.year,
-                tags: item.tags || [],
-                category: item.category
-              });
-            }
-          }
-        }
-      } catch (jsonErr) {
-        // Not JSON, continue to other formats
-      }
-    }
-
-    // If no videos parsed yet, try CSV or TXT format
-    if (videos.length === 0) {
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue; // Skip empty lines and comments
-
-        // Extract all YouTube IDs from this line (handles any format)
-        const foundIds = extractAllVideoIds(trimmed);
-        
-        if (foundIds.length > 0) {
-          // Found YouTube URLs in this line
-          for (const videoId of foundIds) {
-            videos.push({
-              youtubeId: videoId,
-              title: 'Untitled',
-              duration: 30
-            });
-          }
-        } else if (trimmed.includes(',')) {
-          // Try CSV format: url,title or id,title
-          const parts = trimmed.split(',').map(p => p.trim());
-          if (parts.length >= 1) {
-            const videoId = extractVideoId(parts[0]);
-            if (videoId) {
-              videos.push({
-                youtubeId: videoId,
-                title: parts[1] || 'Untitled',
-                duration: 30
-              });
-            }
-          }
-        } else {
-          // Try plain video ID
-          const videoId = extractVideoId(trimmed);
-          if (videoId) {
-            videos.push({
-              youtubeId: videoId,
-              title: 'Untitled',
-              duration: 30
-            });
-          }
-        }
-      }
-    }
+    // Parse file content
+    const videos = parseVideoFileContent(fileContent);
 
     if (videos.length === 0) {
       return res.status(400).json({ 
-        message: 'No valid YouTube links found in file. Supported formats: JSON array, CSV (url,title), or text with YouTube URLs' 
+        message: 'No valid YouTube links found in file' 
       });
     }
 
-    // Fetch metadata for videos - prefer oEmbed (no API key required), fallback to YouTube API
-    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-
-    let addedCount = 0;
-    let skippedCount = 0;
-    let errors = [];
-
+    // Fetch metadata for videos with "Untitled" title
     for (const video of videos) {
-      try {
-        // Check if video already exists
-        const exists = channel.items.some(item => item.youtubeId === video.youtubeId);
-        if (exists) {
-          skippedCount++;
-          continue;
+      if (video.title === 'Untitled') {
+        const metadata = await fetchYouTubeMetadata(video.youtubeId);
+        if (metadata) {
+          video.title = metadata.title;
+          if (metadata.duration) video.duration = metadata.duration;
         }
-
-        // If title is "Untitled", try to fetch metadata
-        if (video.title === 'Untitled') {
-          // First try oEmbed (free, no API key required)
-          const oembedData = await fetchYouTubeMetadata(video.youtubeId);
-          if (oembedData && oembedData.title) {
-            video.title = oembedData.title;
-          } else if (YOUTUBE_API_KEY) {
-            // Fallback to YouTube Data API if oEmbed fails and API key is available
-            try {
-              const metadataUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${video.youtubeId}&key=${YOUTUBE_API_KEY}`;
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000);
-              
-              const metadataRes = await fetch(metadataUrl, { 
-                signal: controller.signal,
-                headers: { 'Accept': 'application/json' }
-              });
-              
-              clearTimeout(timeoutId);
-              
-              if (metadataRes.ok) {
-                const data = await metadataRes.json();
-                if (data.items && data.items[0]) {
-                  video.title = data.items[0].snippet.title;
-                // Parse duration if available
-                  const durationStr = data.items[0].contentDetails?.duration;
-                if (durationStr) {
-                  const match = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-                  if (match) {
-                    const hours = parseInt(match[1] || 0, 10);
-                    const minutes = parseInt(match[2] || 0, 10);
-                    const seconds = parseInt(match[3] || 0, 10);
-                    video.duration = hours * 3600 + minutes * 60 + seconds;
-                    }
-                  }
-                }
-              }
-            } catch (metadataErr) {
-              // Continue with oEmbed title or default
-              console.warn(`[Bulk Upload] YouTube API failed for ${video.youtubeId}:`, metadataErr.message);
-            }
-          }
-        }
-
-        // Add video to channel
-        channel.items.push({
-          title: video.title,
-          youtubeId: video.youtubeId,
-          duration: video.duration || 30,
-          year: video.year,
-          tags: video.tags || [],
-          category: video.category
-        });
-
-        addedCount++;
-      } catch (videoErr) {
-        errors.push(`Error processing ${video.youtubeId}: ${videoErr.message}`);
       }
     }
 
-    if (addedCount > 0) {
-      // Update JSON file directly (source of truth)
-      const { writeChannelsJSON } = require('../utils/updateChannelsJSON');
-      writeChannelsJSON(jsonData);
-      
-      // Invalidate cache
-      await cache.delete('ch:all');
-      const channelHash = channelId.toString().substring(18, 24);
-      await cache.deletePattern(`ch:${channelHash}`);
-    }
+    const result = await ChannelDataService.bulkAddVideos(channelId, videos);
 
     res.json({ 
-      message: `Successfully added ${addedCount} video(s)${skippedCount > 0 ? `, skipped ${skippedCount} duplicate(s)` : ''}`,
-      count: addedCount,
-      skipped: skippedCount,
-      total: videos.length,
-      errors: errors.length > 0 ? errors : undefined
+      message: `Successfully added ${result.addedCount} video(s)${result.skippedCount > 0 ? `, skipped ${result.skippedCount} duplicate(s)` : ''}`,
+      count: result.addedCount,
+      skipped: result.skippedCount,
+      total: result.total
     });
   } catch (err) {
+    if (err.message === 'Channel not found') {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
     console.error('POST /api/channels/:channelId/bulk-upload error:', err.message);
     res.status(500).json({ message: err.message || 'Failed to bulk upload videos' });
   }
 });
 
-router.post('/', requireAuth, async (req, res) => {
-  try {
-    const { name, playlistStartEpoch } = req.body;
-    if (!name) return res.status(400).json({ message: 'Missing name' });
-    
-    // Update JSON directly (source of truth)
-    let ch;
-    try {
-      ch = addChannelToJSON(name, playlistStartEpoch);
-    } catch (jsonErr) {
-      if (jsonErr.message === 'Channel already exists') {
-        return res.status(400).json({ message: 'Channel already exists' });
-      }
-      throw jsonErr;
-    }
-    
-    // Invalidate cache
-    const channelHash = ch._id.toString().substring(18, 24);
-    await cache.delete(`ch:${channelHash}`);
-    await cache.delete('ch:all');
-    
-    // Optionally sync to MongoDB (for backup)
-    try {
-      await syncJSONToMongoDB();
-    } catch (mongoErr) {
-      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
-    }
-    
-    res.json(ch);
-  } catch (err) {
-    console.error('POST /api/channels error', err);
-    res.status(500).json({ message: err.message || 'Server error' });
-  }
-});
-
-router.post('/:channelId/videos', requireAuth, async (req, res) => {
-  try {
-    const { channelId } = req.params;
-    const { title, youtubeId, duration, year, tags, category } = req.body;
-    if (!youtubeId || !title) return res.status(400).json({ message: 'Missing youtubeId or title' });
-    
-    // Update JSON directly (source of truth)
-    let ch;
-    try {
-      ch = addVideoToChannelJSON(channelId, {
-        title,
-        youtubeId,
-        duration,
-        year,
-        tags,
-        category
-      });
-    } catch (jsonErr) {
-      if (jsonErr.message === 'Channel not found') {
-        return res.status(404).json({ message: 'Channel not found' });
-      }
-      if (jsonErr.message === 'Video already exists in this channel') {
-        return res.status(400).json({ message: jsonErr.message });
-      }
-      throw jsonErr;
-    }
-    
-    // Invalidate cache
-    const channelHash = channelId.toString().substring(18, 24);
-    await cache.delete(`ch:${channelHash}`);
-    await cache.delete('ch:all');
-    
-    // Optionally sync to MongoDB (for backup)
-    try {
-      await syncJSONToMongoDB();
-    } catch (mongoErr) {
-      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
-    }
-    
-    res.json(ch);
-  } catch (err) {
-    console.error('POST /api/channels/:id/videos error', err);
-    res.status(500).json({ message: err.message || 'Server error' });
-  }
-});
-
-router.delete('/:channelId/videos/:videoId', requireAuth, async (req, res) => {
-  try {
-    const { channelId, videoId } = req.params;
-    console.log(`[Channels] Admin "${req.admin.username}" deleting video: ${videoId} from channel: ${channelId}`);
-    
-    if (!videoId) {
-      return res.status(400).json({ message: 'Video ID is required' });
-    }
-    
-    // Update JSON directly (source of truth)
-    let updatedChannel;
-    try {
-      updatedChannel = deleteVideoFromChannelJSON(channelId, videoId);
-    } catch (jsonErr) {
-      if (jsonErr.message === 'Channel not found') {
-        return res.status(404).json({ message: 'Channel not found' });
-      }
-      if (jsonErr.message === 'Video not found') {
-        return res.status(404).json({ message: 'Video not found' });
-      }
-      throw jsonErr;
-    }
-    
-    // Invalidate cache
-    const channelHash = channelId.toString().substring(18, 24);
-    await cache.delete(`ch:${channelHash}`);
-    await cache.delete('ch:all');
-    
-    // Optionally sync to MongoDB (for backup)
-    try {
-      await syncJSONToMongoDB();
-    } catch (mongoErr) {
-      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
-    }
-    
-    res.json(updatedChannel);
-  } catch (err) {
-    console.error('DELETE /api/channels/:channelId/videos/:videoId error:', err.message, err);
-    res.status(500).json({ message: err.message || 'Server error' });
-  }
-});
-
-router.delete('/:channelId', requireAuth, async (req, res) => {
-  try {
-    const { channelId } = req.params;
-    console.log(`[Channels] Admin "${req.admin.username}" attempting to delete channel: ${channelId}`);
-    
-    // Update JSON directly (source of truth)
-    let deletedChannel;
-    try {
-      deletedChannel = deleteChannelFromJSON(channelId);
-    } catch (jsonErr) {
-      if (jsonErr.message === 'Channel not found') {
-        return res.status(404).json({ message: 'Channel not found' });
-      }
-      throw jsonErr;
-    }
-    
-    // Invalidate cache
-    const channelHash = channelId.toString().substring(18, 24);
-    await cache.delete(`ch:${channelHash}`);
-    await cache.delete('ch:all');
-    
-    // Optionally sync to MongoDB (for backup)
-    try {
-      await syncJSONToMongoDB();
-    } catch (mongoErr) {
-      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
-    }
-    
-    res.json({ message: 'Channel deleted successfully', channel: deletedChannel });
-  } catch (err) {
-    console.error('DELETE /api/channels/:channelId error:', err.message, err);
-    res.status(500).json({ message: err.message || 'Server error' });
-  }
-});
-
-router.get('/admin/cache-stats', requireAuth, async (req, res) => {
-  res.json(await cache.getStats());
-});
-
-router.post('/:id/add-video', requireAuth, async (req, res) => {
-  try {
-    const { title, youtubeId, duration } = req.body;
-    const channelId = req.params.id;
-
-    if (!youtubeId || !title) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: youtubeId, title' 
-      });
-    }
-
-    // Update JSON directly (source of truth)
-    let channel;
-    try {
-      channel = addVideoToChannelJSON(channelId, {
-        title,
-        youtubeId,
-        duration: duration || 30
-      });
-    } catch (jsonErr) {
-      if (jsonErr.message === 'Channel not found') {
-        return res.status(404).json({ message: 'Channel not found' });
-      }
-      if (jsonErr.message === 'Video already exists in this channel') {
-        return res.status(400).json({ message: jsonErr.message });
-      }
-      throw jsonErr;
-    }
-
-    // Get the newly added video
-    const newVideo = channel.items[channel.items.length - 1];
-
-    // Invalidate cache
-    const channelHash = channelId.toString().substring(18, 24);
-    await cache.delete(`ch:${channelHash}`);
-    await cache.delete('ch:all');
-
-    // Optionally sync to MongoDB (for backup)
-    try {
-      await syncJSONToMongoDB();
-    } catch (mongoErr) {
-      console.warn('[Channels] Failed to sync to MongoDB (non-critical):', mongoErr.message);
-    }
-    
-    res.json({ 
-      message: 'Video added successfully', 
-      video: newVideo,
-      channel 
-    });
-  } catch (err) {
-    console.error('POST /api/channels/:id/add-video error:', err.message);
-    res.status(500).json({ message: err.message || 'Failed to add video' });
-  }
-});
-
 /**
- * Bulk import multiple videos
- * Format: [{ channelId, videoId, title, description?, thumbnail? }]
+ * POST /api/channels/bulk-add-videos - Bulk import multiple videos to different channels
  */
 router.post('/bulk-add-videos', requireAuth, async (req, res) => {
   try {
@@ -647,61 +313,36 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
       });
     }
 
-    // Read JSON once at the start
-    const jsonData = readChannelsJSON();
     let addedCount = 0;
     let errors = [];
 
+    // Group videos by channel
+    const videosByChannel = {};
     for (const video of videos) {
+      const { channelId, videoId, title } = video;
+      if (!channelId || !videoId || !title) {
+        errors.push(`Skipped: Missing required fields in video "${videoId}"`);
+        continue;
+      }
+      if (!videosByChannel[channelId]) {
+        videosByChannel[channelId] = [];
+      }
+      videosByChannel[channelId].push({
+        youtubeId: videoId,
+        title,
+        duration: 30
+      });
+    }
+
+    // Bulk add to each channel
+    for (const [channelId, channelVideos] of Object.entries(videosByChannel)) {
       try {
-        const { channelId, videoId, title, description, thumbnail } = video;
-
-        // Validate required fields
-        if (!channelId || !videoId || !title) {
-          errors.push(`Skipped: Missing required fields in video "${videoId}"`);
-          continue;
-        }
-
-        // Find channel from JSON (source of truth)
-        const channel = jsonData.channels.find(c => c._id === channelId);
-        if (!channel) {
-          errors.push(`Skipped: Channel not found for video "${title}"`);
-          continue;
-        }
-
-        // Check if video already exists
-        const videoExists = channel.items.some(item => item._id === videoId);
-        if (videoExists) {
-          errors.push(`Skipped: Video "${title}" already exists in channel`);
-          continue;
-        }
-
-        // Add video
-        const newVideo = {
-          _id: videoId,
-          title,
-          description: description || '',
-          duration: 30, // Default duration
-          thumbnail: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-        };
-
-        channel.items.push(newVideo);
-        // Note: JSON will be written at the end of the loop
-        addedCount++;
-
-      } catch (videoErr) {
-        errors.push(`Error processing video: ${videoErr.message}`);
+        const result = await ChannelDataService.bulkAddVideos(channelId, channelVideos);
+        addedCount += result.addedCount;
+      } catch (err) {
+        errors.push(`Error adding to channel ${channelId}: ${err.message}`);
       }
     }
-
-    // Write updated JSON file (source of truth)
-    if (addedCount > 0) {
-      const { writeChannelsJSON } = require('../utils/updateChannelsJSON');
-      writeChannelsJSON(jsonData);
-    }
-
-    // Invalidate main channel list cache
-    await cache.delete('ch:all');
 
     res.json({ 
       message: `Successfully added ${addedCount} video(s)`,
@@ -713,5 +354,139 @@ router.post('/bulk-add-videos', requireAuth, async (req, res) => {
     res.status(500).json({ message: err.message || 'Failed to bulk import videos' });
   }
 });
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Parse video file content (JSON, CSV, or TXT)
+ */
+function parseVideoFileContent(fileContent) {
+  const videos = [];
+  const lines = fileContent.trim().split('\n').filter(line => line.trim());
+
+  // Try JSON format first
+  if (fileContent.trim().startsWith('[') || fileContent.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(fileContent);
+      const array = Array.isArray(parsed) ? parsed : [parsed];
+      for (const item of array) {
+        if (item.youtubeId || item.videoId || item.url) {
+          const videoId = item.youtubeId || item.videoId || extractVideoId(item.url);
+          if (videoId) {
+            videos.push({
+              youtubeId: videoId,
+              title: item.title || 'Untitled',
+              duration: item.duration || 30,
+              year: item.year,
+              tags: item.tags || [],
+              category: item.category
+            });
+          }
+        }
+      }
+      return videos;
+    } catch (jsonErr) {
+      // Not JSON, continue to other formats
+    }
+  }
+
+  // Parse line by line (CSV or TXT)
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const foundIds = extractAllVideoIds(trimmed);
+    
+    if (foundIds.length > 0) {
+      for (const videoId of foundIds) {
+        videos.push({ youtubeId: videoId, title: 'Untitled', duration: 30 });
+      }
+    } else if (trimmed.includes(',')) {
+      const parts = trimmed.split(',').map(p => p.trim());
+      const videoId = extractVideoId(parts[0]);
+      if (videoId) {
+        videos.push({
+          youtubeId: videoId,
+          title: parts[1] || 'Untitled',
+          duration: 30
+        });
+      }
+    } else {
+      const videoId = extractVideoId(trimmed);
+      if (videoId) {
+        videos.push({ youtubeId: videoId, title: 'Untitled', duration: 30 });
+      }
+    }
+  }
+
+  return videos;
+}
+
+/**
+ * Extract YouTube video ID from text
+ */
+function extractVideoId(text) {
+  if (!text) return null;
+  text = text.trim();
+  
+  if (/^[a-zA-Z0-9_-]{11}$/.test(text)) return text;
+  
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Extract all YouTube IDs from a line
+ */
+function extractAllVideoIds(text) {
+  if (!text) return [];
+  const ids = [];
+  
+  const globalPattern = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/g;
+  let match;
+  while ((match = globalPattern.exec(text)) !== null) {
+    if (match[1] && !ids.includes(match[1])) ids.push(match[1]);
+  }
+  
+  return ids;
+}
+
+/**
+ * Fetch YouTube metadata using oEmbed (no API key required)
+ */
+async function fetchYouTubeMetadata(videoId) {
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(oembedUrl, { 
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return { title: data.title || 'Untitled', author: data.author_name };
+  } catch (err) {
+    return null;
+  }
+}
 
 module.exports = router;
