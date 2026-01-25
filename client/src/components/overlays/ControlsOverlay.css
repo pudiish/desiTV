@@ -1,0 +1,134 @@
+/**
+ * ControlsOverlay - TV-Relative Controls Positioning
+ * 
+ * This overlay system positions controls relative to the TV frame,
+ * ensuring they stay visually connected regardless of screen size.
+ * 
+ * Architecture:
+ * - Container is fixed to viewport
+ * - Child positions are calculated based on TV frame rect
+ * - Supports smooth transitions during resize
+ * - Hides in fullscreen mode
+ */
+
+.controls-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none; /* Allow clicks to pass through to elements behind */
+  z-index: 998; /* Below chat (1000) but above most elements */
+}
+
+/* Control containers - enable pointer events only on actual controls */
+.controls-overlay__left,
+.controls-overlay__right,
+.controls-overlay__bottom-left,
+.controls-overlay__bottom-right {
+  position: fixed;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: 
+    left 0.3s ease-out,
+    right 0.3s ease-out,
+    bottom 0.3s ease-out,
+    opacity 0.3s ease;
+}
+
+/* Left side controls */
+.controls-overlay__left {
+  flex-direction: row;
+}
+
+/* Right side controls */
+.controls-overlay__right {
+  flex-direction: row-reverse;
+}
+
+/* Bottom-left controls (stacked vertically for multiple buttons) */
+.controls-overlay__bottom-left {
+  flex-direction: row;
+  gap: 8px;
+}
+
+/* Bottom-right controls */
+.controls-overlay__bottom-right {
+  flex-direction: row-reverse;
+}
+
+/* Hide in fullscreen via CSS selectors as backup */
+:fullscreen .controls-overlay,
+:-webkit-full-screen .controls-overlay,
+:-moz-full-screen .controls-overlay,
+:-ms-fullscreen .controls-overlay,
+.ios-fullscreen-active .controls-overlay,
+.tv-fullscreen-active .controls-overlay {
+  display: none !important;
+}
+
+/* Mobile-specific adjustments */
+.controls-overlay[data-mobile="true"] .controls-overlay__left,
+.controls-overlay[data-mobile="true"] .controls-overlay__right {
+  display: none;
+}
+
+.controls-overlay[data-mobile="true"] .controls-overlay__bottom-left,
+.controls-overlay[data-mobile="true"] .controls-overlay__bottom-right {
+  transition: 
+    left 0.2s ease-out,
+    right 0.2s ease-out,
+    bottom 0.2s ease-out;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  .controls-overlay__left,
+  .controls-overlay__right {
+    display: none !important;
+  }
+  
+  .controls-overlay__bottom-left,
+  .controls-overlay__bottom-right {
+    /* Ensure minimum touch targets */
+    min-height: 44px;
+  }
+}
+
+/* Animation for controls appearing */
+@keyframes controlsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.controls-overlay__left > *,
+.controls-overlay__right > *,
+.controls-overlay__bottom-left > *,
+.controls-overlay__bottom-right > * {
+  animation: controlsFadeIn 0.3s ease-out;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .controls-overlay__left,
+  .controls-overlay__right,
+  .controls-overlay__bottom-left,
+  .controls-overlay__bottom-right {
+    transition: none;
+  }
+  
+  .controls-overlay__left > *,
+  .controls-overlay__right > *,
+  .controls-overlay__bottom-left > *,
+  .controls-overlay__bottom-right > * {
+    animation: none;
+  }
+}

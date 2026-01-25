@@ -1707,12 +1707,20 @@ onBufferingChange = null,
 				}
 			}
 			
-			// Handle error 150 (RESTRICTED) - immediate skip, no retries, no messages
-			if (errorCode === YOUTUBE_ERROR_CODES.RESTRICTED && current?.youtubeId) {
-				console.log(`[Player] Video ${current.youtubeId} is restricted, skipping immediately...`)
+			// Handle error 150 (RESTRICTED) or 152 (UNAVAILABLE) - immediate skip, no retries
+			const isRestrictedOrUnavailable = 
+				errorCode === YOUTUBE_ERROR_CODES.RESTRICTED || 
+				errorCode === YOUTUBE_ERROR_CODES.UNAVAILABLE ||
+				errorCode === 152 // Explicit check for 152
+			
+			if (isRestrictedOrUnavailable && current?.youtubeId) {
+				const reason = errorCode === 152 || errorCode === YOUTUBE_ERROR_CODES.UNAVAILABLE 
+					? 'Unavailable' 
+					: 'Restricted'
+				console.log(`[Player] Video ${current.youtubeId} is ${reason.toLowerCase()}, skipping immediately...`)
 				// Mark as invalid in validation cache
 				videoValidationCacheRef.current.set(current.youtubeId, {
-					result: { valid: false, reason: 'Restricted' },
+					result: { valid: false, reason },
 					timestamp: Date.now()
 				})
 				// Immediate skip - no delay, no messages, smooth transition
@@ -1729,6 +1737,8 @@ onBufferingChange = null,
 					5: 'PLAYBACK ERROR',
 					100: 'VIDEO NOT FOUND',
 					101: 'EMBEDDING DISABLED',
+					150: 'VIDEO RESTRICTED',
+					152: 'VIDEO UNAVAILABLE',
 				}
 				const errorMsg = errorMessages[errorCode] || `ERROR ${errorCode}`
 				console.warn(`[Player] ${errorMsg} - Video ${current.youtubeId}, auto-skipping...`)

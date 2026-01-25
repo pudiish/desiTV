@@ -37,9 +37,33 @@ const VJChat = ({
   onGoLive, // NEW: Go live handler
   mode = 'live', // NEW: Current playback mode
   isPlaying = false, // NEW: Is video playing
-  isVisible = true
+  isVisible = true,
+  isOpen: externalIsOpen, // Controlled state
+  onToggle, // Controlled toggle handler
+  showToggle = true // Whether to show the built-in toggle button
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Determine effective state (controlled vs uncontrolled)
+  const isControlled = externalIsOpen !== undefined;
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen;
+  
+  const handleToggle = () => {
+    if (isControlled && onToggle) {
+      onToggle(!isOpen);
+    } else {
+      setInternalIsOpen(!isOpen);
+    }
+  };
+
+  const handleClose = () => {
+    if (isControlled && onToggle) {
+      onToggle(false);
+    } else {
+      setInternalIsOpen(false);
+    }
+  };
+
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -490,7 +514,7 @@ const VJChat = ({
             </div>
             <button 
               className="vj-close-btn" 
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               aria-label="Close chat"
             >
               ✕
@@ -572,15 +596,17 @@ const VJChat = ({
       )}
 
       {/* Toggle Button */}
-      <button
-        className={`vj-toggle-btn ${isOpen ? 'active' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-        title="Ask DesiAgent"
-        aria-label="Toggle DesiAgent Chat"
-      >
-        <span className="vj-btn-icon">{DesiAgent.avatar}</span>
-        {!isOpen && <span className="vj-btn-pulse"></span>}
-      </button>
+      {showToggle && (
+        <button
+          className={`vj-toggle-btn ${isOpen ? 'active' : ''}`}
+          onClick={handleToggle}
+          title="Ask DesiAgent"
+          aria-label="Toggle DesiAgent Chat"
+        >
+          <span className="vj-btn-icon">{DesiAgent.avatar}</span>
+          {!isOpen && <span className="vj-btn-pulse"></span>}
+        </button>
+      )}
     </div>
   );
 };

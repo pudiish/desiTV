@@ -35,8 +35,11 @@
 /* 10. Effects - Animations and additional effects */
 @import './styles/effects.css';
 
-/* 11. Fullscreen - Consolidated fullscreen styles */
+/* 11. Retro Enhancements - Advanced vintage TV effects */
+@import './styles/retro-enhancements.css';
+
+/* 12. Fullscreen - Consolidated fullscreen styles */
 @import './styles/fullscreen.css';
 
-/* 12. Responsive - All media queries (must be last) */
+/* 13. Responsive - All media queries (must be last) */
 @import './styles/responsive.css';

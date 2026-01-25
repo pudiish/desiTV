@@ -1,0 +1,377 @@
+/**
+ * TVGuide Component Styles
+ * 
+ * Classic 90s/2000s cable TV EPG styling
+ * Blue background, yellow/white text, grid layout
+ */
+
+.tv-guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: guide-fade-in 0.2s ease-out;
+}
+
+@keyframes guide-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tv-guide {
+  width: 90%;
+  max-width: 900px;
+  max-height: 80vh;
+  background: linear-gradient(180deg, #0a1628 0%, #0f2847 50%, #0a1628 100%);
+  border: 3px solid #ffd700;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 
+    0 0 30px rgba(255, 215, 0, 0.3),
+    0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: guide-slide-up 0.3s ease-out;
+}
+
+@keyframes guide-slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.tv-guide__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #1a3a5c 0%, #0f2847 50%, #1a3a5c 100%);
+  border-bottom: 2px solid #ffd700;
+}
+
+.tv-guide__title {
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  letter-spacing: 2px;
+}
+
+.tv-guide__time {
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  color: #00ff00;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.tv-guide__close {
+  background: none;
+  border: 2px solid #ffd700;
+  color: #ffd700;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.tv-guide__close:hover {
+  background: #ffd700;
+  color: #0a1628;
+}
+
+/* ============================================
+   TIME HEADER ROW
+   ============================================ */
+
+.tv-guide__time-row {
+  display: flex;
+  padding: 8px 0;
+  background: #0f2847;
+  border-bottom: 1px solid #2a5a8c;
+}
+
+.tv-guide__channel-label {
+  width: 140px;
+  min-width: 140px;
+  padding: 8px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd700;
+  text-align: center;
+}
+
+.tv-guide__time-slot {
+  flex: 1;
+  padding: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #87ceeb;
+  text-align: center;
+  border-left: 1px solid #2a5a8c;
+}
+
+/* ============================================
+   CHANNEL ROWS
+   ============================================ */
+
+.tv-guide__channels {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tv-guide__row {
+  display: flex;
+  border-bottom: 1px solid #1a3a5c;
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.tv-guide__row:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.tv-guide__row--selected {
+  background: rgba(255, 215, 0, 0.2) !important;
+  outline: 2px solid #ffd700;
+  outline-offset: -2px;
+}
+
+.tv-guide__row--active {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.tv-guide__row--active .tv-guide__channel-name {
+  color: #00ff00;
+}
+
+/* Channel name cell */
+.tv-guide__channel-name {
+  width: 140px;
+  min-width: 140px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Courier New', monospace;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.2);
+  border-right: 1px solid #2a5a8c;
+}
+
+.tv-guide__channel-num {
+  background: #ffd700;
+  color: #0a1628;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}
+
+.tv-guide__channel-text {
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Programs container */
+.tv-guide__programs {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Individual program cell */
+.tv-guide__program {
+  padding: 8px 10px;
+  border-left: 1px solid #2a5a8c;
+  min-width: 80px;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.tv-guide__program:hover {
+  background: rgba(135, 206, 235, 0.1);
+}
+
+.tv-guide__program--current {
+  background: rgba(0, 255, 0, 0.15);
+}
+
+.tv-guide__program--current .tv-guide__program-title {
+  color: #00ff00;
+}
+
+.tv-guide__program--focused {
+  background: rgba(255, 215, 0, 0.25);
+  outline: 1px solid #ffd700;
+}
+
+.tv-guide__program-title {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.tv-guide__program-time {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: #87ceeb;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.tv-guide__footer {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 10px 16px;
+  background: #0a1628;
+  border-top: 2px solid #ffd700;
+}
+
+.tv-guide__hint {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #87ceeb;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+.tv-guide__channels::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tv-guide__channels::-webkit-scrollbar-track {
+  background: #0a1628;
+}
+
+.tv-guide__channels::-webkit-scrollbar-thumb {
+  background: #ffd700;
+  border-radius: 4px;
+}
+
+.tv-guide__channels::-webkit-scrollbar-thumb:hover {
+  background: #ffed4a;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .tv-guide {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .tv-guide__header {
+    padding: 10px 12px;
+  }
+
+  .tv-guide__title {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+
+  .tv-guide__time {
+    font-size: 14px;
+  }
+
+  .tv-guide__channel-label,
+  .tv-guide__channel-name {
+    width: 100px;
+    min-width: 100px;
+  }
+
+  .tv-guide__channel-text {
+    font-size: 10px;
+  }
+
+  .tv-guide__program {
+    min-width: 60px;
+    padding: 6px 8px;
+  }
+
+  .tv-guide__program-title {
+    font-size: 10px;
+  }
+
+  .tv-guide__footer {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .tv-guide__hint {
+    font-size: 10px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+  .tv-guide__channel-label,
+  .tv-guide__channel-name {
+    width: 80px;
+    min-width: 80px;
+  }
+
+  .tv-guide__channel-num {
+    display: none;
+  }
+
+  .tv-guide__time-row {
+    display: none;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-guide-overlay,
+  .tv-guide {
+    animation: none;
+  }
+}

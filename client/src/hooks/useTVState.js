@@ -24,9 +24,16 @@ export const initialTVState = {
   menuOpen: false,
   staticActive: false,
   galaxyEnabled: false,
+  galaxyVariant: 'galaxy', // 'galaxy', 'orbital', 'liquid'
   isFullscreen: false,
   remoteOverlayVisible: false,
   surveyOpen: false,
+  tvGuideOpen: false, // EPG-style guide overlay
+  
+  // Voice Control
+  voiceControlEnabled: false,
+  isListening: false,
+  lastVoiceCommand: null,
   
   // Playback info
   playbackInfo: null,
@@ -36,10 +43,17 @@ export const initialTVState = {
   crtVolume: null,
   crtIsMuted: false,
   
+  // CRT Effects
+  crtWarmingUp: false, // TV warm-up animation state
+  crtEffectIntensity: 1.0, // 0-1 for CRT effect strength
+  
   // Session
   sessionRestored: false,
   userAgeGroup: null,
   easterEggMessage: null,
+  
+  // TV Frame
+  tvFrameRect: null, // { left, top, right, bottom, width, height }
 };
 
 /**
@@ -62,9 +76,20 @@ export const TVActions = {
   SET_MENU_OPEN: 'SET_MENU_OPEN',
   SET_STATIC_ACTIVE: 'SET_STATIC_ACTIVE',
   TOGGLE_GALAXY: 'TOGGLE_GALAXY',
+  SET_GALAXY_VARIANT: 'SET_GALAXY_VARIANT',
   SET_FULLSCREEN: 'SET_FULLSCREEN',
   TOGGLE_REMOTE_OVERLAY: 'TOGGLE_REMOTE_OVERLAY',
   SET_SURVEY_OPEN: 'SET_SURVEY_OPEN',
+  SET_TV_GUIDE_OPEN: 'SET_TV_GUIDE_OPEN',
+  
+  // Voice Control
+  SET_VOICE_CONTROL_ENABLED: 'SET_VOICE_CONTROL_ENABLED',
+  SET_LISTENING: 'SET_LISTENING',
+  SET_LAST_VOICE_COMMAND: 'SET_LAST_VOICE_COMMAND',
+  
+  // CRT Effects
+  SET_CRT_WARMING_UP: 'SET_CRT_WARMING_UP',
+  SET_CRT_EFFECT_INTENSITY: 'SET_CRT_EFFECT_INTENSITY',
   
   // Status
   SET_PLAYBACK_INFO: 'SET_PLAYBACK_INFO',
@@ -76,6 +101,9 @@ export const TVActions = {
   RESTORE_SESSION: 'RESTORE_SESSION',
   SET_USER_AGE_GROUP: 'SET_USER_AGE_GROUP',
   SHOW_EASTER_EGG: 'SHOW_EASTER_EGG',
+  
+  // TV Frame
+  SET_TV_FRAME_RECT: 'SET_TV_FRAME_RECT',
   
   // Batch
   RESET_TO_INITIAL: 'RESET_TO_INITIAL'
@@ -137,6 +165,9 @@ export function tvReducer(state, action) {
     case TVActions.TOGGLE_GALAXY:
       return { ...state, galaxyEnabled: !state.galaxyEnabled };
     
+    case TVActions.SET_GALAXY_VARIANT:
+      return { ...state, galaxyVariant: action.payload };
+    
     case TVActions.SET_FULLSCREEN:
       return { ...state, isFullscreen: action.payload };
     
@@ -145,6 +176,26 @@ export function tvReducer(state, action) {
     
     case TVActions.SET_SURVEY_OPEN:
       return { ...state, surveyOpen: action.payload };
+    
+    case TVActions.SET_TV_GUIDE_OPEN:
+      return { ...state, tvGuideOpen: action.payload };
+    
+    // Voice Control
+    case TVActions.SET_VOICE_CONTROL_ENABLED:
+      return { ...state, voiceControlEnabled: action.payload };
+    
+    case TVActions.SET_LISTENING:
+      return { ...state, isListening: action.payload };
+    
+    case TVActions.SET_LAST_VOICE_COMMAND:
+      return { ...state, lastVoiceCommand: action.payload };
+    
+    // CRT Effects
+    case TVActions.SET_CRT_WARMING_UP:
+      return { ...state, crtWarmingUp: action.payload };
+    
+    case TVActions.SET_CRT_EFFECT_INTENSITY:
+      return { ...state, crtEffectIntensity: action.payload };
     
     // Status
     case TVActions.SET_PLAYBACK_INFO:
@@ -169,6 +220,10 @@ export function tvReducer(state, action) {
     case TVActions.SHOW_EASTER_EGG:
       return { ...state, easterEggMessage: action.payload };
     
+    // TV Frame
+    case TVActions.SET_TV_FRAME_RECT:
+      return { ...state, tvFrameRect: action.payload };
+    
     // Batch
     case TVActions.RESET_TO_INITIAL:
       return initialTVState;
@@ -187,21 +242,44 @@ export function useTVState() {
   
   // Memoize actions to keep stable references across renders
   const actions = useMemo(() => ({
+    // Power & Volume
     setPower: (power) => dispatch({ type: TVActions.SET_POWER, payload: power }),
     setVolume: (vol) => dispatch({ type: TVActions.SET_VOLUME, payload: vol }),
     toggleMute: () => dispatch({ type: TVActions.TOGGLE_MUTE }),
+    
+    // Playback
     setCategory: (cat) => dispatch({ type: TVActions.SELECT_CATEGORY, payload: cat }),
     setVideoIndex: (idx) => dispatch({ type: TVActions.SET_ACTIVE_VIDEO_INDEX, payload: idx }),
     playExternal: (video) => dispatch({ type: TVActions.SET_EXTERNAL_VIDEO, payload: video }),
     clearExternalVideo: () => dispatch({ type: TVActions.CLEAR_EXTERNAL_VIDEO }),
-    setStatusMessage: (msg) => dispatch({ type: TVActions.SET_STATUS_MESSAGE, payload: msg }),
-    setLoading: (loading) => dispatch({ type: TVActions.SET_BUFFERING, payload: loading }),
-    setError: (error) => dispatch({ type: TVActions.SET_BUFFER_ERROR, payload: error }),
+    
+    // UI State
     setMenuOpen: (open) => dispatch({ type: TVActions.SET_MENU_OPEN, payload: open }),
     setStaticActive: (active) => dispatch({ type: TVActions.SET_STATIC_ACTIVE, payload: active }),
     setFullscreen: (fullscreen) => dispatch({ type: TVActions.SET_FULLSCREEN, payload: fullscreen }),
     toggleGalaxy: () => dispatch({ type: TVActions.TOGGLE_GALAXY }),
+    setGalaxyVariant: (variant) => dispatch({ type: TVActions.SET_GALAXY_VARIANT, payload: variant }),
     setRemoteOverlayVisible: (visible) => dispatch({ type: TVActions.TOGGLE_REMOTE_OVERLAY, payload: visible }),
+    setTvGuideOpen: (open) => dispatch({ type: TVActions.SET_TV_GUIDE_OPEN, payload: open }),
+    
+    // Voice Control
+    setVoiceControlEnabled: (enabled) => dispatch({ type: TVActions.SET_VOICE_CONTROL_ENABLED, payload: enabled }),
+    setListening: (listening) => dispatch({ type: TVActions.SET_LISTENING, payload: listening }),
+    setLastVoiceCommand: (command) => dispatch({ type: TVActions.SET_LAST_VOICE_COMMAND, payload: command }),
+    
+    // CRT Effects
+    setCrtWarmingUp: (warmingUp) => dispatch({ type: TVActions.SET_CRT_WARMING_UP, payload: warmingUp }),
+    setCrtEffectIntensity: (intensity) => dispatch({ type: TVActions.SET_CRT_EFFECT_INTENSITY, payload: intensity }),
+    
+    // Status
+    setStatusMessage: (msg) => dispatch({ type: TVActions.SET_STATUS_MESSAGE, payload: msg }),
+    setLoading: (loading) => dispatch({ type: TVActions.SET_BUFFERING, payload: loading }),
+    setError: (error) => dispatch({ type: TVActions.SET_BUFFER_ERROR, payload: error }),
+    
+    // TV Frame
+    setTvFrameRect: (rect) => dispatch({ type: TVActions.SET_TV_FRAME_RECT, payload: rect }),
+    
+    // Batch
     resetState: () => dispatch({ type: TVActions.RESET_TO_INITIAL }),
   }), []);
 

@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { TVFrame, TVRemote } from '../components/tv'
 import { BackgroundManager, getNextEffect, getEffect } from '../components/backgrounds'
 import { VJChat } from '../components/chat'
 import { ExternalVideoHint } from '../components/overlays'
 import { SessionManager } from '../services/storage'
-// Analytics removed - not needed for core functionality
+import { analytics, performanceMonitor } from '../services/analytics'
 import { channelManager } from '../logic/channel'
 import { channelSwitchPipeline } from '../logic/effects'
 import { broadcastStateManager } from '../logic/broadcast'
 import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgramming'
 import { useEasterEggs } from '../hooks/useEasterEggs'
-import { startChannelSync, stopChannelSync } from '../services/channelSync'
+import { checksumSyncService } from '../services/checksumSync'
 import { clearEpochCache } from '../services/api/globalEpochService'
 import { useTVState } from '../hooks/useTVState'
 import CONSTANTS from '../config/appConstants'
@@ -34,6 +34,9 @@ export default function Home() {
 	const [userAgeGroup, setUserAgeGroup] = useState(null) // User age group for testing
 	const [crtVolume, setCrtVolume] = useState(null) // CRT overlay volume trigger (CRT-specific)
 	const [playbackInfo, setPlaybackInfo] = useState(null) // Live playback snapshot from Player
+	
+	// TV Frame rect for TV-relative control positioning
+	const [tvFrameRect, setTvFrameRect] = useState(null)
 	
 	// Ref to track current category index synchronously (fixes race condition on rapid clicks)
 	const currentCategoryIndexRef = useRef(-1)
@@ -63,6 +66,8 @@ export default function Home() {
 	const [videoSwitchTimestamp, setVideoSwitchTimestamp] = useState(Date.now())
 	// External video hint toast state
 	const [showExternalHint, setShowExternalHint] = useState(false)
+	// Chat open state (controlled by remote)
+	const [chatOpen, setChatOpen] = useState(false)
 
 	// Store tap handler from Player (passed through TVFrame)
 	const handleTapHandlerReady = (handler) => {
@@ -78,20 +83,6 @@ export default function Home() {
 		}
 	}, [tvState.externalVideo])
 
-	// Fixed reference layout (MacBook Air M3 alignment): scale TV+remote to fit viewport, same proportions on all screens
-	useLayoutEffect(() => {
-		const REF_W = 1000, REF_H = 620, FOOTER_H = 60
-		const setScale = () => {
-			const w = window.innerWidth
-			const h = Math.max(200, window.innerHeight - FOOTER_H)
-			const s = Math.min(w / REF_W, h / REF_H, 1.2)
-			document.documentElement.style.setProperty('--layout-scale', String(s))
-		}
-		setScale()
-		window.addEventListener('resize', setScale)
-		return () => window.removeEventListener('resize', setScale)
-	}, [])
-
 	// Callback to show/hide remote overlay (triggered from TVFrame sensor or mobile toggle)
 	const handleRemoteEdgeHover = useCallback(() => {
 		// Check if fullscreen (including iOS CSS fullscreen)
@@ -106,34 +97,56 @@ export default function Home() {
 			tvState.isFullscreen
 		)
 		
+		console.log('[Remote] handleRemoteEdgeHover called, fullscreen:', isCurrentlyFullscreen, 'isFullscreen:', tvState.isFullscreen)
+		
 		if (!isCurrentlyFullscreen) {
 			// If not fullscreen, hide remote
 			actions.setRemoteOverlayVisible(false)
 			return
 		}
 		
-		if (window.innerWidth <= 768) return
-		
-		// Clear any pending hide – stays open while hovering overlay or sensor
-		if (remoteHideTimeoutRef.current) {
-			clearTimeout(remoteHideTimeoutRef.current)
-			remoteHideTimeoutRef.current = null
+		// Only work on desktop
+		const isMobile = window.innerWidth <= 768
+		if (isMobile) {
+			console.log('[Remote] Mobile device, skipping')
+			return
 		}
-		actions.setRemoteOverlayVisible(true)
-	}, [tvState.isFullscreen, actions])
-	
-	// Hide only after leaving the remote frame; short delay to avoid flicker
-	const handleRemoteMouseLeave = useCallback(() => {
+		
+		// Show remote and reset auto-hide timer (original behavior: show on hover, auto-hide after 2.5 sec)
+		actions.setRemoteOverlayVisible(tvState.remoteOverlayVisible ? tvState.remoteOverlayVisible : true)
+		
+		// Clear and reset auto-hide timer
 		if (remoteHideTimeoutRef.current) {
 			clearTimeout(remoteHideTimeoutRef.current)
-			remoteHideTimeoutRef.current = null
 		}
 		remoteHideTimeoutRef.current = setTimeout(() => {
+			console.log('[Remote] Auto-hiding after 5 seconds')
 			actions.setRemoteOverlayVisible(false)
 			remoteHideTimeoutRef.current = null
-		}, 250)
+		}, 5000)
+	}, [tvState.isFullscreen, actions])
+	
+	// Handle mouse leave from remote overlay area
+	const handleRemoteMouseLeave = useCallback(() => {
+		console.log('[Remote] Mouse left remote area, starting 2.5 second timer')
+		// Clear existing timeout
+		if (remoteHideTimeoutRef.current) {
+			clearTimeout(remoteHideTimeoutRef.current)
+			remoteHideTimeoutRef.current = null
+		}
+		// Set new timeout to hide after 2.5 seconds
+		remoteHideTimeoutRef.current = setTimeout(() => {
+			console.log('[Remote] Auto-hiding after 5 seconds (mouse left)')
+			actions.setRemoteOverlayVisible(false)
+			remoteHideTimeoutRef.current = null
+		}, 5000)
 	}, [actions])
 
+	// Debug: Log remote visibility changes
+	useEffect(() => {
+		console.log('[Remote] Visibility changed:', tvState.remoteOverlayVisible, 'Fullscreen:', tvState.isFullscreen)
+	}, [tvState.remoteOverlayVisible, tvState.isFullscreen])
+	
 	// Handle swipe down to dismiss (mobile only)
 	const handleRemoteSwipeDismiss = useCallback(() => {
 		actions.setRemoteOverlayVisible(false)
@@ -143,6 +156,12 @@ export default function Home() {
 	const handleFullscreenChange = useCallback((isFs) => {
 		actions.setFullscreen(isFs)
 	}, [actions])
+
+	// Handle TV frame rect updates for TV-relative positioning
+	const handleFrameRectChange = useCallback((rect) => {
+		setTvFrameRect(rect)
+	}, [])
+
 
 	// Trigger tap for remote buttons and screen clicks
 	const handleTapTrigger = () => {
@@ -218,8 +237,8 @@ export default function Home() {
 				clearTimeout(remoteHideTimeoutRef.current)
 				remoteHideTimeoutRef.current = null
 			}
-			// Stop channel sync on unmount
-			stopChannelSync()
+			// Stop checksum sync on unmount
+			checksumSyncService.stop()
 		}
 	}, [])
 
@@ -300,21 +319,30 @@ export default function Home() {
 		currentCategoryIndexRef.current = categoryIndex
 		console.log(`[Home] Setting category: ${categoryName} at index ${categoryIndex} (total: ${categories.length})`)
 		
-		// Initialize channel state (non-blocking, async)
-		broadcastStateManager.initializeChannel(category)
-		broadcastStateManager.setManualMode(category._id, false)
-		
-		// Clear manual mode for old category if different
-		if (selectedCategory && selectedCategory._id !== category._id) {
-			broadcastStateManager.setManualMode(selectedCategory._id, false)
+		// Initialize channel state FIRST, then disable manual mode
+		try {
+			broadcastStateManager.initializeChannel(category)
+			broadcastStateManager.setManualMode(category._id, false)
+			
+			// Clear manual mode for old category if different
+			if (selectedCategory && selectedCategory._id !== category._id) {
+				broadcastStateManager.setManualMode(selectedCategory._id, false)
+			}
+			
+			// Only sync epoch if not in manual mode (manual mode should stay independent)
+			// Category change already disabled manual mode above, so safe to sync
+			broadcastStateManager.initializeGlobalEpoch(true).catch(err => {
+				console.warn('[Home] ⚠️ Global epoch refresh failed:', err)
+			})
+			// Trigger sync only after manual mode is disabled (now in LIVE mode)
+			checksumSyncService.triggerFastSync()
+		} catch (err) {
+			console.error('[Home] Error initializing category state:', err)
 		}
-		
-		// Epoch is client-side only, no server call needed
-		broadcastStateManager.initializeGlobalEpoch(false).catch(() => {})
 		
 		setSelectedCategory(category)
 		
-		// Calculate position (synchronous, fast)
+		// Calculate and jump to live timeline position
 		try {
 			const position = broadcastStateManager.calculateCurrentPosition(category)
 			if (position && position.videoIndex >= 0) {
@@ -351,20 +379,33 @@ export default function Home() {
 				localStorage.removeItem('desitv-global-epoch-cached')
 				localStorage.removeItem('desitv-broadcast-state')
 				
-				// Initialize global epoch (client-side from JSON or fixed default)
-				await broadcastStateManager.initializeGlobalEpoch(false) // Client-side only, no server call
+				// CRITICAL: Always fetch global epoch from server FIRST (for true sync)
+				// Don't load from localStorage - server is the source of truth
+				// This ensures mobile and desktop are perfectly synchronized
+				await broadcastStateManager.initializeGlobalEpoch(true) // Force refresh - always fetch fresh
 				const epoch = broadcastStateManager.getGlobalEpoch()
 				if (!epoch) {
 					throw new Error('Failed to initialize global epoch')
 				}
-				console.log('[Home] ✅ Global epoch initialized (client-side):', epoch.toISOString())
+				console.log('[Home] ✅ Global epoch from server:', epoch.toISOString())
 				
-				// Epoch refresh removed - epoch is client-side only (no server sync needed)
+				// Start periodic epoch refresh to maintain sync (every 5 seconds for perfect sync)
+				broadcastStateManager.startEpochRefresh()
 				
-				// Start simple channel sync (polls every 10 seconds)
-				startChannelSync()
+				// ULTRA-FAST VALIDATION: Start checksum sync service (max 2s latency)
+				// - Checks every 2 seconds (meets max latency requirement)
+				// - Fast sync on critical moments (100ms debounce)
+				// - Immediate validation on startup (500ms)
+				checksumSyncService.start()
 				
-				// Load channel states from localStorage
+				// ULTRA-FAST: Force immediate sync after initial load (1s delay)
+				setTimeout(() => {
+					checksumSyncService.forceSync().catch(err => {
+						console.warn('[Home] Initial checksum sync failed:', err)
+					})
+				}, 1000) // After 1 second for faster initial sync
+				
+				// Load channel states (but NOT epoch - epoch comes from server only)
 				broadcastStateManager.loadFromStorage()
 				
 				// Initialize session manager (loads from localStorage)
@@ -474,33 +515,6 @@ export default function Home() {
 		initializeApp()
 	}, [])
 
-	// Listen for channels updated event and refresh UI
-	useEffect(() => {
-		const handleChannelsUpdated = async () => {
-			try {
-				const updatedCategories = await channelManager.reload()
-				if (updatedCategories?.length > 0) {
-					setCategories(updatedCategories)
-					
-					// Update selected category if it still exists
-					if (selectedCategory) {
-						const stillExists = updatedCategories.find(cat => cat._id === selectedCategory._id)
-						if (stillExists) {
-							setSelectedCategory(stillExists)
-						} else if (updatedCategories.length > 0) {
-							setSelectedCategory(updatedCategories[0])
-						}
-					}
-				}
-			} catch (err) {
-				console.error('[Home] Error refreshing channels:', err)
-			}
-		}
-
-		window.addEventListener('channelsUpdated', handleChannelsUpdated)
-		return () => window.removeEventListener('channelsUpdated', handleChannelsUpdated)
-	}, [selectedCategory])
-
 	// Active video - current video in selected category
 	// This is what gets passed to Player as the "channel"
 	const activeVideo = videosInCategory[activeVideoIndex] || null
@@ -609,7 +623,10 @@ export default function Home() {
 			console.error('[Home] ❌ Error in switchVideo pipeline:', err)
 		})
 		
-		// Analytics tracking removed - not needed for core functionality
+		// Track analytics
+		const switchTime = performanceMonitor.trackChannelSwitch(startTime)
+		analytics.trackChannelChange('up', fromChannel, nextIndex, selectedCategory.name)
+		analytics.trackPerformance('channel_switch_time', switchTime)
 	}
 
 	function handleChannelDown() {
@@ -668,7 +685,7 @@ export default function Home() {
 		actions.setVolume(Math.max(0, tvState.volume - 0.1))
 		setCrtVolume(Math.max(0, tvState.volume - 0.1))
 		actions.setStatusMessage(`🔊 AWAAZ: ${Math.round(Math.max(0, tvState.volume - 0.1) * 100)}%`)
-		// Analytics tracking removed
+		analytics.trackVolumeChange(Math.max(0, tvState.volume - 0.1), 'down')
 	}
 
 	function handleMute() {
@@ -676,7 +693,7 @@ export default function Home() {
 			actions.setVolume(0)
 			setCrtVolume(0)
 			actions.setStatusMessage('🔇 AWAAZ BAND')
-			// Analytics tracking removed
+			analytics.trackVolumeChange(0, 'mute')
 		} else {
 			const prevVol = tvState.isMuted ? (tvState.prevVolume || 0.5) : (tvState.volume || 0.5)
 			actions.setVolume(prevVol)
@@ -781,13 +798,15 @@ export default function Home() {
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = nextIndex
 		
-		// Immediate category change (removed debounce for faster switching)
-		setCategory(nextCategory.name)
-		actions.setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
-		// Reset flag after state update
-		setTimeout(() => {
-			isChangingCategoryRef.current = false
-		}, 100) // Reduced from 300ms
+		// Debounce the actual category change
+		categoryChangeTimeoutRef.current = setTimeout(() => {
+			setCategory(nextCategory.name)
+			actions.setStatusMessage(`📺 ${nextCategory.name.toUpperCase()} CHALU!`)
+			// Reset flag after state update completes
+			setTimeout(() => {
+				isChangingCategoryRef.current = false
+			}, 300)
+		}, 50) // Small delay to batch rapid clicks
 	}
 
 	function handleCategoryDown() {
@@ -850,21 +869,35 @@ export default function Home() {
 		// Update ref immediately for next click (before setCategory)
 		currentCategoryIndexRef.current = prevIndex
 		
-		// Immediate category change (removed debounce for faster switching)
-		setCategory(prevCategory.name)
-		actions.setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
-		// Reset flag after state update
-		setTimeout(() => {
-			isChangingCategoryRef.current = false
-		}, 100) // Reduced from 300ms
+		// Debounce the actual category change
+		categoryChangeTimeoutRef.current = setTimeout(() => {
+			setCategory(prevCategory.name)
+			actions.setStatusMessage(`📺 ${prevCategory.name.toUpperCase()} CHALU!`)
+			// Reset flag after state update completes
+			setTimeout(() => {
+				isChangingCategoryRef.current = false
+			}, 300)
+		}, 50) // Small delay to batch rapid clicks
 	}
 
 	function handleMenuToggle() {
-		// Guard: Don't open menu if TV is off
-		if (!tvState.power) return
-		
+		const startTime = performance.now()
 		const isOpening = !tvState.menuOpen
 		actions.setMenuOpen(isOpening)
+		
+		if (isOpening) {
+			analytics.trackMenuOpen()
+		} else {
+			analytics.trackMenuClose()
+		}
+		
+		// Track menu open performance
+		if (isOpening) {
+			setTimeout(() => {
+				const openTime = performanceMonitor.trackMenuOpen(startTime)
+				analytics.trackPerformance('menu_open_time', openTime)
+			}, 100)
+		}
 	}
 
 	// Close menu on orientation change (but allow it in fullscreen)
@@ -945,49 +978,37 @@ export default function Home() {
 		actions.setStatusMessage(`✅ ${categoryName} SELECTED. CHANNEL BADALNE KE LIYE ↑↓`)
 	}
 
-		return (
+	// Galaxy Toggle Button component (extracted for cleaner render)
+	const GalaxyToggleButtons = (
 		<>
-		{/* Background Effects - Unified manager handles all variants */}
-		<BackgroundManager
-			variant={galaxyVariant}
-			enabled={galaxyEnabled}
-			isActive={tvState.power}
-			isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
-			isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
-			volume={tvState.volume}
-			videoId={activeVideo?.youtubeId}
-			videoTitle={activeVideo?.title}
-			channelName={selectedCategory?.name}
-		/>
-		
-		{/* Galaxy Toggle Button - Bottom Left Corner */}
-		<button
-			className={`galaxy-toggle-btn ${galaxyEnabled ? 'active' : ''}`}
-			onClick={() => setGalaxyEnabled(!galaxyEnabled)}
-			title={galaxyEnabled ? 'Disable Galaxy Effect' : 'Enable Galaxy Effect'}
-			aria-label="Toggle Galaxy Background"
-		>
-			<span className="galaxy-icon">{galaxyEnabled ? '🌌' : '✨'}</span>
-		</button>
-		
-		{/* Background Variant Toggle - Uses registry for cycling */}
-		{galaxyEnabled && (
 			<button
-				className={`galaxy-variant-btn ${galaxyVariant}`}
-				onClick={() => setGalaxyVariant(prev => getNextEffect(prev))}
-				title={`${getEffect(galaxyVariant).name} - Click for ${getEffect(getNextEffect(galaxyVariant)).name}`}
-				aria-label="Cycle Background Effect"
+				className={`galaxy-toggle-btn ${galaxyEnabled ? 'active' : ''}`}
+				onClick={() => setGalaxyEnabled(!galaxyEnabled)}
+				title={galaxyEnabled ? 'Disable Galaxy Effect' : 'Enable Galaxy Effect'}
+				aria-label="Toggle Galaxy Background"
 			>
-				<span className="variant-icon">
-					{getEffect(galaxyVariant).icon}
-				</span>
-				<span className="variant-label">
-					{getEffect(galaxyVariant).name}
-				</span>
+				<span className="galaxy-icon">{galaxyEnabled ? '🌌' : '✨'}</span>
 			</button>
-		)}
-		
-		{/* DesiAgent Chat Assistant - Bottom Right Corner */}
+			{galaxyEnabled && (
+				<button
+					className={`galaxy-variant-btn ${galaxyVariant}`}
+					onClick={() => setGalaxyVariant(prev => getNextEffect(prev))}
+					title={`${getEffect(galaxyVariant).name} - Click for ${getEffect(getNextEffect(galaxyVariant)).name}`}
+					aria-label="Cycle Background Effect"
+				>
+					<span className="variant-icon">
+						{getEffect(galaxyVariant).icon}
+					</span>
+					<span className="variant-label">
+						{getEffect(galaxyVariant).name}
+					</span>
+				</button>
+			)}
+		</>
+	)
+
+	// VJ Chat component (extracted for cleaner render)
+	const VJChatComponent = (
 		<VJChat 
 			// Current playback state - REAL-TIME context
 			currentChannel={selectedCategory?.name}
@@ -1002,6 +1023,8 @@ export default function Home() {
 			
 			// UI state
 			isVisible={tvState.power}
+			isOpen={chatOpen}
+			onToggle={setChatOpen}
 			
 			// NEW: Playback mode and state
 			mode={tvState.externalVideo ? 'external' : (selectedCategory && broadcastStateManager.getMode(selectedCategory._id))}
@@ -1009,7 +1032,7 @@ export default function Home() {
 			
 			// Action handlers
 			onChangeChannel={(channel) => {
-				// Handle channel change from DesiAgent chat
+				// Handle channel change from VJ chat
 				if (channel) {
 					const targetCategory = categories.find(
 						c => c._id === channel._id || c.name === channel.name
@@ -1025,7 +1048,7 @@ export default function Home() {
 				}
 			}}
 			onPlayVideo={({ channelId, channelName, videoIndex }) => {
-				// Handle video play from DesiAgent chat
+				// Handle video play from VJ chat
 				const targetCategory = categories.find(
 					c => c._id === channelId || c.name === channelName
 				);
@@ -1048,7 +1071,7 @@ export default function Home() {
 				}
 			}}
 			onPlayExternal={({ videoId, videoTitle, thumbnail }) => {
-				// Handle YouTube external video play from DesiAgent chat - play on TV screen
+				// Handle YouTube external video play from VJ chat - play on TV screen
 				console.log('[VJChat] Playing external YouTube video on TV:', videoId, videoTitle);
 				actions.playExternal({
 					videoId,
@@ -1074,11 +1097,29 @@ export default function Home() {
 				}
 			}}
 		/>
+	)
+
+	return (
+		<>
+		{/* Background Effects - Unified manager handles all variants */}
+		<BackgroundManager
+			variant={galaxyVariant}
+			enabled={galaxyEnabled}
+			isActive={tvState.power}
+			isPlaying={tvState.power && (playbackInfo?.isPlaying === true) && !tvState.isLoading && !playbackInfo?.isBuffering}
+			isBuffering={tvState.isLoading || playbackInfo?.isBuffering}
+			volume={tvState.volume}
+			videoId={activeVideo?.youtubeId}
+			videoTitle={activeVideo?.title}
+			channelName={selectedCategory?.name}
+		/>
+		
+		{/* Floating Toolbar removed - Controls moved to Remote */}
+		{VJChatComponent}
 		
 		<div className="main-container">
 			{/* Global glass overlay covering window while keeping remote above */}
 			<div className="glass-full-overlay" aria-hidden="true" />
-			<div className="layout-viewport">
 			<div className="content-wrapper">
 				{/* Left Side - TV Frame */}
 		<TVFrame 
@@ -1123,6 +1164,7 @@ export default function Home() {
 			}}
 			onTapHandlerReady={handleTapHandlerReady}
 			onFullscreenChange={handleFullscreenChange}
+			onFrameRectChange={handleFrameRectChange}
 			onRemoteEdgeHover={handleRemoteEdgeHover}
 			onRemoteMouseLeave={handleRemoteMouseLeave}
 			remoteOverlayVisible={tvState.remoteOverlayVisible}
@@ -1144,7 +1186,7 @@ export default function Home() {
 				videoId: activeVideo?.youtubeId,
 				videoTitle: activeVideo?.title,
 				channelName: activeVideo?.channelName || activeVideo?.channel,
-				variant: galaxyVariant,
+				variant: 'orbital',
 			} : null}
 			remoteOverlayComponent={
 				<TVRemote
@@ -1164,6 +1206,13 @@ export default function Home() {
 					totalChannels={videosInCategory.length}
 					menuOpen={tvState.menuOpen}
 					onTapTrigger={handleTapTrigger}
+					// Feature Toggles
+					galaxyEnabled={galaxyEnabled}
+					onGalaxyToggle={() => setGalaxyEnabled(!galaxyEnabled)}
+					galaxyVariant={galaxyVariant}
+					onGalaxyVariantChange={() => setGalaxyVariant(prev => getNextEffect(prev))}
+					isChatOpen={chatOpen}
+					onChatToggle={() => setChatOpen(!chatOpen)}
 				/>
 			}
 			menuComponent={tvState.menuOpen ? (
@@ -1252,10 +1301,16 @@ export default function Home() {
 						totalChannels={videosInCategory.length}
 						menuOpen={tvState.menuOpen}
 						onTapTrigger={handleTapTrigger}
+						// Feature Toggles
+						galaxyEnabled={galaxyEnabled}
+						onGalaxyToggle={() => setGalaxyEnabled(!galaxyEnabled)}
+						galaxyVariant={galaxyVariant}
+						onGalaxyVariantChange={() => setGalaxyVariant(prev => getNextEffect(prev))}
+						isChatOpen={chatOpen}
+						onChatToggle={() => setChatOpen(!chatOpen)}
 					/>
 				</div>
 			)}
-			</div>
 			</div>
 
 			{/* Footer / Status Text */}

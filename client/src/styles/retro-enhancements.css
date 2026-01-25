@@ -1,0 +1,514 @@
+/**
+ * Retro Enhancements - Advanced Vintage TV Effects
+ * 
+ * Authentic CRT behaviors that will impress tech enthusiasts:
+ * - TV warm-up delay (tube TVs took time to show picture)
+ * - Horizontal hold drift (occasional horizontal shake)
+ * - Vertical roll (brief vertical scrolling)
+ * - Enhanced interlace flicker
+ * - Channel change static burst
+ * - "Please Stand By" pattern
+ * 
+ * These effects use CSS-only techniques for maximum performance.
+ */
+
+/* ============================================
+   TV WARM-UP EFFECT
+   Simulates tube TV warming up - picture gradually appears
+   ============================================ */
+
+.tv-warming-up .tv-screen {
+  animation: tv-warmup 2.5s ease-out forwards;
+}
+
+@keyframes tv-warmup {
+  0% {
+    filter: brightness(0) saturate(0);
+    transform: scaleY(0.01);
+  }
+  15% {
+    filter: brightness(0.1) saturate(0);
+    transform: scaleY(0.01);
+  }
+  30% {
+    filter: brightness(0.3) saturate(0.2);
+    transform: scaleY(0.5);
+  }
+  50% {
+    filter: brightness(0.5) saturate(0.5);
+    transform: scaleY(0.8);
+  }
+  70% {
+    filter: brightness(0.8) saturate(0.8);
+    transform: scaleY(0.95);
+  }
+  85% {
+    filter: brightness(0.95) saturate(1);
+    transform: scaleY(1);
+  }
+  100% {
+    filter: brightness(1) saturate(1.1);
+    transform: scaleY(1);
+  }
+}
+
+/* Power on horizontal line expansion */
+.tv-power-on-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 48%,
+    rgba(255, 255, 255, 0.9) 49%,
+    rgba(255, 255, 255, 0.9) 51%,
+    transparent 52%
+  );
+  pointer-events: none;
+  z-index: 100;
+  animation: power-line-expand 0.8s ease-out forwards;
+}
+
+@keyframes power-line-expand {
+  0% {
+    opacity: 1;
+    transform: scaleX(0.01);
+  }
+  30% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+/* ============================================
+   HORIZONTAL HOLD DRIFT
+   Occasional horizontal displacement like bad tracking
+   ============================================ */
+
+.crt-horizontal-hold-drift {
+  animation: h-hold-drift 12s ease-in-out infinite;
+}
+
+@keyframes h-hold-drift {
+  0%, 90%, 100% {
+    transform: translateX(0);
+  }
+  92% {
+    transform: translateX(-2px);
+  }
+  94% {
+    transform: translateX(3px);
+  }
+  96% {
+    transform: translateX(-1px);
+  }
+  98% {
+    transform: translateX(1px);
+  }
+}
+
+/* More intense horizontal tear */
+.crt-horizontal-tear {
+  animation: h-tear 25s linear infinite;
+}
+
+@keyframes h-tear {
+  0%, 94%, 100% {
+    clip-path: none;
+  }
+  95% {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 40%,
+      calc(100% - 5px) 40%,
+      calc(100% - 5px) 45%,
+      100% 45%,
+      100% 100%,
+      0 100%
+    );
+  }
+  96% {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 42%,
+      calc(100% - 8px) 42%,
+      calc(100% - 3px) 48%,
+      100% 48%,
+      100% 100%,
+      0 100%
+    );
+  }
+  97% {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 38%,
+      calc(100% - 3px) 38%,
+      calc(100% - 6px) 46%,
+      100% 46%,
+      100% 100%,
+      0 100%
+    );
+  }
+}
+
+/* ============================================
+   VERTICAL ROLL EFFECT
+   Simulates vertical sync issues
+   ============================================ */
+
+.crt-vertical-roll {
+  animation: v-roll 40s linear infinite;
+}
+
+@keyframes v-roll {
+  0%, 97%, 100% {
+    transform: translateY(0);
+  }
+  97.5% {
+    transform: translateY(-100%);
+  }
+  97.6% {
+    transform: translateY(100%);
+  }
+  98% {
+    transform: translateY(0);
+  }
+}
+
+/* Brief vertical sync loss */
+.crt-vsync-glitch {
+  animation: vsync-glitch 30s ease-in-out infinite;
+}
+
+@keyframes vsync-glitch {
+  0%, 96%, 100% {
+    transform: translateY(0) skewY(0);
+  }
+  97% {
+    transform: translateY(5px) skewY(0.5deg);
+  }
+  98% {
+    transform: translateY(-3px) skewY(-0.3deg);
+  }
+  99% {
+    transform: translateY(1px) skewY(0.1deg);
+  }
+}
+
+/* ============================================
+   INTERLACE FLICKER
+   Alternating line brightness
+   ============================================ */
+
+.crt-interlace-flicker::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  animation: interlace 0.08s steps(2) infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes interlace {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(2px);
+  }
+}
+
+/* ============================================
+   CHANNEL CHANGE STATIC BURST
+   Brief static noise during channel switch
+   ============================================ */
+
+.channel-switch-static {
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+  mix-blend-mode: overlay;
+}
+
+.channel-switch-static.active {
+  animation: static-burst 0.3s steps(4) forwards;
+}
+
+@keyframes static-burst {
+  0% {
+    opacity: 0.9;
+    filter: contrast(2) brightness(1.5);
+  }
+  25% {
+    opacity: 0.7;
+    filter: contrast(1.8) brightness(1.3);
+  }
+  50% {
+    opacity: 0.5;
+    filter: contrast(1.5) brightness(1.1);
+  }
+  75% {
+    opacity: 0.3;
+    filter: contrast(1.2) brightness(1);
+  }
+  100% {
+    opacity: 0;
+    filter: contrast(1) brightness(1);
+  }
+}
+
+/* Audio static crackle visual */
+.audio-static-lines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 10px,
+    rgba(255, 255, 255, 0.1) 10px,
+    rgba(255, 255, 255, 0.1) 12px
+  );
+  animation: static-lines 0.05s steps(3) infinite;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+}
+
+.audio-static-lines.active {
+  opacity: 1;
+}
+
+@keyframes static-lines {
+  0% { background-position: 0 0; }
+  33% { background-position: 5px 0; }
+  66% { background-position: -3px 0; }
+  100% { background-position: 0 0; }
+}
+
+/* ============================================
+   PLEASE STAND BY PATTERN
+   Classic test pattern for loading states
+   ============================================ */
+
+.please-stand-by {
+  position: absolute;
+  inset: 0;
+  background: 
+    /* Color bars */
+    linear-gradient(
+      90deg,
+      #fff 0%, #fff 12.5%,
+      #ff0 12.5%, #ff0 25%,
+      #0ff 25%, #0ff 37.5%,
+      #0f0 37.5%, #0f0 50%,
+      #f0f 50%, #f0f 62.5%,
+      #f00 62.5%, #f00 75%,
+      #00f 75%, #00f 87.5%,
+      #000 87.5%, #000 100%
+    );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.please-stand-by::after {
+  content: 'PLEASE STAND BY';
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 8px 24px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================
+   CHANNEL ANNOUNCEMENT OVERLAY
+   Brief channel name display on switch
+   ============================================ */
+
+.channel-announcement {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 12px 32px;
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  animation: channel-announce 2.5s ease-out forwards;
+}
+
+@keyframes channel-announce {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  80% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+/* ============================================
+   PHOSPHOR PERSISTENCE
+   Image ghosting effect like old CRTs
+   ============================================ */
+
+.crt-phosphor-persistence {
+  position: relative;
+}
+
+.crt-phosphor-persistence::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  filter: blur(2px) opacity(0.15);
+  animation: phosphor-fade 0.1s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+@keyframes phosphor-fade {
+  0% { opacity: 0.15; }
+  100% { opacity: 0.05; }
+}
+
+/* ============================================
+   ELECTRON GUN WARM GLOW
+   Subtle warm tint at screen center
+   ============================================ */
+
+.crt-electron-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 60% 50% at 50% 50%,
+    rgba(255, 245, 220, 0.03) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 3;
+  animation: electron-glow 5s ease-in-out infinite;
+}
+
+@keyframes electron-glow {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   SCREEN CURVATURE REFLECTION
+   Simulates light reflecting off curved glass
+   ============================================ */
+
+.crt-screen-reflection {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  pointer-events: none;
+  z-index: 15;
+  border-radius: inherit;
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   Disable animations for users who prefer reduced motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-warming-up .tv-screen,
+  .crt-horizontal-hold-drift,
+  .crt-horizontal-tear,
+  .crt-vertical-roll,
+  .crt-vsync-glitch,
+  .crt-interlace-flicker::before,
+  .channel-switch-static.active,
+  .audio-static-lines.active,
+  .channel-announcement,
+  .crt-phosphor-persistence::after,
+  .crt-electron-glow {
+    animation: none !important;
+  }
+  
+  .channel-switch-static.active {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================
+   MOBILE OPTIMIZATIONS
+   Reduce effect intensity on mobile for performance
+   ============================================ */
+
+@media (max-width: 768px) {
+  .crt-interlace-flicker::before {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(0, 0, 0, 0.02) 3px,
+      rgba(0, 0, 0, 0.02) 6px
+    );
+  }
+  
+  .crt-horizontal-hold-drift {
+    animation-duration: 20s;
+  }
+  
+  .crt-vertical-roll {
+    animation: none; /* Too jarring on mobile */
+  }
+  
+  .crt-phosphor-persistence::after {
+    display: none; /* Performance on mobile */
+  }
+}

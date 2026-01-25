@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { getEffect } from '../backgrounds' // Import background helper
 
 /**
  * TVRemote - Retro TV remote control styled after classic VCR remotes
@@ -20,7 +21,14 @@ export default function TVRemote({
 	activeChannelIndex,
 	totalChannels,
 	menuOpen = false,
-	onTapTrigger = null // Handler to trigger iOS gesture unlock
+	onTapTrigger = null, // Handler to trigger iOS gesture unlock
+	// New Props for Toggles
+	galaxyEnabled = false,
+	onGalaxyToggle = null,
+	galaxyVariant = 'galaxy',
+	onGalaxyVariantChange = null,
+	isChatOpen = false,
+	onChatToggle = null
 }) {
 	const [channelInput, setChannelInput] = useState('')
 	const channelInputTimeout = useRef(null)
@@ -365,6 +373,49 @@ export default function TVRemote({
 						></div>
 					</div>
 					<div className="volume-percent">{Math.round(volume * 100)}%</div>
+				</div>
+
+				{/* Feature Toggles (Galaxy & Chat) */}
+				<div className="feature-toggles-section">
+					{/* Galaxy Control Group */}
+					<div className={`galaxy-control-group ${galaxyEnabled ? 'expanded' : ''}`}>
+						<button
+							className={`remote-btn feature-btn galaxy-btn ${galaxyEnabled ? 'active' : ''}`}
+							onClick={handleMobileClick(() => { playButtonSound(); onGalaxyToggle && onGalaxyToggle(); })}
+							onTouchEnd={handleMobileTouch(() => { playButtonSound(); onGalaxyToggle && onGalaxyToggle(); })}
+							disabled={!power}
+							title={galaxyEnabled ? "Turn Off Galaxy" : "Turn On Galaxy"}
+						>
+							<span className="feature-icon">{galaxyEnabled ? getEffect(galaxyVariant).icon : '✨'}</span>
+							{galaxyEnabled && (
+								<span className="feature-label">{getEffect(galaxyVariant).name}</span>
+							)}
+						</button>
+
+						{/* Variant Cycler (only when enabled) */}
+						{galaxyEnabled && (
+							<button
+								className="remote-btn feature-btn variant-mini-btn"
+								onClick={handleMobileClick(() => { playButtonSound(); onGalaxyVariantChange && onGalaxyVariantChange(); })}
+								onTouchEnd={handleMobileTouch(() => { playButtonSound(); onGalaxyVariantChange && onGalaxyVariantChange(); })}
+								disabled={!power}
+								title="Change World"
+							>
+								🎨
+							</button>
+						)}
+					</div>
+
+					{/* Chat Toggle */}
+					<button
+						className={`remote-btn feature-btn chat-btn ${isChatOpen ? 'active' : ''}`}
+						onClick={handleMobileClick(() => { playButtonSound(); onChatToggle && onChatToggle(); })}
+						onTouchEnd={handleMobileTouch(() => { playButtonSound(); onChatToggle && onChatToggle(); })}
+						disabled={!power}
+						title="Ask Agent"
+					>
+						🤖
+					</button>
 				</div>
 
 				{/* Keyboard Hints - Simplified */}

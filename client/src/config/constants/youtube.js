@@ -19,6 +19,7 @@ export const YOUTUBE_ERROR_CODES = {
 	NOT_FOUND: 100,
 	NOT_EMBEDDABLE: 101,
 	RESTRICTED: 150,
+	UNAVAILABLE: 152, // Video unavailable (removed, private, region blocked)
 }
 
 export const YOUTUBE_PLAYER = {
@@ -41,9 +42,10 @@ export const YOUTUBE_PLAYER = {
 }
 
 export const YOUTUBE_PERMANENT_ERRORS = [
-	YOUTUBE_ERROR_CODES.NOT_FOUND,
-	YOUTUBE_ERROR_CODES.NOT_EMBEDDABLE,
-	// RESTRICTED (150) removed - will be handled by pre-validation and immediate skip
+	YOUTUBE_ERROR_CODES.NOT_FOUND,      // 100
+	YOUTUBE_ERROR_CODES.NOT_EMBEDDABLE, // 101
+	YOUTUBE_ERROR_CODES.RESTRICTED,     // 150 - embedding disabled by owner
+	YOUTUBE_ERROR_CODES.UNAVAILABLE,    // 152 - video unavailable
 	2, // Invalid ID
 	5, // HTML5 error
 ]

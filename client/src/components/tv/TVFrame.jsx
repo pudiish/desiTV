@@ -10,7 +10,7 @@ import { getUserTimezone } from '../../services/api/timezoneService'
  * Memoized to prevent unnecessary re-renders
  * Updated: Removed sensorKey state - using simple direct rendering
  */
-const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false, galaxyProps = null, externalVideo = null, onExternalVideoEnd = null }) {
+const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrigger, statusMessage, volume, crtVolume = null, crtIsMuted = false, staticActive, allChannels, onVideoEnd, isBuffering = false, bufferErrorMessage = '', onBufferingChange = null, onPlaybackProgress = null, playbackInfo = null, activeChannelIndex = 0, channels = [], onTapHandlerReady = null, onFullscreenChange = null, onRemoteEdgeHover = null, onRemoteMouseLeave = null, remoteOverlayComponent = null, remoteOverlayVisible = false, menuComponent = null, onPowerToggle = null, onChannelUp = null, onChannelDown = null, onCategoryUp = null, onCategoryDown = null, onVolumeUp = null, onVolumeDown = null, onMute = null, isFullscreen: isFullscreenProp = false, galaxyProps = null, externalVideo = null, onExternalVideoEnd = null, onFrameRectChange = null }) {
 	const tvFrameRef = useRef(null)
 	const tvFrameInnerRef = useRef(null) // Ref for the inner TV frame element
 	const [isFullscreen, setIsFullscreen] = useState(isFullscreenProp)
@@ -19,8 +19,6 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 	const [transitionInfo, setTransitionInfo] = useState(null)
 	const [tvFrameRect, setTvFrameRect] = useState(null) // TV frame position for Galaxy
 	const tapHandlerRef = useRef(null)
-	// Track touch events to prevent double-firing on mobile
-	const touchHandledRef = useRef({ power: false, mute: false, volUp: false, volDown: false, chUp: false, chDown: false, catUp: false, catDown: false })
 	
 	// Helper to check if actually in fullscreen (including iOS CSS fullscreen)
 	const isActuallyFullscreen = () => {
@@ -37,34 +35,50 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		return fullscreen
 	}
 
-	// Calculate TV frame position for Galaxy orbital effect
+	// Calculate TV frame position for controls overlay and Galaxy orbital effect
+	// Tracks position in ALL modes (not just fullscreen) for TV-relative UI positioning
 	useEffect(() => {
 		const updateTvFrameRect = () => {
-			if (tvFrameInnerRef.current && isFullscreen) {
+			if (tvFrameInnerRef.current) {
 				const rect = tvFrameInnerRef.current.getBoundingClientRect()
-				setTvFrameRect({
+				const newRect = {
 					x: rect.left + rect.width / 2,  // Center X
 					y: rect.top + rect.height / 2,  // Center Y
+					left: rect.left,
+					top: rect.top,
+					right: rect.right,
+					bottom: rect.bottom,
 					width: rect.width,
-					height: rect.height
-				})
+					height: rect.height,
+					isFullscreen: isFullscreen
+				}
+				setTvFrameRect(newRect)
+				// Notify parent about frame position changes
+				if (onFrameRectChange) {
+					onFrameRectChange(newRect)
+				}
 			}
 		}
 		
-		// Update on fullscreen change
+		// Update on mount and fullscreen change
 		updateTvFrameRect()
 		
-		// Update on resize
+		// Update on resize and scroll
 		window.addEventListener('resize', updateTvFrameRect)
+		window.addEventListener('scroll', updateTvFrameRect)
 		
 		// Also update after a short delay for CSS transitions
 		const timeout = setTimeout(updateTvFrameRect, 100)
+		// Update again after layout settles
+		const timeout2 = setTimeout(updateTvFrameRect, 500)
 		
 		return () => {
 			window.removeEventListener('resize', updateTvFrameRect)
+			window.removeEventListener('scroll', updateTvFrameRect)
 			clearTimeout(timeout)
+			clearTimeout(timeout2)
 		}
-	}, [isFullscreen])
+	}, [isFullscreen, onFrameRectChange])
 
 	// Store tap handler from Player
 	const handleTapHandlerReady = (handler) => {
@@ -86,34 +100,6 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
 			(window.innerWidth <= 768 && 'ontouchstart' in window)
 	}
-
-	// Mobile-friendly touch handler - prevents double-firing on touch devices
-	const createTouchHandler = useCallback((key, handler) => ({
-		onClick: (e) => {
-			if (touchHandledRef.current[key]) {
-				e.preventDefault()
-				e.stopPropagation()
-				return
-			}
-			e.stopPropagation()
-			handler && handler()
-			// Remove focus to prevent persistent highlight
-			e.currentTarget.blur()
-		},
-		onTouchStart: (e) => {
-			e.stopPropagation()
-			touchHandledRef.current[key] = true
-			handler && handler()
-			// Reset after delay
-			setTimeout(() => { touchHandledRef.current[key] = false }, 300)
-		},
-		onTouchEnd: (e) => {
-			e.preventDefault()
-			e.stopPropagation()
-			// Remove focus to prevent persistent highlight
-			e.currentTarget.blur()
-		}
-	}), [])
 
 	const toggleFullscreen = useCallback(() => {
 		// NO FULLSCREEN ON MOBILE - return early
@@ -468,7 +454,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 				<div className="tv-control-buttons">
 						<button 
 							className="tv-btn small channel-down" 
-							{...createTouchHandler('chDown', onChannelDown)}
+							onClick={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onChannelDown && onChannelDown(); }}
 							title="Channel Down"
 							aria-label="Channel Down"
 						>
@@ -479,7 +466,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small channel-up" 
-							{...createTouchHandler('chUp', onChannelUp)}
+							onClick={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onChannelUp && onChannelUp(); }}
 							title="Channel Up"
 							aria-label="Channel Up"
 						>
@@ -490,7 +478,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small category-down" 
-							{...createTouchHandler('catDown', onCategoryDown)}
+							onClick={(e) => { e.stopPropagation(); onCategoryDown && onCategoryDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onCategoryDown && onCategoryDown(); }}
 							title="Previous Category"
 							aria-label="Previous Category"
 						>
@@ -506,7 +495,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small category-up" 
-							{...createTouchHandler('catUp', onCategoryUp)}
+							onClick={(e) => { e.stopPropagation(); onCategoryUp && onCategoryUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onCategoryUp && onCategoryUp(); }}
 							title="Next Category"
 							aria-label="Next Category"
 						>
@@ -522,7 +512,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small volume-down" 
-							{...createTouchHandler('volDown', onVolumeDown)}
+							onClick={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onVolumeDown && onVolumeDown(); }}
 							title="Volume Down"
 							aria-label="Volume Down"
 						>
@@ -535,7 +526,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small volume-up" 
-							{...createTouchHandler('volUp', onVolumeUp)}
+							onClick={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onVolumeUp && onVolumeUp(); }}
 							title="Volume Up"
 							aria-label="Volume Up"
 						>
@@ -547,7 +539,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn small mute" 
-							{...createTouchHandler('mute', onMute)}
+							onClick={(e) => { e.stopPropagation(); onMute && onMute(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onMute && onMute(); }}
 							title="Mute"
 							aria-label="Mute"
 						>
@@ -572,7 +565,8 @@ const TVFrame = React.memo(function TVFrame({ power, activeChannel, onStaticTrig
 						</button>
 						<button 
 							className="tv-btn power" 
-							{...createTouchHandler('power', onPowerToggle)}
+							onClick={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
+							onTouchEnd={(e) => { e.stopPropagation(); onPowerToggle && onPowerToggle(); }}
 							title="Power"
 							aria-label="Power"
 						>

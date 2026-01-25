@@ -27,3 +27,7 @@ export { useSessionManagement } from './useSessionManagement'
 
 // Utilities
 export { useSafeInterval } from './useSafeInterval'
+
+// Advanced Features
+export { useVoiceControl } from './useVoiceControl'
+export { useAmbientColors } from './useAmbientColors'

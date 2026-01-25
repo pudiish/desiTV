@@ -475,14 +475,20 @@
 	flex: 1;
 }
 
-/* Footer / Status Text */
+/* Footer / Status Text - Fixed at bottom on all screen sizes */
 .footer-status {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
 	width: 100%;
 	padding: clamp(6px, 1vh, 10px) clamp(10px, 2vw, 20px);
 	text-align: center;
-	background: rgba(26, 24, 22, 0.8);
+	background: rgba(26, 24, 22, 0.85);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
 	border-top: 1px solid var(--color-border);
-	flex-shrink: 0;
+	z-index: 100;
 	/* Safe area support for notched devices */
 	padding-bottom: calc(clamp(6px, 1vh, 10px) + env(safe-area-inset-bottom, 0px));
 	overflow: hidden; /* Prevent content overflow */

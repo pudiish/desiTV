@@ -3,7 +3,6 @@
 export { default as Galaxy } from './Galaxy'
 export { default as Liquid } from './Liquid'
 export { default as Aurora } from './Aurora'
-export { default as Jugnu } from './Jugnu'
 
 export { 
   BackgroundManager,

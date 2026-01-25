@@ -1,12 +1,3 @@
-/**
- * DesiTV Server - MongoDB + Cache + WebSocket Architecture
- * 
- * Architecture:
- * - MongoDB Atlas as source of truth
- * - In-memory cache for fast reads
- * - WebSocket for real-time client updates
- */
-
 const express = require('express');
 const mongoose = require('mongoose');
 const createCors = require('./middleware/cors');
@@ -14,12 +5,15 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const compression = require('compression');
+const { warmChannelsList, startPeriodicWarming } = require('./utils/cacheWarmer');
 
-// Load environment variables
+// Load project root .env first (useful when running from project root),
+// then load server/.env to allow overrides.
 const rootEnv = path.resolve(__dirname, '..', '.env');
 if (fs.existsSync(rootEnv)) {
-  dotenv.config({ path: rootEnv });
+	dotenv.config({ path: rootEnv });
 }
+// Load server/.env if present (will override root values)
 dotenv.config();
 
 const app = express();
@@ -31,29 +25,29 @@ const CLIENT_PORT = process.env.VITE_CLIENT_PORT || 5173;
 
 // Security middleware
 const { 
-  securityMiddleware, 
-  generalLimiter, 
-  apiLimiter,
-  connectionTracker,
-  requestSizeLimit,
-  FREE_TIER_LIMITS 
+	securityMiddleware, 
+	generalLimiter, 
+	apiLimiter,
+	connectionTracker,
+	requestSizeLimit,
+	FREE_TIER_LIMITS 
 } = require('./middleware/security');
 
 // Apply security middleware first
 securityMiddleware.forEach(middleware => {
-  app.use(middleware);
+	app.use(middleware);
 });
 
 // HTTP compression
 app.use(compression({
-  filter: (req, res) => {
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    return compression.filter(req, res);
-  },
-  level: 6,
-  threshold: 1024,
+	filter: (req, res) => {
+		if (req.headers['x-no-compression']) {
+			return false;
+		}
+		return compression.filter(req, res);
+	},
+	level: 6,
+	threshold: 1024,
 }));
 
 app.use(connectionTracker);
@@ -62,54 +56,53 @@ app.use(generalLimiter);
 
 // HTTPS enforcement in production
 if (isProduction) {
-  app.use((req, res, next) => {
-    const isSecure = req.secure || 
-      req.header('x-forwarded-proto') === 'https' ||
-      req.header('x-forwarded-proto') === 'https,' ||
-      req.header('x-forwarded-proto')?.startsWith('https');
-    
-    if (!isSecure) {
-      const host = req.header('host') || req.hostname;
-      return res.redirect(301, `https://${host}${req.url}`);
-    }
-    
-    next();
-  });
+	app.use((req, res, next) => {
+		const isSecure = req.secure || 
+			req.header('x-forwarded-proto') === 'https' ||
+			req.header('x-forwarded-proto') === 'https,' ||
+			req.header('x-forwarded-proto')?.startsWith('https');
+		
+		if (!isSecure) {
+			const host = req.header('host') || req.hostname;
+			return res.redirect(301, `https://${host}${req.url}`);
+		}
+		
+		next();
+	});
 }
 
 // CORS configuration
 const getLocalIP = () => {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return 'localhost';
+	const { networkInterfaces } = require('os');
+	const nets = networkInterfaces();
+	for (const name of Object.keys(nets)) {
+		for (const net of nets[name]) {
+			if (net.family === 'IPv4' && !net.internal) {
+				return net.address;
+			}
+		}
+	}
+	return 'localhost';
 };
 
 const corsOptions = {
-  origin: isProduction 
-    ? [
-      process.env.CLIENT_URL,
-      process.env.CORS_ORIGIN,
-      /^https:\/\/(desi-?tv|desitv)[^.]*\.vercel\.app$/,
-      /^https:\/\/(desi-?tv|desitv)[^.]*\.onrender\.com$/,
-    ].filter(Boolean)
-    : [
-      `http://localhost:${CLIENT_PORT}`, 
-      'http://localhost:3000', 
-      `http://127.0.0.1:${CLIENT_PORT}`,
-      /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
-      /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
-      /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
-    ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'Pragma', 'Cache-Control'],
+	origin: isProduction 
+		? [
+			/\.vercel\.app$/,  // Allow all Vercel deployments
+			/\.onrender\.com$/, // Allow Render deployments
+			process.env.CLIENT_URL, // Custom client URL if set
+		].filter(Boolean)
+		: [
+			`http://localhost:${CLIENT_PORT}`, 
+			'http://localhost:3000', 
+			`http://127.0.0.1:${CLIENT_PORT}`,
+			/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+			/^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+			/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+		],
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(createCors(corsOptions));
 
@@ -118,11 +111,23 @@ app.use(express.json({ limit: '1mb' }));
 
 // Request logging
 if (!isProduction || process.env.DEBUG) {
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    next();
-  });
+	app.use((req, res, next) => {
+		console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+		next();
+	});
 }
+
+// MongoDB connection options (useNewUrlParser/useUnifiedTopology removed - deprecated in Mongoose 7+)
+const mongoOptions = {
+	maxPoolSize: isProduction ? 5 : 3,
+	minPoolSize: 1,
+	serverSelectionTimeoutMS: 5000,
+	socketTimeoutMS: 30000,
+	retryWrites: true,
+	retryReads: true,
+	maxIdleTimeMS: 30000,
+	connectTimeoutMS: 10000,
+};
 
 // Routes
 const channelRoutes = require('./routes/channels');
@@ -135,8 +140,8 @@ const monitoringRoutes = require('./routes/monitoring');
 const analyticsRoutes = require('./routes/analytics');
 const globalEpochRoutes = require('./routes/globalEpoch');
 const viewerCountRoutes = require('./routes/viewerCount');
-const liveStateRoutes = require('./routes/liveState');
-const chatRoutes = require('./routes/chat');
+const liveStateRoutes = require('./routes/liveState'); // 🌟 NEW: Server-authoritative LIVE state
+const chatRoutes = require('./routes/chat'); // 🤖 VJ Assistant chatbot
 
 // CSRF protection
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
@@ -148,7 +153,7 @@ app.use('/api', csrfRefresh);
 
 // Mount routes
 app.use('/api/global-epoch', globalEpochRoutes);
-app.use('/api/live-state', liveStateRoutes);
+app.use('/api/live-state', liveStateRoutes); // 🌟 NEW: The source of LIVE truth
 app.use('/api/viewer-count', viewerCountRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/auth', authRoutes);
@@ -158,192 +163,201 @@ app.use('/api/broadcast-state', broadcastStateRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', chatRoutes); // 🤖 VJ Assistant chatbot
 
-// Health check
-app.get('/health', async (req, res) => {
-  const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  res.json({ 
-    status: 'ok',
-    environment: isProduction ? 'production' : 'development',
-    timestamp: new Date().toISOString(),
-    mongodb: mongoStatus,
-    security: {
-      rateLimiting: 'enabled',
-      helmet: 'enabled',
-      mongoSanitize: 'enabled',
-      freeTierLimits: FREE_TIER_LIMITS
-    }
-  });
+// health check with security stats
+app.get('/health', (req, res) => res.json({ 
+	status: 'ok',
+	environment: isProduction ? 'production' : 'development',
+	timestamp: new Date().toISOString(),
+	security: {
+		rateLimiting: 'enabled',
+		helmet: 'enabled',
+		mongoSanitize: 'enabled',
+		freeTierLimits: FREE_TIER_LIMITS
+	}
+}));
+
+// Diagnostic endpoint - check API key configuration
+app.get('/api/diagnostics', (req, res) => {
+	const diagnostics = {
+		environment: isProduction ? 'production' : 'development',
+		nodeVersion: process.version,
+		apiKeys: {
+			googleAiConfigured: !!process.env.GOOGLE_AI_KEY,
+			youtubeConfigured: !!process.env.YOUTUBE_API_KEY,
+			mongoConfigured: !!process.env.MONGO_URI
+		},
+		envVarsPresent: {
+			GOOGLE_AI_KEY: !!process.env.GOOGLE_AI_KEY,
+			YOUTUBE_API_KEY: !!process.env.YOUTUBE_API_KEY,
+			MONGO_URI: !!process.env.MONGO_URI
+		},
+		timestamp: new Date().toISOString()
+	};
+	res.json(diagnostics);
 });
 
-// Diagnostics endpoint
-app.get('/api/diagnostics', async (req, res) => {
-  const ChannelDataService = require('./services/ChannelDataService');
-  const stats = await ChannelDataService.getStats().catch(() => ({}));
-  
-  res.json({
-    environment: isProduction ? 'production' : 'development',
-    nodeVersion: process.version,
-    mongodb: {
-      connected: mongoose.connection.readyState === 1,
-      host: mongoose.connection.host || 'not connected'
-    },
-    dataService: stats,
-    apiKeys: {
-      googleAiConfigured: !!process.env.GOOGLE_AI_KEY,
-      youtubeConfigured: !!process.env.YOUTUBE_API_KEY,
-      mongoConfigured: !!process.env.MONGO_URI
-    },
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Error handler
+// error handler (last middleware)
 const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
 
-app.get('/', (req, res) => res.send('DesiTV™ API running (MongoDB + WebSocket)'));
+app.get('/', (req, res) => res.send('DesiTV™ API running'));
 
-// ============================================
-// SERVER STARTUP
-// ============================================
+// Route to manually trigger JSON regeneration (useful for client fallback)
+app.post('/api/regenerate-json', async (req, res) => {
+	try {
+		const { ensureChannelsJSON } = require('./utils/generateJSON');
+		const result = await ensureChannelsJSON();
+		res.json({ 
+			success: true, 
+			message: `JSON regenerated with ${result.channels.length} channels`,
+			channelsCount: result.channels.length 
+		});
+	} catch (error) {
+		console.error('[Server] Error regenerating JSON:', error);
+		res.status(500).json({ 
+			success: false, 
+			message: error.message 
+		});
+	}
+});
 
-(async () => {
-  const HOST = process.env.HOST || '0.0.0.0';
-  
-  // Connect to MongoDB
-  const MONGO_URI = process.env.MONGO_URI;
-  if (!MONGO_URI) {
-    console.error('╔═══════════════════════════════════════════════════════════════╗');
-    console.error('║  ❌ MONGO_URI environment variable is required!               ║');
-    console.error('║                                                               ║');
-    console.error('║  Please set MONGO_URI in your .env file:                      ║');
-    console.error('║  MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/desitv ║');
-    console.error('╚═══════════════════════════════════════════════════════════════╝');
-    process.exit(1);
-  }
+// Database connection and server start
+const dbConnectionManager = require('./utils/dbConnection');
 
-  console.log('[DesiTV] Connecting to MongoDB...');
-  try {
-    await mongoose.connect(MONGO_URI, {
-      maxPoolSize: 10,
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-    });
-    console.log('[DesiTV] ✅ MongoDB connected');
-    
-    // Auto-migrate if database is empty
-    const Channel = require('./models/Channel');
-    const channelCount = await Channel.countDocuments();
-    
-    if (channelCount === 0) {
-      console.log('[DesiTV] 📥 Database is empty, checking for JSON data to migrate...');
-      
-      const jsonPaths = [
-        path.resolve(__dirname, '../channels.json'),
-        path.resolve(__dirname, '../client/public/data/channels.json')
-      ];
-      
-      for (const jsonPath of jsonPaths) {
-        if (fs.existsSync(jsonPath)) {
-          try {
-            const jsonData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-            if (jsonData.channels && jsonData.channels.length > 0) {
-              console.log(`[DesiTV] Found ${jsonData.channels.length} channels in JSON, migrating...`);
-              
-              const ChannelDataService = require('./services/ChannelDataService');
-              const result = await ChannelDataService.importFromJSON(jsonData);
-              
-              console.log(`[DesiTV] ✅ Migrated ${result.imported} channels`);
-              break;
-            }
-          } catch (err) {
-            console.warn(`[DesiTV] Could not parse ${jsonPath}:`, err.message);
-          }
-        }
-      }
-    } else {
-      console.log(`[DesiTV] 📊 Found ${channelCount} channels in MongoDB`);
-    }
-    
-  } catch (err) {
-    console.error('[DesiTV] ❌ MongoDB connection failed:', err.message);
-    console.error('[DesiTV] Please check your MONGO_URI and network connection');
-    process.exit(1);
-  }
+dbConnectionManager.onConnection(async () => {
+	console.log(`[DesiTV] MongoDB connected (${isProduction ? 'production' : 'development'})`);
+	
+	// Initialize global epoch immediately on server start
+	// This sets the epoch to current time if it doesn't exist, so stream is "on" from server startup
+	try {
+		const GlobalEpoch = require('./models/GlobalEpoch');
+		const cache = require('./utils/cache');
+		
+		// Get or create epoch (will use current server time if creating for first time)
+		const globalEpoch = await GlobalEpoch.getOrCreate();
+		
+		// Pre-cache the epoch for instant access
+		const cacheKey = 'ge';
+		const cacheData = {
+			e: globalEpoch.epoch.toISOString(),
+			tz: globalEpoch.timezone || 'Asia/Kolkata',
+			epoch: globalEpoch.epoch.toISOString(),
+			timezone: globalEpoch.timezone || 'Asia/Kolkata',
+			createdAt: globalEpoch.createdAt || globalEpoch.epoch,
+		};
+		await cache.set(cacheKey, cacheData, 7200); // Cache for 2 hours
+		
+		console.log(`[DesiTV] ✅ Global epoch initialized: ${globalEpoch.epoch.toISOString()}`);
+		console.log(`[DesiTV] 📺 Stream is now ON - all channels calculating from this epoch`);
+	} catch (epochErr) {
+		console.warn('[DesiTV] Failed to initialize global epoch:', epochErr.message);
+	}
+	
+	try {
+		const { ensureChannelsJSON } = require('./utils/generateJSON');
+		const jsonData = await ensureChannelsJSON();
+		console.log(`[DesiTV] channels.json ready with ${jsonData.channels.length} channels`);
+	} catch (jsonErr) {
+		console.warn('[DesiTV] Failed to ensure channels.json:', jsonErr.message);
+	}
+	
+	try {
+		console.log('[DesiTV] Pre-warming cache...');
+		await warmChannelsList();
+		console.log('[DesiTV] Cache pre-warmed successfully');
+		startPeriodicWarming(5);
+	} catch (cacheErr) {
+		console.warn('[DesiTV] Cache pre-warming failed (non-critical):', cacheErr.message);
+	}
+	
+	// Warm LiveState cache (pre-compute channel data)
+	try {
+		const liveStateService = require('./services/liveStateService');
+		await liveStateService.warmCache();
+	} catch (lsErr) {
+		console.warn('[DesiTV] LiveState cache warming failed:', lsErr.message);
+	}
+});
 
-  // Create HTTP server
-  const http = require('http');
-  const server = http.createServer(app);
-  
-  // Initialize Socket.io
-  const { initializeSocket, getSocketStats } = require('./socket');
-  initializeSocket(server, corsOptions);
-  
-  // Socket stats endpoint
-  app.get('/api/socket-stats', (req, res) => {
-    res.json(getSocketStats());
-  });
-  
-  // Start server
-  server.listen(PORT, HOST, () => {
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════════════════╗');
-    console.log('║                    DesiTV Server Started                       ║');
-    console.log('╠═══════════════════════════════════════════════════════════════╣');
-    console.log(`║  🌐 Server:    http://${HOST}:${PORT}`.padEnd(66) + '║');
-    console.log(`║  📦 MongoDB:   Connected`.padEnd(66) + '║');
-    console.log(`║  🔌 WebSocket: Enabled (real-time updates)`.padEnd(66) + '║');
-    console.log(`║  💾 Cache:     In-memory + Redis (if available)`.padEnd(66) + '║');
-    if (!isProduction) {
-      const localIP = getLocalIP();
-      console.log(`║  🏠 Local:     http://localhost:${PORT}`.padEnd(66) + '║');
-      console.log(`║  📡 Network:   http://${localIP}:${PORT}`.padEnd(66) + '║');
-    }
-    console.log('╚═══════════════════════════════════════════════════════════════╝');
-    console.log('');
-  });
+dbConnectionManager.connect(process.env.MONGO_URI, mongoOptions)
+	.then(async () => {
+		const HOST = process.env.HOST || '0.0.0.0';
+		
+		// Create HTTP server
+		const http = require('http');
+		const server = http.createServer(app);
+		
+		// Initialize Socket.io
+		const { initializeSocket, getSocketStats } = require('./socket');
+		initializeSocket(server, corsOptions);
+		
+		// Socket stats endpoint
+		app.get('/api/socket-stats', (req, res) => {
+			res.json(getSocketStats());
+		});
+		
+		server.listen(PORT, HOST, () => {
+			console.log(`[DesiTV] Server listening on ${HOST}:${PORT}`);
+			console.log(`[DesiTV] WebSocket enabled`);
+			if (!isProduction) {
+				const localIP = getLocalIP();
+				console.log(`[DesiTV] Local:   http://localhost:${PORT}`);
+				console.log(`[DesiTV] Network: http://${localIP}:${PORT}`);
+			}
+		});
 
-  server.on('error', (err) => {
-    if (err && err.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} is already in use.`);
-      process.exit(1);
-    }
-    console.error('Server error:', err);
-  });
+		server.on('error', (err) => {
+			if (err && err.code === 'EADDRINUSE') {
+				console.error(`Port ${PORT} is already in use. Make sure no other process is listening on this port.`);
+				process.exit(1);
+			}
+			console.error('Server error:', err);
+		});
 
-  // Graceful shutdown
-  const shutdown = async (signal) => {
-    console.log(`\n[DesiTV] Received ${signal}, shutting down gracefully...`);
-    
-    try {
-      // Close socket connections
-      const { shutdown: shutdownSocket } = require('./socket');
-      shutdownSocket();
-      
-      // Close MongoDB connection
-      await mongoose.connection.close();
-      console.log('[DesiTV] MongoDB disconnected');
-      
-      // Close HTTP server
-      server.close(() => {
-        console.log('[DesiTV] Server closed');
-        process.exit(0);
-      });
-      
-      // Force exit after 10 seconds
-      setTimeout(() => {
-        console.error('[DesiTV] Forced shutdown after timeout');
-        process.exit(1);
-      }, 10000);
-    } catch (e) {
-      console.error('[DesiTV] Error during shutdown:', e);
-      process.exit(1);
-    }
-  };
+		const shutdown = async (signal, exitCode = 0) => {
+			console.log('Received', signal, 'shutting down server...');
+			try {
+				server.close(() => {
+					console.log('Server closed');
+					
+					if (signal === 'SIGUSR2') {
+						setTimeout(() => process.exit(0), 100);
+					} else {
+						dbConnectionManager.disconnect().then(() => {
+							process.exit(exitCode);
+						}).catch((e) => {
+							console.error('Error disconnecting DB:', e);
+							process.exit(1);
+						});
+					}
+				});
+				
+				setTimeout(() => {
+					console.error('Forced shutdown after timeout');
+					if (signal !== 'SIGUSR2') {
+						dbConnectionManager.disconnect().finally(() => {
+							process.exit(1);
+						});
+					} else {
+						process.exit(0);
+					}
+				}, 10000);
+			} catch (e) {
+				console.error('Error during shutdown', e);
+				process.exit(1);
+			}
+		};
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-})();
+		process.on('SIGINT', () => shutdown('SIGINT'));
+		process.on('SIGTERM', () => shutdown('SIGTERM'));
+		process.once('SIGUSR2', () => {
+			shutdown('SIGUSR2');
+		});
+	})
+	.catch(err => {
+		console.error('[DesiTV] Failed to start server:', err.message);
+		console.error('[DesiTV] Database connection will retry automatically...');
+	});
+
