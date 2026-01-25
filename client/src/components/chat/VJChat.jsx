@@ -83,15 +83,17 @@ const VJChat = ({
     }
   }, [isOpen]);
 
-  // Add welcome message when opened
+  // Add welcome message when opened - use reliable video source
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      const welcomeMsg = currentVideo?.title 
-        ? `${DesiAgent.avatar} Hey! I'm ${DesiAgent.name}. You're watching "${currentVideo.title}". Ask me anything!`
+      // Use currentVideo from props (which now comes from reliable source in Home.jsx)
+      const videoTitle = currentVideo?.title;
+      const welcomeMsg = videoTitle 
+        ? `${DesiAgent.avatar} Hey! I'm ${DesiAgent.name}. You're watching "${videoTitle}". Ask me anything!`
         : `${DesiAgent.avatar} Yo! I'm ${DesiAgent.name}, your AI sidekick on DesiTV! Try the buttons below or drop a command!`;
       setMessages([{ role: 'assistant', content: welcomeMsg }]);
     }
-  }, [isOpen, messages.length, currentVideo?.title]);
+  }, [isOpen, messages.length, currentVideo]);
 
   // Execute action from response
   const executeAction = useCallback((action) => {
@@ -181,20 +183,30 @@ const VJChat = ({
     setIsLoading(true);
 
     try {
-      // Build enriched context for backend
+      // Build enriched context for backend - use reliable video source
+      // Ensure we always send what's ACTUALLY playing, not stale state
+      const reliableVideo = currentVideo ? {
+        title: currentVideo.title || 'Unknown',
+        duration: currentVideo.duration || 0,
+        youtubeId: currentVideo.youtubeId || currentVideo.id || null,
+        videoId: currentVideo.youtubeId || currentVideo.id || null, // Alias for compatibility
+        thumbnail: currentVideo.thumbnail || null
+      } : null;
+      
       const context = {
         currentChannel,
         currentChannelId,
-        currentVideo: currentVideo ? {
-          title: currentVideo.title,
-          duration: currentVideo.duration,
-          youtubeId: currentVideo.youtubeId || currentVideo.id
+        currentVideo: reliableVideo,
+        nextVideo: nextVideo ? { 
+          title: nextVideo.title || 'Unknown',
+          youtubeId: nextVideo.youtubeId || nextVideo.id || null
         } : null,
-        nextVideo: nextVideo ? { title: nextVideo.title } : null,
         currentVideoIndex,
         totalVideos,
         mode, // 'live' | 'manual' | 'external'
-        isPlaying
+        isPlaying,
+        // Add timestamp to help backend detect stale data
+        timestamp: Date.now()
       };
       
       console.log('[VJChat] Sending:', { message: userMessage, context });
@@ -494,7 +506,8 @@ const VJChat = ({
 
   if (!isVisible) return null;
 
-  // Get current video title for Now Playing banner
+  // Get current video title for Now Playing banner - use reliable source
+  // currentVideo prop now comes from playbackInfo (source of truth) in Home.jsx
   const nowPlayingTitle = currentVideo?.title || null;
   const nowPlayingChannel = currentChannel || 'DesiTV';
 

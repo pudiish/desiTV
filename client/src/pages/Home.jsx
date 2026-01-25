@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
+import { getCurrentVideo, getCurrentVideoIndex, getNextVideo } from '../services/currentVideoService'
 import { TVFrame, TVRemote } from '../components/tv'
 import { BackgroundManager, getNextEffect, getEffect } from '../components/backgrounds'
 import { VJChat } from '../components/chat'
@@ -1007,15 +1008,51 @@ export default function Home() {
 		</>
 	)
 
+	// Get current video from reliable source (playbackInfo is source of truth)
+	// This ensures chat agent always knows what's ACTUALLY playing, not just what state says
+	const currentVideo = useMemo(() => {
+		const video = getCurrentVideo({
+			externalVideo: tvState.externalVideo,
+			playbackInfo,
+			videosInCategory,
+			activeVideoIndex
+		})
+		
+		// Log source for debugging (only in dev)
+		if (process.env.NODE_ENV === 'development' && video) {
+			console.log('[CurrentVideo] Source:', video.source, 'Title:', video.title)
+		}
+		
+		return video
+	}, [tvState.externalVideo, playbackInfo, videosInCategory, activeVideoIndex])
+	
+	// Get current video index from reliable source
+	const reliableVideoIndex = useMemo(() => {
+		return getCurrentVideoIndex({
+			playbackInfo,
+			activeVideoIndex
+		})
+	}, [playbackInfo, activeVideoIndex])
+	
+	// Get next video reliably
+	const nextVideo = useMemo(() => {
+		return getNextVideo({
+			externalVideo: tvState.externalVideo,
+			playbackInfo,
+			videosInCategory,
+			activeVideoIndex
+		})
+	}, [tvState.externalVideo, playbackInfo, videosInCategory, activeVideoIndex])
+
 	// VJ Chat component (extracted for cleaner render)
 	const VJChatComponent = (
 		<VJChat 
-			// Current playback state - REAL-TIME context
+			// Current playback state - REAL-TIME context (from reliable source)
 			currentChannel={selectedCategory?.name}
 			currentChannelId={selectedCategory?._id}
-			currentVideo={videosInCategory[activeVideoIndex] || null}
-			nextVideo={videosInCategory[activeVideoIndex + 1] || videosInCategory[0] || null}
-			currentVideoIndex={activeVideoIndex}
+			currentVideo={currentVideo}
+			nextVideo={nextVideo}
+			currentVideoIndex={reliableVideoIndex}
 			totalVideos={videosInCategory.length}
 			
 			// Available data
