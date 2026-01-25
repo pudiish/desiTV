@@ -184,9 +184,20 @@ const toolDefinitions = {
  * This is the key tool for "what's playing now?" questions
  */
 function getNowPlaying(params = {}, context = {}) {
-  const { currentChannel, currentVideo, currentVideoIndex, totalVideos } = context;
+  // CRITICAL: Use clientContext as source of truth (most reliable)
+  const clientContext = context.clientContext || {};
+  const currentChannel = clientContext.currentChannel || context.currentChannel;
+  const currentVideo = clientContext.currentVideo || context.currentVideo;
+  const currentVideoIndex = clientContext.currentVideoIndex ?? context.currentVideoIndex ?? 0;
+  const totalVideos = clientContext.totalVideos ?? context.totalVideos ?? 0;
   
-  if (!currentVideo) {
+  console.log('[Tools] getNowPlaying - video:', currentVideo ? { 
+    title: currentVideo.title, 
+    youtubeId: currentVideo.youtubeId || currentVideo.id,
+    source: clientContext.currentVideo ? 'clientContext' : 'context'
+  } : null);
+  
+  if (!currentVideo || !currentVideo.title) {
     return {
       success: false,
       error: 'No video currently playing',

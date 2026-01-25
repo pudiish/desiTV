@@ -209,7 +209,17 @@ const VJChat = ({
         timestamp: Date.now()
       };
       
-      console.log('[VJChat] Sending:', { message: userMessage, context });
+      console.log('[VJChat] Sending:', { 
+        message: userMessage, 
+        context: {
+          ...context,
+          currentVideo: reliableVideo ? {
+            title: reliableVideo.title,
+            youtubeId: reliableVideo.youtubeId,
+            source: currentVideo?.source || 'unknown'
+          } : null
+        }
+      });
       const result = await sendMessage(userMessage, context);
       
       setMessages(prev => [...prev, { 

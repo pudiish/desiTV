@@ -10,7 +10,9 @@ class ResponseCache {
 
   generateKey(query, context = {}) {
     const normalizedQuery = query.toLowerCase().trim();
-    return `${normalizedQuery}::${context.userId || 'anon'}::${context.channelId || 'all'}`;
+    // Include videoId in cache key to invalidate when video changes
+    const videoId = context.videoId || 'none';
+    return `${normalizedQuery}::${context.userId || 'anon'}::${context.channelId || 'all'}::${videoId}`;
   }
 
   set(key, value) {

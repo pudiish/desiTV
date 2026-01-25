@@ -52,18 +52,36 @@ class EnhancedVJCore {
       
       // MERGE: Client context is SOURCE OF TRUTH for playback state
       // Server context provides user memory and preferences
+      // CRITICAL: Always prioritize clientContext for video info (it's real-time from Player)
       const context = {
         ...serverContext,
-        // Client context overrides for playback info
+        // Store full client context for handlers to access
         clientContext: clientContext || {},
-        currentVideo: clientContext?.currentVideo || null,
-        currentChannel: clientContext?.currentChannel || null,
-        nextVideo: clientContext?.nextVideo || null,
-        currentVideoIndex: clientContext?.currentVideoIndex ?? 0,
-        totalVideos: clientContext?.totalVideos ?? 0,
-        mode: clientContext?.mode || 'live',
-        isPlaying: clientContext?.isPlaying ?? false
+        // Client context ALWAYS overrides server context for playback info
+        currentVideo: clientContext?.currentVideo || serverContext?.currentVideo || null,
+        currentChannel: clientContext?.currentChannel || serverContext?.currentChannel || null,
+        currentChannelId: clientContext?.currentChannelId || serverContext?.currentChannelId || null,
+        nextVideo: clientContext?.nextVideo || serverContext?.nextVideo || null,
+        currentVideoIndex: clientContext?.currentVideoIndex ?? serverContext?.currentVideoIndex ?? 0,
+        totalVideos: clientContext?.totalVideos ?? serverContext?.totalVideos ?? 0,
+        mode: clientContext?.mode || serverContext?.mode || 'live',
+        isPlaying: clientContext?.isPlaying ?? serverContext?.isPlaying ?? false,
+        // Add timestamp to detect stale data
+        timestamp: clientContext?.timestamp || Date.now()
       };
+      
+      // Log context source for debugging
+      if (clientContext?.currentVideo) {
+        console.log('[EnhancedVJCore] Using clientContext video:', {
+          title: clientContext.currentVideo.title,
+          youtubeId: clientContext.currentVideo.youtubeId || clientContext.currentVideo.id
+        });
+      } else if (serverContext?.currentVideo) {
+        console.warn('[EnhancedVJCore] WARNING: Using serverContext video (may be stale):', {
+          title: serverContext.currentVideo.title,
+          youtubeId: serverContext.currentVideo.youtubeId || serverContext.currentVideo.id
+        });
+      }
       
       const detectedIntent = this.intentDetector.detect(message);
       
@@ -72,16 +90,37 @@ class EnhancedVJCore {
         return await this.handleChat(message, context);
       }
 
-      const cacheKey = this.cache.generateKey(message, { userId, channelId });
-      const cachedResult = this.cache.get(cacheKey);
+      // CRITICAL: Skip cache for dynamic queries that depend on current playback state
+      // These queries must always use fresh context to avoid stale responses
+      const isDynamicQuery = detectedIntent.intent === 'current_playing' || 
+                            detectedIntent.intent === 'channels_list' ||
+                            message.toLowerCase().includes('what') && message.toLowerCase().includes('playing');
       
-      if (cachedResult && detectedIntent.confidence > 0.9) {
-        return cachedResult;
+      let cachedResult = null;
+      let cacheKey = null;
+      
+      if (!isDynamicQuery) {
+        // For non-dynamic queries, use cache with video ID included in key
+        const videoId = clientContext?.currentVideo?.youtubeId || clientContext?.currentVideo?.id || 'none';
+        cacheKey = this.cache.generateKey(message, { 
+          userId, 
+          channelId,
+          videoId // Include video ID to invalidate when video changes
+        });
+        cachedResult = this.cache.get(cacheKey);
+        
+        if (cachedResult && detectedIntent.confidence > 0.9) {
+          console.log('[EnhancedVJCore] Using cached response for:', message);
+          return cachedResult;
+        }
+      } else {
+        console.log('[EnhancedVJCore] Skipping cache for dynamic query:', detectedIntent.intent);
       }
 
       const result = await this.handleIntent(detectedIntent, message, context);
 
-      if (result && !result.blocked && detectedIntent.confidence > 0.9) {
+      // Only cache non-dynamic queries
+      if (!isDynamicQuery && result && !result.blocked && detectedIntent.confidence > 0.9 && cacheKey) {
         this.cache.set(cacheKey, result);
       }
 
@@ -553,14 +592,21 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
 
   async handleGetNowPlaying(context) {
     // Use CLIENT CONTEXT as source of truth - it knows what's actually playing on user's screen
-    const video = context.currentVideo;
-    const channel = context.currentChannel;
-    const mode = context.mode || 'live';
-    const isPlaying = context.isPlaying;
-    const videoIndex = context.currentVideoIndex ?? 0;
-    const totalVideos = context.totalVideos ?? 0;
+    // CRITICAL: Always use clientContext.currentVideo, not server context (which may be stale)
+    const video = context.clientContext?.currentVideo || context.currentVideo;
+    const channel = context.clientContext?.currentChannel || context.currentChannel;
+    const mode = context.clientContext?.mode || context.mode || 'live';
+    const isPlaying = context.clientContext?.isPlaying ?? context.isPlaying ?? false;
+    const videoIndex = context.clientContext?.currentVideoIndex ?? context.currentVideoIndex ?? 0;
+    const totalVideos = context.clientContext?.totalVideos ?? context.totalVideos ?? 0;
     
-    console.log('[EnhancedVJCore] Now playing context:', { video, channel, mode, isPlaying });
+    console.log('[EnhancedVJCore] Now playing context:', { 
+      video: video ? { title: video.title, youtubeId: video.youtubeId || video.id } : null, 
+      channel, 
+      mode, 
+      isPlaying,
+      source: context.clientContext ? 'clientContext' : 'context'
+    });
     
     if (!video || !video.title) {
       return { 
@@ -569,7 +615,7 @@ Example: "Michael Bublé - Feeling Good [Official 4K Remastered Music Video]"`,
       };
     }
 
-    // Build detailed response
+    // Build detailed response - use the video title from client context (most reliable)
     const title = video.title || 'Unknown';
     const channelName = channel || 'DesiTV';
     const position = totalVideos > 0 ? `(${videoIndex + 1}/${totalVideos})` : '';
