@@ -25,10 +25,13 @@
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
     "start": "node server/index.js",
-    "build": "cd client && npm run build"
+    "build": "cd client && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "vitest": "^3.2.7"
   },
   "dependencies": {
     "ogl": "^1.0.11"
