@@ -147,6 +147,14 @@ const chatRoutes = require('./routes/chat'); // 🤖 VJ Assistant chatbot
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
 
 app.get('/api/csrf-token', getCsrfToken);
+
+// Clock reference for client-side position sync. Mounted before the rate
+// limiter and never cached: a stale timestamp is worse than no timestamp.
+app.get('/api/time', (req, res) => {
+	res.set('Cache-Control', 'no-store');
+	res.json({ t: Date.now() });
+});
+
 app.use('/api', apiLimiter);
 app.use('/api', csrfProtection);
 app.use('/api', csrfRefresh);

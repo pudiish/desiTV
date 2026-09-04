@@ -72,20 +72,5 @@ export function getCachedEpoch() {
 	return cachedEpoch
 }
 
-/**
- * Get the current server-client clock offset (deprecated - no longer used)
- * @returns {number} Always returns 0 (no server sync needed)
- */
-export function getClockOffset() {
-	return 0 // No server sync - always 0
-}
-
-/**
- * Get corrected current time (deprecated - no longer needed)
- * Use Date.now() directly - no server sync needed
- * @returns {number} Current time in milliseconds
- */
-export function getCorrectedTime() {
-	return Date.now() // No correction needed - client-side only
-}
+// Clock correction lives in services/time.js - import now() from there.
 
