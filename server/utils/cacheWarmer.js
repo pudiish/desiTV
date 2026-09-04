@@ -3,9 +3,7 @@
  * Optimized for free tier with shorter TTLs
  */
 
-// MongoDB removed - using JSON instead
-const { readChannelsJSON } = require('./updateChannelsJSON')
-const { findChannelById, findChannels } = require('./channelJSONReader')
+// Reads from MongoDB, the authoritative store.
 const cache = require('./cache')
 
 const CACHE_TTL = {
@@ -43,15 +41,17 @@ function minimizeChannels(channels) {
 async function warmChannelsList() {
 	try {
 		console.log('[CacheWarmer] 🔥 Pre-warming channels list cache...')
-		
-		// Read from JSON (source of truth)
-		const jsonData = readChannelsJSON()
-		const channels = jsonData.channels || []
-		
+
+		// Read from MongoDB, the authoritative store. This used to read the
+		// generated JSON, which silently reverted admin edits every cycle and
+		// left the list and detail caches describing different playlists.
+		const Channel = require('../models/Channel')
+		const channels = await Channel.find({ isActive: { $ne: false } }).lean()
+
 		const minimized = minimizeChannels(channels)
-		
+
 		await cache.set('ch:all', minimized, CACHE_TTL.CHANNELS_LIST)
-		
+
 		console.log(`[CacheWarmer] ✅ Pre-warmed channels list: ${channels.length} channels`)
 		return minimized
 	} catch (err) {
@@ -67,9 +67,9 @@ async function warmChannel(channelId) {
 	try {
 		const channelHash = channelId.toString().substring(18, 24)
 		const cacheKey = `ch:${channelHash}`
-		
-		// Read from JSON (source of truth)
-		const ch = await findChannelById(channelId)
+
+		const Channel = require('../models/Channel')
+		const ch = await Channel.findById(channelId).lean()
 		if (!ch) {
 			console.warn(`[CacheWarmer] Channel not found: ${channelId}`)
 			return null
@@ -97,9 +97,8 @@ async function warmAllChannels() {
 		await warmChannelsList()
 		
 		// Then, warm individual channels
-		// Read from JSON (source of truth)
-		const allChannels = await findChannels({}, { _id: 1 })
-		const channels = allChannels.map(ch => ({ _id: ch._id }))
+		const Channel = require('../models/Channel')
+		const channels = await Channel.find({}, { _id: 1 }).lean()
 		let warmed = 0
 		
 		for (const ch of channels) {

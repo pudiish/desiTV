@@ -10,7 +10,6 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const ChannelDataService = require('../services/ChannelDataService');
-const { getCachedPosition } = require('../utils/positionCalculator');
 
 // ============================================
 // READ ENDPOINTS (Cached)
@@ -47,52 +46,49 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * GET /api/channels/:id/current - Get current video position
+ * GET /api/channels/:id/current - what is playing on this channel right now
+ * GET /api/channels/:id/position - alias
+ *
+ * Computed with the same shared function the player uses, so the answer here
+ * always matches what a viewer is watching.
  */
-router.get('/:id/current', async (req, res) => {
+async function respondWithPosition(req, res) {
   try {
     const result = await ChannelDataService.getChannelById(req.params.id);
     const channel = result.data || result;
-    
-    const position = await getCachedPosition(channel, null, req);
-    
-    res.json({
-      ...position,
-      channelId: channel._id,
-      channelName: channel.name,
-    });
-  } catch (err) {
-    if (err.message === 'Channel not found') {
-      return res.status(404).json({ message: 'Channel not found' });
-    }
-    console.error('GET /api/channels/:id/current error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
 
-/**
- * GET /api/channels/:id/position - Alias for /current
- */
-router.get('/:id/position', async (req, res) => {
-  try {
-    const result = await ChannelDataService.getChannelById(req.params.id);
-    const channel = result.data || result;
-    
-    const position = await getCachedPosition(channel, null, req);
-    
+    const { positionAt } = await import('../../shared/broadcastPosition.js');
+    const items = channel.items || [];
+    const live = positionAt(Date.now(), new Date(channel.playlistStartEpoch).getTime(), items);
+
+    if (!live.isValid) {
+      return res.status(409).json({ message: 'Channel has no playable videos' });
+    }
+
+    const item = items[live.videoIndex];
+
     res.json({
-      ...position,
       channelId: channel._id,
       channelName: channel.name,
+      videoIndex: live.videoIndex,
+      offset: live.offset,
+      cyclePosition: live.cyclePosition,
+      totalDuration: live.totalDuration,
+      item,
+      timeRemaining: Math.max(0, (item?.duration || 0) - live.offset),
+      serverTimeMs: Date.now(),
     });
   } catch (err) {
     if (err.message === 'Channel not found') {
       return res.status(404).json({ message: 'Channel not found' });
     }
-    console.error('GET /api/channels/:id/position error:', err);
+    console.error(`GET ${req.originalUrl} error:`, err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
-});
+}
+
+router.get('/:id/current', respondWithPosition);
+router.get('/:id/position', respondWithPosition);
 
 /**
  * GET /api/channels/admin/cache-stats - Get cache statistics

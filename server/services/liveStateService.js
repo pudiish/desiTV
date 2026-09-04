@@ -5,35 +5,26 @@
  * Optimized for minimal client computation
  */
 
-// MongoDB removed - using JSON instead
-const { getOrCreate: getGlobalEpoch } = require('../utils/globalEpochJSON');
 const { findChannelById, findOneChannel } = require('../utils/channelJSONReader');
 const cache = require('../utils/cache');
 
+// shared/ is ESM and this file is CommonJS, so it loads dynamically. Cached
+// because import() resolves to the same module instance every time anyway.
+let sharedPositionPromise = null;
+function loadSharedPosition() {
+  if (!sharedPositionPromise) {
+    sharedPositionPromise = import('../../shared/broadcastPosition.js');
+  }
+  return sharedPositionPromise;
+}
+
 // Pre-computed data cache
 let channelCache = new Map();
-let durationCache = new Map();
-let epochMs = null;
-let lastEpochCheck = 0;
 
 // Constants
-const EPOCH_REFRESH_MS = 60000; // Refresh epoch every minute
 const CHANNEL_CACHE_TTL = 120000; // 2 minutes for channel data
 
 class LiveStateService {
-  
-  /**
-   * Initialize/refresh epoch (called once, cached)
-   */
-  async _getEpochMs() {
-    const now = Date.now();
-    if (!epochMs || now - lastEpochCheck > EPOCH_REFRESH_MS) {
-      const globalEpoch = await getGlobalEpoch();
-      epochMs = new Date(globalEpoch.epoch).getTime();
-      lastEpochCheck = now;
-    }
-    return epochMs;
-  }
 
   /**
    * Get channel with pre-computed durations (cached)
@@ -63,29 +54,22 @@ class LiveStateService {
 
     if (!channel) return null;
 
-    // Pre-compute durations and total (HEAVY WORK DONE ONCE)
+    const { totalDurationOf } = await loadSharedPosition();
     const videos = channel.items || [];
     const durations = videos.map(v => (typeof v.duration === 'number' && v.duration > 0) ? v.duration : 300);
-    const totalDuration = durations.reduce((a, b) => a + b, 0);
-    
-    // Pre-compute cumulative positions (so client lookup is O(1))
-    const cumulativeStart = [];
-    let cumulative = 0;
-    for (let i = 0; i < durations.length; i++) {
-      cumulativeStart.push(cumulative);
-      cumulative += durations[i];
-    }
 
     const data = {
       _id: channel._id.toString(),
       name: channel.name,
+      // The epoch travels with the channel, so the playlist and the timeline
+      // it is measured against are always the same version.
+      epochMs: new Date(channel.playlistStartEpoch).getTime(),
       videos: videos.map((v, i) => ({
         id: v.youtubeId || v.videoId,
         title: v.title,
         duration: durations[i],
-        start: cumulativeStart[i], // Pre-computed start position in cycle
       })),
-      totalDuration,
+      totalDuration: totalDurationOf(videos),
       videoCount: videos.length,
     };
 
@@ -97,55 +81,33 @@ class LiveStateService {
   }
 
   /**
-   * Binary search for video at position (O(log n) instead of O(n))
-   */
-  _findVideoAtPosition(channelData, cyclePosition) {
-    const videos = channelData.videos;
-    if (!videos.length) return { index: 0, position: 0 };
-
-    // Binary search
-    let left = 0, right = videos.length - 1;
-    while (left < right) {
-      const mid = Math.floor((left + right + 1) / 2);
-      if (videos[mid].start <= cyclePosition) {
-        left = mid;
-      } else {
-        right = mid - 1;
-      }
-    }
-
-    return {
-      index: left,
-      position: cyclePosition - videos[left].start,
-    };
-  }
-
-  /**
-   * MAIN API: Get LIVE state with ALL computation done server-side
-   * Client receives ready-to-play data
+   * MAIN API: Get LIVE state
+   *
+   * Uses the same shared/broadcastPosition.js the player uses, from the same
+   * per-channel epoch, so this can never name a different video than the
+   * viewer is actually watching.
    */
   async getLiveState(categoryId, includeNext = false) {
     if (!categoryId) throw new Error('categoryId required');
 
-    // Get cached data (minimal DB calls)
-    const [epoch, channelData] = await Promise.all([
-      this._getEpochMs(),
+    const [{ positionAt }, channelData] = await Promise.all([
+      loadSharedPosition(),
       this._getChannelData(categoryId),
     ]);
 
     if (!channelData) throw new Error(`Category ${categoryId} not found`);
 
-    // HIGH PRECISION timing
+    const epoch = channelData.epochMs;
     const serverTimeMs = Date.now();
-    const elapsedMs = serverTimeMs - epoch;
-    const elapsedSec = elapsedMs / 1000;
 
-    // Calculate position
-    const cycleCount = Math.floor(elapsedSec / channelData.totalDuration);
-    const cyclePosition = elapsedSec % channelData.totalDuration;
-    
-    // Fast binary search for current video
-    const { index, position } = this._findVideoAtPosition(channelData, cyclePosition);
+    const live = positionAt(serverTimeMs, epoch, channelData.videos);
+    if (!live.isValid) {
+      throw new Error(`Category ${categoryId} has no playable videos`);
+    }
+
+    const index = live.videoIndex;
+    const position = live.offset;
+    const { cyclePosition, cycleCount } = live;
     const currentVideo = channelData.videos[index];
 
     // Build response with ALL data client needs
@@ -200,12 +162,11 @@ class LiveStateService {
   async getManifest(categoryId) {
     if (!categoryId) throw new Error('categoryId required');
 
-    const [epoch, channelData] = await Promise.all([
-      this._getEpochMs(),
-      this._getChannelData(categoryId),
-    ]);
+    const channelData = await this._getChannelData(categoryId);
 
     if (!channelData) throw new Error(`Category ${categoryId} not found`);
+
+    const epoch = channelData.epochMs;
 
     return {
       // Category info
@@ -288,7 +249,6 @@ class LiveStateService {
    */
   clearCache() {
     channelCache.clear();
-    durationCache.clear();
     console.log('[LiveState] 🗑️ Cache cleared');
   }
 }

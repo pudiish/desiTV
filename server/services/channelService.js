@@ -11,7 +11,6 @@ const { findChannelById, findOneChannel } = require('../utils/channelJSONReader'
 const cache = require('../utils/cache');
 const { minimizeChannel, minimizeChannels, CACHE_TTL } = require('../utils/cacheWarmer');
 const { addChecksum } = require('../utils/checksum');
-const { getCachedPosition } = require('../utils/positionCalculator');
 
 const CACHE_TTL_CONFIG = CACHE_TTL || {
   CHANNELS_LIST: 300,
@@ -66,29 +65,6 @@ class ChannelService {
     await cache.set(cacheKey, minimizedChannel, CACHE_TTL_CONFIG.CHANNEL_DETAIL);
     
     return addChecksum(minimizedChannel, 'channels');
-  }
-
-  /**
-   * Get current playback position for a channel
-   * @param {string} channelId - Channel ID
-   * @param {Object} request - Express request object (for timezone)
-   * @returns {Promise<Object>} Current position with channel metadata
-   * @throws {Error} If channel not found
-   */
-  async getCurrentPosition(channelId, request) {
-    // Read from JSON (source of truth)
-    const channel = await findChannelById(channelId);
-    if (!channel) {
-      throw new Error('Channel not found');
-    }
-    
-    const position = await getCachedPosition(channel, null, request);
-    
-    return {
-      ...position,
-      channelId: channel._id,
-      channelName: channel.name,
-    };
   }
 
   /**
