@@ -27,10 +27,12 @@
     "start": "node server/index.js",
     "build": "cd client && npm run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ui": "node scripts/validate-ui.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
+    "playwright": "^1.62.1",
     "vitest": "^3.2.7"
   },
   "dependencies": {
