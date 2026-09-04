@@ -11,6 +11,7 @@
 
 import { io } from 'socket.io-client'
 import { channelManager } from '../logic/channel'
+import { envConfig } from '../config/environment'
 
 // Configuration
 const FALLBACK_POLL_INTERVAL = 30 * 1000 // 30s fallback polling (only if WebSocket fails)
@@ -26,17 +27,20 @@ let isConnected = false
  * Get API base URL
  */
 function getApiBase() {
-  if (import.meta.env.VITE_API_BASE) {
-    return import.meta.env.VITE_API_BASE
-  }
-  
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    // Production: use current origin
-    return window.location.origin
-  }
-  
-  // Development: use server port
-  return 'http://localhost:5000'
+  return envConfig.apiBaseUrl
+}
+
+/**
+ * Socket.io needs an absolute URL. On localhost envConfig returns '' so HTTP
+ * goes through the Vite proxy, but Vite only proxies /api and /health - the
+ * socket must reach the API server directly on its own port.
+ */
+function getSocketUrl() {
+  const apiBase = getApiBase()
+  if (apiBase) return apiBase
+
+  const serverPort = import.meta.env.VITE_SERVER_PORT
+  return serverPort ? `http://localhost:${serverPort}` : window.location.origin
 }
 
 /**
@@ -73,11 +77,11 @@ async function handleChannelUpdate(data) {
  * Initialize WebSocket connection
  */
 function initSocket() {
-  const apiBase = getApiBase()
-  
-  console.log('[ChannelSync] 🔌 Connecting to WebSocket:', apiBase)
-  
-  socket = io(apiBase, {
+  const socketUrl = getSocketUrl()
+
+  console.log('[ChannelSync] 🔌 Connecting to WebSocket:', socketUrl)
+
+  socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: RECONNECT_DELAY,
