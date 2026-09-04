@@ -1,0 +1,6 @@
+{
+  "name": "@desitv/shared",
+  "private": true,
+  "type": "module",
+  "description": "Code shared by the client and server. Pure ESM, no dependencies."
+}
