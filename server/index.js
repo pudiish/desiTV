@@ -18,6 +18,10 @@ dotenv.config();
 
 const app = express();
 
+// Behind Render/Vercel, req.ip is the proxy's address unless this is set, which
+// would make every rate limit and CSRF token key on a single shared bucket.
+app.set('trust proxy', 1);
+
 // Environment configuration
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 5000;
@@ -33,7 +37,10 @@ const {
 	FREE_TIER_LIMITS 
 } = require('./middleware/security');
 
-// Apply security middleware first
+// Body must be parsed before the security middleware runs: mongoSanitize and
+// the security logger both read req.body, which is undefined until this point.
+app.use(express.json({ limit: '1mb' }));
+
 securityMiddleware.forEach(middleware => {
 	app.use(middleware);
 });
@@ -106,8 +113,6 @@ const corsOptions = {
 };
 app.use(createCors(corsOptions));
 
-// Middleware
-app.use(express.json({ limit: '1mb' }));
 
 // Request logging
 if (!isProduction || process.env.DEBUG) {
@@ -204,30 +209,31 @@ app.get('/api/diagnostics', (req, res) => {
 	res.json(diagnostics);
 });
 
-// error handler (last middleware)
-const errorHandler = require('./middleware/errorHandler');
-app.use(errorHandler);
-
 app.get('/', (req, res) => res.send('DesiTV™ API running'));
 
-// Route to manually trigger JSON regeneration (useful for client fallback)
-app.post('/api/regenerate-json', async (req, res) => {
+// Regenerate the published channels.json from MongoDB. Admin-only: it
+// overwrites the file every client reads.
+const { requireAuth } = require('./middleware/auth');
+app.post('/api/regenerate-json', requireAuth, async (req, res) => {
 	try {
 		const { ensureChannelsJSON } = require('./utils/generateJSON');
 		const result = await ensureChannelsJSON();
-		res.json({ 
-			success: true, 
+		res.json({
+			success: true,
 			message: `JSON regenerated with ${result.channels.length} channels`,
-			channelsCount: result.channels.length 
+			channelsCount: result.channels.length
 		});
 	} catch (error) {
 		console.error('[Server] Error regenerating JSON:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: error.message 
+		res.status(500).json({
+			success: false,
+			message: error.message
 		});
 	}
 });
+
+// Error handler must come after every route, or it cannot catch their errors.
+app.use(require('./middleware/errorHandler'));
 
 // Database connection and server start
 const dbConnectionManager = require('./utils/dbConnection');

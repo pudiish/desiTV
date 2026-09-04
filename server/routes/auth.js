@@ -13,8 +13,8 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-// Use JSON-based admin instead of MongoDB
-const Admin = require('../utils/adminJSON');
+// Admins live in MongoDB, the authoritative store.
+const Admin = require('../models/Admin');
 const { requireAuth } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/security');
 
@@ -218,20 +218,21 @@ router.post('/logout', requireAuth, (req, res) => {
 
 /**
  * POST /api/auth/setup
- * One-time admin setup (only in development or if no admins exist)
+ * Bootstrap the first admin. Only ever available while no admin exists -
+ * this endpoint is unauthenticated, so gating it on anything else (it used
+ * to also require NODE_ENV === 'production') lets anyone mint an admin.
  */
 router.post('/setup', authLimiter, async (req, res) => {
   try {
-    // Check if any admin exists
     const adminCount = await Admin.countDocuments();
-    
-    if (adminCount > 0 && process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ 
+
+    if (adminCount > 0) {
+      return res.status(403).json({
         error: 'Setup disabled',
         message: 'Admin already exists. Use login instead.'
       });
     }
-    
+
     const { username, password } = req.body;
     
     if (!username || !password) {

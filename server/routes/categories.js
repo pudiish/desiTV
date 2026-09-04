@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 // MongoDB removed - using JSON instead
 const { readChannelsJSON, writeChannelsJSON } = require('../utils/updateChannelsJSON');
+const { requireAuth } = require('../middleware/auth');
 
 // Simple categories collection maintained on-the-fly from channels/videos.
 // For convenience, we store categories in-memory derived from existing data,
@@ -35,7 +36,7 @@ router.get('/', async (req, res) => {
 });
 
 // Add a category (no dedicated collection; returns success)
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ message: 'Missing name' });
   // nothing to persist globally; we return success and let admin use category when adding videos
@@ -43,7 +44,7 @@ router.post('/', async (req, res) => {
 });
 
 // Remove a category - this will remove category values from any videos using it
-router.delete('/:name', async (req, res) => {
+router.delete('/:name', requireAuth, async (req, res) => {
   try {
     const name = req.params.name;
     if (!name) return res.status(400).json({ message: 'Missing name' });

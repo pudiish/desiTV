@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const liveStateController = require('../controllers/liveStateController');
+const { requireAuth } = require('../middleware/auth');
 
 // Health check
 router.get('/health', liveStateController.getHealth);
@@ -23,8 +24,8 @@ router.get('/all', liveStateController.getAllLiveStates);
 // ═══════════════════════════════════════════════════════════════════
 
 // Cache management (admin/debugging only)
-router.post('/warm', liveStateController.warmCache);
-router.post('/clear-cache', liveStateController.clearCache);
+router.post('/warm', requireAuth, liveStateController.warmCache);
+router.post('/clear-cache', requireAuth, liveStateController.clearCache);
 
 // Main endpoint (admin/debugging only - clients don't use this)
 router.get('/', liveStateController.getLiveState);
