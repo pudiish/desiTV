@@ -546,14 +546,23 @@ onBufferingChange = null,
 		const loaded = loadedVideoRef.current
 		const VIDEO_BUFFER_WINDOW = PLAYBACK_THRESHOLDS.VIDEO_BUFFER_WINDOW || 5
 
+		// The broadcast offset advances in real time, so the offset recorded at
+		// load is only comparable once we age it by however long ago that was.
+		// Comparing the raw values would make a correctly-playing video look
+		// further and further out of position every second.
+		const expectedOffsetNow = loaded
+			? loaded.offset + (Date.now() - (loaded.loadedAt ?? Date.now())) / 1000
+			: 0
+		const drift = loaded ? Math.abs(expectedOffsetNow - startSeconds) : Infinity
+
 		// Check if we need to reload:
 		// 1. Different video ID
 		// 2. Different channel
-		// 3. Offset is outside buffer window (more than 5 seconds difference)
-		const needsReload = !loaded || 
-			loaded.videoId !== videoId || 
+		// 3. Genuinely drifted outside the buffer window
+		const needsReload = !loaded ||
+			loaded.videoId !== videoId ||
 			loaded.channelId !== channel._id ||
-			Math.abs(loaded.offset - startSeconds) > VIDEO_BUFFER_WINDOW
+			drift > VIDEO_BUFFER_WINDOW
 
 		logger.debug(`[Player] 🔄 Video reload check:`, {
 			needsReload,
@@ -566,14 +575,14 @@ onBufferingChange = null,
 		})
 
 		if (!needsReload) {
-			// Same video within buffer window - just seek if needed
-			const offsetDiff = Math.abs(loaded.offset - startSeconds)
-			if (offsetDiff > 1) { // Only seek if difference is more than 1 second
+			// Same video, playing in step with the timeline. Only correct when it
+			// has genuinely drifted - the offset advancing is expected, not drift.
+			if (drift > 2) {
 				try {
 					if (typeof ytPlayerRef.current.seekTo === 'function') {
 						ytPlayerRef.current.seekTo(startSeconds, true)
-						loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
-						console.log(`[Player] Seeking to ${startSeconds}s (within buffer window)`)
+						loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex, loadedAt: Date.now() }
+						console.log(`[Player] Correcting ${drift.toFixed(1)}s drift, seeking to ${startSeconds}s`)
 					}
 				} catch (err) {
 					console.error('[Player] Error seeking:', err)
@@ -611,7 +620,7 @@ onBufferingChange = null,
 				})
 				
 				// Update cache
-				loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex }
+				loadedVideoRef.current = { videoId, offset: startSeconds, channelId: channel._id, currIndex, loadedAt: Date.now() }
 			} catch (err) {
 				logger.error('[Player] Error loading video:', err)
 			}
