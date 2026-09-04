@@ -13,6 +13,7 @@ import { getTimeSuggestion, getTimeBasedGreeting } from '../utils/timeBasedProgr
 import { useEasterEggs } from '../hooks/useEasterEggs'
 import { checksumSyncService } from '../services/checksumSync'
 import { clearEpochCache } from '../services/api/globalEpochService'
+import { syncClock, startClockSync } from '../services/time'
 import { useTVState } from '../hooks/useTVState'
 import CONSTANTS from '../config/appConstants'
 
@@ -380,6 +381,10 @@ export default function Home() {
 				localStorage.removeItem('desitv-global-epoch-cached')
 				localStorage.removeItem('desitv-broadcast-state')
 				
+				// Correct for this device's clock skew before deriving any position,
+				// otherwise a wrong local clock silently offsets playback for this viewer.
+				await syncClock()
+
 				// CRITICAL: Always fetch global epoch from server FIRST (for true sync)
 				// Don't load from localStorage - server is the source of truth
 				// This ensures mobile and desktop are perfectly synchronized
@@ -389,10 +394,7 @@ export default function Home() {
 					throw new Error('Failed to initialize global epoch')
 				}
 				console.log('[Home] ✅ Global epoch from server:', epoch.toISOString())
-				
-				// Start periodic epoch refresh to maintain sync (every 5 seconds for perfect sync)
-				broadcastStateManager.startEpochRefresh()
-				
+
 				// ULTRA-FAST VALIDATION: Start checksum sync service (max 2s latency)
 				// - Checks every 2 seconds (meets max latency requirement)
 				// - Fast sync on critical moments (100ms debounce)
@@ -514,6 +516,11 @@ export default function Home() {
 		}
 
 		initializeApp()
+
+		// Keep the clock fresh: re-syncs periodically and whenever the tab wakes,
+		// which is when a device clock has realistically drifted.
+		const stopClockSync = startClockSync()
+		return stopClockSync
 	}, [])
 
 	// Active video - current video in selected category

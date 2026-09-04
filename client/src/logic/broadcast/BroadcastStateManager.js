@@ -5,8 +5,10 @@
  * Extracted from LocalBroadcastStateManager for better organization
  */
 
+import { positionAt } from '@shared/broadcastPosition.js'
 import { BROADCAST_THRESHOLDS } from '../../config/thresholds/index.js'
 import { fetchGlobalEpoch, getCachedEpoch } from '../../services/api/globalEpochService.js'
+import { now } from '../../services/time.js'
 import logger from '../../utils/logger.js'
 
 class BroadcastStateManager {
@@ -362,14 +364,21 @@ class BroadcastStateManager {
 			}
 		}
 
-		// Calculate elapsed time from immutable global epoch (client-side only, no clock sync needed)
-		const nowMs = Date.now()
-		const totalElapsedMs = nowMs - this.globalEpoch.getTime()
-		const totalElapsedSec = totalElapsedMs / 1000
-
-		// Apply per-channel offset (for manual seeking - doesn't affect global epoch)
+		// Per-channel offset shifts this channel along the timeline (manual seek)
+		// without touching the global epoch that every other viewer shares.
 		const channelOffset = savedState.channelOffset || 0
-		const adjustedElapsedSec = totalElapsedSec + channelOffset
+		const nowMs = now() + channelOffset * 1000
+		const epochMs = this.globalEpoch.getTime()
+
+		const live = positionAt(nowMs, epochMs, channel.items)
+
+		if (!live.isValid) {
+			return {
+				videoIndex: 0,
+				offset: 0,
+				debugInfo: 'Zero total duration',
+			}
+		}
 
 		const videoDurations = channel.items.map((v) => {
 			const duration = v.duration
@@ -378,104 +387,19 @@ class BroadcastStateManager {
 			}
 			return this.config.defaultVideoDuration
 		})
-		
-		const totalDurationSec = videoDurations.reduce((sum, d) => sum + d, 0)
-		
-		if (totalDurationSec === 0) {
-			return {
-				videoIndex: 0,
-				offset: 0,
-				debugInfo: 'Zero total duration',
-			}
-		}
 
-		let videoIndex = 0
-		let offsetInVideo = 0
-		let cyclePosition = 0
-		let cycleCount = 0
-
-		// Single video case
-		if (channel.items.length === 1) {
-			const singleVideoDuration = videoDurations[0]
-			if (singleVideoDuration <= 0) {
-				return {
-					videoIndex: 0,
-					offset: 0,
-					debugInfo: 'Invalid single video duration',
-				}
-			}
-			// Handle negative adjustedElapsedSec (if user seeks backward)
-			const effectiveElapsed = adjustedElapsedSec >= 0 
-				? adjustedElapsedSec 
-				: (Math.ceil(Math.abs(adjustedElapsedSec) / singleVideoDuration) * singleVideoDuration + adjustedElapsedSec)
-			cyclePosition = effectiveElapsed % singleVideoDuration
-			if (cyclePosition < 0) cyclePosition += singleVideoDuration
-			offsetInVideo = cyclePosition
-			videoIndex = 0
-			cycleCount = Math.floor(effectiveElapsed / singleVideoDuration)
-		}
-		// Multiple videos case
-		else {
-			// Handle negative adjustedElapsedSec
-			const effectiveElapsed = adjustedElapsedSec >= 0
-				? adjustedElapsedSec
-				: (Math.ceil(Math.abs(adjustedElapsedSec) / totalDurationSec) * totalDurationSec + adjustedElapsedSec)
-			
-			cyclePosition = effectiveElapsed % totalDurationSec
-			if (cyclePosition < 0) cyclePosition += totalDurationSec
-			cycleCount = Math.floor(effectiveElapsed / totalDurationSec)
-
-			let accumulatedTime = 0
-			let found = false
-			
-			for (let i = 0; i < videoDurations.length; i++) {
-				const videoDuration = videoDurations[i]
-				const videoEndTime = accumulatedTime + videoDuration
-				
-				if (cyclePosition >= accumulatedTime && cyclePosition < videoEndTime) {
-					videoIndex = i
-					offsetInVideo = cyclePosition - accumulatedTime
-					found = true
-					break
-				}
-				
-				accumulatedTime = videoEndTime
-			}
-			
-			if (!found) {
-				videoIndex = 0
-				offsetInVideo = 0
-			}
-		}
-
-		// Validate calculated position
-		if (videoIndex < 0 || videoIndex >= channel.items.length) {
-			videoIndex = 0
-			offsetInVideo = 0
-		}
-		
-		const currentVideoDuration = videoDurations[videoIndex] || this.config.defaultVideoDuration
-		if (offsetInVideo >= currentVideoDuration) {
-			offsetInVideo = Math.max(0, currentVideoDuration - 1)
-		}
-		if (offsetInVideo < 0) {
-			offsetInVideo = 0
-		}
-
-		const position = {
-			videoIndex,
-			offset: Math.max(0, Math.min(offsetInVideo, currentVideoDuration)),
-			cyclePosition,
-			totalDuration: totalDurationSec,
-			totalElapsedSec,
-			adjustedElapsedSec,
+		return {
+			videoIndex: live.videoIndex,
+			offset: live.offset,
+			cyclePosition: live.cyclePosition,
+			totalDuration: live.totalDuration,
+			totalElapsedSec: (now() - epochMs) / 1000,
+			adjustedElapsedSec: (nowMs - epochMs) / 1000,
 			channelOffset,
-			cycleCount,
+			cycleCount: live.cycleCount,
 			videoDurations,
 			isSingleVideo: channel.items.length === 1,
 		}
-
-		return position
 	}
 
 	/**

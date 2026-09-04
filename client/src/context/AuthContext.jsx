@@ -38,6 +38,16 @@ export function AuthProvider({ children }) {
 
   // Listen to Firebase auth state changes
   useEffect(() => {
+    // Without Firebase config there is nobody to be signed in as; settle into
+    // a signed-out state rather than throwing.
+    if (!auth) {
+      setUser(null);
+      setToken(null);
+      setLoading(false);
+      setInitialized(true);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // User is signed in - get fresh token
@@ -99,9 +109,13 @@ export function AuthProvider({ children }) {
    * Login with email/password via Firebase
    */
   const login = useCallback(async (email, password) => {
+    if (!auth) {
+      return { success: false, error: 'Admin sign-in is unavailable: Firebase is not configured.' };
+    }
+
     try {
       setLoading(true);
-      
+
       // Firebase handles all the auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -166,8 +180,8 @@ export function AuthProvider({ children }) {
       // Clear localStorage first
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(ADMIN_KEY);
-      
-      await signOut(auth);
+
+      if (auth) await signOut(auth);
       console.log('[Auth] Logged out');
     } catch (error) {
       console.error('[Auth] Logout error:', error);

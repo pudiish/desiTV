@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { getPseudoLiveItem } from '../../logic/broadcast'
+import { positionAt } from '@shared/broadcastPosition.js'
+import { now as clockNow } from '../../services/time'
 // Viewer count service removed - not needed for core functionality
 import { getTimeSlotName, getTimeBasedGreeting } from '../../utils/timeBasedProgramming'
 import { getUserTimezone } from '../../services/api/timezoneService'
@@ -58,8 +59,8 @@ export default function EnhancedWhatsNextPreview({ channel, isVisible, playbackI
 		}
 
 		// Fallback to calculated pseudo-live if no playbackInfo
-		const live = getPseudoLiveItem(channel.items, channel.playlistStartEpoch)
-		const currentIdx = live?.videoIndex ?? 0
+		const live = positionAt(clockNow(), Date.parse(channel.playlistStartEpoch), channel.items)
+		const currentIdx = live.isValid ? live.videoIndex : 0
 		const now = channel.items[currentIdx]
 		const next = channel.items[(currentIdx + 1) % channel.items.length]
 		const afterNext = channel.items[(currentIdx + 2) % channel.items.length]

@@ -18,6 +18,10 @@ dotenv.config();
 
 const app = express();
 
+// Behind Render/Vercel, req.ip is the proxy's address unless this is set, which
+// would make every rate limit and CSRF token key on a single shared bucket.
+app.set('trust proxy', 1);
+
 // Environment configuration
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 5000;
@@ -33,7 +37,10 @@ const {
 	FREE_TIER_LIMITS 
 } = require('./middleware/security');
 
-// Apply security middleware first
+// Body must be parsed before the security middleware runs: mongoSanitize and
+// the security logger both read req.body, which is undefined until this point.
+app.use(express.json({ limit: '1mb' }));
+
 securityMiddleware.forEach(middleware => {
 	app.use(middleware);
 });
@@ -106,8 +113,6 @@ const corsOptions = {
 };
 app.use(createCors(corsOptions));
 
-// Middleware
-app.use(express.json({ limit: '1mb' }));
 
 // Request logging
 if (!isProduction || process.env.DEBUG) {
@@ -138,7 +143,6 @@ const broadcastStateRoutes = require('./routes/broadcastState');
 const sessionRoutes = require('./routes/session');
 const monitoringRoutes = require('./routes/monitoring');
 const analyticsRoutes = require('./routes/analytics');
-const globalEpochRoutes = require('./routes/globalEpoch');
 const viewerCountRoutes = require('./routes/viewerCount');
 const liveStateRoutes = require('./routes/liveState'); // 🌟 NEW: Server-authoritative LIVE state
 const chatRoutes = require('./routes/chat'); // 🤖 VJ Assistant chatbot
@@ -147,12 +151,19 @@ const chatRoutes = require('./routes/chat'); // 🤖 VJ Assistant chatbot
 const { getCsrfToken, csrfProtection, csrfRefresh } = require('./middleware/csrf');
 
 app.get('/api/csrf-token', getCsrfToken);
+
+// Clock reference for client-side position sync. Mounted before the rate
+// limiter and never cached: a stale timestamp is worse than no timestamp.
+app.get('/api/time', (req, res) => {
+	res.set('Cache-Control', 'no-store');
+	res.json({ t: Date.now() });
+});
+
 app.use('/api', apiLimiter);
 app.use('/api', csrfProtection);
 app.use('/api', csrfRefresh);
 
 // Mount routes
-app.use('/api/global-epoch', globalEpochRoutes);
 app.use('/api/live-state', liveStateRoutes); // 🌟 NEW: The source of LIVE truth
 app.use('/api/viewer-count', viewerCountRoutes);
 app.use('/api/channels', channelRoutes);
@@ -198,30 +209,31 @@ app.get('/api/diagnostics', (req, res) => {
 	res.json(diagnostics);
 });
 
-// error handler (last middleware)
-const errorHandler = require('./middleware/errorHandler');
-app.use(errorHandler);
-
 app.get('/', (req, res) => res.send('DesiTV™ API running'));
 
-// Route to manually trigger JSON regeneration (useful for client fallback)
-app.post('/api/regenerate-json', async (req, res) => {
+// Regenerate the published channels.json from MongoDB. Admin-only: it
+// overwrites the file every client reads.
+const { requireAuth } = require('./middleware/auth');
+app.post('/api/regenerate-json', requireAuth, async (req, res) => {
 	try {
 		const { ensureChannelsJSON } = require('./utils/generateJSON');
 		const result = await ensureChannelsJSON();
-		res.json({ 
-			success: true, 
+		res.json({
+			success: true,
 			message: `JSON regenerated with ${result.channels.length} channels`,
-			channelsCount: result.channels.length 
+			channelsCount: result.channels.length
 		});
 	} catch (error) {
 		console.error('[Server] Error regenerating JSON:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: error.message 
+		res.status(500).json({
+			success: false,
+			message: error.message
 		});
 	}
 });
+
+// Error handler must come after every route, or it cannot catch their errors.
+app.use(require('./middleware/errorHandler'));
 
 // Database connection and server start
 const dbConnectionManager = require('./utils/dbConnection');
@@ -229,32 +241,11 @@ const dbConnectionManager = require('./utils/dbConnection');
 dbConnectionManager.onConnection(async () => {
 	console.log(`[DesiTV] MongoDB connected (${isProduction ? 'production' : 'development'})`);
 	
-	// Initialize global epoch immediately on server start
-	// This sets the epoch to current time if it doesn't exist, so stream is "on" from server startup
-	try {
-		const GlobalEpoch = require('./models/GlobalEpoch');
-		const cache = require('./utils/cache');
-		
-		// Get or create epoch (will use current server time if creating for first time)
-		const globalEpoch = await GlobalEpoch.getOrCreate();
-		
-		// Pre-cache the epoch for instant access
-		const cacheKey = 'ge';
-		const cacheData = {
-			e: globalEpoch.epoch.toISOString(),
-			tz: globalEpoch.timezone || 'Asia/Kolkata',
-			epoch: globalEpoch.epoch.toISOString(),
-			timezone: globalEpoch.timezone || 'Asia/Kolkata',
-			createdAt: globalEpoch.createdAt || globalEpoch.epoch,
-		};
-		await cache.set(cacheKey, cacheData, 7200); // Cache for 2 hours
-		
-		console.log(`[DesiTV] ✅ Global epoch initialized: ${globalEpoch.epoch.toISOString()}`);
-		console.log(`[DesiTV] 📺 Stream is now ON - all channels calculating from this epoch`);
-	} catch (epochErr) {
-		console.warn('[DesiTV] Failed to initialize global epoch:', epochErr.message);
-	}
-	
+	// The broadcast epoch is not initialized here: it travels with each channel
+	// as playlistStartEpoch. A separate epoch store used to be created on first
+	// boot, which minted a new timeline on any empty database and disagreed with
+	// the one the player was actually using.
+
 	try {
 		const { ensureChannelsJSON } = require('./utils/generateJSON');
 		const jsonData = await ensureChannelsJSON();

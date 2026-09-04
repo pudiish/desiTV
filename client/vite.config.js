@@ -49,6 +49,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: clientPort,
       host: '0.0.0.0', // Allow network access
+      fs: {
+        // shared/ lives outside client/, so the dev server must be allowed to read it
+        allow: [path.resolve(__dirname, '..')],
+      },
       headers: {
         'Referrer-Policy': 'origin-when-cross-origin',
         'X-Frame-Options': 'SAMEORIGIN',
@@ -108,6 +112,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        '@shared': path.resolve(__dirname, '../shared'),
       },
     },
     

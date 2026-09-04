@@ -29,15 +29,7 @@ class ChannelManager {
    * Get API base URL
    */
   getApiBase() {
-    if (import.meta.env.VITE_API_BASE) {
-      return import.meta.env.VITE_API_BASE
-    }
-    
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return window.location.origin
-    }
-    
-    return 'http://localhost:5000'
+    return envConfig.apiBaseUrl
   }
 
   /**

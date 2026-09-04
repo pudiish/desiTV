@@ -1,52 +1,53 @@
 /**
- * globalEpochService.js - Client-Side Epoch (Simple, No Server Dependency)
- * 
- * Uses fixed epoch from channels.json or default fixed value
- * Simple, straightforward, no race conditions, no server calls
+ * globalEpochService.js - the broadcast timeline's zero point
+ *
+ * The epoch ships inside the channel data as playlistStartEpoch, so the
+ * playlist and the epoch it is measured against are always versioned together
+ * and cannot drift apart. There is deliberately no separate epoch endpoint:
+ * a second store is what previously let the server and the player disagree
+ * about which video was live.
  */
 
 import logger from '../../utils/logger.js'
 
 const EPOCH_CACHE_KEY = 'desitv-global-epoch-cached'
-const DEFAULT_EPOCH = new Date('2020-01-01T00:00:00.000Z') // Fixed epoch matching channels
+
+/** Every channel currently shares this; used only if the fetch fails outright. */
+const DEFAULT_EPOCH = new Date('2020-01-01T00:00:00.000Z')
 
 let cachedEpoch = null
 
 /**
- * Get global epoch - Client-side only (no server dependency)
- * Tries to get from channels.json first, falls back to fixed default
- * @param {boolean} forceRefresh - Ignored (kept for compatibility)
+ * Read the epoch from the channel manifest.
  * @returns {Promise<Date>} Global epoch date
  */
 export async function fetchGlobalEpoch(forceRefresh = false) {
-	// Return cached if available (simple, no TTL needed - epoch is fixed)
-	if (cachedEpoch) {
+	// The epoch is immutable, so one read per session is enough.
+	if (cachedEpoch && !forceRefresh) {
 		return cachedEpoch
 	}
-	
+
 	try {
-		// Try to get epoch from channels.json (if it has one)
 		const response = await fetch('/data/channels.json?t=' + Date.now(), {
 			cache: 'no-cache'
 		})
-		
+
 		if (response.ok) {
-			const data = await response.json()
-			// Try to get epoch from first channel's playlistStartEpoch
-			if (data.channels && data.channels.length > 0 && data.channels[0].playlistStartEpoch) {
-				const epoch = new Date(data.channels[0].playlistStartEpoch)
-				if (!isNaN(epoch.getTime())) {
-					cachedEpoch = epoch
-					logger.info('[GlobalEpoch] ✅ Using epoch from channels.json:', epoch.toISOString())
-					return epoch
-				}
+			const payload = await response.json()
+			// Static file uses `channels`; the API returns the same rows under `data`.
+			const channels = payload.channels || payload.data || []
+			const epoch = new Date(channels[0]?.playlistStartEpoch)
+
+			if (!isNaN(epoch.getTime())) {
+				cachedEpoch = epoch
+				logger.info('[GlobalEpoch] ✅ Using epoch from channels.json:', epoch.toISOString())
+				return epoch
 			}
 		}
 	} catch (err) {
 		logger.warn('[GlobalEpoch] Could not load from channels.json, using default:', err.message)
 	}
-	
-	// Use fixed default epoch (matches channel playlistStartEpoch)
+
 	cachedEpoch = DEFAULT_EPOCH
 	logger.info('[GlobalEpoch] ✅ Using fixed default epoch:', cachedEpoch.toISOString())
 	return cachedEpoch
@@ -72,20 +73,5 @@ export function getCachedEpoch() {
 	return cachedEpoch
 }
 
-/**
- * Get the current server-client clock offset (deprecated - no longer used)
- * @returns {number} Always returns 0 (no server sync needed)
- */
-export function getClockOffset() {
-	return 0 // No server sync - always 0
-}
-
-/**
- * Get corrected current time (deprecated - no longer needed)
- * Use Date.now() directly - no server sync needed
- * @returns {number} Current time in milliseconds
- */
-export function getCorrectedTime() {
-	return Date.now() // No correction needed - client-side only
-}
+// Clock correction lives in services/time.js - import now() from there.
 

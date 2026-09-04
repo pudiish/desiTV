@@ -1,6 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { broadcastStateManager } from '../logic/broadcast'
 import logger from '../utils/logger.js'
+
+/** How often the broadcast position is re-derived from the clock. */
+const TICK_MS = 1000
 
 /**
  * useBroadcastPosition - Single source of truth for broadcast position
@@ -12,6 +15,17 @@ import logger from '../utils/logger.js'
  * @returns {Object} Complete broadcast position state
  */
 export function useBroadcastPosition(channel) {
+	// The position is a function of time, so it needs a time input. Without this
+	// it only recomputed on channel change, and stayed frozen whenever the
+	// player's own progress poll stalled (backgrounded tab, YouTube hiccup).
+	const [tick, setTick] = useState(0)
+
+	useEffect(() => {
+		if (!channel?._id) return
+		const id = setInterval(() => setTick((t) => t + 1), TICK_MS)
+		return () => clearInterval(id)
+	}, [channel?._id])
+
 	// Get state timestamp to trigger recalculation on epoch changes
 	// Use numeric timestamp (getTime()) so React detects changes properly
 	const stateTimestamp = channel?._id 
@@ -122,5 +136,5 @@ export function useBroadcastPosition(channel) {
 				isValid: false
 			}
 		}
-	}, [channel?._id, channel?.items, stateTimestamp, videoSwitchTimestamp, manualModeState, manualVideoIndex])
+	}, [channel?._id, channel?.items, stateTimestamp, videoSwitchTimestamp, manualModeState, manualVideoIndex, tick])
 }
